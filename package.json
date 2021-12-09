@@ -1,0 +1,8 @@
+{
+  "name": "@reservoir/core",
+  "private": true,
+  "packageManager": "yarn@3.1.1",
+  "workspaces": [
+    "packages/*"
+  ]
+}
