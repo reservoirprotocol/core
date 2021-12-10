@@ -1,18 +1,19 @@
 import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 
+import * as SingleTokenErc721 from "../single-token/erc721";
 import { hash, normalize, verify } from "../../order";
 import { HowToCall, Order, Side, SaleKind } from "../../types";
 import {
   AddressZero,
   Bytes32Zero,
-  BytesEmpty,
   getCurrentTimestamp,
   getRandomBytes32,
   s,
 } from "../../../utils";
 
 import Erc721Abi from "../../../abis/Erc721.json";
+import TokenRangeVerifierAbi from "../../abis/TokenRangeVerifier.json";
 
 // Wyvern V2 calldata:
 // `transferFrom(address from, address to, uint256 tokenId)`
@@ -24,24 +25,16 @@ const REPLACEMENT_PATTERN_BUY =
   "f".repeat(64) +
   // `to` (required)
   "0".repeat(64) +
-  // `tokenId` (required)
-  "0".repeat(64);
-
-const REPLACEMENT_PATTERN_SELL =
-  // `transferFrom` 4byte selector
-  "0x00000000" +
-  // `from` (required)
-  "0".repeat(64) +
-  // `to` (empty)
-  "f".repeat(64) +
-  // `tokenId` (required)
-  "0".repeat(64);
+  // `tokenId` (empty)
+  "f".repeat(64);
 
 type OrderParams = {
   exchange: string;
   maker: string;
   target: string;
-  tokenId: BigNumberish;
+  startTokenId: BigNumberish;
+  endTokenId: BigNumberish;
+  staticTarget: string;
   side: Side;
   paymentToken: string;
   basePrice: BigNumberish;
@@ -55,13 +48,13 @@ type OrderParams = {
   s?: string;
 };
 
-export const getTokenId = (order: Order): string | null => {
+export const getTokenRange = (order: Order): [string, string] | null => {
   try {
-    const result = new Interface(Erc721Abi).decodeFunctionData(
-      "transferFrom",
-      order.calldata
+    const result = new Interface(TokenRangeVerifierAbi).decodeFunctionData(
+      "verifyErc721",
+      order.staticExtradata
     );
-    return result.tokenId.toString();
+    return [result.startTokenId.toString(), result.endTokenId.toString()];
   } catch {
     return null;
   }
@@ -93,11 +86,16 @@ export const build = (params: OrderParams): Order | null => {
         calldata: new Interface(Erc721Abi).encodeFunctionData("transferFrom", [
           AddressZero,
           params.maker,
-          params.tokenId,
+          0,
         ]),
         replacementPattern: REPLACEMENT_PATTERN_BUY,
-        staticTarget: AddressZero,
-        staticExtradata: BytesEmpty,
+        staticTarget: params.staticTarget,
+        staticExtradata: new Interface(
+          TokenRangeVerifierAbi
+        ).encodeFunctionData("verifyErc721", [
+          params.startTokenId,
+          params.endTokenId,
+        ]),
         paymentToken: params.paymentToken,
         basePrice: s(params.basePrice),
         extra: "0",
@@ -109,36 +107,7 @@ export const build = (params: OrderParams): Order | null => {
         s: params.s,
       });
     } else if (params.side === Side.SELL) {
-      return normalize({
-        exchange: params.exchange,
-        maker: params.maker,
-        taker: AddressZero,
-        makerRelayerFee: params.fee,
-        takerRelayerFee: 0,
-        feeRecipient: params.feeRecipient,
-        side: Side.SELL,
-        // No dutch auctions support for now
-        saleKind: SaleKind.FIXED_PRICE,
-        target: params.target,
-        howToCall: HowToCall.CALL,
-        calldata: new Interface(Erc721Abi).encodeFunctionData("transferFrom", [
-          params.maker,
-          AddressZero,
-          params.tokenId,
-        ]),
-        replacementPattern: REPLACEMENT_PATTERN_SELL,
-        staticTarget: AddressZero,
-        staticExtradata: BytesEmpty,
-        paymentToken: params.paymentToken,
-        basePrice: s(params.basePrice),
-        extra: "0",
-        listingTime: params.listingTime,
-        expirationTime: params.expirationTime,
-        salt: s(params.salt),
-        v: params.v,
-        r: params.r,
-        s: params.s,
-      });
+      throw new Error("Not supported");
     } else {
       throw new Error("Invalid side");
     }
@@ -148,19 +117,15 @@ export const build = (params: OrderParams): Order | null => {
 };
 
 export const buildMatching = (options: {
+  tokenId: BigNumberish;
   taker: string;
   order: Order;
 }): Order | null => {
   try {
-    const { taker, order } = options;
-
-    const tokenId = getTokenId(options.order);
-    if (!tokenId) {
-      return null;
-    }
+    const { tokenId, taker, order } = options;
 
     if (order.side === Side.BUY) {
-      const matching = build({
+      const matching = SingleTokenErc721.build({
         exchange: order.exchange,
         maker: taker,
         target: order.target,
@@ -178,23 +143,7 @@ export const buildMatching = (options: {
 
       return matching;
     } else if (order.side === Side.SELL) {
-      const matching = build({
-        exchange: order.exchange,
-        maker: taker,
-        target: order.target,
-        tokenId,
-        side: Side.BUY,
-        paymentToken: order.paymentToken,
-        basePrice: order.basePrice,
-        fee: 0,
-        feeRecipient: AddressZero,
-        listingTime: getCurrentTimestamp(-60),
-        expirationTime: 0,
-        salt: getRandomBytes32(),
-      })!;
-      matching.makerRelayerFee = order.makerRelayerFee;
-
-      return matching;
+      throw new Error("Not supported");
     } else {
       throw new Error("Invalid side");
     }
@@ -208,15 +157,16 @@ export const check = (order: Order): boolean => {
     return false;
   }
 
-  const tokenId = getTokenId(order);
-  if (!tokenId) {
+  const tokenRange = getTokenRange(order);
+  if (!tokenRange) {
     return false;
   }
 
   try {
     const copy = build({
       ...order,
-      tokenId,
+      startTokenId: tokenRange[0],
+      endTokenId: tokenRange[1],
       fee: 0,
     });
 

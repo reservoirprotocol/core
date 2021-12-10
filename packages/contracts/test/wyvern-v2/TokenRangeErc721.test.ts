@@ -11,18 +11,20 @@ import { getCurrentTimestamp, maxUint256 } from "../utils";
 import ExchangeAbi from "@reservoir/sdk/src/wyvern-v2/abis/Exchange.json";
 import ProxyRegistryAbi from "@reservoir/sdk/src/wyvern-v2/abis/ProxyRegistry.json";
 
-describe("WyvernV2 - SingleTokenErc721", () => {
+describe("WyvernV2 - TokenRangeErc721", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
 
-  let exchange: Contract;
   let proxyRegistry: Contract;
   let tokenTransferProxy: Contract;
+  let exchange: Contract;
 
   let erc20: Contract;
   let erc721: Contract;
+
+  let verifier: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol] = await ethers.getSigners();
@@ -52,6 +54,19 @@ describe("WyvernV2 - SingleTokenErc721", () => {
     erc721 = await ethers
       .getContractFactory("MockERC721", deployer)
       .then((factory) => factory.deploy());
+
+    const bytesUtils = await ethers
+      .getContractFactory("BytesUtils", deployer)
+      .then((factory) => factory.deploy());
+
+    verifier = await ethers
+      .getContractFactory("TokenRangeVerifier", {
+        signer: deployer,
+        libraries: {
+          BytesUtils: bytesUtils.address,
+        },
+      })
+      .then((factory) => factory.deploy());
   });
 
   it("build and match buy order", async () => {
@@ -61,7 +76,7 @@ describe("WyvernV2 - SingleTokenErc721", () => {
 
     const price = parseEther("1");
     const fee = 250;
-    const boughtTokenId = 0;
+    const soldTokenId = 1;
 
     // Mint erc20 to buyer
     await erc20.connect(buyer).mint(price);
@@ -73,7 +88,7 @@ describe("WyvernV2 - SingleTokenErc721", () => {
     await erc20.connect(seller).approve(tokenTransferProxy.address, maxUint256);
 
     // Mint erc721 to seller
-    await erc721.connect(seller).mint(boughtTokenId);
+    await erc721.connect(seller).mint(soldTokenId);
 
     // Register user proxy for the seller
     await proxyRegistry.connect(seller).registerProxy();
@@ -83,11 +98,13 @@ describe("WyvernV2 - SingleTokenErc721", () => {
     await erc721.connect(seller).setApprovalForAll(proxy, true);
 
     // Build buy order
-    let buyOrder = Builders.SingleTokenErc721.build({
+    let buyOrder = Builders.TokenRangeErc721.build({
       exchange: exchange.address,
       maker: buyer.address,
       target: erc721.address,
-      tokenId: boughtTokenId,
+      startTokenId: 0,
+      endTokenId: 2,
+      staticTarget: verifier.address,
       side: Types.Side.BUY,
       paymentToken: erc20.address,
       basePrice: price,
@@ -100,9 +117,10 @@ describe("WyvernV2 - SingleTokenErc721", () => {
     buyOrder = await Order.sign(buyer, buyOrder);
 
     // Create matching sell order
-    const sellOrder = Builders.SingleTokenErc721.buildMatching({
+    const sellOrder = Builders.TokenRangeErc721.buildMatching({
       order: buyOrder,
       taker: seller.address,
+      tokenId: soldTokenId,
     })!;
     sellOrder.listingTime = await getCurrentTimestamp(ethers.provider);
 
@@ -111,7 +129,7 @@ describe("WyvernV2 - SingleTokenErc721", () => {
     const feeRecipientBalanceBefore = await erc20.balanceOf(
       feeRecipient.address
     );
-    const ownerBefore = await erc721.ownerOf(boughtTokenId);
+    const ownerBefore = await erc721.ownerOf(soldTokenId);
 
     expect(buyerBalanceBefore).to.eq(price);
     expect(sellerBalanceBefore).to.eq(0);
@@ -126,7 +144,7 @@ describe("WyvernV2 - SingleTokenErc721", () => {
     const feeRecipientBalanceAfter = await erc20.balanceOf(
       feeRecipient.address
     );
-    const ownerAfter = await erc721.ownerOf(boughtTokenId);
+    const ownerAfter = await erc721.ownerOf(soldTokenId);
 
     expect(buyerBalanceAfter).to.eq(0);
     expect(sellerBalanceAfter).to.eq(price.sub(price.mul(fee).div(10000)));

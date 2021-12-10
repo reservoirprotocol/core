@@ -4,7 +4,7 @@
   "description": "Reservoir Protocol smart contracts",
   "license": "MIT",
   "scripts": {
-    "build": "hardhat compile",
+    "compile": "hardhat compile",
     "clean": "hardhat clean",
     "test": "hardhat test"
   },
