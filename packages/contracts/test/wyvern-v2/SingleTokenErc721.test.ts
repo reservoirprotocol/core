@@ -7,15 +7,15 @@ import {
   Exchange,
   Order,
   Types,
-} from "@reservoir/sdk/src/wyvern-v2";
+} from "@reservoir0x/sdk/src/wyvern-v2";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { getCurrentTimestamp, maxUint256 } from "../utils";
 
-import ExchangeAbi from "@reservoir/sdk/src/wyvern-v2/abis/Exchange.json";
-import ProxyRegistryAbi from "@reservoir/sdk/src/wyvern-v2/abis/ProxyRegistry.json";
+import ExchangeAbi from "@reservoir0x/sdk/src/wyvern-v2/abis/Exchange.json";
+import ProxyRegistryAbi from "@reservoir0x/sdk/src/wyvern-v2/abis/ProxyRegistry.json";
 
 describe("WyvernV2 - SingleTokenErc721", () => {
   let deployer: SignerWithAddress;

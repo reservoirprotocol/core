@@ -14,5 +14,11 @@
   },
   "dependencies": {
     "ethers": "^5.5.2"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

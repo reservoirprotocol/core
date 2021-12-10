@@ -661,14 +661,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@reservoir/contracts@workspace:packages/contracts":
+"@reservoir0x/contracts@workspace:packages/contracts":
   version: 0.0.0-use.local
-  resolution: "@reservoir/contracts@workspace:packages/contracts"
+  resolution: "@reservoir0x/contracts@workspace:packages/contracts"
   dependencies:
     "@nomiclabs/hardhat-ethers": ^2.0.3
     "@nomiclabs/hardhat-waffle": ^2.0.1
     "@openzeppelin/contracts": ^4.4.0
-    "@reservoir/sdk": "workspace:*"
+    "@reservoir0x/sdk": "workspace:*"
     "@types/mocha": ^9.0.0
     "@types/node": ^16.11.12
     chai: ^4.3.4
@@ -681,15 +681,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@reservoir/core@workspace:.":
+"@reservoir0x/core@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@reservoir/core@workspace:."
+  resolution: "@reservoir0x/core@workspace:."
   languageName: unknown
   linkType: soft
 
-"@reservoir/sdk@workspace:*, @reservoir/sdk@workspace:packages/sdk":
+"@reservoir0x/sdk@workspace:*, @reservoir0x/sdk@workspace:packages/sdk":
   version: 0.0.0-use.local
-  resolution: "@reservoir/sdk@workspace:packages/sdk"
+  resolution: "@reservoir0x/sdk@workspace:packages/sdk"
   dependencies:
     "@types/node": ^16.11.12
     ethers: ^5.5.2
