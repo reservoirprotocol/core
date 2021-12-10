@@ -28,6 +28,10 @@ const config: HardhatUserConfig = {
         blockNumber: Number(process.env.BLOCK_NUMBER),
       },
     },
+    rinkeby: {
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
+      accounts: [process.env.DEPLOYER_PK || "0x00"],
+    },
   },
 };
 

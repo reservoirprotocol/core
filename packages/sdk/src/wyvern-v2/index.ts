@@ -1,3 +1,4 @@
+import * as Addresses from "./addresses";
 import * as Exchange from "./exchange";
 import * as Order from "./order";
 import * as Types from "./types";
@@ -10,4 +11,4 @@ const Builders = {
   TokenRangeErc721,
 };
 
-export { Builders, Exchange, Order, Types };
+export { Addresses, Builders, Exchange, Order, Types };

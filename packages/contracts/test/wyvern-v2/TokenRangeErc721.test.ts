@@ -1,7 +1,13 @@
 import { Interface } from "@ethersproject/abi";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
-import { Builders, Exchange, Order, Types } from "@reservoir/sdk/src/wyvern-v2";
+import {
+  Addresses,
+  Builders,
+  Exchange,
+  Order,
+  Types,
+} from "@reservoir/sdk/src/wyvern-v2";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
@@ -30,19 +36,19 @@ describe("WyvernV2 - TokenRangeErc721", () => {
     [deployer, alice, bob, carol] = await ethers.getSigners();
 
     exchange = new Contract(
-      "0x7be8076f4ea4a4ad08075c2508e481d6c946d12b",
+      Addresses.Exchange[1],
       ExchangeAbi as any,
       ethers.provider
     );
 
     proxyRegistry = new Contract(
-      "0xa5409ec958c83c3f309868babaca7c86dcb077c1",
+      Addresses.ProxyRegistry[1],
       ProxyRegistryAbi as any,
       ethers.provider
     );
 
     tokenTransferProxy = new Contract(
-      "0xe5c783ee536cf5e63e792988335c4255169be4e1",
+      Addresses.TokenTransferProxy[1],
       new Interface([]),
       ethers.provider
     );
