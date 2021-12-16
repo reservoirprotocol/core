@@ -26,7 +26,7 @@ export class Order {
 
     // Detect kind
     if (!params.kind) {
-      params.kind = this.detectKind();
+      this.params.kind = this.detectKind();
     }
 
     // Perform light validations
