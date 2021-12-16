@@ -1,137 +1,191 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Contract } from "@ethersproject/contracts";
 
-import { Order, Side } from "./types";
-import { AddressZero, Bytes32Zero, l } from "../utils";
+import { Order } from "./order";
+import * as Types from "./types";
+import * as CommonAddresses from "../common/addresses";
+import { Bytes32Zero, lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
-export const match = async (
-  relayer: Signer,
-  buyOrder: Order,
-  sellOrder: Order
-) => {
-  if (buyOrder.side !== Side.BUY) {
-    throw new Error("Invalid buy order side");
-  }
-  if (sellOrder.side !== Side.SELL) {
-    throw new Error("Invalid sell order side");
-  }
+export class Exchange {
+  public chainId: number;
 
-  if (l(buyOrder.exchange) !== l(sellOrder.exchange)) {
-    throw new Error("Mismatching exchanges");
+  constructor(chainId: number) {
+    if (chainId !== 1 && chainId !== 4) {
+      throw new Error("Unsupported chain id");
+    }
+
+    this.chainId = chainId;
   }
 
-  const addrs = [
-    buyOrder.exchange,
-    buyOrder.maker,
-    buyOrder.taker,
-    buyOrder.feeRecipient,
-    buyOrder.target,
-    buyOrder.staticTarget,
-    buyOrder.paymentToken,
-    sellOrder.exchange,
-    sellOrder.maker,
-    sellOrder.taker,
-    sellOrder.feeRecipient,
-    sellOrder.target,
-    sellOrder.staticTarget,
-    sellOrder.paymentToken,
-  ];
-
-  const uints = [
-    buyOrder.makerRelayerFee,
-    buyOrder.takerRelayerFee,
-    0, // makerProtocolFee (always 0)
-    0, // takerProtocolFee (always 0)
-    buyOrder.basePrice,
-    buyOrder.extra,
-    buyOrder.listingTime,
-    buyOrder.expirationTime,
-    buyOrder.salt,
-    sellOrder.makerRelayerFee,
-    sellOrder.takerRelayerFee,
-    0, // makerProtocolFee (always 0)
-    0, // takerProtocolFee (always 0)
-    sellOrder.basePrice,
-    sellOrder.extra,
-    sellOrder.listingTime,
-    sellOrder.expirationTime,
-    sellOrder.salt,
-  ];
-
-  const feeMethodsSidesKindsHowToCalls = [
-    1, // feeMethod (always 1 - SplitFee)
-    buyOrder.side,
-    buyOrder.saleKind,
-    buyOrder.howToCall,
-    1, // feeMethod (always 1 - SplitFee)
-    sellOrder.side,
-    sellOrder.saleKind,
-    sellOrder.howToCall,
-  ];
-
-  return new Contract(buyOrder.exchange, ExchangeAbi as any)
-    .connect(relayer)
-    .atomicMatch_(
-      addrs,
-      uints,
-      feeMethodsSidesKindsHowToCalls,
-      buyOrder.calldata,
-      sellOrder.calldata,
-      buyOrder.replacementPattern,
-      sellOrder.replacementPattern,
-      buyOrder.staticExtradata,
-      sellOrder.staticExtradata,
-      [buyOrder.v, sellOrder.v],
-      [buyOrder.r, buyOrder.s, sellOrder.r, sellOrder.s, Bytes32Zero],
-      {
-        value: buyOrder.paymentToken === AddressZero ? buyOrder.basePrice : 0,
+  public async match(
+    relayer: Signer,
+    buyOrder: Order,
+    sellOrder: Order,
+    options?: { skipValidation?: boolean }
+  ) {
+    if (!options?.skipValidation) {
+      // Validate orders side
+      if (
+        buyOrder.params.side !== Types.OrderSide.BUY ||
+        sellOrder.params.side !== Types.OrderSide.SELL
+      ) {
+        throw new Error("Invalid order side");
       }
-    );
-};
 
-export const cancel = async (relayer: Signer, order: Order) => {
-  if (l(await relayer.getAddress()) !== l(order.maker)) {
-    throw new Error("Relayer is not order maker");
+      // Validate orders by kind
+      buyOrder = new Order(this.chainId, buyOrder.params);
+      sellOrder = new Order(this.chainId, sellOrder.params);
+      if (!buyOrder.hasValidKind() || !sellOrder.hasValidKind()) {
+        throw new Error("Invalid order");
+      }
+
+      // Validate orders signatures
+      if (!buyOrder.hasValidSignature() && !sellOrder.hasValidSignature()) {
+        throw new Error("Invalid order signature");
+      }
+    }
+
+    const addrs = [
+      buyOrder.params.exchange,
+      buyOrder.params.maker,
+      buyOrder.params.taker,
+      buyOrder.params.feeRecipient,
+      buyOrder.params.target,
+      buyOrder.params.staticTarget,
+      buyOrder.params.paymentToken,
+      sellOrder.params.exchange,
+      sellOrder.params.maker,
+      sellOrder.params.taker,
+      sellOrder.params.feeRecipient,
+      sellOrder.params.target,
+      sellOrder.params.staticTarget,
+      sellOrder.params.paymentToken,
+    ];
+
+    const uints = [
+      buyOrder.params.makerRelayerFee,
+      buyOrder.params.takerRelayerFee,
+      0, // makerProtocolFee (always 0)
+      0, // takerProtocolFee (always 0)
+      buyOrder.params.basePrice,
+      buyOrder.params.extra,
+      buyOrder.params.listingTime,
+      buyOrder.params.expirationTime,
+      buyOrder.params.salt,
+      sellOrder.params.makerRelayerFee,
+      sellOrder.params.takerRelayerFee,
+      0, // makerProtocolFee (always 0)
+      0, // takerProtocolFee (always 0)
+      sellOrder.params.basePrice,
+      sellOrder.params.extra,
+      sellOrder.params.listingTime,
+      sellOrder.params.expirationTime,
+      sellOrder.params.salt,
+    ];
+
+    const feeMethodsSidesKindsHowToCalls = [
+      1, // feeMethod (always 1 - SplitFee)
+      buyOrder.params.side,
+      buyOrder.params.saleKind,
+      buyOrder.params.howToCall,
+      1, // feeMethod (always 1 - SplitFee)
+      sellOrder.params.side,
+      sellOrder.params.saleKind,
+      sellOrder.params.howToCall,
+    ];
+
+    return new Contract(buyOrder.params.exchange, ExchangeAbi as any)
+      .connect(relayer)
+      .atomicMatch_(
+        addrs,
+        uints,
+        feeMethodsSidesKindsHowToCalls,
+        buyOrder.params.calldata,
+        sellOrder.params.calldata,
+        buyOrder.params.replacementPattern,
+        sellOrder.params.replacementPattern,
+        buyOrder.params.staticExtradata,
+        sellOrder.params.staticExtradata,
+        [buyOrder.params.v, sellOrder.params.v],
+        [
+          buyOrder.params.r,
+          buyOrder.params.s,
+          sellOrder.params.r,
+          sellOrder.params.s,
+          Bytes32Zero,
+        ],
+        {
+          value:
+            buyOrder.params.paymentToken === CommonAddresses.Eth[this.chainId]
+              ? buyOrder.params.basePrice
+              : 0,
+          gasLimit: 15000000,
+        }
+      );
   }
 
-  const addrs = [
-    order.exchange,
-    order.maker,
-    order.taker,
-    order.feeRecipient,
-    order.target,
-    order.staticTarget,
-    order.paymentToken,
-  ];
+  public async cancel(
+    relayer: Signer,
+    order: Order,
+    options?: { skipValidation?: boolean }
+  ) {
+    if (!options?.skipValidation) {
+      // Validate order by kind
+      order = new Order(this.chainId, order.params);
+      if (!order.hasValidKind()) {
+        throw new Error("Invalid order");
+      }
 
-  const uints = [
-    order.makerRelayerFee,
-    order.takerRelayerFee,
-    0, // makerProtocolFee (always 0)
-    0, // takerProtocolFee (always 0)
-    order.basePrice,
-    order.extra,
-    order.listingTime,
-    order.expirationTime,
-    order.salt,
-  ];
+      // Validate order signature
+      if (!order.hasValidSignature()) {
+        throw new Error("Invalid order signature");
+      }
 
-  return new Contract(order.exchange, ExchangeAbi as any)
-    .connect(relayer)
-    .cancelOrder_(
-      addrs,
-      uints,
-      1, // feeMethod (always 1 - SplitFee)
-      order.side,
-      order.saleKind,
-      order.howToCall,
-      order.calldata,
-      order.replacementPattern,
-      order.staticExtradata,
-      order.v,
-      order.r,
-      order.s
-    );
-};
+      // Validate relayer
+      if (lc(order.params.maker) !== lc(await relayer.getAddress())) {
+        throw new Error("Invalid relayer");
+      }
+    }
+
+    const addrs = [
+      order.params.exchange,
+      order.params.maker,
+      order.params.taker,
+      order.params.feeRecipient,
+      order.params.target,
+      order.params.staticTarget,
+      order.params.paymentToken,
+    ];
+
+    const uints = [
+      order.params.makerRelayerFee,
+      order.params.takerRelayerFee,
+      0, // makerProtocolFee (always 0)
+      0, // takerProtocolFee (always 0)
+      order.params.basePrice,
+      order.params.extra,
+      order.params.listingTime,
+      order.params.expirationTime,
+      order.params.salt,
+    ];
+
+    return new Contract(order.params.exchange, ExchangeAbi as any)
+      .connect(relayer)
+      .cancelOrder_(
+        addrs,
+        uints,
+        1, // feeMethod (always 1 - SplitFee)
+        order.params.side,
+        order.params.saleKind,
+        order.params.howToCall,
+        order.params.calldata,
+        order.params.replacementPattern,
+        order.params.staticExtradata,
+        order.params.v,
+        order.params.r,
+        order.params.s
+      );
+  }
+}

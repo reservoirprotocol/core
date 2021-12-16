@@ -1,29 +1,35 @@
-export enum HowToCall {
+export enum OrderHowToCall {
   CALL,
   DELEGATE_CALL,
 }
 
-export enum SaleKind {
+export enum OrderSaleKind {
   FIXED_PRICE,
   DUTCH_AUCTION,
 }
 
-export enum Side {
+export enum OrderSide {
   BUY,
   SELL,
 }
 
-export type Order = {
+export type OrderKind =
+  | "erc721-single-token"
+  | "erc721-token-range"
+  | "erc1155-single-token";
+
+export type OrderParams = {
+  kind?: OrderKind;
   exchange: string;
   maker: string;
   taker: string;
   makerRelayerFee: number;
   takerRelayerFee: number;
   feeRecipient: string;
-  side: Side;
-  saleKind: SaleKind;
+  side: OrderSide;
+  saleKind: OrderSaleKind;
   target: string;
-  howToCall: HowToCall;
+  howToCall: OrderHowToCall;
   calldata: string;
   replacementPattern: string;
   staticTarget: string;

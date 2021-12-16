@@ -5,6 +5,7 @@ import { HardhatUserConfig } from "hardhat/types";
 
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
+import "@tenderly/hardhat-tenderly";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -30,7 +31,10 @@ const config: HardhatUserConfig = {
     },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: [process.env.DEPLOYER_PK || "0x00"],
+      accounts: [
+        process.env.DEPLOYER_PK ||
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+      ],
     },
   },
 };

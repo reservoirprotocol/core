@@ -12,9 +12,9 @@
         "type": "uint256"
       }
     ],
-    "name": "verifyErc721",
+    "name": "verify",
     "outputs": [],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   }
 ]

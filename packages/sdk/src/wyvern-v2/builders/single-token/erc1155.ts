@@ -13,30 +13,38 @@ import {
   s,
 } from "../../../utils";
 
-import Erc721Abi from "../../../common/abis/Erc721.json";
+import Erc1155Abi from "../../../common/abis/Erc1155.json";
 
 // Wyvern V2 calldata:
-// `transferFrom(address from, address to, uint256 tokenId)`
+// `safeTransferFrom(address from, address to, uint256 tokenId, uint256 amount, bytes data)`
 
 const REPLACEMENT_PATTERN_BUY =
-  // `transferFrom` 4byte selector
+  // `safeTransferFrom` 4byte selector
   "0x00000000" +
   // `from` (empty)
   "f".repeat(64) +
   // `to` (required)
   "0".repeat(64) +
   // `tokenId` (required)
-  "0".repeat(64);
+  "0".repeat(64) +
+  // `amount` (required)
+  "0".repeat(64) +
+  // empty `data` (required)
+  "0".repeat(128);
 
 const REPLACEMENT_PATTERN_SELL =
-  // `transferFrom` 4byte selector
+  // `safeTransferFrom` 4byte selector
   "0x00000000" +
-  // `from` (required)
+  // `from` (empty)
   "0".repeat(64) +
-  // `to` (empty)
+  // `to` (required)
   "f".repeat(64) +
   // `tokenId` (required)
-  "0".repeat(64);
+  "0".repeat(64) +
+  // `amount` (required)
+  "0".repeat(64) +
+  // empty `data` (required)
+  "0".repeat(128);
 
 type BuildParams = {
   maker: string;
@@ -55,7 +63,7 @@ type BuildParams = {
   s?: string;
 };
 
-export class SingleTokenErc721Builder {
+export class SingleTokenErc1155Builder {
   public chainId: number;
 
   constructor(chainId: number) {
@@ -68,11 +76,11 @@ export class SingleTokenErc721Builder {
 
   public getTokenId(order: Order): string | undefined {
     try {
-      const result = new Interface(Erc721Abi).decodeFunctionData(
-        "transferFrom",
+      const result = new Interface(Erc1155Abi).decodeFunctionData(
+        "safeTransferFrom",
         order.params.calldata
       );
-      return result.tokenId.toString();
+      return result.id.toString();
     } catch {
       return undefined;
     }
@@ -124,7 +132,7 @@ export class SingleTokenErc721Builder {
 
       if (params.side === "buy") {
         return new Order(this.chainId, {
-          kind: "erc721-single-token",
+          kind: "erc1155-single-token",
           exchange: Addresses.Exchange[this.chainId],
           maker: params.maker,
           taker: AddressZero,
@@ -136,9 +144,9 @@ export class SingleTokenErc721Builder {
           saleKind: Types.OrderSaleKind.FIXED_PRICE,
           target: params.contract,
           howToCall: Types.OrderHowToCall.CALL,
-          calldata: new Interface(Erc721Abi).encodeFunctionData(
-            "transferFrom",
-            [AddressZero, params.maker, params.tokenId]
+          calldata: new Interface(Erc1155Abi).encodeFunctionData(
+            "safeTransferFrom",
+            [AddressZero, params.maker, params.tokenId, 1, "0x"]
           ),
           replacementPattern: REPLACEMENT_PATTERN_BUY,
           staticTarget: AddressZero,
@@ -155,7 +163,7 @@ export class SingleTokenErc721Builder {
         });
       } else if (params.side === "sell") {
         return new Order(this.chainId, {
-          kind: "erc721-single-token",
+          kind: "erc1155-single-token",
           exchange: Addresses.Exchange[this.chainId],
           maker: params.maker,
           taker: AddressZero,
@@ -167,9 +175,9 @@ export class SingleTokenErc721Builder {
           saleKind: Types.OrderSaleKind.FIXED_PRICE,
           target: params.contract,
           howToCall: Types.OrderHowToCall.CALL,
-          calldata: new Interface(Erc721Abi).encodeFunctionData(
-            "transferFrom",
-            [params.maker, AddressZero, params.tokenId]
+          calldata: new Interface(Erc1155Abi).encodeFunctionData(
+            "safeTransferFrom",
+            [params.maker, AddressZero, params.tokenId, 1, "0x"]
           ),
           replacementPattern: REPLACEMENT_PATTERN_SELL,
           staticTarget: AddressZero,
