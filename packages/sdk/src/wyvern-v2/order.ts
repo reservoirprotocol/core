@@ -1,3 +1,4 @@
+import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
 import { arrayify, splitSignature } from "@ethersproject/bytes";
 import { hashMessage } from "@ethersproject/hash";
@@ -5,9 +6,11 @@ import { keccak256 } from "@ethersproject/solidity";
 import { verifyMessage } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
+import { ProxyRegistry } from "./helpers";
 import { Builders } from "./index";
 import * as Types from "./types";
-import { lc, n, s } from "../utils";
+import * as Common from "../common";
+import { bn, lc, n, s } from "../utils";
 
 export class Order {
   public chainId: number;
@@ -158,7 +161,113 @@ export class Order {
     }
   }
 
-  public detectKind(): Types.OrderKind | undefined {
+  public async isFillable(provider: Provider): Promise<boolean> {
+    try {
+      const chainId = await provider.getNetwork().then((n) => n.chainId);
+
+      if (this.params.side === Types.OrderSide.BUY) {
+        // Check that maker has enough balance to cover the payment
+        // and the approval to the token transfer proxy is set
+
+        const erc20 = new Common.Helpers.Erc20(
+          provider,
+          this.params.paymentToken
+        );
+
+        // Check balance
+        const balance = await erc20.getBalance(this.params.maker);
+        if (bn(balance).lt(this.params.basePrice)) {
+          return false;
+        }
+
+        // Check allowance
+        const allowance = await erc20.getAllowance(
+          this.params.maker,
+          Addresses.TokenTransferProxy[chainId]
+        );
+        if (bn(allowance).lt(this.params.basePrice)) {
+          return false;
+        }
+
+        return true;
+      } else {
+        // Check that maker owns the token id put on sale and
+        // the approval to the make'rs proxy is set
+
+        const proxyRegistry = new ProxyRegistry(provider, chainId);
+        const proxy = await proxyRegistry.getProxy(this.params.maker);
+        if (!proxy) {
+          return false;
+        }
+
+        if (this.params.kind?.startsWith("erc721")) {
+          const erc721 = new Common.Helpers.Erc721(
+            provider,
+            this.params.target
+          );
+
+          // Sell orders can only be single token (at least for now), so
+          // extracting the token id via the single token builder should
+          // be enough
+          const tokenId = new Builders.Erc721.SingleToken(chainId).getTokenId(
+            this
+          );
+          if (!tokenId) {
+            return false;
+          }
+
+          // Check ownership
+          const owner = await erc721.getOwner(tokenId);
+          if (lc(owner) !== lc(this.params.maker)) {
+            return false;
+          }
+
+          // Check approval
+          const isApproved = await erc721.isApproved(this.params.maker, proxy);
+          if (!isApproved) {
+            return false;
+          }
+
+          return true;
+        } else if (this.params.kind?.startsWith("erc1155")) {
+          const erc1155 = new Common.Helpers.Erc1155(
+            provider,
+            this.params.target
+          );
+
+          // Sell orders can only be single token (at least for now), so
+          // extracting the token id via the single token builder should
+          // be enough
+          const tokenId = new Builders.Erc1155.SingleToken(chainId).getTokenId(
+            this
+          );
+          if (!tokenId) {
+            return false;
+          }
+
+          // Check balance
+          const balance = await erc1155.getBalance(this.params.maker, tokenId);
+          if (bn(balance).lt(1)) {
+            return false;
+          }
+
+          // Check approval
+          const isApproved = await erc1155.isApproved(this.params.maker, proxy);
+          if (!isApproved) {
+            return false;
+          }
+
+          return true;
+        } else {
+          return false;
+        }
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  private detectKind(): Types.OrderKind | undefined {
     // erc721-single-token
     {
       const builder = new Builders.Erc721.SingleToken(this.chainId);

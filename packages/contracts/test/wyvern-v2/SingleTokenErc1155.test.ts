@@ -99,6 +99,9 @@ describe("WyvernV2 - SingleTokenErc1155", () => {
     })!;
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
+    expect(await buyOrder.isFillable(ethers.provider)).to.be.true;
+    expect(await sellOrder.isFillable(ethers.provider)).to.be.true;
+
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
     const sellerWethBalanceBefore = await weth.getBalance(seller.address);
     const feeRecipientWethBalanceBefore = await weth.getBalance(
