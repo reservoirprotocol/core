@@ -267,6 +267,29 @@ export class Order {
     }
   }
 
+  public buildMatching(data: any): Order | undefined {
+    switch (this.params.kind) {
+      case "erc721-single-token": {
+        const builder = new Builders.Erc721.SingleToken(this.chainId);
+        return builder.buildMatching({ order: this, ...data });
+      }
+
+      case "erc721-token-range": {
+        const builder = new Builders.Erc721.TokenRange(this.chainId);
+        return builder.buildMatching({ order: this, ...data });
+      }
+
+      case "erc1155-single-token": {
+        const builder = new Builders.Erc1155.SingleToken(this.chainId);
+        return builder.buildMatching({ order: this, ...data });
+      }
+
+      default: {
+        return undefined;
+      }
+    }
+  }
+
   private detectKind(): Types.OrderKind | undefined {
     // erc721-single-token
     {

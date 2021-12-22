@@ -93,7 +93,7 @@ describe("WyvernV2 - SingleTokenErc1155", () => {
     await buyOrder.sign(buyer);
 
     // Create matching sell order
-    const sellOrder = builder.buildMatching({
+    const sellOrder = buyOrder.buildMatching({
       order: buyOrder,
       taker: seller.address,
     })!;
