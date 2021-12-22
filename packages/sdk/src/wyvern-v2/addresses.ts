@@ -17,5 +17,5 @@ export const TokenTransferProxy: any = {
 
 export const TokenRangeVerifier: any = {
   1: "",
-  4: "0x04c3af2cad3d1c037930184161ec24ba3a631129",
+  4: "0x253C0d8F6AA4D89b57D5A0CaEa6131090Fd13cC5",
 };
