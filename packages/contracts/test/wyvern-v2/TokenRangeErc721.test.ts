@@ -110,10 +110,7 @@ describe("WyvernV2 - TokenRangeErc721", () => {
     await buyOrder.sign(buyer);
 
     // Create matching sell order
-    const sellOrder = buyOrder.buildMatching({
-      taker: seller.address,
-      tokenId: soldTokenId,
-    })!;
+    const sellOrder = buyOrder.buildMatching(seller.address, soldTokenId)!;
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
     expect(await buyOrder.isFillable(ethers.provider)).to.be.true;

@@ -11,6 +11,7 @@ import { Builders } from "./index";
 import * as Types from "./types";
 import * as Common from "../common";
 import { bn, lc, n, s } from "../utils";
+import { BaseBuilder } from "./builders/base";
 
 export class Order {
   public chainId: number;
@@ -108,6 +109,10 @@ export class Order {
     };
   }
 
+  public buildMatching(taker: string, data?: any): Order | undefined {
+    return this.getBuilder()?.buildMatching(this, taker, data);
+  }
+
   public async hasValidSignature() {
     try {
       const signer = verifyMessage(arrayify(this.hash()), {
@@ -127,38 +132,7 @@ export class Order {
   }
 
   public hasValidKind() {
-    switch (this.params.kind) {
-      case "erc721-single-token": {
-        const builder = new Builders.Erc721.SingleToken(this.chainId);
-        if (!builder.isValid(this)) {
-          return false;
-        }
-
-        return true;
-      }
-
-      case "erc721-token-range": {
-        const builder = new Builders.Erc721.TokenRange(this.chainId);
-        if (!builder.isValid(this)) {
-          return false;
-        }
-
-        return true;
-      }
-
-      case "erc1155-single-token": {
-        const builder = new Builders.Erc1155.SingleToken(this.chainId);
-        if (!builder.isValid(this)) {
-          return false;
-        }
-
-        return true;
-      }
-
-      default: {
-        return false;
-      }
-    }
+    return this.getBuilder()?.isValid(this);
   }
 
   public async isFillable(provider: Provider): Promise<boolean> {
@@ -267,21 +241,18 @@ export class Order {
     }
   }
 
-  public buildMatching(data: any): Order | undefined {
+  private getBuilder(): BaseBuilder | undefined {
     switch (this.params.kind) {
       case "erc721-single-token": {
-        const builder = new Builders.Erc721.SingleToken(this.chainId);
-        return builder.buildMatching({ order: this, ...data });
+        return new Builders.Erc721.SingleToken(this.chainId);
       }
 
       case "erc721-token-range": {
-        const builder = new Builders.Erc721.TokenRange(this.chainId);
-        return builder.buildMatching({ order: this, ...data });
+        return new Builders.Erc721.TokenRange(this.chainId);
       }
 
       case "erc1155-single-token": {
-        const builder = new Builders.Erc1155.SingleToken(this.chainId);
-        return builder.buildMatching({ order: this, ...data });
+        return new Builders.Erc1155.SingleToken(this.chainId);
       }
 
       default: {

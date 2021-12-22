@@ -1,13 +1,13 @@
 import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 
+import { BaseBuilder, BaseBuildParams } from "../base";
 import { SingleTokenErc721Builder } from "../single-token/erc721";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
 import {
   AddressZero,
-  Bytes32Zero,
   bn,
   getCurrentTimestamp,
   getRandomBytes32,
@@ -30,33 +30,15 @@ const REPLACEMENT_PATTERN_BUY =
   // `tokenId` (empty)
   "f".repeat(64);
 
-type BuildParams = {
-  maker: string;
+interface BuildParams extends BaseBuildParams {
   contract: string;
   startTokenId: BigNumberish;
   endTokenId: BigNumberish;
-  side: "buy" | "sell";
-  price: BigNumberish;
-  paymentToken: string;
-  fee: number;
-  feeRecipient: string;
-  listingTime?: number;
-  expirationTime?: number;
-  salt?: BigNumberish;
-  v?: number;
-  r?: string;
-  s?: string;
-};
+}
 
-export class TokenRangeErc721Builder {
-  public chainId: number;
-
+export class TokenRangeErc721Builder extends BaseBuilder {
   constructor(chainId: number) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
-    this.chainId = chainId;
+    super(chainId);
   }
 
   public getTokenIdRange(order: Order): [string, string] | undefined {
@@ -108,13 +90,7 @@ export class TokenRangeErc721Builder {
 
   public build(params: BuildParams): Order | undefined {
     try {
-      // Defaults
-      params.listingTime = params.listingTime ?? getCurrentTimestamp(-60);
-      params.expirationTime = params.expirationTime ?? 0;
-      params.salt = params.salt ?? getRandomBytes32();
-      params.v = params.v ?? 0;
-      params.r = params.r ?? Bytes32Zero;
-      params.s = params.s ?? Bytes32Zero;
+      this.defaultInitialize(params);
 
       if (params.side === "buy") {
         return new Order(this.chainId, {
@@ -145,8 +121,8 @@ export class TokenRangeErc721Builder {
           paymentToken: params.paymentToken,
           basePrice: s(params.price),
           extra: "0",
-          listingTime: params.listingTime,
-          expirationTime: params.expirationTime,
+          listingTime: params.listingTime!,
+          expirationTime: params.expirationTime!,
           salt: s(params.salt),
           v: params.v,
           r: params.r,
@@ -160,14 +136,12 @@ export class TokenRangeErc721Builder {
     }
   }
 
-  public buildMatching = (options: {
-    tokenId: BigNumberish;
-    taker: string;
-    order: Order;
-  }): Order | undefined => {
+  public buildMatching = (
+    order: Order,
+    taker: string,
+    tokenId: string
+  ): Order | undefined => {
     try {
-      const { tokenId, taker, order } = options;
-
       const tokenIdRange = this.getTokenIdRange(order);
       if (!tokenIdRange) {
         return undefined;

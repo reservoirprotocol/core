@@ -93,9 +93,7 @@ describe("WyvernV2 - SingleTokenErc1155", () => {
     await buyOrder.sign(buyer);
 
     // Create matching sell order
-    const sellOrder = buyOrder.buildMatching({
-      taker: seller.address,
-    })!;
+    const sellOrder = buyOrder.buildMatching(seller.address)!;
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
     expect(await buyOrder.isFillable(ethers.provider)).to.be.true;
