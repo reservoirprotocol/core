@@ -243,6 +243,10 @@ export class Order {
 
   private getBuilder(): BaseBuilder | undefined {
     switch (this.params.kind) {
+      case "erc721-contract-wide": {
+        return new Builders.Erc721.ContractWide(this.chainId);
+      }
+
       case "erc721-single-token": {
         return new Builders.Erc721.SingleToken(this.chainId);
       }
@@ -251,8 +255,16 @@ export class Order {
         return new Builders.Erc721.TokenRange(this.chainId);
       }
 
+      case "erc1155-contract-wide": {
+        return new Builders.Erc1155.ContractWide(this.chainId);
+      }
+
       case "erc1155-single-token": {
         return new Builders.Erc1155.SingleToken(this.chainId);
+      }
+
+      case "erc1155-token-range": {
+        return new Builders.Erc1155.TokenRange(this.chainId);
       }
 
       default: {
@@ -262,6 +274,14 @@ export class Order {
   }
 
   private detectKind(): Types.OrderKind | undefined {
+    // erc721-contract-wide
+    {
+      const builder = new Builders.Erc721.ContractWide(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc721-contract-wide";
+      }
+    }
+
     // erc721-single-token
     {
       const builder = new Builders.Erc721.SingleToken(this.chainId);
@@ -278,11 +298,27 @@ export class Order {
       }
     }
 
+    // erc1155-contract-wide
+    {
+      const builder = new Builders.Erc1155.ContractWide(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc1155-contract-wide";
+      }
+    }
+
     // erc1155-single-token
     {
       const builder = new Builders.Erc1155.SingleToken(this.chainId);
       if (builder.isValid(this)) {
         return "erc1155-single-token";
+      }
+    }
+
+    // erc1155-token-range
+    {
+      const builder = new Builders.Erc1155.TokenRange(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc1155-token-range";
       }
     }
 
