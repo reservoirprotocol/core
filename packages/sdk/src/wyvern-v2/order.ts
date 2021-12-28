@@ -7,7 +7,7 @@ import { verifyMessage } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
 import { ProxyRegistry } from "./helpers";
-import { Builders } from "./index";
+import { Builders } from "./builders";
 import * as Types from "./types";
 import * as Common from "../common";
 import { bn, lc, n, s } from "../utils";
