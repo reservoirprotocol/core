@@ -1,12 +1,12 @@
 import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
+import { AddressZero } from "@ethersproject/constants";
 
 import { BaseBuilder, BaseBuildParams } from "../base";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
 import {
-  AddressZero,
   BytesEmpty,
   getCurrentTimestamp,
   getRandomBytes32,
@@ -102,126 +102,118 @@ export class SingleTokenErc1155Builder extends BaseBuilder {
     return true;
   }
 
-  public build(params: BuildParams): Order | undefined {
-    try {
-      this.defaultInitialize(params);
+  public build(params: BuildParams) {
+    this.defaultInitialize(params);
 
-      if (params.side === "buy") {
-        return new Order(this.chainId, {
-          kind: "erc1155-single-token",
-          exchange: Addresses.Exchange[this.chainId],
-          maker: params.maker,
-          taker: AddressZero,
-          makerRelayerFee: 0,
-          takerRelayerFee: params.fee,
-          feeRecipient: params.feeRecipient,
-          side: Types.OrderSide.BUY,
-          // No dutch auctions support for now
-          saleKind: Types.OrderSaleKind.FIXED_PRICE,
-          target: params.contract,
-          howToCall: Types.OrderHowToCall.CALL,
-          calldata: new Interface(Erc1155Abi).encodeFunctionData(
-            "safeTransferFrom",
-            [AddressZero, params.maker, params.tokenId, 1, "0x"]
-          ),
-          replacementPattern: REPLACEMENT_PATTERN_BUY,
-          staticTarget: AddressZero,
-          staticExtradata: BytesEmpty,
-          paymentToken: params.paymentToken,
-          basePrice: s(params.price),
-          extra: "0",
-          listingTime: params.listingTime!,
-          expirationTime: params.expirationTime!,
-          salt: s(params.salt),
-          v: params.v,
-          r: params.r,
-          s: params.s,
-        });
-      } else if (params.side === "sell") {
-        return new Order(this.chainId, {
-          kind: "erc1155-single-token",
-          exchange: Addresses.Exchange[this.chainId],
-          maker: params.maker,
-          taker: AddressZero,
-          makerRelayerFee: params.fee,
-          takerRelayerFee: 0,
-          feeRecipient: params.feeRecipient,
-          side: Types.OrderSide.SELL,
-          // No dutch auctions support for now
-          saleKind: Types.OrderSaleKind.FIXED_PRICE,
-          target: params.contract,
-          howToCall: Types.OrderHowToCall.CALL,
-          calldata: new Interface(Erc1155Abi).encodeFunctionData(
-            "safeTransferFrom",
-            [params.maker, AddressZero, params.tokenId, 1, "0x"]
-          ),
-          replacementPattern: REPLACEMENT_PATTERN_SELL,
-          staticTarget: AddressZero,
-          staticExtradata: BytesEmpty,
-          paymentToken: params.paymentToken,
-          basePrice: s(params.price),
-          extra: "0",
-          listingTime: params.listingTime!,
-          expirationTime: params.expirationTime!,
-          salt: s(params.salt),
-          v: params.v,
-          r: params.r,
-          s: params.s,
-        });
-      } else {
-        throw new Error("Invalid side");
-      }
-    } catch {
-      return undefined;
+    if (params.side === "buy") {
+      return new Order(this.chainId, {
+        kind: "erc1155-single-token",
+        exchange: Addresses.Exchange[this.chainId],
+        maker: params.maker,
+        taker: AddressZero,
+        makerRelayerFee: 0,
+        takerRelayerFee: params.fee,
+        feeRecipient: params.feeRecipient,
+        side: Types.OrderSide.BUY,
+        // No dutch auctions support for now
+        saleKind: Types.OrderSaleKind.FIXED_PRICE,
+        target: params.contract,
+        howToCall: Types.OrderHowToCall.CALL,
+        calldata: new Interface(Erc1155Abi).encodeFunctionData(
+          "safeTransferFrom",
+          [AddressZero, params.maker, params.tokenId, 1, "0x"]
+        ),
+        replacementPattern: REPLACEMENT_PATTERN_BUY,
+        staticTarget: AddressZero,
+        staticExtradata: BytesEmpty,
+        paymentToken: params.paymentToken,
+        basePrice: s(params.price),
+        extra: "0",
+        listingTime: params.listingTime!,
+        expirationTime: params.expirationTime!,
+        salt: s(params.salt),
+        v: params.v,
+        r: params.r,
+        s: params.s,
+      });
+    } else if (params.side === "sell") {
+      return new Order(this.chainId, {
+        kind: "erc1155-single-token",
+        exchange: Addresses.Exchange[this.chainId],
+        maker: params.maker,
+        taker: AddressZero,
+        makerRelayerFee: params.fee,
+        takerRelayerFee: 0,
+        feeRecipient: params.feeRecipient,
+        side: Types.OrderSide.SELL,
+        // No dutch auctions support for now
+        saleKind: Types.OrderSaleKind.FIXED_PRICE,
+        target: params.contract,
+        howToCall: Types.OrderHowToCall.CALL,
+        calldata: new Interface(Erc1155Abi).encodeFunctionData(
+          "safeTransferFrom",
+          [params.maker, AddressZero, params.tokenId, 1, "0x"]
+        ),
+        replacementPattern: REPLACEMENT_PATTERN_SELL,
+        staticTarget: AddressZero,
+        staticExtradata: BytesEmpty,
+        paymentToken: params.paymentToken,
+        basePrice: s(params.price),
+        extra: "0",
+        listingTime: params.listingTime!,
+        expirationTime: params.expirationTime!,
+        salt: s(params.salt),
+        v: params.v,
+        r: params.r,
+        s: params.s,
+      });
+    } else {
+      throw new Error("Invalid order side");
     }
   }
 
-  public buildMatching = (order: Order, taker: string): Order | undefined => {
-    try {
-      const tokenId = this.getTokenId(order);
-      if (!tokenId) {
-        return undefined;
-      }
+  public buildMatching = (order: Order, taker: string) => {
+    const tokenId = this.getTokenId(order);
+    if (!tokenId) {
+      throw new Error("Invalid order");
+    }
 
-      if (order.params.side === Types.OrderSide.BUY) {
-        const matchingOrder = this.build({
-          maker: taker,
-          contract: order.params.target,
-          tokenId,
-          side: "sell",
-          price: order.params.basePrice,
-          paymentToken: order.params.paymentToken,
-          fee: 0,
-          feeRecipient: AddressZero,
-          listingTime: getCurrentTimestamp(-60),
-          expirationTime: 0,
-          salt: getRandomBytes32(),
-        })!;
-        matchingOrder.params.takerRelayerFee = order.params.takerRelayerFee;
+    if (order.params.side === Types.OrderSide.BUY) {
+      const matchingOrder = this.build({
+        maker: taker,
+        contract: order.params.target,
+        tokenId,
+        side: "sell",
+        price: order.params.basePrice,
+        paymentToken: order.params.paymentToken,
+        fee: 0,
+        feeRecipient: AddressZero,
+        listingTime: getCurrentTimestamp(-60),
+        expirationTime: 0,
+        salt: getRandomBytes32(),
+      });
+      matchingOrder.params.takerRelayerFee = order.params.takerRelayerFee;
 
-        return matchingOrder;
-      } else if (order.params.side === Types.OrderSide.SELL) {
-        const matchingOrder = this.build({
-          maker: taker,
-          contract: order.params.target,
-          tokenId,
-          side: "buy",
-          price: order.params.basePrice,
-          paymentToken: order.params.paymentToken,
-          fee: 0,
-          feeRecipient: AddressZero,
-          listingTime: getCurrentTimestamp(-60),
-          expirationTime: 0,
-          salt: getRandomBytes32(),
-        })!;
-        matchingOrder.params.makerRelayerFee = order.params.makerRelayerFee;
+      return matchingOrder;
+    } else if (order.params.side === Types.OrderSide.SELL) {
+      const matchingOrder = this.build({
+        maker: taker,
+        contract: order.params.target,
+        tokenId,
+        side: "buy",
+        price: order.params.basePrice,
+        paymentToken: order.params.paymentToken,
+        fee: 0,
+        feeRecipient: AddressZero,
+        listingTime: getCurrentTimestamp(-60),
+        expirationTime: 0,
+        salt: getRandomBytes32(),
+      });
+      matchingOrder.params.makerRelayerFee = order.params.makerRelayerFee;
 
-        return matchingOrder;
-      } else {
-        throw new Error("Invalid side");
-      }
-    } catch {
-      return undefined;
+      return matchingOrder;
+    } else {
+      throw new Error("Invalid order side");
     }
   };
 }

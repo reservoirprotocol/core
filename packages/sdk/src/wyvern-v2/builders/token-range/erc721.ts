@@ -1,18 +1,13 @@
 import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
+import { AddressZero } from "@ethersproject/constants";
 
 import { BaseBuilder, BaseBuildParams } from "../base";
 import { SingleTokenErc721Builder } from "../single-token/erc721";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
-import {
-  AddressZero,
-  bn,
-  getCurrentTimestamp,
-  getRandomBytes32,
-  s,
-} from "../../../utils";
+import { bn, getCurrentTimestamp, getRandomBytes32, s } from "../../../utils";
 
 import TokenRangeVerifierAbi from "../../abis/TokenRangeVerifier.json";
 import Erc721Abi from "../../../common/abis/Erc721.json";
@@ -88,94 +83,87 @@ export class TokenRangeErc721Builder extends BaseBuilder {
     return true;
   }
 
-  public build(params: BuildParams): Order | undefined {
-    try {
-      this.defaultInitialize(params);
+  public build(params: BuildParams) {
+    this.defaultInitialize(params);
 
-      if (params.side === "buy") {
-        return new Order(this.chainId, {
-          kind: "erc721-token-range",
-          exchange: Addresses.Exchange[this.chainId],
-          maker: params.maker,
-          taker: AddressZero,
-          makerRelayerFee: 0,
-          takerRelayerFee: params.fee,
-          feeRecipient: params.feeRecipient,
-          side: Types.OrderSide.BUY,
-          // No dutch auctions support for now
-          saleKind: Types.OrderSaleKind.FIXED_PRICE,
-          target: params.contract,
-          howToCall: Types.OrderHowToCall.CALL,
-          calldata: new Interface(Erc721Abi).encodeFunctionData(
-            "transferFrom",
-            [AddressZero, params.maker, 0]
-          ),
-          replacementPattern: REPLACEMENT_PATTERN_BUY,
-          staticTarget: Addresses.TokenRangeVerifier[this.chainId],
-          staticExtradata: new Interface(
-            TokenRangeVerifierAbi
-          ).encodeFunctionData("verify", [
-            params.startTokenId,
-            params.endTokenId,
-          ]),
-          paymentToken: params.paymentToken,
-          basePrice: s(params.price),
-          extra: "0",
-          listingTime: params.listingTime!,
-          expirationTime: params.expirationTime!,
-          salt: s(params.salt),
-          v: params.v,
-          r: params.r,
-          s: params.s,
-        });
-      } else {
-        throw new Error("Invalid side");
-      }
-    } catch {
-      return undefined;
+    if (params.side === "buy") {
+      return new Order(this.chainId, {
+        kind: "erc721-token-range",
+        exchange: Addresses.Exchange[this.chainId],
+        maker: params.maker,
+        taker: AddressZero,
+        makerRelayerFee: 0,
+        takerRelayerFee: params.fee,
+        feeRecipient: params.feeRecipient,
+        side: Types.OrderSide.BUY,
+        // No dutch auctions support for now
+        saleKind: Types.OrderSaleKind.FIXED_PRICE,
+        target: params.contract,
+        howToCall: Types.OrderHowToCall.CALL,
+        calldata: new Interface(Erc721Abi).encodeFunctionData("transferFrom", [
+          AddressZero,
+          params.maker,
+          0,
+        ]),
+        replacementPattern: REPLACEMENT_PATTERN_BUY,
+        staticTarget: Addresses.TokenRangeVerifier[this.chainId],
+        staticExtradata: new Interface(
+          TokenRangeVerifierAbi
+        ).encodeFunctionData("verify", [
+          params.startTokenId,
+          params.endTokenId,
+        ]),
+        paymentToken: params.paymentToken,
+        basePrice: s(params.price),
+        extra: "0",
+        listingTime: params.listingTime!,
+        expirationTime: params.expirationTime!,
+        salt: s(params.salt),
+        v: params.v,
+        r: params.r,
+        s: params.s,
+      });
+    } else if (params.side === "sell") {
+      throw new Error("Unsupported order side");
+    } else {
+      throw new Error("Invalid order side");
     }
   }
 
-  public buildMatching = (
-    order: Order,
-    taker: string,
-    tokenId: string
-  ): Order | undefined => {
-    try {
-      const tokenIdRange = this.getTokenIdRange(order);
-      if (!tokenIdRange) {
-        return undefined;
-      }
+  public buildMatching = (order: Order, taker: string, tokenId: string) => {
+    const tokenIdRange = this.getTokenIdRange(order);
+    if (!tokenIdRange) {
+      throw new Error("Invalid order");
+    }
 
-      if (
-        !(bn(tokenIdRange[0]).lte(tokenId) && bn(tokenId).lte(tokenIdRange[1]))
-      ) {
-        return undefined;
-      }
+    if (
+      !(bn(tokenIdRange[0]).lte(tokenId) && bn(tokenId).lte(tokenIdRange[1]))
+    ) {
+      throw new Error("Invalid token id");
+    }
 
-      if (order.params.side === Types.OrderSide.BUY) {
-        const singleTokenBuilder = new SingleTokenErc721Builder(this.chainId);
-        const matchingOrder = singleTokenBuilder.build({
-          maker: taker,
-          contract: order.params.target,
-          tokenId,
-          side: "sell",
-          price: order.params.basePrice,
-          paymentToken: order.params.paymentToken,
-          fee: 0,
-          feeRecipient: AddressZero,
-          listingTime: getCurrentTimestamp(-60),
-          expirationTime: 0,
-          salt: getRandomBytes32(),
-        })!;
-        matchingOrder.params.takerRelayerFee = order.params.takerRelayerFee;
+    if (order.params.side === Types.OrderSide.BUY) {
+      const singleTokenBuilder = new SingleTokenErc721Builder(this.chainId);
+      const matchingOrder = singleTokenBuilder.build({
+        maker: taker,
+        contract: order.params.target,
+        tokenId,
+        side: "sell",
+        price: order.params.basePrice,
+        paymentToken: order.params.paymentToken,
+        fee: 0,
+        feeRecipient: AddressZero,
+        listingTime: getCurrentTimestamp(-60),
+        expirationTime: 0,
+        salt: getRandomBytes32(),
+      });
+      matchingOrder.params.takerRelayerFee = order.params.takerRelayerFee;
 
-        return matchingOrder;
-      } else {
-        throw new Error("Invalid side");
-      }
-    } catch {
-      return undefined;
+      return matchingOrder;
+    } else if (order.params.side === Types.OrderSide.SELL) {
+      throw new Error("Unsupported order side");
+    } else {
+      throw new Error("Invalid order side");
     }
   };
 }

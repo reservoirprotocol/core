@@ -1,10 +1,11 @@
 import { Signer } from "@ethersproject/abstract-signer";
+import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 
 import { Order } from "./order";
 import * as Types from "./types";
 import * as CommonAddresses from "../common/addresses";
-import { Bytes32Zero, lc } from "../utils";
+import { lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -19,32 +20,13 @@ export class Exchange {
     this.chainId = chainId;
   }
 
-  public async match(
-    relayer: Signer,
-    buyOrder: Order,
-    sellOrder: Order,
-    options?: { skipValidation?: boolean }
-  ) {
-    if (!options?.skipValidation) {
-      // Validate orders side
-      if (
-        buyOrder.params.side !== Types.OrderSide.BUY ||
-        sellOrder.params.side !== Types.OrderSide.SELL
-      ) {
-        throw new Error("Invalid order side");
-      }
-
-      // Validate orders by kind
-      buyOrder = new Order(this.chainId, buyOrder.params);
-      sellOrder = new Order(this.chainId, sellOrder.params);
-      if (!buyOrder.hasValidKind() || !sellOrder.hasValidKind()) {
-        throw new Error("Invalid order");
-      }
-
-      // Validate orders signatures
-      if (!buyOrder.hasValidSignature() && !sellOrder.hasValidSignature()) {
-        throw new Error("Invalid order signature");
-      }
+  public async match(relayer: Signer, buyOrder: Order, sellOrder: Order) {
+    // Validate orders side
+    if (
+      buyOrder.params.side !== Types.OrderSide.BUY ||
+      sellOrder.params.side !== Types.OrderSide.SELL
+    ) {
+      throw new Error("Invalid order side");
     }
 
     const addrs = [
@@ -114,7 +96,7 @@ export class Exchange {
           buyOrder.params.s,
           sellOrder.params.r,
           sellOrder.params.s,
-          Bytes32Zero,
+          HashZero,
         ],
         {
           value:
@@ -126,27 +108,10 @@ export class Exchange {
       );
   }
 
-  public async cancel(
-    relayer: Signer,
-    order: Order,
-    options?: { skipValidation?: boolean }
-  ) {
-    if (!options?.skipValidation) {
-      // Validate order by kind
-      order = new Order(this.chainId, order.params);
-      if (!order.hasValidKind()) {
-        throw new Error("Invalid order");
-      }
-
-      // Validate order signature
-      if (!order.hasValidSignature()) {
-        throw new Error("Invalid order signature");
-      }
-
-      // Validate relayer
-      if (lc(order.params.maker) !== lc(await relayer.getAddress())) {
-        throw new Error("Invalid relayer");
-      }
+  public async cancel(relayer: Signer, order: Order) {
+    // Validate relayer
+    if (lc(order.params.maker) !== lc(await relayer.getAddress())) {
+      throw new Error("Invalid relayer");
     }
 
     const addrs = [

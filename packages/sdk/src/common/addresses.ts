@@ -1,8 +1,10 @@
+import { AddressZero } from "@ethersproject/constants";
+
 // For now only Mainnet and Rinkeby are supported
 
 export const Eth: any = {
-  1: "0x0000000000000000000000000000000000000000",
-  4: "0x0000000000000000000000000000000000000000",
+  1: AddressZero,
+  4: AddressZero,
 };
 
 export const Weth: any = {

@@ -109,139 +109,122 @@ export class Order {
     };
   }
 
-  public buildMatching(taker: string, data?: any): Order | undefined {
-    return this.getBuilder()?.buildMatching(this, taker, data);
+  public buildMatching(taker: string, data?: any) {
+    return this.getBuilder().buildMatching(this, taker, data);
   }
 
-  public async hasValidSignature() {
-    try {
-      const signer = verifyMessage(arrayify(this.hash()), {
-        v: this.params.v,
-        r: this.params.r ?? "",
-        s: this.params.s ?? "",
-      });
+  public async checkSignature() {
+    const signer = verifyMessage(arrayify(this.hash()), {
+      v: this.params.v,
+      r: this.params.r ?? "",
+      s: this.params.s ?? "",
+    });
 
-      if (lc(this.params.maker) !== lc(signer)) {
-        return false;
-      }
-    } catch {
-      return false;
+    if (lc(this.params.maker) !== lc(signer)) {
+      throw new Error("Invalid signature");
     }
-
-    return true;
   }
 
-  public hasValidKind() {
-    return this.getBuilder()?.isValid(this);
+  public checkValidity() {
+    if (!this.getBuilder().isValid(this)) {
+      throw new Error("Invalid order");
+    }
   }
 
-  public async isFillable(provider: Provider): Promise<boolean> {
-    try {
-      const chainId = await provider.getNetwork().then((n) => n.chainId);
+  public async checkFillability(provider: Provider) {
+    const chainId = await provider.getNetwork().then((n) => n.chainId);
 
-      if (this.params.side === Types.OrderSide.BUY) {
-        // Check that maker has enough balance to cover the payment
-        // and the approval to the token transfer proxy is set
+    if (this.params.side === Types.OrderSide.BUY) {
+      // Check that maker has enough balance to cover the payment
+      // and the approval to the token transfer proxy is set
 
-        const erc20 = new Common.Helpers.Erc20(
-          provider,
-          this.params.paymentToken
+      const erc20 = new Common.Helpers.Erc20(
+        provider,
+        this.params.paymentToken
+      );
+
+      // Check balance
+      const balance = await erc20.getBalance(this.params.maker);
+      if (bn(balance).lt(this.params.basePrice)) {
+        throw new Error("Insufficient balance");
+      }
+
+      // Check allowance
+      const allowance = await erc20.getAllowance(
+        this.params.maker,
+        Addresses.TokenTransferProxy[chainId]
+      );
+      if (bn(allowance).lt(this.params.basePrice)) {
+        throw new Error("Insufficient allowance");
+      }
+    } else {
+      // Check that maker owns the token id put on sale and
+      // the approval to the make'rs proxy is set
+
+      const proxyRegistry = new ProxyRegistry(provider, chainId);
+      const proxy = await proxyRegistry.getProxy(this.params.maker);
+      if (!proxy) {
+        throw new Error("Maker has no proxy");
+      }
+
+      if (this.params.kind?.startsWith("erc721")) {
+        const erc721 = new Common.Helpers.Erc721(provider, this.params.target);
+
+        // Sell orders can only be single token (at least for now), so
+        // extracting the token id via the single token builder should
+        // be enough
+        const tokenId = new Builders.Erc721.SingleToken(chainId).getTokenId(
+          this
         );
+        if (!tokenId) {
+          throw new Error("Invalid order");
+        }
+
+        // Check ownership
+        const owner = await erc721.getOwner(tokenId);
+        if (lc(owner) !== lc(this.params.maker)) {
+          throw new Error("No ownership");
+        }
+
+        // Check approval
+        const isApproved = await erc721.isApproved(this.params.maker, proxy);
+        if (!isApproved) {
+          throw new Error("No approval");
+        }
+      } else if (this.params.kind?.startsWith("erc1155")) {
+        const erc1155 = new Common.Helpers.Erc1155(
+          provider,
+          this.params.target
+        );
+
+        // Sell orders can only be single token (at least for now), so
+        // extracting the token id via the single token builder should
+        // be enough
+        const tokenId = new Builders.Erc1155.SingleToken(chainId).getTokenId(
+          this
+        );
+        if (!tokenId) {
+          throw new Error("Invalid order");
+        }
 
         // Check balance
-        const balance = await erc20.getBalance(this.params.maker);
-        if (bn(balance).lt(this.params.basePrice)) {
-          return false;
+        const balance = await erc1155.getBalance(this.params.maker, tokenId);
+        if (bn(balance).lt(1)) {
+          throw new Error("Insufficient balance");
         }
 
-        // Check allowance
-        const allowance = await erc20.getAllowance(
-          this.params.maker,
-          Addresses.TokenTransferProxy[chainId]
-        );
-        if (bn(allowance).lt(this.params.basePrice)) {
-          return false;
+        // Check approval
+        const isApproved = await erc1155.isApproved(this.params.maker, proxy);
+        if (!isApproved) {
+          throw new Error("No approval");
         }
-
-        return true;
       } else {
-        // Check that maker owns the token id put on sale and
-        // the approval to the make'rs proxy is set
-
-        const proxyRegistry = new ProxyRegistry(provider, chainId);
-        const proxy = await proxyRegistry.getProxy(this.params.maker);
-        if (!proxy) {
-          return false;
-        }
-
-        if (this.params.kind?.startsWith("erc721")) {
-          const erc721 = new Common.Helpers.Erc721(
-            provider,
-            this.params.target
-          );
-
-          // Sell orders can only be single token (at least for now), so
-          // extracting the token id via the single token builder should
-          // be enough
-          const tokenId = new Builders.Erc721.SingleToken(chainId).getTokenId(
-            this
-          );
-          if (!tokenId) {
-            return false;
-          }
-
-          // Check ownership
-          const owner = await erc721.getOwner(tokenId);
-          if (lc(owner) !== lc(this.params.maker)) {
-            return false;
-          }
-
-          // Check approval
-          const isApproved = await erc721.isApproved(this.params.maker, proxy);
-          if (!isApproved) {
-            return false;
-          }
-
-          return true;
-        } else if (this.params.kind?.startsWith("erc1155")) {
-          const erc1155 = new Common.Helpers.Erc1155(
-            provider,
-            this.params.target
-          );
-
-          // Sell orders can only be single token (at least for now), so
-          // extracting the token id via the single token builder should
-          // be enough
-          const tokenId = new Builders.Erc1155.SingleToken(chainId).getTokenId(
-            this
-          );
-          if (!tokenId) {
-            return false;
-          }
-
-          // Check balance
-          const balance = await erc1155.getBalance(this.params.maker, tokenId);
-          if (bn(balance).lt(1)) {
-            return false;
-          }
-
-          // Check approval
-          const isApproved = await erc1155.isApproved(this.params.maker, proxy);
-          if (!isApproved) {
-            return false;
-          }
-
-          return true;
-        } else {
-          return false;
-        }
+        throw new Error("Invalid order");
       }
-    } catch {
-      return false;
     }
   }
 
-  private getBuilder(): BaseBuilder | undefined {
+  private getBuilder(): BaseBuilder {
     switch (this.params.kind) {
       case "erc721-contract-wide": {
         return new Builders.Erc721.ContractWide(this.chainId);
@@ -268,12 +251,12 @@ export class Order {
       }
 
       default: {
-        return undefined;
+        throw new Error("Unknown order kind");
       }
     }
   }
 
-  private detectKind(): Types.OrderKind | undefined {
+  private detectKind(): Types.OrderKind {
     // erc721-contract-wide
     {
       const builder = new Builders.Erc721.ContractWide(this.chainId);
@@ -322,7 +305,7 @@ export class Order {
       }
     }
 
-    return undefined;
+    throw new Error("Could not detect order kind");
   }
 }
 

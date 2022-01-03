@@ -103,18 +103,18 @@ describe("WyvernV2 - TokenRangeErc1155", () => {
       fee,
       feeRecipient: feeRecipient.address,
       listingTime: await getCurrentTimestamp(ethers.provider),
-    })!;
+    });
     buyOrder.params.staticTarget = verifier.address;
 
     // Sign the order
     await buyOrder.sign(buyer);
 
     // Create matching sell order
-    const sellOrder = buyOrder.buildMatching(seller.address, soldTokenId)!;
+    const sellOrder = buyOrder.buildMatching(seller.address, soldTokenId);
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
-    expect(await buyOrder.isFillable(ethers.provider)).to.be.true;
-    expect(await sellOrder.isFillable(ethers.provider)).to.be.true;
+    await buyOrder.checkFillability(ethers.provider);
+    await sellOrder.checkFillability(ethers.provider);
 
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
     const sellerWethBalanceBefore = await weth.getBalance(seller.address);
@@ -139,7 +139,7 @@ describe("WyvernV2 - TokenRangeErc1155", () => {
     const exchange = new WyvernV2.Exchange(1);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder, { skipValidation: true });
+    await exchange.match(seller, buyOrder, sellOrder);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const sellerWethBalanceAfter = await weth.getBalance(seller.address);
