@@ -20,7 +20,7 @@ export class Exchange {
     this.chainId = chainId;
   }
 
-  public async match(relayer: Signer, buyOrder: Order, sellOrder: Order) {
+  public async match(taker: Signer, buyOrder: Order, sellOrder: Order) {
     // Validate orders side
     if (
       buyOrder.params.side !== Types.OrderSide.BUY ||
@@ -79,7 +79,7 @@ export class Exchange {
     ];
 
     return new Contract(buyOrder.params.exchange, ExchangeAbi as any)
-      .connect(relayer)
+      .connect(taker)
       .atomicMatch_(
         addrs,
         uints,
@@ -108,9 +108,9 @@ export class Exchange {
       );
   }
 
-  public async cancel(relayer: Signer, order: Order) {
-    // Validate relayer
-    if (lc(order.params.maker) !== lc(await relayer.getAddress())) {
+  public async cancel(maker: Signer, order: Order) {
+    // Validate maker
+    if (lc(order.params.maker) !== lc(await maker.getAddress())) {
       throw new Error("Invalid relayer");
     }
 
@@ -137,7 +137,7 @@ export class Exchange {
     ];
 
     return new Contract(order.params.exchange, ExchangeAbi as any)
-      .connect(relayer)
+      .connect(maker)
       .cancelOrder_(
         addrs,
         uints,
