@@ -107,7 +107,6 @@ export class Exchange {
             buyOrder.params.paymentToken === CommonAddresses.Eth[this.chainId]
               ? buyOrder.params.basePrice
               : 0,
-          gasLimit: 15000000,
         }
       );
   }
