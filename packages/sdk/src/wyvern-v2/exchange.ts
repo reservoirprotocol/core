@@ -1,6 +1,6 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { HashZero } from "@ethersproject/constants";
-import { Contract } from "@ethersproject/contracts";
+import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import { Order } from "./order";
 import * as Types from "./types";
@@ -20,7 +20,11 @@ export class Exchange {
     this.chainId = chainId;
   }
 
-  public async match(taker: Signer, buyOrder: Order, sellOrder: Order) {
+  public async match(
+    taker: Signer,
+    buyOrder: Order,
+    sellOrder: Order
+  ): Promise<ContractTransaction> {
     // Validate orders side
     if (
       buyOrder.params.side !== Types.OrderSide.BUY ||
@@ -108,7 +112,10 @@ export class Exchange {
       );
   }
 
-  public async cancel(maker: Signer, order: Order) {
+  public async cancel(
+    maker: Signer,
+    order: Order
+  ): Promise<ContractTransaction> {
     // Validate maker
     if (lc(order.params.maker) !== lc(await maker.getAddress())) {
       throw new Error("Invalid relayer");
