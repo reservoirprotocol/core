@@ -31,7 +31,9 @@ export abstract class BaseBuilder {
   }
 
   protected defaultInitialize(params: BaseBuildParams) {
-    params.listingTime = params.listingTime ?? getCurrentTimestamp(-60);
+    // Default listing time is 5 minute in the past to allow for any
+    // time discrepancies when checking the order's validity
+    params.listingTime = params.listingTime ?? getCurrentTimestamp(-5 * 60);
     params.expirationTime = params.expirationTime ?? 0;
     params.salt = params.salt ?? getRandomBytes32();
     params.v = params.v ?? 0;
