@@ -83,6 +83,7 @@ export class TokenListErc1155Builder extends BaseBuilder {
     }
   }
 
+  // TODO: Improve validation
   public isValid(order: Order) {
     const merkleRoot = this.getMerkleRoot(order);
     if (!merkleRoot) {
@@ -144,7 +145,7 @@ export class TokenListErc1155Builder extends BaseBuilder {
         howToCall: Types.OrderHowToCall.CALL,
         calldata,
         replacementPattern: REPLACEMENT_PATTERN_BUY(params.tokenIds.length),
-        staticTarget: Addresses.TokenRangeVerifier[this.chainId],
+        staticTarget: Addresses.TokenListVerifier[this.chainId],
         staticExtradata,
         paymentToken: params.paymentToken,
         basePrice: s(params.price),
