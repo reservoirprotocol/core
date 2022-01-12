@@ -15,7 +15,8 @@
     "typescript": "^4.5.2"
   },
   "dependencies": {
-    "ethers": "^5.5.2"
+    "ethers": "^5.5.2",
+    "merkletreejs": "^0.2.27"
   },
   "files": [
     "dist/**/*"

@@ -15,6 +15,11 @@ export const TokenTransferProxy: any = {
   4: "0x82d102457854c985221249f86659c9d6cf12aa72",
 };
 
+export const TokenListVerifier: any = {
+  1: "",
+  4: "",
+};
+
 export const TokenRangeVerifier: any = {
   1: "",
   4: "0x253C0d8F6AA4D89b57D5A0CaEa6131090Fd13cC5",

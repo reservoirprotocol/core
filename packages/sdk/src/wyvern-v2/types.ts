@@ -17,6 +17,7 @@ export type OrderKind =
   | "erc721-single-token"
   | "erc721-token-range"
   | "erc721-contract-wide"
+  | "erc721-token-list"
   | "erc1155-single-token"
   | "erc1155-token-range"
   | "erc1155-contract-wide";

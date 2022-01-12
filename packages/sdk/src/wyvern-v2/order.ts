@@ -1,6 +1,7 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
 import { arrayify, splitSignature } from "@ethersproject/bytes";
+import { HashZero } from "@ethersproject/constants";
 import { hashMessage } from "@ethersproject/hash";
 import { keccak256 } from "@ethersproject/solidity";
 import { verifyMessage } from "@ethersproject/wallet";
@@ -234,6 +235,10 @@ export class Order {
         return new Builders.Erc721.SingleToken(this.chainId);
       }
 
+      case "erc721-token-list": {
+        return new Builders.Erc721.TokenList(this.chainId);
+      }
+
       case "erc721-token-range": {
         return new Builders.Erc721.TokenRange(this.chainId);
       }
@@ -270,6 +275,14 @@ export class Order {
       const builder = new Builders.Erc721.SingleToken(this.chainId);
       if (builder.isValid(this)) {
         return "erc721-single-token";
+      }
+    }
+
+    // erc721-token-list
+    {
+      const builder = new Builders.Erc721.TokenList(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc721-token-list";
       }
     }
 
@@ -389,8 +402,8 @@ const normalize = (order: Types.OrderParams): Types.OrderParams => {
     listingTime: n(order.listingTime),
     expirationTime: n(order.expirationTime),
     salt: s(order.salt),
-    v: n(order.v),
-    r: s(order.r),
-    s: s(order.s),
+    v: order.v ?? 0,
+    r: order.r ?? HashZero,
+    s: order.s ?? HashZero,
   };
 };
