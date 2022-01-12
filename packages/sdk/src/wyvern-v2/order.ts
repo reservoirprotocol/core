@@ -251,6 +251,10 @@ export class Order {
         return new Builders.Erc1155.SingleToken(this.chainId);
       }
 
+      case "erc1155-token-list": {
+        return new Builders.Erc1155.TokenList(this.chainId);
+      }
+
       case "erc1155-token-range": {
         return new Builders.Erc1155.TokenRange(this.chainId);
       }
@@ -307,6 +311,14 @@ export class Order {
       const builder = new Builders.Erc1155.SingleToken(this.chainId);
       if (builder.isValid(this)) {
         return "erc1155-single-token";
+      }
+    }
+
+    // erc1155-token-list
+    {
+      const builder = new Builders.Erc1155.TokenList(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc1155-token-list";
       }
     }
 

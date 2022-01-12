@@ -21,6 +21,20 @@ contract TokenListVerifier {
         );
     }
 
+    function verifyErc1155(bytes memory callData) public pure {
+        uint256 tokenId = abi.decode(callData.slice(68, 32), (uint256));
+
+        (bytes32 root, bytes32[] memory proof) = abi.decode(
+            callData.drop(196),
+            (bytes32, bytes32[])
+        );
+
+        require(
+            verify(proof, root, keccak256(abi.encodePacked(tokenId))),
+            "Invalid merkle proof"
+        );
+    }
+
     function verify(
         bytes32[] memory proof,
         bytes32 root,

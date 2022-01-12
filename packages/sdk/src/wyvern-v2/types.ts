@@ -20,7 +20,8 @@ export type OrderKind =
   | "erc721-token-list"
   | "erc1155-single-token"
   | "erc1155-token-range"
-  | "erc1155-contract-wide";
+  | "erc1155-contract-wide"
+  | "erc1155-token-list";
 
 export type OrderParams = {
   kind?: OrderKind;
