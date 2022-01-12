@@ -109,8 +109,8 @@ export class Order {
     };
   }
 
-  public buildMatching(taker: string, data?: any) {
-    return this.getBuilder().buildMatching(this, taker, data);
+  public buildMatching(taker: string, data?: any[]) {
+    return this.getBuilder().buildMatching(this, taker, ...(data || []));
   }
 
   public async checkSignature() {
