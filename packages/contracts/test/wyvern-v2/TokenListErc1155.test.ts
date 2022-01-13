@@ -106,6 +106,8 @@ describe("WyvernV2 - TokenListErc1155", () => {
     });
     buyOrder.params.staticTarget = verifier.address;
 
+    // buyOrder.checkValidity();
+
     // Sign the order
     await buyOrder.sign(buyer);
 

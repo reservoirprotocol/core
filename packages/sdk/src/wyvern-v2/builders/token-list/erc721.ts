@@ -75,18 +75,47 @@ export class TokenListErc721Builder extends BaseBuilder {
     }
   }
 
-  // TODO: Improve validation
   public isValid(order: Order) {
     const merkleRoot = this.getMerkleRoot(order);
     if (!merkleRoot) {
       return false;
     }
 
-    if (
-      !order.params.calldata.startsWith(
-        new Interface(Erc721Abi).getSighash("transferFrom")
-      )
-    ) {
+    try {
+      const copyOrder = this.build({
+        ...order.params,
+        contract: order.params.target,
+        tokenIds: [0],
+        side: order.params.side === Types.OrderSide.BUY ? "buy" : "sell",
+        price: order.params.basePrice,
+        fee: 0,
+      });
+
+      copyOrder.params.calldata =
+        "0x" +
+        copyOrder.params.calldata.slice(2).substr(0, 200) +
+        order.params.calldata.slice(2).slice(200);
+      copyOrder.params.replacementPattern =
+        "0x" +
+        copyOrder.params.replacementPattern.slice(2).substr(0, 392) +
+        order.params.replacementPattern.slice(2).slice(392);
+      copyOrder.params.staticExtradata =
+        "0x" +
+        copyOrder.params.staticExtradata.slice(2).substr(0, 74) +
+        order.params.staticExtradata.slice(2).substr(74);
+
+      if (!copyOrder) {
+        return false;
+      }
+
+      copyOrder.params.taker = order.params.taker;
+      copyOrder.params.makerRelayerFee = order.params.makerRelayerFee;
+      copyOrder.params.takerRelayerFee = order.params.takerRelayerFee;
+
+      if (copyOrder.hash() !== order.hash()) {
+        return false;
+      }
+    } catch {
       return false;
     }
 
