@@ -24,7 +24,11 @@ export class Order {
     }
 
     this.chainId = chainId;
-    this.params = normalize(params);
+    try {
+      this.params = normalize(params);
+    } catch {
+      throw new Error("Invalid params");
+    }
 
     // Detect kind
     if (!params.kind) {
@@ -132,6 +136,7 @@ export class Order {
     }
   }
 
+  // TODO: Use multicall for speed/efficiency
   public async checkFillability(provider: Provider) {
     const chainId = await provider.getNetwork().then((n) => n.chainId);
 
@@ -330,7 +335,9 @@ export class Order {
       }
     }
 
-    throw new Error("Could not detect order kind");
+    throw new Error(
+      "Could not detect order kind (order might have unsupported params/calldata)"
+    );
   }
 }
 
