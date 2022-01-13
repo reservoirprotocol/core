@@ -113,8 +113,8 @@ describe("WyvernV2 - TokenListErc1155", () => {
 
     // Create matching sell order
     const sellOrder = buyOrder.buildMatching(seller.address, [
-      boughtTokenIds,
       soldTokenId,
+      boughtTokenIds,
     ]);
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 

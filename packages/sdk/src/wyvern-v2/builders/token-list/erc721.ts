@@ -186,8 +186,8 @@ export class TokenListErc721Builder extends BaseBuilder {
   public buildMatching = (
     order: Order,
     taker: string,
-    tokenIds: string[],
-    tokenId: string
+    tokenId: string,
+    tokenIds: string[]
   ) => {
     const merkleRoot = this.getMerkleRoot(order);
     if (!merkleRoot) {
