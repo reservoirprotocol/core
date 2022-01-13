@@ -29,6 +29,9 @@ const config: HardhatUserConfig = {
         blockNumber: Number(process.env.BLOCK_NUMBER),
       },
     },
+    localhost: {
+      url: "http://localhost:8545",
+    },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
       accounts: [

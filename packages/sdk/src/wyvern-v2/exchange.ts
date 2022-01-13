@@ -124,6 +124,8 @@ export class Exchange {
             buyOrder.params.paymentToken === CommonAddresses.Eth[this.chainId]
               ? buyOrder.params.basePrice
               : 0,
+          // Uncomment to debug via Tenderly (eg. skip gas estimation and execute failing transaction):
+          // gasLimit: 15000000
         }
       );
   }

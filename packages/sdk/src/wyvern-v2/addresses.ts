@@ -25,6 +25,14 @@ export const TokenTransferProxy: any = {
 };
 
 /**
+ * The Wyvern v2 token list verifier smart contract addresses 
+ */
+export const TokenListVerifier: any = {
+  1: "",
+  4: "0xAB429e7cb5c441b8275F90a419e213BD4a795E67",
+};
+
+/**
  * The Wyvern v2 token range verifier smart contract addresses 
  */
 export const TokenRangeVerifier: any = {

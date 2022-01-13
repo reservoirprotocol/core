@@ -92,7 +92,7 @@ describe("WyvernV2 - ContractWideErc1155", () => {
     await buyOrder.sign(buyer);
 
     // Create matching sell order
-    const sellOrder = buyOrder.buildMatching(seller.address, soldTokenId);
+    const sellOrder = buyOrder.buildMatching(seller.address, [soldTokenId]);
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
     await buyOrder.checkFillability(ethers.provider);

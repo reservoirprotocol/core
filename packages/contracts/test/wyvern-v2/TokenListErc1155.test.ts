@@ -8,7 +8,7 @@ import { ethers, network } from "hardhat";
 
 import { getCurrentTimestamp } from "../utils";
 
-describe("WyvernV2 - TokenRangeErc1155", () => {
+describe("WyvernV2 - TokenListErc1155", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -30,7 +30,7 @@ describe("WyvernV2 - TokenRangeErc1155", () => {
       .then((factory) => factory.deploy());
 
     verifier = await ethers
-      .getContractFactory("TokenRangeVerifier", {
+      .getContractFactory("TokenListVerifier", {
         signer: deployer,
         libraries: {
           BytesUtils: bytesUtils.address,
@@ -60,7 +60,8 @@ describe("WyvernV2 - TokenRangeErc1155", () => {
 
     const price = parseEther("1");
     const fee = 250;
-    const soldTokenId = 1;
+    const boughtTokenIds = Array.from(Array(100).keys());
+    const soldTokenId = 50;
 
     const weth = new Common.Helpers.Weth(ethers.provider, 1);
 
@@ -89,14 +90,13 @@ describe("WyvernV2 - TokenRangeErc1155", () => {
     // Approve the user proxy
     await nft.approve(seller, proxy);
 
-    const builder = new WyvernV2.Builders.Erc1155.TokenRange(1);
+    const builder = new WyvernV2.Builders.Erc1155.TokenList(1);
 
     // Build buy order
     let buyOrder = builder.build({
       maker: buyer.address,
       contract: erc1155.address,
-      startTokenId: 0,
-      endTokenId: 2,
+      tokenIds: boughtTokenIds,
       side: "buy",
       price,
       paymentToken: Common.Addresses.Weth[1],
@@ -106,11 +106,16 @@ describe("WyvernV2 - TokenRangeErc1155", () => {
     });
     buyOrder.params.staticTarget = verifier.address;
 
+    // buyOrder.checkValidity();
+
     // Sign the order
     await buyOrder.sign(buyer);
 
     // Create matching sell order
-    const sellOrder = buyOrder.buildMatching(seller.address, [soldTokenId]);
+    const sellOrder = buyOrder.buildMatching(seller.address, [
+      soldTokenId,
+      boughtTokenIds,
+    ]);
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
     await buyOrder.checkFillability(ethers.provider);

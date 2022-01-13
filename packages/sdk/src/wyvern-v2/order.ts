@@ -1,6 +1,7 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
 import { arrayify, splitSignature } from "@ethersproject/bytes";
+import { HashZero } from "@ethersproject/constants";
 import { hashMessage } from "@ethersproject/hash";
 import { keccak256 } from "@ethersproject/solidity";
 import { verifyMessage } from "@ethersproject/wallet";
@@ -37,7 +38,11 @@ export class Order {
     }
 
     this.chainId = chainId;
-    this.params = normalize(params);
+    try {
+      this.params = normalize(params);
+    } catch {
+      throw new Error("Invalid params");
+    }
 
     // Detect kind
     if (!params.kind) {
@@ -139,8 +144,8 @@ export class Order {
    * @param data Any aditional arguments
    * @returns The matching Wyvern v2 order
    */
-  public buildMatching(taker: string, data?: any) {
-    return this.getBuilder().buildMatching(this, taker, data);
+  public buildMatching(taker: string, data?: any[]) {
+    return this.getBuilder().buildMatching(this, taker, ...(data || []));
   }
 
   /**
@@ -167,6 +172,7 @@ export class Order {
     }
   }
 
+  // TODO: Use multicall for speed/efficiency
   /**
    * Check the order's fillability
    * @param provider A read-only abstraction to access the blockchain data
@@ -274,6 +280,10 @@ export class Order {
         return new Builders.Erc721.SingleToken(this.chainId);
       }
 
+      case "erc721-token-list": {
+        return new Builders.Erc721.TokenList(this.chainId);
+      }
+
       case "erc721-token-range": {
         return new Builders.Erc721.TokenRange(this.chainId);
       }
@@ -284,6 +294,10 @@ export class Order {
 
       case "erc1155-single-token": {
         return new Builders.Erc1155.SingleToken(this.chainId);
+      }
+
+      case "erc1155-token-list": {
+        return new Builders.Erc1155.TokenList(this.chainId);
       }
 
       case "erc1155-token-range": {
@@ -313,6 +327,14 @@ export class Order {
       }
     }
 
+    // erc721-token-list
+    {
+      const builder = new Builders.Erc721.TokenList(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc721-token-list";
+      }
+    }
+
     // erc721-token-range
     {
       const builder = new Builders.Erc721.TokenRange(this.chainId);
@@ -337,6 +359,14 @@ export class Order {
       }
     }
 
+    // erc1155-token-list
+    {
+      const builder = new Builders.Erc1155.TokenList(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc1155-token-list";
+      }
+    }
+
     // erc1155-token-range
     {
       const builder = new Builders.Erc1155.TokenRange(this.chainId);
@@ -345,7 +375,9 @@ export class Order {
       }
     }
 
-    throw new Error("Could not detect order kind");
+    throw new Error(
+      "Could not detect order kind (order might have unsupported params/calldata)"
+    );
   }
 }
 
@@ -429,8 +461,8 @@ const normalize = (order: Types.OrderParams): Types.OrderParams => {
     listingTime: n(order.listingTime),
     expirationTime: n(order.expirationTime),
     salt: s(order.salt),
-    v: n(order.v),
-    r: s(order.r),
-    s: s(order.s),
+    v: order.v ?? 0,
+    r: order.r ?? HashZero,
+    s: order.s ?? HashZero,
   };
 };
