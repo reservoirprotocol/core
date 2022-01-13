@@ -9,9 +9,19 @@ import { lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
+/**
+ * The Exchange interface provides partial functionality to interact with the Wyvern Exchange Ethereum Smart Contract.
+ */
 export class Exchange {
+   /**
+   * The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
+   */
   public chainId: number;
 
+  /**
+   * 
+   * @param chainId The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
+   */
   constructor(chainId: number) {
     if (chainId !== 1 && chainId !== 4) {
       throw new Error("Unsupported chain id");
@@ -20,6 +30,13 @@ export class Exchange {
     this.chainId = chainId;
   }
 
+  /**
+   * Execute a Wyvern v2 order match
+   * @param taker Abstracted Ethereum Account, usually as a JsonRpcSigner
+   * @param buyOrder Wyvern v2 buy order
+   * @param sellOrder Wyvern v2 buy order
+   * @returns The Wyvern v2 contract transaction
+   */
   public async match(
     taker: Signer,
     buyOrder: Order,
@@ -113,6 +130,12 @@ export class Exchange {
       );
   }
 
+  /**
+   * Cancel a Wyvern v2 order
+   * @param maker Abstracted Ethereum Account, usually as a JsonRpcSigner
+   * @param order Wyvern v2 order to be cancelled
+   * @returns The contract transaction
+   */
   public async cancel(
     maker: Signer,
     order: Order

@@ -14,10 +14,24 @@ import * as Common from "../common";
 import { bn, lc, n, s } from "../utils";
 import { BaseBuilder } from "./builders/base";
 
+/**
+ * The Wyvern v2 order interface provides functionality to interact with Project Wyvern Ethereum Smart Contracts and read data from the blockchain about order's current state.
+ */
 export class Order {
+  /**
+   * The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
+   */
   public chainId: number;
+  /**
+   * The order parameters obtained from an API or built locally.
+   */
   public params: Types.OrderParams;
 
+  /**
+   * 
+   * @param chainId The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
+   * @param params The order parameters obtained from an API or built locally.
+   */
   constructor(chainId: number, params: Types.OrderParams) {
     if (chainId !== 1 && chainId !== 4) {
       throw new Error("Unsupported chain id");
@@ -81,16 +95,26 @@ export class Order {
     }
   }
 
+  /**
+   * 
+   * @returns The order's keccak256 hash
+   */
   public hash() {
-    // Raw order hash
     return keccak256(RAW_ORDER_FIELDS, toRaw(this.params));
   }
 
+  /**
+   * 
+   * @returns The order's EIP191 prefix hash
+   */
   public prefixHash() {
-    // EIP191 prefix hash
     return hashMessage(arrayify(this.hash()));
   }
 
+  /**
+   * Sign the Wyvern v2 order
+   * @param signer Abstracted Ethereum account, usually as a JsonRpcSigner
+   */
   public async sign(signer: Signer) {
     const signerChainId = await signer.getChainId();
     if (this.chainId !== signerChainId) {
@@ -114,10 +138,19 @@ export class Order {
     };
   }
 
+  /**
+   * Build a matching buy order for a sell order and vice versa
+   * @param taker The taker's Ethereum address
+   * @param data Any aditional arguments
+   * @returns The matching Wyvern v2 order
+   */
   public buildMatching(taker: string, data?: any[]) {
     return this.getBuilder().buildMatching(this, taker, ...(data || []));
   }
 
+  /**
+   * Check the validity of the order's signature
+   */
   public async checkSignature() {
     const signer = verifyMessage(arrayify(this.hash()), {
       v: this.params.v,
@@ -130,6 +163,9 @@ export class Order {
     }
   }
 
+  /**
+   * Check the order's validity
+   */
   public checkValidity() {
     if (!this.getBuilder().isValid(this)) {
       throw new Error("Invalid order");
@@ -137,6 +173,10 @@ export class Order {
   }
 
   // TODO: Use multicall for speed/efficiency
+  /**
+   * Check the order's fillability
+   * @param provider A read-only abstraction to access the blockchain data
+   */
   public async checkFillability(provider: Provider) {
     const chainId = await provider.getNetwork().then((n) => n.chainId);
 

@@ -4,5 +4,8 @@
   "packageManager": "yarn@3.1.1",
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "devDependencies": {
+    "typedoc": "^0.22.10"
+  }
 }
