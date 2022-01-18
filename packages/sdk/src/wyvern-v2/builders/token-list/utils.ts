@@ -9,9 +9,11 @@ export const generateMerkleTree = (tokenIds: BigNumberish[]) => {
 
   const hashFn = (buffer: Buffer) =>
     Buffer.from(keccak256(["bytes"], [buffer]).slice(2), "hex");
-  const leaves = tokenIds.map((tokenId) =>
-    Buffer.from(keccak256(["uint256"], [tokenId]).slice(2), "hex")
-  );
+  const leaves = tokenIds
+    .sort()
+    .map((tokenId) =>
+      Buffer.from(keccak256(["uint256"], [tokenId]).slice(2), "hex")
+    );
   return new MerkleTree(leaves, hashFn, { sortPairs: true });
 };
 
