@@ -39,7 +39,6 @@ export class Erc20 {
   }
 
   /**
-   * 
    * @param owner The owner's Ethereum address
    * @returns The owner's token balance
    */
@@ -48,9 +47,8 @@ export class Erc20 {
   }
 
   /**
-   * 
    * @param owner Ethereum address to be queried
-   * @param spender Ethereum contract 
+   * @param spender Ethereum contract
    * @returns The remaining number of tokens that spender will be allowed to spend on behalf of owner through transferFrom.
    */
   public async getAllowance(
@@ -71,6 +69,10 @@ export class Erc721 {
     this.contract = new Contract(address, Erc721Abi as any, provider);
   }
 
+  public async isValid(): Promise<boolean> {
+    return this.contract.supportsInterface("0x80ac58cd");
+  }
+
   /**
    * Approve or remove operator as an operator for the caller. Operators can call transferFrom or safeTransferFrom for any token owned by the caller.
    * @param approver Abstracted Ethereum Account as a JavaScript object, usually a JsonRpcSigner
@@ -85,7 +87,7 @@ export class Erc721 {
   }
 
   /**
-   * Returns the owner of a token 
+   * Returns the owner of a token
    * @param tokenId The token ID number
    * @returns The token owner's Ethereum address
    */
@@ -114,6 +116,10 @@ export class Erc1155 {
     this.contract = new Contract(address, Erc1155Abi as any, provider);
   }
 
+  public async isValid(): Promise<boolean> {
+    return this.contract.supportsInterface("0xd9b67a26");
+  }
+
   /**
    * Approve or remove operator as an operator for the caller. Operators can call transferFrom or safeTransferFrom for any token owned by the caller.
    * @param approver Abstracted Ethereum Account, usually as a JsonRpcSigner
@@ -128,7 +134,6 @@ export class Erc1155 {
   }
 
   /**
-   * 
    * @param owner The owner's Ethereum address
    * @param tokenId The token ID number
    * @returns The owner's token balance
@@ -151,7 +156,6 @@ export class Erc1155 {
   }
 }
 
-
 /**
  * The Weth interface provides partial functionality to interact with the Wrapped ETH (WETH) Ethereum smart contract.
  */
@@ -162,7 +166,7 @@ export class Weth extends Erc20 {
 
   /**
    * Deposit ETH in the WETH smart contract to get the equivalent amount of WETH
-   * @param depositor Abstracted Ethereum account, usually as a JsonRpcSigner 
+   * @param depositor Abstracted Ethereum account, usually as a JsonRpcSigner
    * @param amount ETH amount to be deposited in the WETH smart contract
    * @returns The contract transaction
    */
