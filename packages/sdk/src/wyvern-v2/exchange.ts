@@ -13,13 +13,13 @@ import ExchangeAbi from "./abis/Exchange.json";
  * The Exchange interface provides partial functionality to interact with the Wyvern Exchange Ethereum Smart Contract.
  */
 export class Exchange {
-   /**
+  /**
    * The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
    */
   public chainId: number;
 
   /**
-   * 
+   *
    * @param chainId The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
    */
   constructor(chainId: number) {
@@ -125,7 +125,7 @@ export class Exchange {
               ? buyOrder.params.basePrice
               : 0,
           // Uncomment to debug via Tenderly (eg. skip gas estimation and execute failing transaction):
-          // gasLimit: 15000000
+          // gasLimit: 15000000,
         }
       );
   }

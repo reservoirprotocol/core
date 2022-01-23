@@ -8,7 +8,7 @@ const main = async () => {
     .then((factory) => factory.deploy());
   console.log(`"BytesUtils" was deployed at address ${bytesUtils.address}`);
 
-  const tokenRangeVerifier = await ethers
+  const tokenListVerifier = await ethers
     .getContractFactory("TokenListVerifier", {
       signer: deployer,
       libraries: {
@@ -17,7 +17,7 @@ const main = async () => {
     })
     .then((factory) => factory.deploy());
   console.log(
-    `"TokenListVerifier" was deployed at address ${tokenRangeVerifier.address}`
+    `"TokenListVerifier" was deployed at address ${tokenListVerifier.address}`
   );
 };
 
