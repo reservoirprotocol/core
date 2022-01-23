@@ -16,26 +16,11 @@ describe("WyvernV2 - TokenListErc721", () => {
 
   let erc721: Contract;
 
-  let verifier: Contract;
-
   beforeEach(async () => {
     [deployer, alice, bob, carol] = await ethers.getSigners();
 
     erc721 = await ethers
       .getContractFactory("MockERC721", deployer)
-      .then((factory) => factory.deploy());
-
-    const bytesUtils = await ethers
-      .getContractFactory("BytesUtils", deployer)
-      .then((factory) => factory.deploy());
-
-    verifier = await ethers
-      .getContractFactory("TokenListVerifier", {
-        signer: deployer,
-        libraries: {
-          BytesUtils: bytesUtils.address,
-        },
-      })
       .then((factory) => factory.deploy());
   });
 
@@ -104,9 +89,8 @@ describe("WyvernV2 - TokenListErc721", () => {
       feeRecipient: feeRecipient.address,
       listingTime: await getCurrentTimestamp(ethers.provider),
     });
-    buyOrder.params.staticTarget = verifier.address;
 
-    // buyOrder.checkValidity();
+    buyOrder.checkValidity();
 
     // Sign the order
     await buyOrder.sign(buyer);
