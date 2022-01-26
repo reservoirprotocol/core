@@ -28,7 +28,7 @@ export class Order {
   public params: Types.OrderParams;
 
   /**
-   * 
+   *
    * @param chainId The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
    * @param params The order parameters obtained from an API or built locally.
    */
@@ -96,7 +96,7 @@ export class Order {
   }
 
   /**
-   * 
+   *
    * @returns The order's keccak256 hash
    */
   public hash() {
@@ -104,7 +104,7 @@ export class Order {
   }
 
   /**
-   * 
+   *
    * @returns The order's EIP191 prefix hash
    */
   public prefixHash() {
@@ -151,7 +151,7 @@ export class Order {
   /**
    * Check the validity of the order's signature
    */
-  public async checkSignature() {
+  public checkSignature() {
     const signer = verifyMessage(arrayify(this.hash()), {
       v: this.params.v,
       r: this.params.r ?? "",
