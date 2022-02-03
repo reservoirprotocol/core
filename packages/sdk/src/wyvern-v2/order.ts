@@ -2,6 +2,7 @@ import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
 import { arrayify, splitSignature } from "@ethersproject/bytes";
 import { HashZero } from "@ethersproject/constants";
+import { Contract } from "@ethersproject/contracts";
 import { hashMessage } from "@ethersproject/hash";
 import { keccak256 } from "@ethersproject/solidity";
 import { verifyMessage } from "@ethersproject/wallet";
@@ -13,6 +14,8 @@ import * as Types from "./types";
 import * as Common from "../common";
 import { bn, lc, n, s } from "../utils";
 import { BaseBuilder } from "./builders/base";
+
+import ExchangeAbi from "./abis/Exchange.json";
 
 /**
  * The Wyvern v2 order interface provides functionality to interact with Project Wyvern Ethereum Smart Contracts and read data from the blockchain about order's current state.
@@ -172,7 +175,6 @@ export class Order {
     }
   }
 
-  // TODO: Use multicall for speed/efficiency
   /**
    * Check the order's fillability
    * @param provider A read-only abstraction to access the blockchain data
@@ -180,28 +182,48 @@ export class Order {
   public async checkFillability(provider: Provider) {
     const chainId = await provider.getNetwork().then((n) => n.chainId);
 
+    // Make sure the order is not cancelled or filled
+    const hash = this.prefixHash();
+    const exchange = new Contract(
+      this.params.exchange,
+      ExchangeAbi as any,
+      provider
+    );
+    const filledOrCancelled = await exchange.cancelledOrFinalized(hash);
+    if (filledOrCancelled) {
+      throw new Error("filled-or-cancelled");
+    }
+
     if (this.params.side === Types.OrderSide.BUY) {
-      // Check that maker has enough balance to cover the payment
-      // and the approval to the token transfer proxy is set
+      if (this.params.paymentToken === Common.Addresses.Eth[chainId]) {
+        // Check balance
+        const balance = await provider.getBalance(this.params.maker);
+        if (bn(balance).lt(this.params.basePrice)) {
+          throw new Error("no-balance");
+        }
+      } else {
+        // Check that maker has enough balance to cover the payment
+        // and the approval to the token transfer proxy is set
 
-      const erc20 = new Common.Helpers.Erc20(
-        provider,
-        this.params.paymentToken
-      );
+        const erc20 = new Common.Helpers.Erc20(
+          provider,
+          this.params.paymentToken
+        );
 
-      // Check balance
-      const balance = await erc20.getBalance(this.params.maker);
-      if (bn(balance).lt(this.params.basePrice)) {
-        throw new Error("Insufficient balance");
-      }
+        // Check balance
+        const balance = await erc20.getBalance(this.params.maker);
+        if (bn(balance).lt(this.params.basePrice)) {
+          throw new Error("no-balance");
+        }
 
-      // Check allowance
-      const allowance = await erc20.getAllowance(
-        this.params.maker,
-        Addresses.TokenTransferProxy[chainId]
-      );
-      if (bn(allowance).lt(this.params.basePrice)) {
-        throw new Error("Insufficient allowance");
+        // Check allowance
+        const allowance = await erc20.getAllowance(
+          this.params.maker,
+          Addresses.TokenTransferProxy[chainId]
+        );
+        if (bn(allowance).lt(this.params.basePrice)) {
+          throw new Error("no-approval");
+        }
       }
     } else {
       // Check that maker owns the token id put on sale and
@@ -210,7 +232,7 @@ export class Order {
       const proxyRegistry = new ProxyRegistry(provider, chainId);
       const proxy = await proxyRegistry.getProxy(this.params.maker);
       if (!proxy) {
-        throw new Error("Maker has no proxy");
+        throw new Error("no-proxy");
       }
 
       if (this.params.kind?.startsWith("erc721")) {
@@ -223,19 +245,19 @@ export class Order {
           this
         );
         if (!tokenId) {
-          throw new Error("Invalid order");
+          throw new Error("invalid");
         }
 
         // Check ownership
         const owner = await erc721.getOwner(tokenId);
         if (lc(owner) !== lc(this.params.maker)) {
-          throw new Error("No ownership");
+          throw new Error("no-balance");
         }
 
         // Check approval
         const isApproved = await erc721.isApproved(this.params.maker, proxy);
         if (!isApproved) {
-          throw new Error("No approval");
+          throw new Error("no-approval");
         }
       } else if (this.params.kind?.startsWith("erc1155")) {
         const erc1155 = new Common.Helpers.Erc1155(
@@ -250,22 +272,22 @@ export class Order {
           this
         );
         if (!tokenId) {
-          throw new Error("Invalid order");
+          throw new Error("invalid");
         }
 
         // Check balance
         const balance = await erc1155.getBalance(this.params.maker, tokenId);
         if (bn(balance).lt(1)) {
-          throw new Error("Insufficient balance");
+          throw new Error("no-balance");
         }
 
         // Check approval
         const isApproved = await erc1155.isApproved(this.params.maker, proxy);
         if (!isApproved) {
-          throw new Error("No approval");
+          throw new Error("no-approval");
         }
       } else {
-        throw new Error("Invalid order");
+        throw new Error("invalid");
       }
     }
   }
