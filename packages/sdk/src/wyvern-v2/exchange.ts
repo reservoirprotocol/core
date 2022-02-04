@@ -1,4 +1,5 @@
 import { Signer } from "@ethersproject/abstract-signer";
+import { BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
@@ -8,6 +9,13 @@ import * as CommonAddresses from "../common/addresses";
 import { lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
+
+type TxData = {
+  from: string;
+  to: string;
+  data: string;
+  value?: BigNumberish;
+};
 
 /**
  * The Exchange interface provides partial functionality to interact with the Wyvern Exchange Ethereum Smart Contract.
@@ -28,6 +36,91 @@ export class Exchange {
     }
 
     this.chainId = chainId;
+  }
+
+  public matchTransaction(
+    taker: string,
+    buyOrder: Order,
+    sellOrder: Order
+  ): TxData {
+    const addrs = [
+      buyOrder.params.exchange,
+      buyOrder.params.maker,
+      buyOrder.params.taker,
+      buyOrder.params.feeRecipient,
+      buyOrder.params.target,
+      buyOrder.params.staticTarget,
+      buyOrder.params.paymentToken,
+      sellOrder.params.exchange,
+      sellOrder.params.maker,
+      sellOrder.params.taker,
+      sellOrder.params.feeRecipient,
+      sellOrder.params.target,
+      sellOrder.params.staticTarget,
+      sellOrder.params.paymentToken,
+    ];
+
+    const uints = [
+      buyOrder.params.makerRelayerFee,
+      buyOrder.params.takerRelayerFee,
+      0, // makerProtocolFee (always 0)
+      0, // takerProtocolFee (always 0)
+      buyOrder.params.basePrice,
+      buyOrder.params.extra,
+      buyOrder.params.listingTime,
+      buyOrder.params.expirationTime,
+      buyOrder.params.salt,
+      sellOrder.params.makerRelayerFee,
+      sellOrder.params.takerRelayerFee,
+      0, // makerProtocolFee (always 0)
+      0, // takerProtocolFee (always 0)
+      sellOrder.params.basePrice,
+      sellOrder.params.extra,
+      sellOrder.params.listingTime,
+      sellOrder.params.expirationTime,
+      sellOrder.params.salt,
+    ];
+
+    const feeMethodsSidesKindsHowToCalls = [
+      1, // feeMethod (always 1 - SplitFee)
+      buyOrder.params.side,
+      buyOrder.params.saleKind,
+      buyOrder.params.howToCall,
+      1, // feeMethod (always 1 - SplitFee)
+      sellOrder.params.side,
+      sellOrder.params.saleKind,
+      sellOrder.params.howToCall,
+    ];
+
+    const data = new Contract(
+      buyOrder.params.exchange,
+      ExchangeAbi as any
+    ).interface.encodeFunctionData("atomicMatch_", [
+      addrs,
+      uints,
+      feeMethodsSidesKindsHowToCalls,
+      buyOrder.params.calldata,
+      sellOrder.params.calldata,
+      buyOrder.params.replacementPattern,
+      sellOrder.params.replacementPattern,
+      buyOrder.params.staticExtradata,
+      sellOrder.params.staticExtradata,
+      [buyOrder.params.v, sellOrder.params.v],
+      [
+        buyOrder.params.r,
+        buyOrder.params.s,
+        sellOrder.params.r,
+        sellOrder.params.s,
+        HashZero,
+      ],
+    ]);
+
+    const value =
+      buyOrder.params.paymentToken === CommonAddresses.Eth[this.chainId]
+        ? buyOrder.params.basePrice
+        : undefined;
+
+    return { from: taker, to: buyOrder.params.exchange, data, value };
   }
 
   /**
@@ -128,6 +221,50 @@ export class Exchange {
           // gasLimit: 15000000,
         }
       );
+  }
+
+  public cancelTransaction(maker: string, order: Order): TxData {
+    const addrs = [
+      order.params.exchange,
+      order.params.maker,
+      order.params.taker,
+      order.params.feeRecipient,
+      order.params.target,
+      order.params.staticTarget,
+      order.params.paymentToken,
+    ];
+
+    const uints = [
+      order.params.makerRelayerFee,
+      order.params.takerRelayerFee,
+      0, // makerProtocolFee (always 0)
+      0, // takerProtocolFee (always 0)
+      order.params.basePrice,
+      order.params.extra,
+      order.params.listingTime,
+      order.params.expirationTime,
+      order.params.salt,
+    ];
+
+    const data = new Contract(
+      order.params.exchange,
+      ExchangeAbi as any
+    ).interface.encodeFunctionData("cancelOrder_", [
+      addrs,
+      uints,
+      1, // feeMethod (always 1 - SplitFee)
+      order.params.side,
+      order.params.saleKind,
+      order.params.howToCall,
+      order.params.calldata,
+      order.params.replacementPattern,
+      order.params.staticExtradata,
+      order.params.v,
+      order.params.r,
+      order.params.s,
+    ]);
+
+    return { from: maker, to: order.params.exchange, data };
   }
 
   /**

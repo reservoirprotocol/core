@@ -3,11 +3,19 @@ import {
   TransactionResponse,
 } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
+import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 
 import ProxyRegistryAbi from "./abis/ProxyRegistry.json";
+
+type TxData = {
+  from: string;
+  to: string;
+  data: string;
+  value?: BigNumberish;
+};
 
 /**
  * The ProxyRegistry interface provides partial functionality to interact with the Wyvern Proxy Registry contract.
@@ -19,7 +27,7 @@ export class ProxyRegistry {
   public contract: Contract;
 
   /**
-   * 
+   *
    * @param provider A read-only abstraction to access the blockchain data
    * @param chainId The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
    */
@@ -32,9 +40,9 @@ export class ProxyRegistry {
   }
 
   /**
-   * 
+   *
    * @param owner Proxy owner's address
-   * @returns The proxy's Ethereum address 
+   * @returns The proxy's Ethereum address
    */
   public async getProxy(owner: string): Promise<string> {
     return this.contract.proxies(owner);
@@ -47,5 +55,14 @@ export class ProxyRegistry {
    */
   public async registerProxy(registerer: Signer): Promise<TransactionResponse> {
     return this.contract.connect(registerer).registerProxy();
+  }
+
+  public registerProxyTransaction(registerer: string): TxData {
+    const data = this.contract.interface.encodeFunctionData("registerProxy");
+    return {
+      from: registerer,
+      to: this.contract.address,
+      data,
+    };
   }
 }

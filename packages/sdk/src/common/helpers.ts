@@ -13,6 +13,13 @@ import Erc20Abi from "./abis/Erc20.json";
 import Erc721Abi from "./abis/Erc721.json";
 import Erc1155Abi from "./abis/Erc1155.json";
 
+type TxData = {
+  from: string;
+  to: string;
+  data: string;
+  value?: BigNumberish;
+};
+
 /**
  * The Erc20 interface provides partial functionality to interact with an ERC20 Ethereum smart contract.
  */
@@ -36,6 +43,22 @@ export class Erc20 {
     amount: BigNumberish = MaxUint256
   ): Promise<TransactionResponse> {
     return this.contract.connect(approver).approve(spender, amount);
+  }
+
+  public approveTransaction(
+    approver: string,
+    spender: string,
+    amount: BigNumberish = MaxUint256
+  ): TxData {
+    const data = this.contract.interface.encodeFunctionData("approve", [
+      spender,
+      amount,
+    ]);
+    return {
+      from: approver,
+      to: this.contract.address,
+      data,
+    };
   }
 
   /**
@@ -86,6 +109,18 @@ export class Erc721 {
     return this.contract.connect(approver).setApprovalForAll(operator, true);
   }
 
+  public approveTransaction(approver: string, operator: string): TxData {
+    const data = this.contract.interface.encodeFunctionData(
+      "setApprovalForAll",
+      [operator, true]
+    );
+    return {
+      from: approver,
+      to: this.contract.address,
+      data,
+    };
+  }
+
   /**
    * Returns the owner of a token
    * @param tokenId The token ID number
@@ -133,6 +168,18 @@ export class Erc1155 {
     return this.contract.connect(approver).setApprovalForAll(operator, true);
   }
 
+  public approveTransaction(approver: string, operator: string): TxData {
+    const data = this.contract.interface.encodeFunctionData(
+      "setApprovalForAll",
+      [operator, true]
+    );
+    return {
+      from: approver,
+      to: this.contract.address,
+      data,
+    };
+  }
+
   /**
    * @param owner The owner's Ethereum address
    * @param tokenId The token ID number
@@ -175,5 +222,15 @@ export class Weth extends Erc20 {
     amount: BigNumberish
   ): Promise<TransactionResponse> {
     return this.contract.connect(depositor).deposit({ value: amount });
+  }
+
+  public depositTransaction(depositor: string, amount: BigNumberish): TxData {
+    const data = this.contract.interface.encodeFunctionData("deposit");
+    return {
+      from: depositor,
+      to: this.contract.address,
+      data,
+      value: amount,
+    };
   }
 }
