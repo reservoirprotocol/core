@@ -7,7 +7,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
-import { MaxUint256 } from "../utils";
+import { MaxUint256, bn } from "../utils";
 
 import Erc20Abi from "./abis/Erc20.json";
 import Erc721Abi from "./abis/Erc721.json";
@@ -230,7 +230,7 @@ export class Weth extends Erc20 {
       from: depositor,
       to: this.contract.address,
       data,
-      value: amount,
+      value: bn(amount).toHexString(),
     };
   }
 }

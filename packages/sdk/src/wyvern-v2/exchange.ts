@@ -6,7 +6,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import { Order } from "./order";
 import * as Types from "./types";
 import * as CommonAddresses from "../common/addresses";
-import { lc } from "../utils";
+import { bn, lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -120,7 +120,12 @@ export class Exchange {
         ? buyOrder.params.basePrice
         : undefined;
 
-    return { from: taker, to: buyOrder.params.exchange, data, value };
+    return {
+      from: taker,
+      to: buyOrder.params.exchange,
+      data,
+      value: value && bn(value).toHexString(),
+    };
   }
 
   /**
