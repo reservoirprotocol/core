@@ -6,9 +6,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-import { getCurrentTimestamp } from "../utils";
+import { getCurrentTimestamp } from "../../utils";
 
-describe("WyvernV2 - TokenRangeErc721", () => {
+describe("WyvernV2 - ContractWideErc721", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -74,14 +74,12 @@ describe("WyvernV2 - TokenRangeErc721", () => {
     // Approve the user proxy
     await nft.approve(seller, proxy);
 
-    const builder = new WyvernV2.Builders.Erc721.TokenRange(1);
+    const builder = new WyvernV2.Builders.Erc721.ContractWide(1);
 
     // Build buy order
     let buyOrder = builder.build({
       maker: buyer.address,
       contract: erc721.address,
-      startTokenId: 0,
-      endTokenId: 2,
       side: "buy",
       price,
       paymentToken: Common.Addresses.Weth[1],
@@ -89,8 +87,6 @@ describe("WyvernV2 - TokenRangeErc721", () => {
       feeRecipient: feeRecipient.address,
       listingTime: await getCurrentTimestamp(ethers.provider),
     });
-
-    buyOrder.checkValidity();
 
     // Sign the order
     await buyOrder.sign(buyer);

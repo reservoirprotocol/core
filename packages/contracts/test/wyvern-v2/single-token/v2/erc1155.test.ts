@@ -6,9 +6,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-import { getCurrentTimestamp } from "../utils";
+import { getCurrentTimestamp } from "../../../utils";
 
-describe("WyvernV2 - TokenListErc1155", () => {
+describe("WyvernV2 - SingleTokenErc1155 V2", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -45,8 +45,7 @@ describe("WyvernV2 - TokenListErc1155", () => {
 
     const price = parseEther("1");
     const fee = 250;
-    const boughtTokenIds = Array.from(Array(100).keys());
-    const soldTokenId = 50;
+    const boughtTokenId = 0;
 
     const weth = new Common.Helpers.Weth(ethers.provider, 1);
 
@@ -60,7 +59,7 @@ describe("WyvernV2 - TokenListErc1155", () => {
     await weth.approve(seller, WyvernV2.Addresses.TokenTransferProxy[1]);
 
     // Mint erc1155 to seller
-    await erc1155.connect(seller).mint(soldTokenId);
+    await erc1155.connect(seller).mint(boughtTokenId);
 
     // Register user proxy for the seller
     const proxyRegistry = new WyvernV2.Helpers.ProxyRegistry(
@@ -75,13 +74,13 @@ describe("WyvernV2 - TokenListErc1155", () => {
     // Approve the user proxy
     await nft.approve(seller, proxy);
 
-    const builder = new WyvernV2.Builders.Erc1155.TokenList(1);
+    const builder = new WyvernV2.Builders.Erc1155.SingleToken.V2(1);
 
     // Build buy order
     let buyOrder = builder.build({
       maker: buyer.address,
       contract: erc1155.address,
-      tokenIds: boughtTokenIds,
+      tokenId: boughtTokenId,
       side: "buy",
       price,
       paymentToken: Common.Addresses.Weth[1],
@@ -90,16 +89,11 @@ describe("WyvernV2 - TokenListErc1155", () => {
       listingTime: await getCurrentTimestamp(ethers.provider),
     });
 
-    buyOrder.checkValidity();
-
     // Sign the order
     await buyOrder.sign(buyer);
 
     // Create matching sell order
-    const sellOrder = buyOrder.buildMatching(seller.address, [
-      soldTokenId,
-      boughtTokenIds,
-    ]);
+    const sellOrder = buyOrder.buildMatching(seller.address);
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
     await buyOrder.checkFillability(ethers.provider);
@@ -112,11 +106,11 @@ describe("WyvernV2 - TokenListErc1155", () => {
     );
     const buyerErc1155BalanceBefore = await nft.getBalance(
       buyer.address,
-      soldTokenId
+      boughtTokenId
     );
     const sellerErc1155BalanceBefore = await nft.getBalance(
       seller.address,
-      soldTokenId
+      boughtTokenId
     );
 
     expect(buyerWethBalanceBefore).to.eq(price);
@@ -137,11 +131,11 @@ describe("WyvernV2 - TokenListErc1155", () => {
     );
     const buyerErc1155BalanceAfter = await nft.getBalance(
       buyer.address,
-      soldTokenId
+      boughtTokenId
     );
     const sellerErc1155BalanceAfter = await nft.getBalance(
       seller.address,
-      soldTokenId
+      boughtTokenId
     );
 
     expect(buyerWethBalanceAfter).to.eq(0);

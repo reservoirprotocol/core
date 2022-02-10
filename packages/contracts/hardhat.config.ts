@@ -32,7 +32,7 @@ const config: HardhatUserConfig = {
       },
     },
     localhost: {
-      url: "http://localhost:8545",
+      url: "http://127.0.0.1:8545",
     },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
@@ -45,6 +45,10 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
+  },
+  tenderly: {
+    username: "georgeroman",
+    project: "Development",
   },
 };
 

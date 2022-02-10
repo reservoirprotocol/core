@@ -39,3 +39,8 @@ export const TokenRangeVerifier: any = {
   1: "0x12f313f763EAb71481EFB70Fb0254A77Ed6AB829",
   4: "0x253C0d8F6AA4D89b57D5A0CaEa6131090Fd13cC5",
 };
+
+export const OpenSeaMekleValidator: any = {
+  1: "0xbaf2127b49fc93cbca6269fade0f7f31df4c88a7",
+  4: "0x45b594792a5cdc008d0de1c1d69faa3d16b3ddc1",
+};

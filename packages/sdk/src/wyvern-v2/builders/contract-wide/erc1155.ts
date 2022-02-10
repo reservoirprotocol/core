@@ -2,7 +2,7 @@ import { Interface } from "@ethersproject/abi";
 import { AddressZero } from "@ethersproject/constants";
 
 import { BaseBuilder, BaseBuildParams } from "../base";
-import { SingleTokenErc1155Builder } from "../single-token/erc1155";
+import { SingleTokenErc1155BuilderV1 } from "../single-token/v1/erc1155";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
@@ -107,7 +107,7 @@ export class ContractWideErc1155Builder extends BaseBuilder {
 
   public buildMatching = (order: Order, taker: string, tokenId: string) => {
     if (order.params.side === Types.OrderSide.BUY) {
-      const singleTokenBuilder = new SingleTokenErc1155Builder(this.chainId);
+      const singleTokenBuilder = new SingleTokenErc1155BuilderV1(this.chainId);
       const matchingOrder = singleTokenBuilder.build({
         maker: taker,
         contract: order.params.target,

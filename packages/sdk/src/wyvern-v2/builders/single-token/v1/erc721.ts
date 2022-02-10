@@ -2,18 +2,18 @@ import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 
-import { BaseBuilder, BaseBuildParams } from "../base";
-import * as Addresses from "../../addresses";
-import { Order } from "../../order";
-import * as Types from "../../types";
+import { BaseBuilder, BaseBuildParams } from "../../base";
+import * as Addresses from "../../../addresses";
+import { Order } from "../../../order";
+import * as Types from "../../../types";
 import {
   BytesEmpty,
   getCurrentTimestamp,
   getRandomBytes32,
   s,
-} from "../../../utils";
+} from "../../../../utils";
 
-import Erc721Abi from "../../../common/abis/Erc721.json";
+import Erc721Abi from "../../../../common/abis/Erc721.json";
 
 // Wyvern V2 calldata:
 // `transferFrom(address from, address to, uint256 tokenId)`
@@ -43,7 +43,7 @@ interface BuildParams extends BaseBuildParams {
   tokenId: BigNumberish;
 }
 
-export class SingleTokenErc721Builder extends BaseBuilder {
+export class SingleTokenErc721BuilderV1 extends BaseBuilder {
   constructor(chainId: number) {
     super(chainId);
   }

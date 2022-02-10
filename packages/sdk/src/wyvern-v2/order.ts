@@ -179,6 +179,7 @@ export class Order {
    * Check the order's fillability
    * @param provider A read-only abstraction to access the blockchain data
    */
+  // TODO: Move all the below logic to the builders
   public async checkFillability(provider: Provider) {
     const chainId = await provider.getNetwork().then((n) => n.chainId);
 
@@ -235,18 +236,46 @@ export class Order {
         throw new Error("no-proxy");
       }
 
-      if (this.params.kind?.startsWith("erc721")) {
-        const erc721 = new Common.Helpers.Erc721(provider, this.params.target);
+      let kind: string | undefined;
+      let contract: string | undefined;
+      let tokenId: string | undefined;
 
-        // Sell orders can only be single token (at least for now), so
-        // extracting the token id via the single token builder should
-        // be enough
-        const tokenId = new Builders.Erc721.SingleToken(chainId).getTokenId(
-          this
-        );
-        if (!tokenId) {
+      if (this.params.kind?.startsWith("erc721")) {
+        kind = "erc721";
+      } else if (this.params.kind?.startsWith("erc1155")) {
+        kind = "erc1155";
+      }
+
+      if (this.params.kind?.endsWith("single-token-v2")) {
+        if (kind === "erc721") {
+          ({ contract, tokenId } = new Builders.Erc721.SingleToken.V2(
+            chainId
+          ).getDetails(this)!);
+        } else if (kind === "erc1155") {
+          ({ contract, tokenId } = new Builders.Erc1155.SingleToken.V2(
+            chainId
+          ).getDetails(this)!);
+        }
+      } else {
+        // All the other sell orders will match the v1 single token format
+        contract = this.params.target;
+        if (kind === "erc721") {
+          tokenId = new Builders.Erc721.SingleToken.V1(chainId).getTokenId(
+            this
+          )!;
+        } else if (kind === "erc1155") {
+          tokenId = new Builders.Erc1155.SingleToken.V1(chainId).getTokenId(
+            this
+          )!;
+        }
+      }
+
+      if (kind === "erc721") {
+        if (!contract || !tokenId) {
           throw new Error("invalid");
         }
+
+        const erc721 = new Common.Helpers.Erc721(provider, contract);
 
         // Check ownership
         const owner = await erc721.getOwner(tokenId);
@@ -259,21 +288,12 @@ export class Order {
         if (!isApproved) {
           throw new Error("no-approval");
         }
-      } else if (this.params.kind?.startsWith("erc1155")) {
-        const erc1155 = new Common.Helpers.Erc1155(
-          provider,
-          this.params.target
-        );
-
-        // Sell orders can only be single token (at least for now), so
-        // extracting the token id via the single token builder should
-        // be enough
-        const tokenId = new Builders.Erc1155.SingleToken(chainId).getTokenId(
-          this
-        );
-        if (!tokenId) {
+      } else if (kind === "erc1155") {
+        if (!contract || !tokenId) {
           throw new Error("invalid");
         }
+
+        const erc1155 = new Common.Helpers.Erc1155(provider, contract);
 
         // Check balance
         const balance = await erc1155.getBalance(this.params.maker, tokenId);
@@ -299,7 +319,11 @@ export class Order {
       }
 
       case "erc721-single-token": {
-        return new Builders.Erc721.SingleToken(this.chainId);
+        return new Builders.Erc721.SingleToken.V1(this.chainId);
+      }
+
+      case "erc721-single-token-v2": {
+        return new Builders.Erc721.SingleToken.V2(this.chainId);
       }
 
       case "erc721-token-list": {
@@ -315,7 +339,11 @@ export class Order {
       }
 
       case "erc1155-single-token": {
-        return new Builders.Erc1155.SingleToken(this.chainId);
+        return new Builders.Erc1155.SingleToken.V1(this.chainId);
+      }
+
+      case "erc1155-single-token-v2": {
+        return new Builders.Erc1155.SingleToken.V2(this.chainId);
       }
 
       case "erc1155-token-list": {
@@ -343,9 +371,17 @@ export class Order {
 
     // erc721-single-token
     {
-      const builder = new Builders.Erc721.SingleToken(this.chainId);
+      const builder = new Builders.Erc721.SingleToken.V1(this.chainId);
       if (builder.isValid(this)) {
         return "erc721-single-token";
+      }
+    }
+
+    // erc721-single-token-v2
+    {
+      const builder = new Builders.Erc721.SingleToken.V2(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc721-single-token-v2";
       }
     }
 
@@ -375,9 +411,17 @@ export class Order {
 
     // erc1155-single-token
     {
-      const builder = new Builders.Erc1155.SingleToken(this.chainId);
+      const builder = new Builders.Erc1155.SingleToken.V1(this.chainId);
       if (builder.isValid(this)) {
         return "erc1155-single-token";
+      }
+    }
+
+    // erc1155-single-token-v2
+    {
+      const builder = new Builders.Erc1155.SingleToken.V2(this.chainId);
+      if (builder.isValid(this)) {
+        return "erc1155-single-token-v2";
       }
     }
 
