@@ -1,0 +1,46 @@
+// For now only Mainnet and Rinkeby are supported
+
+/**
+ * The Wyvern v2 exchange smart contract addresses
+ */
+export const Exchange: any = {
+  1: "0x7f268357a8c2552623316e2562d90e642bb538e5",
+  4: "0xdd54d660178b28f6033a953b0e55073cfa7e3744",
+};
+
+/**
+ * The Wyvern v2 proxy registry smart contract addresses
+ */
+export const ProxyRegistry: any = {
+  1: "0xa5409ec958c83c3f309868babaca7c86dcb077c1",
+  4: "0xf57b2c51ded3a29e6891aba85459d600256cf317",
+};
+
+/**
+ * The Wyvern v2 token transfer proxy smart contract addresses
+ */
+export const TokenTransferProxy: any = {
+  1: "0xe5c783ee536cf5e63e792988335c4255169be4e1",
+  4: "0x82d102457854c985221249f86659c9d6cf12aa72",
+};
+
+/**
+ * The Wyvern v2 token list verifier smart contract addresses
+ */
+export const TokenListVerifier: any = {
+  1: "0x13cA300c11B70E555C7BC93f898F67503c8619c9",
+  4: "0xAB429e7cb5c441b8275F90a419e213BD4a795E67",
+};
+
+/**
+ * The Wyvern v2 token range verifier smart contract addresses
+ */
+export const TokenRangeVerifier: any = {
+  1: "0x12f313f763EAb71481EFB70Fb0254A77Ed6AB829",
+  4: "0x253C0d8F6AA4D89b57D5A0CaEa6131090Fd13cC5",
+};
+
+export const OpenSeaMekleValidator: any = {
+  1: "0xbaf2127b49fc93cbca6269fade0f7f31df4c88a7",
+  4: "0x45b594792a5cdc008d0de1c1d69faa3d16b3ddc1",
+};
