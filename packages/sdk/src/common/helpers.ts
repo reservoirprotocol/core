@@ -7,18 +7,11 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
-import { MaxUint256, bn } from "../utils";
+import { MaxUint256, TxData, bn } from "../utils";
 
 import Erc20Abi from "./abis/Erc20.json";
 import Erc721Abi from "./abis/Erc721.json";
 import Erc1155Abi from "./abis/Erc1155.json";
-
-type TxData = {
-  from: string;
-  to: string;
-  data: string;
-  value?: BigNumberish;
-};
 
 /**
  * The Erc20 interface provides partial functionality to interact with an ERC20 Ethereum smart contract.

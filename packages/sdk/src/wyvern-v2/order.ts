@@ -10,10 +10,10 @@ import { verifyMessage } from "@ethersproject/wallet";
 import * as Addresses from "./addresses";
 import { ProxyRegistry } from "./helpers";
 import { Builders } from "./builders";
+import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import * as Common from "../common";
 import { bn, lc, n, s } from "../utils";
-import { BaseBuilder } from "./builders/base";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -175,11 +175,14 @@ export class Order {
     }
   }
 
+  public getInfo(): BaseOrderInfo | undefined {
+    return this.getBuilder().getInfo(this);
+  }
+
   /**
    * Check the order's fillability
    * @param provider A read-only abstraction to access the blockchain data
    */
-  // TODO: Move all the below logic to the builders
   public async checkFillability(provider: Provider) {
     const chainId = await provider.getNetwork().then((n) => n.chainId);
 
@@ -196,35 +199,27 @@ export class Order {
     }
 
     if (this.params.side === Types.OrderSide.BUY) {
-      if (this.params.paymentToken === Common.Addresses.Eth[chainId]) {
-        // Check balance
-        const balance = await provider.getBalance(this.params.maker);
-        if (bn(balance).lt(this.params.basePrice)) {
-          throw new Error("no-balance");
-        }
-      } else {
-        // Check that maker has enough balance to cover the payment
-        // and the approval to the token transfer proxy is set
+      // Check that maker has enough balance to cover the payment
+      // and the approval to the token transfer proxy is set
 
-        const erc20 = new Common.Helpers.Erc20(
-          provider,
-          this.params.paymentToken
-        );
+      const erc20 = new Common.Helpers.Erc20(
+        provider,
+        this.params.paymentToken
+      );
 
-        // Check balance
-        const balance = await erc20.getBalance(this.params.maker);
-        if (bn(balance).lt(this.params.basePrice)) {
-          throw new Error("no-balance");
-        }
+      // Check balance
+      const balance = await erc20.getBalance(this.params.maker);
+      if (bn(balance).lt(this.params.basePrice)) {
+        throw new Error("no-balance");
+      }
 
-        // Check allowance
-        const allowance = await erc20.getAllowance(
-          this.params.maker,
-          Addresses.TokenTransferProxy[chainId]
-        );
-        if (bn(allowance).lt(this.params.basePrice)) {
-          throw new Error("no-approval");
-        }
+      // Check allowance
+      const allowance = await erc20.getAllowance(
+        this.params.maker,
+        Addresses.TokenTransferProxy[chainId]
+      );
+      if (bn(allowance).lt(this.params.basePrice)) {
+        throw new Error("no-approval");
       }
     } else {
       // Check that maker owns the token id put on sale and
@@ -237,44 +232,20 @@ export class Order {
       }
 
       let kind: string | undefined;
-      let contract: string | undefined;
-      let tokenId: string | undefined;
-
       if (this.params.kind?.startsWith("erc721")) {
         kind = "erc721";
       } else if (this.params.kind?.startsWith("erc1155")) {
         kind = "erc1155";
+      } else {
+        throw new Error("invalid");
       }
 
-      if (this.params.kind?.endsWith("single-token-v2")) {
-        if (kind === "erc721") {
-          ({ contract, tokenId } = new Builders.Erc721.SingleToken.V2(
-            chainId
-          ).getDetails(this)!);
-        } else if (kind === "erc1155") {
-          ({ contract, tokenId } = new Builders.Erc1155.SingleToken.V2(
-            chainId
-          ).getDetails(this)!);
-        }
-      } else {
-        // All the other sell orders will match the v1 single token format
-        contract = this.params.target;
-        if (kind === "erc721") {
-          tokenId = new Builders.Erc721.SingleToken.V1(chainId).getTokenId(
-            this
-          )!;
-        } else if (kind === "erc1155") {
-          tokenId = new Builders.Erc1155.SingleToken.V1(chainId).getTokenId(
-            this
-          )!;
-        }
+      const { contract, tokenId } = this.getInfo() as any;
+      if (!contract || !tokenId) {
+        throw new Error("invalid");
       }
 
       if (kind === "erc721") {
-        if (!contract || !tokenId) {
-          throw new Error("invalid");
-        }
-
         const erc721 = new Common.Helpers.Erc721(provider, contract);
 
         // Check ownership
@@ -289,10 +260,6 @@ export class Order {
           throw new Error("no-approval");
         }
       } else if (kind === "erc1155") {
-        if (!contract || !tokenId) {
-          throw new Error("invalid");
-        }
-
         const erc1155 = new Common.Helpers.Erc1155(provider, contract);
 
         // Check balance
@@ -306,8 +273,6 @@ export class Order {
         if (!isApproved) {
           throw new Error("no-approval");
         }
-      } else {
-        throw new Error("invalid");
       }
     }
   }

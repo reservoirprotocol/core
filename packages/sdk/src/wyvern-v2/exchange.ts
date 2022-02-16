@@ -1,21 +1,13 @@
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import { Order } from "./order";
 import * as Types from "./types";
 import * as CommonAddresses from "../common/addresses";
-import { bn, lc } from "../utils";
+import { TxData, bn, lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
-
-type TxData = {
-  from: string;
-  to: string;
-  data: string;
-  value?: BigNumberish;
-};
 
 /**
  * The Exchange interface provides partial functionality to interact with the Wyvern Exchange Ethereum Smart Contract.

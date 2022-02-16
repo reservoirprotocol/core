@@ -1,7 +1,7 @@
 import { Interface } from "@ethersproject/abi";
 import { AddressZero } from "@ethersproject/constants";
 
-import { BaseBuilder, BaseBuildParams } from "../base";
+import { BaseBuilder, BaseBuildParams, BaseOrderInfo } from "../base";
 import { SingleTokenErc721BuilderV1 } from "../single-token/v1/erc721";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
@@ -27,9 +27,17 @@ interface BuildParams extends BaseBuildParams {
   contract: string;
 }
 
+interface OrderInfo extends BaseOrderInfo {}
+
 export class ContractWideErc721Builder extends BaseBuilder {
   constructor(chainId: number) {
     super(chainId);
+  }
+
+  public getInfo(order: Order): OrderInfo {
+    return {
+      contract: order.params.target,
+    };
   }
 
   public isValid(order: Order) {

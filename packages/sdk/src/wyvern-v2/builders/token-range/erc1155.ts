@@ -2,7 +2,7 @@ import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 
-import { BaseBuilder, BaseBuildParams } from "../base";
+import { BaseBuilder, BaseBuildParams, BaseOrderInfo } from "../base";
 import { SingleTokenErc1155BuilderV1 } from "../single-token/v1/erc1155";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
@@ -35,26 +35,36 @@ interface BuildParams extends BaseBuildParams {
   endTokenId: BigNumberish;
 }
 
+interface OrderInfo extends BaseOrderInfo {
+  startTokenId: BigNumberish;
+  endTokenId: BigNumberish;
+}
+
 export class TokenRangeErc1155Builder extends BaseBuilder {
   constructor(chainId: number) {
     super(chainId);
   }
 
-  public getTokenIdRange(order: Order): [string, string] | undefined {
+  public getInfo(order: Order): OrderInfo | undefined {
     try {
-      const result = new Interface(TokenRangeVerifierAbi).decodeFunctionData(
+      const buyResult = new Interface(TokenRangeVerifierAbi).decodeFunctionData(
         "verify",
         order.params.staticExtradata
       );
-      return [result.startTokenId.toString(), result.endTokenId.toString()];
+
+      return {
+        contract: order.params.target,
+        startTokenId: buyResult.startTokenId.toString(),
+        endTokenId: buyResult.endTokenId.toString(),
+      };
     } catch {
       return undefined;
     }
   }
 
   public isValid(order: Order) {
-    const tokenIdRange = this.getTokenIdRange(order);
-    if (!tokenIdRange) {
+    const info = this.getInfo(order);
+    if (!info) {
       return false;
     }
 
@@ -62,8 +72,8 @@ export class TokenRangeErc1155Builder extends BaseBuilder {
       const copyOrder = this.build({
         ...order.params,
         contract: order.params.target,
-        startTokenId: tokenIdRange[0],
-        endTokenId: tokenIdRange[1],
+        startTokenId: info.startTokenId,
+        endTokenId: info.endTokenId,
         side: order.params.side === Types.OrderSide.BUY ? "buy" : "sell",
         price: order.params.basePrice,
         fee: 0,
@@ -134,13 +144,13 @@ export class TokenRangeErc1155Builder extends BaseBuilder {
   }
 
   public buildMatching = (order: Order, taker: string, tokenId: string) => {
-    const tokenIdRange = this.getTokenIdRange(order);
-    if (!tokenIdRange) {
+    const info = this.getInfo(order);
+    if (!info) {
       throw new Error("Invalid order");
     }
 
     if (
-      !(bn(tokenIdRange[0]).lte(tokenId) && bn(tokenId).lte(tokenIdRange[1]))
+      !(bn(info.startTokenId).lte(tokenId) && bn(tokenId).lte(info.endTokenId))
     ) {
       throw new Error("Invalid token id");
     }
@@ -149,7 +159,7 @@ export class TokenRangeErc1155Builder extends BaseBuilder {
       const singleTokenBuilder = new SingleTokenErc1155BuilderV1(this.chainId);
       const matchingOrder = singleTokenBuilder.build({
         maker: taker,
-        contract: order.params.target,
+        contract: info.contract,
         tokenId,
         side: "sell",
         price: order.params.basePrice,

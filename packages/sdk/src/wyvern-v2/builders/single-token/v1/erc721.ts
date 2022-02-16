@@ -2,7 +2,7 @@ import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 
-import { BaseBuilder, BaseBuildParams } from "../../base";
+import { BaseBuilder, BaseBuildParams, BaseOrderInfo } from "../../base";
 import * as Addresses from "../../../addresses";
 import { Order } from "../../../order";
 import * as Types from "../../../types";
@@ -43,34 +43,41 @@ interface BuildParams extends BaseBuildParams {
   tokenId: BigNumberish;
 }
 
+interface OrderInfo extends BaseOrderInfo {
+  tokenId: BigNumberish;
+}
+
 export class SingleTokenErc721BuilderV1 extends BaseBuilder {
   constructor(chainId: number) {
     super(chainId);
   }
 
-  public getTokenId(order: Order): string | undefined {
+  public getInfo(order: Order): OrderInfo | undefined {
     try {
       const result = new Interface(Erc721Abi).decodeFunctionData(
         "transferFrom",
         order.params.calldata
       );
-      return result.tokenId.toString();
+      return {
+        contract: order.params.target,
+        tokenId: result.tokenId.toString(),
+      };
     } catch {
       return undefined;
     }
   }
 
   public isValid(order: Order) {
-    const tokenId = this.getTokenId(order);
-    if (!tokenId) {
+    const info = this.getInfo(order);
+    if (!info) {
       return false;
     }
 
     try {
       const copyOrder = this.build({
         ...order.params,
-        contract: order.params.target,
-        tokenId,
+        contract: info.contract,
+        tokenId: info.tokenId,
         side: order.params.side === Types.OrderSide.BUY ? "buy" : "sell",
         price: order.params.basePrice,
         fee: 0,
@@ -167,16 +174,16 @@ export class SingleTokenErc721BuilderV1 extends BaseBuilder {
   }
 
   public buildMatching = (order: Order, taker: string) => {
-    const tokenId = this.getTokenId(order);
-    if (!tokenId) {
+    const info = this.getInfo(order);
+    if (!info) {
       throw new Error("Invalid order");
     }
 
     if (order.params.side === Types.OrderSide.BUY) {
       const matchingOrder = this.build({
         maker: taker,
-        contract: order.params.target,
-        tokenId,
+        contract: info.contract,
+        tokenId: info.tokenId,
         side: "sell",
         price: order.params.basePrice,
         paymentToken: order.params.paymentToken,
@@ -192,8 +199,8 @@ export class SingleTokenErc721BuilderV1 extends BaseBuilder {
     } else if (order.params.side === Types.OrderSide.SELL) {
       const matchingOrder = this.build({
         maker: taker,
-        contract: order.params.target,
-        tokenId,
+        contract: info.contract,
+        tokenId: info.tokenId,
         side: "buy",
         price: order.params.basePrice,
         paymentToken: order.params.paymentToken,

@@ -19,6 +19,10 @@ export interface BaseBuildParams {
   s?: string;
 }
 
+export interface BaseOrderInfo {
+  contract: string;
+}
+
 export abstract class BaseBuilder {
   public chainId: number;
 
@@ -31,8 +35,8 @@ export abstract class BaseBuilder {
   }
 
   protected defaultInitialize(params: BaseBuildParams) {
-    // Default listing time is 5 minute in the past to allow for any
-    // time discrepancies when checking the order's validity
+    // Default listing time is 5 minutes in the past to allow for any
+    // time discrepancies when checking the order's validity on-chain
     params.listingTime = params.listingTime ?? getCurrentTimestamp(-5 * 60);
     params.expirationTime = params.expirationTime ?? 0;
     params.salt = params.salt ?? getRandomBytes32();
@@ -41,6 +45,7 @@ export abstract class BaseBuilder {
     params.s = params.s ?? HashZero;
   }
 
+  public abstract getInfo(order: Order): BaseOrderInfo | undefined;
   public abstract isValid(order: Order): boolean;
   public abstract build(params: BaseBuildParams): Order;
   public abstract buildMatching(

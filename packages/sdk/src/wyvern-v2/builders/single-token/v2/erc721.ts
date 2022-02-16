@@ -2,7 +2,7 @@ import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero, HashZero } from "@ethersproject/constants";
 
-import { BaseBuilder, BaseBuildParams } from "../../base";
+import { BaseBuilder, BaseBuildParams, BaseOrderInfo } from "../../base";
 import * as Addresses from "../../../addresses";
 import { Order } from "../../../order";
 import * as Types from "../../../types";
@@ -72,18 +72,17 @@ interface BuildParams extends BaseBuildParams {
   useSafeTransfer?: boolean;
 }
 
-type OrderDetails = {
-  contract: string;
-  tokenId: string;
+interface OrderInfo extends BaseOrderInfo {
+  tokenId: BigNumberish;
   useSafeTransfer: boolean;
-};
+}
 
 export class SingleTokenErc721BuilderV2 extends BaseBuilder {
   constructor(chainId: number) {
     super(chainId);
   }
 
-  public getDetails(order: Order): OrderDetails | undefined {
+  public getInfo(order: Order): OrderInfo | undefined {
     try {
       const iface = new Interface(OpenSeaMerkleValidatorAbi);
 
@@ -118,17 +117,17 @@ export class SingleTokenErc721BuilderV2 extends BaseBuilder {
   }
 
   public isValid(order: Order) {
-    const details = this.getDetails(order);
-    if (!details) {
+    const info = this.getInfo(order);
+    if (!info) {
       return false;
     }
 
     try {
       const copyOrder = this.build({
         ...order.params,
-        contract: details.contract,
-        tokenId: details.tokenId,
-        useSafeTransfer: details.useSafeTransfer,
+        contract: info.contract,
+        tokenId: info.tokenId,
+        useSafeTransfer: info.useSafeTransfer,
         side: order.params.side === Types.OrderSide.BUY ? "buy" : "sell",
         price: order.params.basePrice,
         fee: 0,
@@ -241,17 +240,17 @@ export class SingleTokenErc721BuilderV2 extends BaseBuilder {
   }
 
   public buildMatching = (order: Order, taker: string) => {
-    const details = this.getDetails(order);
-    if (!details) {
+    const info = this.getInfo(order);
+    if (!info) {
       throw new Error("Invalid order");
     }
 
     if (order.params.side === Types.OrderSide.BUY) {
       const matchingOrder = this.build({
         maker: taker,
-        contract: details.contract,
-        tokenId: details.tokenId,
-        useSafeTransfer: details.useSafeTransfer,
+        contract: info.contract,
+        tokenId: info.tokenId,
+        useSafeTransfer: info.useSafeTransfer,
         side: "sell",
         price: order.params.basePrice,
         paymentToken: order.params.paymentToken,
@@ -267,9 +266,9 @@ export class SingleTokenErc721BuilderV2 extends BaseBuilder {
     } else if (order.params.side === Types.OrderSide.SELL) {
       const matchingOrder = this.build({
         maker: taker,
-        contract: details.contract,
-        tokenId: details.tokenId,
-        useSafeTransfer: details.useSafeTransfer,
+        contract: info.contract,
+        tokenId: info.tokenId,
+        useSafeTransfer: info.useSafeTransfer,
         side: "buy",
         price: order.params.basePrice,
         paymentToken: order.params.paymentToken,

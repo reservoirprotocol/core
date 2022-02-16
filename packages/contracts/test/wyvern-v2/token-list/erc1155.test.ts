@@ -103,7 +103,6 @@ describe("WyvernV2 - TokenListErc1155", () => {
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
     await buyOrder.checkFillability(ethers.provider);
-    await sellOrder.checkFillability(ethers.provider);
 
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
     const sellerWethBalanceBefore = await weth.getBalance(seller.address);

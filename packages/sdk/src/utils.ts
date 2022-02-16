@@ -24,3 +24,12 @@ export const getCurrentTimestamp = (delay = 0) =>
 export const lc = (x: string) => x?.toLowerCase();
 export const n = (x: any) => Number(x);
 export const s = (x: any) => String(x);
+
+// Types
+
+export type TxData = {
+  from: string;
+  to: string;
+  data: string;
+  value?: BigNumberish;
+};

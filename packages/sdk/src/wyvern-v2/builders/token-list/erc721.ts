@@ -3,7 +3,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 
 import { generateMerkleProof, generateMerkleTree } from "./utils";
-import { BaseBuilder, BaseBuildParams } from "../base";
+import { BaseBuilder, BaseBuildParams, BaseOrderInfo } from "../base";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
@@ -58,33 +58,41 @@ interface BuildParams extends BaseBuildParams {
   tokenIds: BigNumberish[];
 }
 
+interface OrderInfo extends BaseOrderInfo {
+  merkleRoot: string;
+}
+
 export class TokenListErc721Builder extends BaseBuilder {
   constructor(chainId: number) {
     super(chainId);
   }
 
-  public getMerkleRoot(order: Order): string | undefined {
+  public getInfo(order: Order): OrderInfo | undefined {
     try {
       const [merkleRoot] = defaultAbiCoder.decode(
         ["bytes32"],
-        "0x" + order.params.calldata.slice(2).substr(200, 64)
+        "0x" + order.params.calldata.slice(2).slice(200, 200 + 64)
       );
-      return merkleRoot;
+
+      return {
+        contract: order.params.target,
+        merkleRoot,
+      };
     } catch {
       return undefined;
     }
   }
 
   public isValid(order: Order) {
-    const merkleRoot = this.getMerkleRoot(order);
-    if (!merkleRoot) {
+    const info = this.getInfo(order);
+    if (!info) {
       return false;
     }
 
     try {
       const copyOrder = this.build({
         ...order.params,
-        contract: order.params.target,
+        contract: info.contract,
         tokenIds: [0],
         side: order.params.side === Types.OrderSide.BUY ? "buy" : "sell",
         price: order.params.basePrice,
@@ -93,16 +101,16 @@ export class TokenListErc721Builder extends BaseBuilder {
 
       copyOrder.params.calldata =
         "0x" +
-        copyOrder.params.calldata.slice(2).substr(0, 200) +
+        copyOrder.params.calldata.slice(2).slice(0, 200) +
         order.params.calldata.slice(2).slice(200);
       copyOrder.params.replacementPattern =
         "0x" +
-        copyOrder.params.replacementPattern.slice(2).substr(0, 392) +
+        copyOrder.params.replacementPattern.slice(2).slice(0, 392) +
         order.params.replacementPattern.slice(2).slice(392);
       copyOrder.params.staticExtradata =
         "0x" +
-        copyOrder.params.staticExtradata.slice(2).substr(0, 74) +
-        order.params.staticExtradata.slice(2).substr(74);
+        copyOrder.params.staticExtradata.slice(2).slice(0, 74) +
+        order.params.staticExtradata.slice(2).slice(74);
 
       if (!copyOrder) {
         return false;
@@ -189,14 +197,14 @@ export class TokenListErc721Builder extends BaseBuilder {
     tokenId: string,
     tokenIds: string[]
   ) => {
-    const merkleRoot = this.getMerkleRoot(order);
-    if (!merkleRoot) {
+    const info = this.getInfo(order);
+    if (!info) {
       throw new Error("Invalid order");
     }
 
     const numMerkleTreeLevels = Math.ceil(Math.log2(tokenIds.length));
     const merkleTree = generateMerkleTree(tokenIds);
-    if (merkleTree.getHexRoot() !== merkleRoot) {
+    if (merkleTree.getHexRoot() !== info.merkleRoot) {
       throw new Error("Token ids not matching merkle root");
     }
 
@@ -228,7 +236,7 @@ export class TokenListErc721Builder extends BaseBuilder {
         feeRecipient: AddressZero,
         side: Types.OrderSide.SELL,
         saleKind: Types.OrderSaleKind.FIXED_PRICE,
-        target: order.params.target,
+        target: info.contract,
         howToCall: Types.OrderHowToCall.CALL,
         calldata,
         replacementPattern: REPLACEMENT_PATTERN_SELL(tokenIds.length),

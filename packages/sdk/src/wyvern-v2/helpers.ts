@@ -3,19 +3,12 @@ import {
   TransactionResponse,
 } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
+import { TxData } from "../utils";
 
 import ProxyRegistryAbi from "./abis/ProxyRegistry.json";
-
-type TxData = {
-  from: string;
-  to: string;
-  data: string;
-  value?: BigNumberish;
-};
 
 /**
  * The ProxyRegistry interface provides partial functionality to interact with the Wyvern Proxy Registry contract.
