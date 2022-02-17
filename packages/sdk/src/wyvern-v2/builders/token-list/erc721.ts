@@ -194,21 +194,20 @@ export class TokenListErc721Builder extends BaseBuilder {
   public buildMatching = (
     order: Order,
     taker: string,
-    tokenId: string,
-    tokenIds: string[]
+    data: { tokenId: string; tokenIds: string[] }
   ) => {
     const info = this.getInfo(order);
     if (!info) {
       throw new Error("Invalid order");
     }
 
-    const numMerkleTreeLevels = Math.ceil(Math.log2(tokenIds.length));
-    const merkleTree = generateMerkleTree(tokenIds);
+    const numMerkleTreeLevels = Math.ceil(Math.log2(data.tokenIds.length));
+    const merkleTree = generateMerkleTree(data.tokenIds);
     if (merkleTree.getHexRoot() !== info.merkleRoot) {
       throw new Error("Token ids not matching merkle root");
     }
 
-    const merkleProof = generateMerkleProof(merkleTree, tokenId)
+    const merkleProof = generateMerkleProof(merkleTree, data.tokenId)
       .map((proof) => proof.slice(2))
       .join("");
 
@@ -217,7 +216,7 @@ export class TokenListErc721Builder extends BaseBuilder {
         new Interface(Erc721Abi as any).encodeFunctionData("transferFrom", [
           taker,
           AddressZero,
-          tokenId,
+          data.tokenId,
         ]) +
         // merkle root
         "0".repeat(64) +
@@ -239,7 +238,7 @@ export class TokenListErc721Builder extends BaseBuilder {
         target: info.contract,
         howToCall: Types.OrderHowToCall.CALL,
         calldata,
-        replacementPattern: REPLACEMENT_PATTERN_SELL(tokenIds.length),
+        replacementPattern: REPLACEMENT_PATTERN_SELL(data.tokenIds.length),
         staticTarget: AddressZero,
         staticExtradata: "0x",
         paymentToken: order.params.paymentToken,

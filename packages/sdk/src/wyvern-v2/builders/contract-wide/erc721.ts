@@ -110,13 +110,17 @@ export class ContractWideErc721Builder extends BaseBuilder {
     }
   }
 
-  public buildMatching = (order: Order, taker: string, tokenId: string) => {
+  public buildMatching = (
+    order: Order,
+    taker: string,
+    data: { tokenId: string }
+  ) => {
     if (order.params.side === Types.OrderSide.BUY) {
       const singleTokenBuilder = new SingleTokenErc721BuilderV1(this.chainId);
       const matchingOrder = singleTokenBuilder.build({
         maker: taker,
         contract: order.params.target,
-        tokenId,
+        tokenId: data.tokenId,
         side: "sell",
         price: order.params.basePrice,
         paymentToken: order.params.paymentToken,

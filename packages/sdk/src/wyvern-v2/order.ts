@@ -154,8 +154,8 @@ export class Order {
    * @param data Any aditional arguments
    * @returns The matching Wyvern v2 order
    */
-  public buildMatching(taker: string, data?: any[]) {
-    return this.getBuilder().buildMatching(this, taker, ...(data || []));
+  public buildMatching(taker: string, data?: any) {
+    return this.getBuilder().buildMatching(this, taker, data);
   }
 
   /**

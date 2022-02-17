@@ -48,9 +48,5 @@ export abstract class BaseBuilder {
   public abstract getInfo(order: Order): BaseOrderInfo | undefined;
   public abstract isValid(order: Order): boolean;
   public abstract build(params: BaseBuildParams): Order;
-  public abstract buildMatching(
-    order: Order,
-    taker: string,
-    ...data: any[]
-  ): Order;
+  public abstract buildMatching(order: Order, taker: string, data: any): Order;
 }

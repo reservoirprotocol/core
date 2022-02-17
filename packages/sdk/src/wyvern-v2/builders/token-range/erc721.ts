@@ -140,14 +140,21 @@ export class TokenRangeErc721Builder extends BaseBuilder {
     }
   }
 
-  public buildMatching = (order: Order, taker: string, tokenId: string) => {
+  public buildMatching = (
+    order: Order,
+    taker: string,
+    data: { tokenId: string }
+  ) => {
     const info = this.getInfo(order);
     if (!info) {
       throw new Error("Invalid order");
     }
 
     if (
-      !(bn(info.startTokenId).lte(tokenId) && bn(tokenId).lte(info.endTokenId))
+      !(
+        bn(info.startTokenId).lte(data.tokenId) &&
+        bn(data.tokenId).lte(info.endTokenId)
+      )
     ) {
       throw new Error("Invalid token id");
     }
@@ -157,7 +164,7 @@ export class TokenRangeErc721Builder extends BaseBuilder {
       const matchingOrder = singleTokenBuilder.build({
         maker: taker,
         contract: info.contract,
-        tokenId,
+        tokenId: data.tokenId,
         side: "sell",
         price: order.params.basePrice,
         paymentToken: order.params.paymentToken,
