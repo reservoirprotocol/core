@@ -13,7 +13,7 @@ export const Exchange: any = {
  */
 export const ProxyRegistry: any = {
   1: "0xa5409ec958c83c3f309868babaca7c86dcb077c1",
-  4: "0xf57b2c51ded3a29e6891aba85459d600256cf317",
+  4: "0x1e525eeaf261ca41b809884cbde9dd9e1619573a",
 };
 
 /**
@@ -21,7 +21,7 @@ export const ProxyRegistry: any = {
  */
 export const TokenTransferProxy: any = {
   1: "0xe5c783ee536cf5e63e792988335c4255169be4e1",
-  4: "0x82d102457854c985221249f86659c9d6cf12aa72",
+  4: "0xcdc9188485316bf6fa416d02b4f680227c50b89e",
 };
 
 /**
