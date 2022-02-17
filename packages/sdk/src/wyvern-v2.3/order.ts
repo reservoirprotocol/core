@@ -4,7 +4,7 @@ import { arrayify, splitSignature } from "@ethersproject/bytes";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
-import { verifyMessage } from "@ethersproject/wallet";
+import { verifyMessage, verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
 import { ProxyRegistry } from "./helpers";
@@ -145,11 +145,16 @@ export class Order {
    * Check the validity of the order's signature
    */
   public checkSignature() {
-    const signer = verifyMessage(arrayify(this.hash()), {
-      v: this.params.v,
-      r: this.params.r ?? "",
-      s: this.params.s ?? "",
-    });
+    const signer = verifyTypedData(
+      EIP712_DOMAIN(this.chainId),
+      EIP712_TYPES,
+      toRawOrder(this),
+      {
+        v: this.params.v,
+        r: this.params.r ?? "",
+        s: this.params.s ?? "",
+      }
+    );
 
     if (lc(this.params.maker) !== lc(signer)) {
       throw new Error("Invalid signature");

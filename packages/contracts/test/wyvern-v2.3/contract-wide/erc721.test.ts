@@ -130,6 +130,7 @@ describe("WyvernV2.3 - ContractWideErc721", () => {
     });
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
+    buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
 
     const buyerBalanceBefore = await weth.getBalance(buyer.address);
