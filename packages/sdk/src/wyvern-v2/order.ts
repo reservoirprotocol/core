@@ -141,6 +141,13 @@ export class Order {
     };
   }
 
+  public getSignatureData() {
+    return {
+      kind: "eip191",
+      message: this.hash(),
+    };
+  }
+
   /**
    * Build a matching buy order for a sell order and vice versa
    * @param taker The taker's Ethereum address
