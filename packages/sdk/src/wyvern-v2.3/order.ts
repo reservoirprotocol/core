@@ -124,7 +124,7 @@ export class Order {
 
   public getSignatureData() {
     return {
-      kind: "eip712",
+      signatureKind: "eip712",
       domain: EIP712_DOMAIN(this.chainId),
       types: EIP712_TYPES,
       value: toRawOrder(this),

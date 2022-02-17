@@ -143,7 +143,7 @@ export class Order {
 
   public getSignatureData() {
     return {
-      kind: "eip191",
+      signatureKind: "eip191",
       message: this.hash(),
     };
   }
