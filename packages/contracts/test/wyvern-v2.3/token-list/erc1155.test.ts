@@ -23,34 +23,6 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
     erc1155 = await ethers
       .getContractFactory("MockERC1155", deployer)
       .then((factory) => factory.deploy());
-
-    // Workaround to be able to use the helper contracts with the new exchange
-    const proxyRegistryAdminAddress =
-      "0xa839d4b5a36265795eba6894651a8af3d0ae2e68";
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [proxyRegistryAdminAddress],
-    });
-
-    const proxyRegistryAdmin = await ethers.getSigner(
-      proxyRegistryAdminAddress
-    );
-
-    await network.provider.send("evm_setNextBlockTimestamp", [1645355439]);
-    await network.provider.send("evm_mine");
-
-    await deployer.sendTransaction({
-      to: proxyRegistryAdminAddress,
-      value: parseEther("1"),
-    });
-    await proxyRegistryAdmin.sendTransaction({
-      to: WyvernV23.Addresses.ProxyRegistry[1],
-      data: new Interface([
-        "function endGrantAuthentication(address contract)",
-      ]).encodeFunctionData("endGrantAuthentication", [
-        WyvernV23.Addresses.Exchange[1],
-      ]),
-    });
   });
 
   afterEach(async () => {
