@@ -8,7 +8,7 @@ import { ethers, network } from "hardhat";
 
 import { getCurrentTimestamp } from "../../../utils";
 
-describe("WyvernV2 - SingleTokenErc721 V2", () => {
+describe.skip("WyvernV2 - SingleTokenErc721 V2", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;

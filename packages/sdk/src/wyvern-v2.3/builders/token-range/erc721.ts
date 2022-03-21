@@ -94,7 +94,7 @@ export class TokenRangeErc721Builder extends BaseBuilder {
   }
 
   public build(params: BuildParams) {
-    this.defaultInitialize(params);
+    const saleKind = this.defaultInitialize(params);
 
     if (params.side === "buy") {
       return new Order(this.chainId, {
@@ -106,8 +106,7 @@ export class TokenRangeErc721Builder extends BaseBuilder {
         takerRelayerFee: params.fee,
         feeRecipient: params.feeRecipient,
         side: Types.OrderSide.BUY,
-        // No dutch auctions support for now
-        saleKind: Types.OrderSaleKind.FIXED_PRICE,
+        saleKind,
         target: params.contract,
         howToCall: Types.OrderHowToCall.CALL,
         calldata: new Interface(Erc721Abi).encodeFunctionData("transferFrom", [
@@ -125,7 +124,7 @@ export class TokenRangeErc721Builder extends BaseBuilder {
         ]),
         paymentToken: params.paymentToken,
         basePrice: s(params.price),
-        extra: "0",
+        extra: s(params.extra),
         listingTime: params.listingTime!,
         expirationTime: params.expirationTime!,
         salt: s(params.salt),
@@ -167,7 +166,7 @@ export class TokenRangeErc721Builder extends BaseBuilder {
         contract: info.contract,
         tokenId: data.tokenId,
         side: "sell",
-        price: order.params.basePrice,
+        price: this.getMatchingPrice(order),
         paymentToken: order.params.paymentToken,
         fee: 0,
         feeRecipient: AddressZero,

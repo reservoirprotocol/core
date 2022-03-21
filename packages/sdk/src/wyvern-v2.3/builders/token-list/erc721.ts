@@ -131,7 +131,7 @@ export class TokenListErc721Builder extends BaseBuilder {
   }
 
   public build(params: BuildParams) {
-    this.defaultInitialize(params);
+    const saleKind = this.defaultInitialize(params);
 
     if (params.side === "buy") {
       const numMerkleTreeLevels = Math.ceil(Math.log2(params.tokenIds.length));
@@ -166,8 +166,7 @@ export class TokenListErc721Builder extends BaseBuilder {
         takerRelayerFee: params.fee,
         feeRecipient: params.feeRecipient,
         side: Types.OrderSide.BUY,
-        // No dutch auctions support for now
-        saleKind: Types.OrderSaleKind.FIXED_PRICE,
+        saleKind,
         target: params.contract,
         howToCall: Types.OrderHowToCall.CALL,
         calldata,
@@ -176,7 +175,7 @@ export class TokenListErc721Builder extends BaseBuilder {
         staticExtradata,
         paymentToken: params.paymentToken,
         basePrice: s(params.price),
-        extra: "0",
+        extra: s(params.extra),
         listingTime: params.listingTime!,
         expirationTime: params.expirationTime!,
         salt: s(params.salt),
@@ -247,8 +246,8 @@ export class TokenListErc721Builder extends BaseBuilder {
         staticTarget: AddressZero,
         staticExtradata: "0x",
         paymentToken: order.params.paymentToken,
-        basePrice: s(order.params.basePrice),
-        extra: "0",
+        basePrice: s(this.getMatchingPrice(order)),
+        extra: s(order.params.extra),
         listingTime: getCurrentTimestamp(-60),
         expirationTime: 0,
         salt: s(getRandomBytes32()),
