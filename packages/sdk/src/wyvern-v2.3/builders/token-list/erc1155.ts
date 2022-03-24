@@ -255,7 +255,7 @@ export class TokenListErc1155Builder extends BaseBuilder {
         staticTarget: AddressZero,
         staticExtradata: "0x",
         paymentToken: order.params.paymentToken,
-        basePrice: s(this.getMatchingPrice(order)),
+        basePrice: s(order.getMatchingPrice()),
         extra: s(order.params.extra),
         listingTime: getCurrentTimestamp(-60),
         expirationTime: 0,

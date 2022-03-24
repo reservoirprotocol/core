@@ -172,7 +172,7 @@ export class TokenRangeErc1155Builder extends BaseBuilder {
         contract: info.contract,
         tokenId: data.tokenId,
         side: "sell",
-        price: this.getMatchingPrice(order),
+        price: order.getMatchingPrice(),
         paymentToken: order.params.paymentToken,
         fee: 0,
         feeRecipient: AddressZero,

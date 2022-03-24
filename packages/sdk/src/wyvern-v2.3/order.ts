@@ -1,10 +1,11 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
-import { arrayify, splitSignature } from "@ethersproject/bytes";
+import { BigNumberish } from "@ethersproject/bignumber";
+import { splitSignature } from "@ethersproject/bytes";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
-import { verifyMessage, verifyTypedData } from "@ethersproject/wallet";
+import { verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
 import { ProxyRegistry } from "./helpers";
@@ -12,7 +13,7 @@ import { Builders } from "./builders";
 import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import * as Common from "../common";
-import { bn, lc, n, s } from "../utils";
+import { bn, lc, getCurrentTimestamp, n, s } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -172,6 +173,23 @@ export class Order {
 
   public getInfo(): BaseOrderInfo | undefined {
     return this.getBuilder().getInfo(this);
+  }
+
+  public getMatchingPrice(): BigNumberish {
+    // https://github.com/ProjectWyvern/wyvern-ethereum/blob/bfca101b2407e4938398fccd8d1c485394db7e01/contracts/exchange/SaleKindInterface.sol#L70-L87
+    if (this.params.saleKind === Types.OrderSaleKind.FIXED_PRICE) {
+      return bn(this.params.basePrice);
+    } else {
+      // Set a delay of 1 minute to allow for any timestamp discrepancies
+      const diff = bn(this.params.extra)
+        .mul(bn(getCurrentTimestamp(-60)).sub(this.params.listingTime))
+        .div(bn(this.params.expirationTime).sub(this.params.listingTime));
+      return bn(this.params.basePrice).sub(diff);
+    }
+  }
+
+  public isDutchAuction(): boolean {
+    return this.params.saleKind === Types.OrderSaleKind.DUTCH_AUCTION;
   }
 
   /**

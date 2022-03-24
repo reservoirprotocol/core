@@ -75,19 +75,6 @@ export abstract class BaseBuilder {
     }
   }
 
-  public getMatchingPrice(order: Order): BigNumberish {
-    // https://github.com/ProjectWyvern/wyvern-ethereum/blob/bfca101b2407e4938398fccd8d1c485394db7e01/contracts/exchange/SaleKindInterface.sol#L70-L87
-    if (order.params.saleKind === OrderSaleKind.FIXED_PRICE) {
-      return bn(order.params.basePrice);
-    } else {
-      // Set a delay of 1 minute to allow for any timestamp discrepancies
-      const diff = bn(order.params.extra)
-        .mul(bn(getCurrentTimestamp(-60)).sub(order.params.listingTime))
-        .div(bn(order.params.expirationTime).sub(order.params.listingTime));
-      return bn(order.params.basePrice).sub(diff);
-    }
-  }
-
   public abstract getInfo(order: Order): BaseOrderInfo | undefined;
   public abstract isValid(order: Order): boolean;
   public abstract build(params: BaseBuildParams): Order;
