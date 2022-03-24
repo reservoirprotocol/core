@@ -63,8 +63,10 @@ export class Order {
     }
 
     // Validate sale kind
-    if (this.params.saleKind !== Types.OrderSaleKind.FIXED_PRICE) {
-      // Support for dutch auctions will come later
+    if (
+      this.params.saleKind !== Types.OrderSaleKind.FIXED_PRICE &&
+      this.params.saleKind !== Types.OrderSaleKind.DUTCH_AUCTION
+    ) {
       throw new Error("Invalid sale kind");
     }
 
