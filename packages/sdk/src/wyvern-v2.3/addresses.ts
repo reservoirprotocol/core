@@ -1,40 +1,25 @@
 // For now only Mainnet and Rinkeby are supported
 
-/**
- * The Wyvern v2 exchange smart contract addresses
- */
 export const Exchange: any = {
   1: "0x7f268357a8c2552623316e2562d90e642bb538e5",
   4: "0xdd54d660178b28f6033a953b0e55073cfa7e3744",
 };
 
-/**
- * The Wyvern v2 proxy registry smart contract addresses
- */
 export const ProxyRegistry: any = {
   1: "0xa5409ec958c83c3f309868babaca7c86dcb077c1",
   4: "0x1e525eeaf261ca41b809884cbde9dd9e1619573a",
 };
 
-/**
- * The Wyvern v2 token transfer proxy smart contract addresses
- */
 export const TokenTransferProxy: any = {
   1: "0xe5c783ee536cf5e63e792988335c4255169be4e1",
   4: "0xcdc9188485316bf6fa416d02b4f680227c50b89e",
 };
 
-/**
- * The Wyvern v2 token list verifier smart contract addresses
- */
 export const TokenListVerifier: any = {
   1: "0x13cA300c11B70E555C7BC93f898F67503c8619c9",
   4: "0xAB429e7cb5c441b8275F90a419e213BD4a795E67",
 };
 
-/**
- * The Wyvern v2 token range verifier smart contract addresses
- */
 export const TokenRangeVerifier: any = {
   1: "0x12f313f763EAb71481EFB70Fb0254A77Ed6AB829",
   4: "0x253C0d8F6AA4D89b57D5A0CaEa6131090Fd13cC5",
