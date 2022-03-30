@@ -101,7 +101,7 @@ export class Exchange {
 
     const value =
       buyOrder.params.paymentToken === CommonAddresses.Eth[this.chainId]
-        ? buyOrder.params.basePrice
+        ? buyOrder.getMatchingPrice()
         : undefined;
 
     return {
