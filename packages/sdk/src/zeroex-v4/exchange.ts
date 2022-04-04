@@ -33,6 +33,11 @@ export class Exchange {
       taker
     );
 
+    let feeAmount = bn(0);
+    for (const { amount } of order.params.fees) {
+      feeAmount = feeAmount.add(amount);
+    }
+
     if (order.params.kind?.startsWith("erc721")) {
       const erc721 = new Contract(order.params.nft, Erc721Abi, taker);
       if (order.params.direction === Types.TradeDirection.BUY) {
@@ -47,7 +52,8 @@ export class Exchange {
         );
       } else {
         return exchange.buyERC721(order.getRaw(), order.getRaw(), BytesEmpty, {
-          value: order.params.erc20TokenAmount,
+          // Buyer pays the fees
+          value: bn(order.params.erc20TokenAmount).add(feeAmount),
         });
       }
     } else {
@@ -72,7 +78,13 @@ export class Exchange {
           {
             value: bn(order.params.erc20TokenAmount)
               .mul(order.params.nftAmount!)
-              .div(matchParams.nftAmount!),
+              .div(matchParams.nftAmount!)
+              // Buyer pays the fees
+              .add(
+                feeAmount
+                  .mul(order.params.nftAmount!)
+                  .div(matchParams.nftAmount!)
+              ),
           }
         );
       }

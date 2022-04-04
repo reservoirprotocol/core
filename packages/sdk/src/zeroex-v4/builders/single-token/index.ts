@@ -6,7 +6,7 @@ import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
 import * as CommonAddresses from "../../../common/addresses";
-import { s } from "../../../utils";
+import { BytesEmpty, lc, s } from "../../../utils";
 
 interface BuildParams extends BaseBuildParams {
   tokenId: BigNumberish;
@@ -58,7 +58,11 @@ export class SingleTokenBuilder extends BaseBuilder {
           ? Addresses.Eth[this.chainId]
           : CommonAddresses.Weth[this.chainId],
       erc20TokenAmount: s(params.price),
-      fees: [],
+      fees: params.fees!.map(({ recipient, amount }) => ({
+        recipient: lc(recipient),
+        amount: s(amount),
+        feeData: BytesEmpty,
+      })),
       nft: params.contract,
       nftId: s(params.tokenId),
       nftProperties: [],

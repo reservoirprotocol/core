@@ -10,6 +10,10 @@ export interface BaseBuildParams {
   contract: string;
   maker: string;
   price: BigNumberish;
+  fees?: {
+    recipient: string;
+    amount: BigNumberish;
+  }[];
   amount?: BigNumberish;
   expiry?: number;
   nonce?: BigNumberish;
@@ -31,6 +35,7 @@ export abstract class BaseBuilder {
   }
 
   protected defaultInitialize(params: BaseBuildParams) {
+    params.fees = params.fees ?? [];
     params.expiry = params.expiry ?? getCurrentTimestamp(365 * 24 * 60 * 60);
     params.nonce = params.nonce ?? getRandomBytes32();
     params.signatureType = params.signatureType ?? 1;

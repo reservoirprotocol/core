@@ -117,12 +117,18 @@ export class Order {
       throw new Error("not-fillable");
     }
 
+    // Determine the order's fees (which are to be payed by the buyer)
+    let feeAmount = bn(0);
+    for (const { amount } of this.params.fees) {
+      feeAmount = feeAmount.add(amount);
+    }
+
     if (this.params.direction === Types.TradeDirection.BUY) {
       // Check that maker has enough balance to cover the payment
       // and the approval to the token transfer proxy is set
       const erc20 = new Common.Helpers.Erc20(provider, this.params.erc20Token);
       const balance = await erc20.getBalance(this.params.maker);
-      if (bn(balance).lt(this.params.erc20TokenAmount)) {
+      if (bn(balance).lt(bn(this.params.erc20TokenAmount).add(feeAmount))) {
         throw new Error("no-balance");
       }
 
@@ -131,7 +137,7 @@ export class Order {
         this.params.maker,
         Addresses.Exchange[chainId]
       );
-      if (bn(allowance).lt(this.params.erc20TokenAmount)) {
+      if (bn(allowance).lt(bn(this.params.erc20TokenAmount).add(feeAmount))) {
         throw new Error("no-approval");
       }
     } else {
