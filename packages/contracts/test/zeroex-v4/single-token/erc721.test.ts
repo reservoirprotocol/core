@@ -100,8 +100,6 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
     const price = parseEther("1");
     const soldTokenId = 0;
 
-    const weth = new Common.Helpers.Weth(ethers.provider, 1);
-
     // Mint erc721 to seller
     await erc721.connect(seller).mint(soldTokenId);
 

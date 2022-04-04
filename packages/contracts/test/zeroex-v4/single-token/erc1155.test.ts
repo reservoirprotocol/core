@@ -111,61 +111,82 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     expect(sellerNftBalanceAfter).to.eq(0);
   });
 
-  // it("build and match sell order", async () => {
-  //   const buyer = alice;
-  //   const seller = bob;
-  //   const price = parseEther("1");
-  //   const soldTokenId = 0;
+  it("build and match sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
 
-  //   const weth = new Common.Helpers.Weth(ethers.provider, 1);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mint(soldTokenId);
 
-  //   // Mint erc721 to seller
-  //   await erc721.connect(seller).mint(soldTokenId);
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
-  //   const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
+    // Approve the exchange
+    await nft.approve(seller, ZeroexV4.Addresses.Exchange[1]);
 
-  //   // Approve the exchange
-  //   await nft.approve(seller, ZeroexV4.Addresses.Exchange[1]);
+    const exchange = new ZeroexV4.Exchange(1);
 
-  //   const exchange = new ZeroexV4.Exchange(1);
+    const builder = new ZeroexV4.Builders.SingleToken(1);
 
-  //   const builder = new ZeroexV4.Builders.SingleToken(1);
+    // Build sell order
+    const sellOrder = builder.build({
+      direction: "sell",
+      maker: seller.address,
+      contract: erc1155.address,
+      tokenId: soldTokenId,
+      amount: 1,
+      price,
+      expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
 
-  //   // Build sell order
-  //   const sellOrder = builder.build({
-  //     direction: "sell",
-  //     maker: seller.address,
-  //     contract: erc721.address,
-  //     tokenId: soldTokenId,
-  //     price,
-  //     expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
-  //   });
+    // Sign the order
+    await sellOrder.sign(seller);
 
-  //   // Sign the order
-  //   await sellOrder.sign(seller);
+    // Create matching buy order
+    const buyOrder = sellOrder.buildMatching({ amount: 1 });
 
-  //   // Create matching buy order
-  //   const buyOrder = sellOrder.buildMatching(buyer.address);
+    await sellOrder.checkFillability(ethers.provider);
 
-  //   await sellOrder.checkFillability(ethers.provider);
+    const buyerEthBalanceBefore = await ethers.provider.getBalance(
+      buyer.address
+    );
+    const sellerEthBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
 
-  //   const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
-  //   const sellerBalanceBefore = await ethers.provider.getBalance(
-  //     seller.address
-  //   );
-  //   const ownerBefore = await nft.getOwner(soldTokenId);
+    expect(buyerNftBalanceBefore).to.eq(0);
+    expect(sellerNftBalanceBefore).to.eq(1);
 
-  //   expect(ownerBefore).to.eq(seller.address);
+    // Match orders
+    await exchange.match(buyer, sellOrder, buyOrder);
 
-  //   // Match orders
-  //   await exchange.match(buyer, sellOrder, buyOrder);
+    const buyerEthBalanceAfter = await ethers.provider.getBalance(
+      buyer.address
+    );
+    const sellerEthBalanceAfter = await ethers.provider.getBalance(
+      seller.address
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
 
-  //   const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
-  //   const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
-  //   const ownerAfter = await nft.getOwner(soldTokenId);
-
-  //   expect(buyerBalanceBefore.sub(buyerBalanceAfter)).to.be.gt(price);
-  //   expect(sellerBalanceAfter).to.eq(sellerBalanceBefore.add(price));
-  //   expect(ownerAfter).to.eq(buyer.address);
-  // });
+    expect(buyerEthBalanceBefore.sub(buyerEthBalanceAfter)).to.be.gt(price);
+    expect(sellerEthBalanceAfter).to.eq(sellerEthBalanceBefore.add(price));
+    expect(buyerNftBalanceAfter).to.eq(1);
+    expect(sellerNftBalanceAfter).to.eq(0);
+  });
 });
