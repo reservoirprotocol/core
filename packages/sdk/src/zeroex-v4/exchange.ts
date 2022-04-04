@@ -106,7 +106,7 @@ const Erc1155OrderAbiType = `(
   address erc1155Token,
   uint256 erc1155TokenId,
   (address propertyValidator, bytes propertyData)[] erc1155TokenProperties,
-  uint256 erc1155TokenAmount
+  uint128 erc1155TokenAmount
 )`;
 
 const SignatureAbiType = `(

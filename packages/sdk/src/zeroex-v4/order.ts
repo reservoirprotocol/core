@@ -45,8 +45,8 @@ export class Order {
   }
 
   public hash() {
-    const [types, value] = this.getEip712TypesAndValue();
-    return _TypedDataEncoder.hashStruct("ERC721Order", types, value);
+    const [types, value, structName] = this.getEip712TypesAndValue();
+    return _TypedDataEncoder.hashStruct(structName, types, value);
   }
 
   public async sign(signer: TypedDataSigner) {
@@ -182,8 +182,8 @@ export class Order {
 
   private getEip712TypesAndValue() {
     return this.params.kind?.startsWith("erc721")
-      ? [ERC721_ORDER_EIP712_TYPES, toRawErc721Order(this)]
-      : [ERC1155_ORDER_EIP712_TYPES, toRawErc1155Order(this)];
+      ? [ERC721_ORDER_EIP712_TYPES, toRawErc721Order(this), "ERC721Order"]
+      : [ERC1155_ORDER_EIP712_TYPES, toRawErc1155Order(this), "ERC1155Order"];
   }
 
   private getBuilder(): BaseBuilder {
@@ -249,7 +249,7 @@ const ERC721_ORDER_EIP712_TYPES = {
 };
 
 const ERC1155_ORDER_EIP712_TYPES = {
-  ERC721Order: [
+  ERC1155Order: [
     { name: "direction", type: "uint8" },
     { name: "maker", type: "address" },
     { name: "taker", type: "address" },
@@ -261,7 +261,7 @@ const ERC1155_ORDER_EIP712_TYPES = {
     { name: "erc1155Token", type: "address" },
     { name: "erc1155TokenId", type: "uint256" },
     { name: "erc1155TokenProperties", type: "Property[]" },
-    { name: "erc1155TokenAmount", type: "uint256" },
+    { name: "erc1155TokenAmount", type: "uint128" },
   ],
   Fee: [
     { name: "recipient", type: "address" },
