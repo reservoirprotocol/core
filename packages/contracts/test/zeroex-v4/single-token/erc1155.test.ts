@@ -13,11 +13,12 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
+  let ted: SignerWithAddress;
 
   let erc1155: Contract;
 
   beforeEach(async () => {
-    [deployer, alice, bob, carol] = await ethers.getSigners();
+    [deployer, alice, bob, carol, ted] = await ethers.getSigners();
 
     erc1155 = await ethers
       .getContractFactory("MockERC1155", deployer)
@@ -112,7 +113,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     expect(sellerNftBalanceAfter).to.eq(0);
   });
 
-  it("build and match buy order with partial fill", async () => {
+  it("build and match buy order with partial fill and fees", async () => {
     const buyer = alice;
     const seller1 = bob;
     const seller2 = carol;
@@ -122,7 +123,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     const weth = new Common.Helpers.Weth(ethers.provider, 1);
 
     // Mint weth to buyer
-    await weth.deposit(buyer, price);
+    await weth.deposit(buyer, price.add(parseEther("0.3")));
 
     // Approve the exchange contract for the buyer
     await weth.approve(buyer, ZeroexV4.Addresses.Exchange[1]);
@@ -146,6 +147,12 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       tokenId: boughtTokenId,
       amount: 3,
       price,
+      fees: [
+        {
+          recipient: ted.address,
+          amount: parseEther("0.3"),
+        },
+      ],
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
 
@@ -177,6 +184,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       await exchange.match(seller, buyOrder, sellOrder);
 
       const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
+      const tedWethBalanceAfter = await weth.getBalance(ted.address);
       const buyerNftBalanceAfter = await nft.getBalance(
         buyer.address,
         boughtTokenId
@@ -186,7 +194,14 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
         boughtTokenId
       );
 
-      expect(buyerWethBalanceAfter).to.eq(price.sub(price.mul(2).div(3)));
+      expect(buyerWethBalanceAfter).to.eq(
+        price.add(
+          parseEther("0.3")
+            .sub(price.mul(2).div(3))
+            .sub(parseEther("0.3").mul(2).div(3))
+        )
+      );
+      expect(tedWethBalanceAfter).to.eq(parseEther("0.3").mul(2).div(3));
       expect(buyerNftBalanceAfter).to.eq(2);
       expect(sellerNftBalanceAfter).to.eq(0);
     }
@@ -214,6 +229,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       await exchange.match(seller, buyOrder, sellOrder);
 
       const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
+      const tedWethBalanceAfter = await weth.getBalance(ted.address);
       const buyerNftBalanceAfter = await nft.getBalance(
         buyer.address,
         boughtTokenId
@@ -224,6 +240,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       );
 
       expect(buyerWethBalanceAfter).to.eq(0);
+      expect(tedWethBalanceAfter).to.eq(parseEther("0.3"));
       expect(buyerNftBalanceAfter).to.eq(3);
       expect(sellerNftBalanceAfter).to.eq(0);
     }
@@ -337,6 +354,12 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       tokenId: soldTokenId,
       amount: 3,
       price,
+      fees: [
+        {
+          recipient: ted.address,
+          amount: parseEther("0.3"),
+        },
+      ],
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
 
@@ -358,6 +381,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       const sellerEthBalanceBefore = await ethers.provider.getBalance(
         seller.address
       );
+      const tedEthBalanceBefore = await ethers.provider.getBalance(ted.address);
       const buyerNftBalanceBefore = await nft.getBalance(
         buyer.address,
         soldTokenId
@@ -379,6 +403,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       const sellerEthBalanceAfter = await ethers.provider.getBalance(
         seller.address
       );
+      const tedEthBalanceAfter = await ethers.provider.getBalance(ted.address);
       const buyerNftBalanceAfter = await nft.getBalance(
         buyer.address,
         soldTokenId
@@ -393,6 +418,9 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       );
       expect(sellerEthBalanceAfter).to.be.gte(
         sellerEthBalanceBefore.add(price.mul(2).div(3))
+      );
+      expect(tedEthBalanceAfter.sub(tedEthBalanceBefore)).to.eq(
+        parseEther("0.3").mul(2).div(3)
       );
       expect(buyerNftBalanceAfter).to.eq(2);
       expect(sellerNftBalanceAfter).to.eq(1);
@@ -411,6 +439,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       const sellerEthBalanceBefore = await ethers.provider.getBalance(
         seller.address
       );
+      const tedEthBalanceBefore = await ethers.provider.getBalance(ted.address);
       const buyerNftBalanceBefore = await nft.getBalance(
         buyer.address,
         soldTokenId
@@ -432,6 +461,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       const sellerEthBalanceAfter = await ethers.provider.getBalance(
         seller.address
       );
+      const tedEthBalanceAfter = await ethers.provider.getBalance(ted.address);
       const buyerNftBalanceAfter = await nft.getBalance(
         buyer.address,
         soldTokenId
@@ -446,6 +476,9 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       );
       expect(sellerEthBalanceAfter).to.be.gte(
         sellerEthBalanceBefore.add(price.mul(1).div(3))
+      );
+      expect(tedEthBalanceAfter.sub(tedEthBalanceBefore)).to.eq(
+        parseEther("0.1")
       );
       expect(buyerNftBalanceAfter).to.eq(1);
       expect(sellerNftBalanceAfter).to.eq(0);
