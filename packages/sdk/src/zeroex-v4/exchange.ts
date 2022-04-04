@@ -70,9 +70,9 @@ export class Exchange {
           matchParams.nftAmount!,
           BytesEmpty,
           {
-            value: bn(order.params.erc20TokenAmount).div(
-              matchParams.nftAmount!
-            ),
+            value: bn(order.params.erc20TokenAmount)
+              .mul(order.params.nftAmount!)
+              .div(matchParams.nftAmount!),
           }
         );
       }
