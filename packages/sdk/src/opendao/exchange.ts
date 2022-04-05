@@ -60,6 +60,7 @@ export class Exchange {
           order.getRaw(),
           BytesEmpty,
         ]);
+        value = bn(order.params.erc20TokenAmount).add(feeAmount);
       }
     } else {
       const erc1155 = new Contract(order.params.nft, Erc1155Abi);
