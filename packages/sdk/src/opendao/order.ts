@@ -20,7 +20,7 @@ export class Order {
   public params: Types.BaseOrder;
 
   constructor(chainId: number, params: Types.BaseOrder) {
-    if (chainId !== 1 && chainId !== 3) {
+    if (chainId !== 1 && chainId !== 4) {
       throw new Error("Unsupported chain id");
     }
 
@@ -323,7 +323,7 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
         propertyData: lc(propertyData),
       })
     ),
-    nftAmount: s(order.nftAmount),
+    nftAmount: order.nftAmount ? s(order.nftAmount) : undefined,
     signatureType: order.signatureType ?? 1,
     v: order.v ?? 0,
     r: order.r ?? HashZero,
