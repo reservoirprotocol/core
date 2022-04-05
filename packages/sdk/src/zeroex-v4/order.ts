@@ -1,5 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
+import { BigNumber } from "@ethersproject/bignumber";
 import { splitSignature } from "@ethersproject/bytes";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
@@ -118,10 +119,7 @@ export class Order {
     }
 
     // Determine the order's fees (which are to be payed by the buyer)
-    let feeAmount = bn(0);
-    for (const { amount } of this.params.fees) {
-      feeAmount = feeAmount.add(amount);
-    }
+    let feeAmount = this.getFeeAmount();
 
     if (this.params.direction === Types.TradeDirection.BUY) {
       // Check that maker has enough balance to cover the payment
@@ -184,6 +182,14 @@ export class Order {
 
   public buildMatching(data?: any) {
     return this.getBuilder().buildMatching(this, data);
+  }
+
+  public getFeeAmount(): BigNumber {
+    let feeAmount = bn(0);
+    for (const { amount } of this.params.fees) {
+      feeAmount = feeAmount.add(amount);
+    }
+    return feeAmount;
   }
 
   private getEip712TypesAndValue() {

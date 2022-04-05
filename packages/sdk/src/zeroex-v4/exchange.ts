@@ -33,10 +33,7 @@ export class Exchange {
       ExchangeAbi
     );
 
-    let feeAmount = bn(0);
-    for (const { amount } of order.params.fees) {
-      feeAmount = feeAmount.add(amount);
-    }
+    const feeAmount = order.getFeeAmount();
 
     let to = exchange.address;
     let data: string;
@@ -114,10 +111,7 @@ export class Exchange {
       taker
     );
 
-    let feeAmount = bn(0);
-    for (const { amount } of order.params.fees) {
-      feeAmount = feeAmount.add(amount);
-    }
+    const feeAmount = order.getFeeAmount();
 
     if (order.params.kind?.startsWith("erc721")) {
       const erc721 = new Contract(order.params.nft, Erc721Abi, taker);
