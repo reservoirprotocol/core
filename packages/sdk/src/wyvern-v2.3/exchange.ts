@@ -95,7 +95,7 @@ export class Exchange {
         buyOrder.params.s,
         sellOrder.params.r,
         sellOrder.params.s,
-        HashZero,
+        HashZero.slice(0, -1) + "f",
       ],
     ]);
 
@@ -184,7 +184,7 @@ export class Exchange {
           buyOrder.params.s,
           sellOrder.params.r,
           sellOrder.params.s,
-          HashZero,
+          HashZero.slice(0, -1) + "f",
         ],
         {
           value:
