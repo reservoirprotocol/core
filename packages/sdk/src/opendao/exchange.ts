@@ -84,11 +84,11 @@ export class Exchange {
           BytesEmpty,
         ]);
         value = bn(order.params.erc20TokenAmount)
-          .mul(order.params.nftAmount!)
-          .div(matchParams.nftAmount!)
+          .mul(matchParams.nftAmount!)
+          .div(order.params.nftAmount!)
           // Buyer pays the fees
           .add(
-            feeAmount.mul(order.params.nftAmount!).div(matchParams.nftAmount!)
+            feeAmount.mul(matchParams.nftAmount!).div(order.params.nftAmount!)
           );
       }
     }
@@ -153,13 +153,13 @@ export class Exchange {
           BytesEmpty,
           {
             value: bn(order.params.erc20TokenAmount)
-              .mul(order.params.nftAmount!)
-              .div(matchParams.nftAmount!)
+              .mul(matchParams.nftAmount!)
+              .div(order.params.nftAmount!)
               // Buyer pays the fees
               .add(
                 feeAmount
-                  .mul(order.params.nftAmount!)
-                  .div(matchParams.nftAmount!)
+                  .mul(matchParams.nftAmount!)
+                  .div(order.params.nftAmount!)
               ),
           }
         );
