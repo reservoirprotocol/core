@@ -171,6 +171,121 @@ export class Exchange {
     }
   }
 
+  public batchBuyTransaction(
+    taker: string,
+    orders: Order[],
+    matchParams: Types.MatchParams[]
+  ): TxData {
+    const exchange = new Contract(
+      Addresses.Exchange[this.chainId],
+      ExchangeAbi
+    );
+
+    const sellOrders: any[] = [];
+    const signatures: any[] = [];
+    const erc1155FillAmounts: string[] = [];
+    const callbackData: string[] = [];
+
+    let value = bn(0);
+    for (let i = 0; i < Math.min(orders.length, matchParams.length); i++) {
+      if (orders[i].params.direction !== Types.TradeDirection.SELL) {
+        throw new Error("Invalid side");
+      }
+      if (!orders[i].params.kind?.startsWith("erc1155")) {
+        throw new Error("Invalid kind");
+      }
+
+      const feeAmount = orders[i].getFeeAmount();
+      value = value.add(
+        bn(matchParams[i].nftAmount!)
+          .mul(orders[i].params.erc20TokenAmount)
+          .add(orders[i].params.nftAmount!)
+          .sub(1)
+          .div(orders[i].params.nftAmount!)
+          // Buyer pays the fees
+          .add(
+            feeAmount
+              .mul(matchParams[i].nftAmount!)
+              .div(orders[i].params.nftAmount!)
+          )
+      );
+
+      sellOrders.push(orders[i].getRaw());
+      signatures.push(orders[i].getRaw());
+      erc1155FillAmounts.push(matchParams[i].nftAmount!);
+      callbackData.push(BytesEmpty);
+    }
+
+    return {
+      from: taker,
+      to: exchange.address,
+      data: exchange.interface.encodeFunctionData("batchBuyERC1155s", [
+        sellOrders,
+        signatures,
+        erc1155FillAmounts,
+        callbackData,
+        false,
+      ]),
+      value: value && bn(value).toHexString(),
+    };
+  }
+
+  public async batchBuy(
+    taker: Signer,
+    orders: Order[],
+    matchParams: Types.MatchParams[]
+  ): Promise<ContractTransaction | undefined> {
+    const exchange = new Contract(
+      Addresses.Exchange[this.chainId],
+      ExchangeAbi,
+      taker
+    );
+
+    const sellOrders: any[] = [];
+    const signatures: any[] = [];
+    const erc1155FillAmounts: string[] = [];
+    const callbackData: string[] = [];
+
+    let value = bn(0);
+    for (let i = 0; i < Math.min(orders.length, matchParams.length); i++) {
+      if (orders[i].params.direction !== Types.TradeDirection.SELL) {
+        throw new Error("Invalid side");
+      }
+      if (!orders[i].params.kind?.startsWith("erc1155")) {
+        throw new Error("Invalid kind");
+      }
+
+      const feeAmount = orders[i].getFeeAmount();
+      value = value.add(
+        bn(matchParams[i].nftAmount!)
+          .mul(orders[i].params.erc20TokenAmount)
+          .add(orders[i].params.nftAmount!)
+          .sub(1)
+          .div(orders[i].params.nftAmount!)
+          // Buyer pays the fees
+          .add(
+            feeAmount
+              .mul(matchParams[i].nftAmount!)
+              .div(orders[i].params.nftAmount!)
+          )
+      );
+
+      sellOrders.push(orders[i].getRaw());
+      signatures.push(orders[i].getRaw());
+      erc1155FillAmounts.push(matchParams[i].nftAmount!);
+      callbackData.push(BytesEmpty);
+    }
+
+    return exchange.batchBuyERC1155s(
+      sellOrders,
+      signatures,
+      erc1155FillAmounts,
+      callbackData,
+      false,
+      { value }
+    );
+  }
+
   public cancelTransaction(maker: string, order: Order): TxData {
     const exchange = new Contract(
       Addresses.Exchange[this.chainId],
