@@ -2,7 +2,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
-import { bn, getCurrentTimestamp, getRandomBytes32 } from "../../../utils";
+import { bn, getCurrentTimestamp, getRandomBytes } from "../../../utils";
 import { OrderSaleKind } from "../../types";
 
 export interface BaseBuildParams {
@@ -42,7 +42,7 @@ export abstract class BaseBuilder {
     // time discrepancies when checking the order's validity on-chain
     params.listingTime = params.listingTime ?? getCurrentTimestamp(-5 * 60);
     params.expirationTime = params.expirationTime ?? 0;
-    params.salt = params.salt ?? getRandomBytes32();
+    params.salt = params.salt ?? getRandomBytes();
     params.extra = params.extra ?? "0";
     params.v = params.v ?? 0;
     params.r = params.r ?? HashZero;

@@ -7,7 +7,7 @@ import { SingleTokenErc721BuilderV1 } from "../single-token/v1/erc721";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
-import { bn, getCurrentTimestamp, getRandomBytes32, s } from "../../../utils";
+import { bn, getCurrentTimestamp, getRandomBytes, s } from "../../../utils";
 
 import TokenRangeVerifierAbi from "../../abis/TokenRangeVerifier.json";
 import Erc721Abi from "../../../common/abis/Erc721.json";
@@ -172,7 +172,7 @@ export class TokenRangeErc721Builder extends BaseBuilder {
         feeRecipient: AddressZero,
         listingTime: getCurrentTimestamp(-60),
         expirationTime: 0,
-        salt: getRandomBytes32(),
+        salt: getRandomBytes(),
         nonce: data.nonce,
       });
       matchingOrder.params.takerRelayerFee = order.params.takerRelayerFee;

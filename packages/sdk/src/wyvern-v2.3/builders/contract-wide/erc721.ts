@@ -6,7 +6,7 @@ import { SingleTokenErc721BuilderV1 } from "../single-token/v1/erc721";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
-import { getCurrentTimestamp, getRandomBytes32, s } from "../../../utils";
+import { getCurrentTimestamp, getRandomBytes, s } from "../../../utils";
 
 import Erc721Abi from "../../../common/abis/Erc721.json";
 
@@ -136,7 +136,7 @@ export class ContractWideErc721Builder extends BaseBuilder {
         feeRecipient: AddressZero,
         listingTime: getCurrentTimestamp(-60),
         expirationTime: 0,
-        salt: getRandomBytes32(),
+        salt: getRandomBytes(),
         nonce: data.nonce,
       });
       matchingOrder.params.takerRelayerFee = order.params.takerRelayerFee;

@@ -3,7 +3,7 @@ import { HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
 import { MatchParams } from "../../types";
-import { getCurrentTimestamp, getRandomBytes32 } from "../../../utils";
+import { getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
 export interface BaseBuildParams {
   direction: "sell" | "buy";
@@ -37,7 +37,7 @@ export abstract class BaseBuilder {
   protected defaultInitialize(params: BaseBuildParams) {
     params.fees = params.fees ?? [];
     params.expiry = params.expiry ?? getCurrentTimestamp(365 * 24 * 60 * 60);
-    params.nonce = params.nonce ?? getRandomBytes32();
+    params.nonce = params.nonce ?? getRandomBytes();
     params.signatureType = params.signatureType ?? 1;
     params.v = params.v ?? 0;
     params.r = params.r ?? HashZero;

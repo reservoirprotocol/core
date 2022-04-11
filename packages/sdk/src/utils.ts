@@ -8,7 +8,7 @@ export const MaxUint256 = BigNumber.from("0x" + "f".repeat(64));
 
 // Random
 
-export const getRandomBytes32 = () => bn(randomBytes(32));
+export const getRandomBytes = (numBytes = 32) => bn(randomBytes(numBytes));
 
 // BigNumber
 

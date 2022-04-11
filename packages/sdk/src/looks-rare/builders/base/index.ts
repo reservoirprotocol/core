@@ -3,14 +3,14 @@ import { HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
 import { TakerOrderParams } from "../../types";
-import { getCurrentTimestamp } from "../../../utils";
+import { getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
 export interface BaseBuildParams {
   isOrderAsk: boolean;
   signer: string;
   collection: string;
   price: BigNumberish;
-  nonce: BigNumberish;
+  nonce?: BigNumberish;
   startTime?: number;
   endTime?: number;
   minPercentageToAsk?: number;
@@ -36,6 +36,7 @@ export abstract class BaseBuilder {
     params.startTime = params.startTime ?? getCurrentTimestamp(-5 * 60);
     params.endTime = params.endTime ?? getCurrentTimestamp(365 * 24 * 60 * 60);
     params.minPercentageToAsk = params.minPercentageToAsk ?? 8500;
+    params.nonce = params.nonce ?? getRandomBytes(10);
     params.v = params.v ?? 0;
     params.r = params.r ?? HashZero;
     params.s = params.s ?? HashZero;

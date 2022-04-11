@@ -9,7 +9,7 @@ import * as Types from "../../../types";
 import {
   BytesEmpty,
   getCurrentTimestamp,
-  getRandomBytes32,
+  getRandomBytes,
   s,
 } from "../../../../utils";
 
@@ -231,7 +231,7 @@ export class SingleTokenErc1155BuilderV2 extends BaseBuilder {
         feeRecipient: AddressZero,
         listingTime: getCurrentTimestamp(-60),
         expirationTime: 0,
-        salt: getRandomBytes32(),
+        salt: getRandomBytes(),
         nonce: data.nonce,
       });
       matchingOrder.params.takerRelayerFee = order.params.takerRelayerFee;
@@ -249,7 +249,7 @@ export class SingleTokenErc1155BuilderV2 extends BaseBuilder {
         feeRecipient: AddressZero,
         listingTime: getCurrentTimestamp(-60),
         expirationTime: 0,
-        salt: getRandomBytes32(),
+        salt: getRandomBytes(),
         nonce: data.nonce,
       });
       matchingOrder.params.makerRelayerFee = order.params.makerRelayerFee;

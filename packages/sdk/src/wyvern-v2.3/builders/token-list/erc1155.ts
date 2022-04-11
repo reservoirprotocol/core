@@ -10,7 +10,7 @@ import { BaseBuilder, BaseBuildParams, BaseOrderInfo } from "../base";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
-import { getCurrentTimestamp, getRandomBytes32, s } from "../../../utils";
+import { getCurrentTimestamp, getRandomBytes, s } from "../../../utils";
 
 import TokenListVerifierAbi from "../../abis/TokenListVerifier.json";
 import Erc1155Abi from "../../../common/abis/Erc1155.json";
@@ -262,7 +262,7 @@ export class TokenListErc1155Builder extends BaseBuilder {
         extra: s(order.params.extra),
         listingTime: getCurrentTimestamp(-60),
         expirationTime: 0,
-        salt: s(getRandomBytes32()),
+        salt: s(getRandomBytes()),
         nonce: s(data.nonce),
       });
     } else if (order.params.side === Types.OrderSide.SELL) {

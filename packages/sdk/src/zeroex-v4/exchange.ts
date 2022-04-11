@@ -83,8 +83,10 @@ export class Exchange {
           matchParams.nftAmount!,
           BytesEmpty,
         ]);
-        value = bn(order.params.erc20TokenAmount)
-          .mul(matchParams.nftAmount!)
+        value = bn(matchParams.nftAmount!)
+          .mul(order.params.erc20TokenAmount)
+          .add(order.params.nftAmount!)
+          .sub(1)
           .div(order.params.nftAmount!)
           // Buyer pays the fees
           .add(
@@ -152,8 +154,10 @@ export class Exchange {
           matchParams.nftAmount!,
           BytesEmpty,
           {
-            value: bn(order.params.erc20TokenAmount)
-              .mul(matchParams.nftAmount!)
+            value: bn(matchParams.nftAmount!)
+              .mul(order.params.erc20TokenAmount)
+              .add(order.params.nftAmount!)
+              .sub(1)
               .div(order.params.nftAmount!)
               // Buyer pays the fees
               .add(
