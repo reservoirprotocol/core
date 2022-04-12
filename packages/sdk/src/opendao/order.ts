@@ -193,7 +193,7 @@ export class Order {
   }
 
   private getEip712TypesAndValue() {
-    return this.params.kind?.startsWith("erc721")
+    return !this.params.nftAmount
       ? [ERC721_ORDER_EIP712_TYPES, toRawErc721Order(this), "ERC721Order"]
       : [ERC1155_ORDER_EIP712_TYPES, toRawErc1155Order(this), "ERC1155Order"];
   }
