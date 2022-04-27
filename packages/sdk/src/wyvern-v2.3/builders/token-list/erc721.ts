@@ -143,7 +143,7 @@ export class TokenListErc721Builder extends BaseBuilder {
       const calldata =
         new Interface(Erc721Abi).encodeFunctionData("transferFrom", [
           AddressZero,
-          params.maker,
+          params.recipient ?? params.maker,
           0,
         ]) +
         // merkle root

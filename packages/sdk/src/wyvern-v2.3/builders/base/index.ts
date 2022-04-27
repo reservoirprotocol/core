@@ -13,6 +13,7 @@ export interface BaseBuildParams {
   fee: number;
   feeRecipient: string;
   nonce: BigNumberish;
+  recipient?: string;
   listingTime?: number;
   expirationTime?: number;
   salt?: BigNumberish;

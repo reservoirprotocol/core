@@ -3,7 +3,7 @@ import {
   TransactionResponse,
 } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish } from "@ethersproject/bignumber";
+import { BigNumberish, BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 
 import { MaxUint256, TxData } from "../../utils";
@@ -41,14 +41,14 @@ export class Erc20 {
     };
   }
 
-  public async getBalance(owner: string): Promise<BigNumberish> {
+  public async getBalance(owner: string): Promise<BigNumber> {
     return this.contract.balanceOf(owner);
   }
 
   public async getAllowance(
     owner: string,
     spender: string
-  ): Promise<BigNumberish> {
+  ): Promise<BigNumber> {
     return this.contract.allowance(owner, spender);
   }
 }

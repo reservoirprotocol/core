@@ -147,7 +147,7 @@ export class SingleTokenErc1155BuilderV2 extends BaseBuilder {
           "matchERC1155UsingCriteria",
           [
             AddressZero,
-            params.maker,
+            params.recipient ?? params.maker,
             params.contract,
             params.tokenId,
             1,
@@ -213,7 +213,11 @@ export class SingleTokenErc1155BuilderV2 extends BaseBuilder {
     }
   }
 
-  public buildMatching(order: Order, taker: string, data: { nonce: string }) {
+  public buildMatching(
+    order: Order,
+    taker: string,
+    data: { nonce: string; recipient?: string }
+  ) {
     const info = this.getInfo(order);
     if (!info) {
       throw new Error("Invalid order");
@@ -227,6 +231,7 @@ export class SingleTokenErc1155BuilderV2 extends BaseBuilder {
         side: "sell",
         price: order.getMatchingPrice(),
         paymentToken: order.params.paymentToken,
+        recipient: data.recipient,
         fee: 0,
         feeRecipient: AddressZero,
         listingTime: getCurrentTimestamp(-60),
@@ -245,6 +250,7 @@ export class SingleTokenErc1155BuilderV2 extends BaseBuilder {
         side: "buy",
         price: order.getMatchingPrice(),
         paymentToken: order.params.paymentToken,
+        recipient: data.recipient,
         fee: 0,
         feeRecipient: AddressZero,
         listingTime: getCurrentTimestamp(-60),

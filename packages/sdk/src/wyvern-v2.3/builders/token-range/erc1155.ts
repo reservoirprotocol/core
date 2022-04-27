@@ -115,7 +115,7 @@ export class TokenRangeErc1155Builder extends BaseBuilder {
         howToCall: Types.OrderHowToCall.CALL,
         calldata: new Interface(Erc1155Abi).encodeFunctionData(
           "safeTransferFrom",
-          [AddressZero, params.maker, 0, 1, "0x"]
+          [AddressZero, params.recipient ?? params.maker, 0, 1, "0x"]
         ),
         replacementPattern: REPLACEMENT_PATTERN_BUY,
         staticTarget: Addresses.TokenRangeVerifier[this.chainId],

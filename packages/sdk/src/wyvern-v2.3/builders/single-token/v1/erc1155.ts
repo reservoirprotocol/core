@@ -127,7 +127,13 @@ export class SingleTokenErc1155BuilderV1 extends BaseBuilder {
         howToCall: Types.OrderHowToCall.CALL,
         calldata: new Interface(Erc1155Abi).encodeFunctionData(
           "safeTransferFrom",
-          [AddressZero, params.maker, params.tokenId, 1, "0x"]
+          [
+            AddressZero,
+            params.recipient ?? params.maker,
+            params.tokenId,
+            1,
+            "0x",
+          ]
         ),
         replacementPattern: REPLACEMENT_PATTERN_BUY,
         staticTarget: AddressZero,
@@ -179,7 +185,11 @@ export class SingleTokenErc1155BuilderV1 extends BaseBuilder {
     }
   }
 
-  public buildMatching(order: Order, taker: string, data: { nonce: string }) {
+  public buildMatching(
+    order: Order,
+    taker: string,
+    data: { nonce: string; recipient?: string }
+  ) {
     const info = this.getInfo(order);
     if (!info) {
       throw new Error("Invalid order");
@@ -193,6 +203,7 @@ export class SingleTokenErc1155BuilderV1 extends BaseBuilder {
         side: "sell",
         price: order.getMatchingPrice(),
         paymentToken: order.params.paymentToken,
+        recipient: data.recipient,
         fee: 0,
         feeRecipient: AddressZero,
         listingTime: getCurrentTimestamp(-60),
@@ -211,6 +222,7 @@ export class SingleTokenErc1155BuilderV1 extends BaseBuilder {
         side: "buy",
         price: order.getMatchingPrice(),
         paymentToken: order.params.paymentToken,
+        recipient: data.recipient,
         fee: 0,
         feeRecipient: AddressZero,
         listingTime: getCurrentTimestamp(-60),

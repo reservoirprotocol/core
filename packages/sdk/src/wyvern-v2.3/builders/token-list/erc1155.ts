@@ -151,7 +151,7 @@ export class TokenListErc1155Builder extends BaseBuilder {
       const calldata =
         new Interface(Erc1155Abi).encodeFunctionData("safeTransferFrom", [
           AddressZero,
-          params.maker,
+          params.recipient ?? params.maker,
           0,
           1,
           "0x",

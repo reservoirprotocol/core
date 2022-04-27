@@ -111,7 +111,7 @@ export class TokenRangeErc721Builder extends BaseBuilder {
         howToCall: Types.OrderHowToCall.CALL,
         calldata: new Interface(Erc721Abi).encodeFunctionData("transferFrom", [
           AddressZero,
-          params.maker,
+          params.recipient ?? params.maker,
           0,
         ]),
         replacementPattern: REPLACEMENT_PATTERN_BUY,
