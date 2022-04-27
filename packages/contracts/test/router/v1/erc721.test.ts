@@ -5,9 +5,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-import { getCurrentTimestamp } from "../utils";
+import { getCurrentTimestamp } from "../../utils";
 
-describe("Router V1", () => {
+describe("Router V1 - ERC721", () => {
   let chainId: number;
 
   let deployer: SignerWithAddress;
