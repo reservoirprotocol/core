@@ -1,4 +1,3 @@
-import { Interface } from "@ethersproject/abi";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
 import * as Common from "@reservoir0x/sdk/src/common";
@@ -7,9 +6,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-import { getCurrentTimestamp } from "../../utils";
+import { getCurrentTimestamp } from "../../../utils";
 
-describe("WyvernV2.3 - TokenListErc1155", () => {
+describe("WyvernV2.3 - ContractWideErc1155", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -46,8 +45,7 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
 
     const price = parseEther("1");
     const fee = 250;
-    const boughtTokenIds = Array.from(Array(100).keys());
-    const soldTokenId = 50;
+    const soldTokenId = 1;
 
     const weth = new Common.Helpers.Weth(ethers.provider, 1);
 
@@ -78,13 +76,12 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
 
     const exchange = new WyvernV23.Exchange(1);
 
-    const builder = new WyvernV23.Builders.Erc1155.TokenList(1);
+    const builder = new WyvernV23.Builders.Erc1155.ContractWide(1);
 
     // Build buy order
     let buyOrder = builder.build({
       maker: buyer.address,
       contract: erc1155.address,
-      tokenIds: boughtTokenIds,
       side: "buy",
       price,
       paymentToken: Common.Addresses.Weth[1],
@@ -94,15 +91,12 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
       nonce: await exchange.getNonce(ethers.provider, buyer.address),
     });
 
-    buyOrder.checkValidity();
-
     // Sign the order
     await buyOrder.sign(buyer);
 
     // Create matching sell order
     const sellOrder = buyOrder.buildMatching(seller.address, {
       tokenId: soldTokenId,
-      tokenIds: boughtTokenIds,
       nonce: await exchange.getNonce(ethers.provider, seller.address),
     });
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);

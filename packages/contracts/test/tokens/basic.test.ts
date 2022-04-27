@@ -1,12 +1,8 @@
 import { Contract } from "@ethersproject/contracts";
-import { parseEther } from "@ethersproject/units";
-import * as Common from "@reservoir0x/sdk/src/common";
-import * as ZeroexV4 from "@reservoir0x/sdk/src/zeroex-v4";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 
-describe("Test nfts", () => {
+describe("Test tokens", () => {
   let deployer: SignerWithAddress;
 
   let erc721: Contract;
@@ -32,11 +28,8 @@ describe("Test nfts", () => {
       );
   });
 
-  it("testing", async () => {
+  it("Minting", async () => {
     await erc721.connect(deployer).mint(0);
     await erc1155.connect(deployer).mint(0, 10);
-
-    const result = await erc721.tokenURI(0);
-    const result2 = await erc1155.uri(0);
   });
 });

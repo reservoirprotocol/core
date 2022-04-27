@@ -6,7 +6,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-import { getCurrentTimestamp } from "../../utils";
+import { getCurrentTimestamp } from "../../../utils";
 
 describe("ZeroEx V4 - SingleToken Erc1155", () => {
   let deployer: SignerWithAddress;

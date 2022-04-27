@@ -1,4 +1,3 @@
-import { Interface } from "@ethersproject/abi";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
 import * as Common from "@reservoir0x/sdk/src/common";
@@ -9,19 +8,19 @@ import { ethers, network } from "hardhat";
 
 import { getCurrentTimestamp } from "../../../utils";
 
-describe("WyvernV2.3 - SingleTokenErc1155 V2", () => {
+describe("WyvernV2.3 - TokenListErc721", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
 
-  let erc1155: Contract;
+  let erc721: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol] = await ethers.getSigners();
 
-    erc1155 = await ethers
-      .getContractFactory("MockERC1155", deployer)
+    erc721 = await ethers
+      .getContractFactory("MockERC721", deployer)
       .then((factory) => factory.deploy());
   });
 
@@ -46,7 +45,8 @@ describe("WyvernV2.3 - SingleTokenErc1155 V2", () => {
 
     const price = parseEther("1");
     const fee = 250;
-    const boughtTokenId = 0;
+    const boughtTokenIds = Array.from(Array(1000).keys());
+    const soldTokenId = 999;
 
     const weth = new Common.Helpers.Weth(ethers.provider, 1);
 
@@ -59,8 +59,8 @@ describe("WyvernV2.3 - SingleTokenErc1155 V2", () => {
     // Approve the token transfer proxy for the seller
     await weth.approve(seller, WyvernV23.Addresses.TokenTransferProxy[1]);
 
-    // Mint erc1155 to seller
-    await erc1155.connect(seller).mint(boughtTokenId);
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
 
     // Register user proxy for the seller
     const proxyRegistry = new WyvernV23.Helpers.ProxyRegistry(
@@ -70,20 +70,20 @@ describe("WyvernV2.3 - SingleTokenErc1155 V2", () => {
     await proxyRegistry.registerProxy(seller);
     const proxy = await proxyRegistry.getProxy(seller.address);
 
-    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+    const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
 
     // Approve the user proxy
     await nft.approve(seller, proxy);
 
     const exchange = new WyvernV23.Exchange(1);
 
-    const builder = new WyvernV23.Builders.Erc1155.SingleToken.V2(1);
+    const builder = new WyvernV23.Builders.Erc721.TokenList(1);
 
     // Build buy order
     let buyOrder = builder.build({
       maker: buyer.address,
-      contract: erc1155.address,
-      tokenId: boughtTokenId,
+      contract: erc721.address,
+      tokenIds: boughtTokenIds,
       side: "buy",
       price,
       paymentToken: Common.Addresses.Weth[1],
@@ -93,58 +93,46 @@ describe("WyvernV2.3 - SingleTokenErc1155 V2", () => {
       nonce: await exchange.getNonce(ethers.provider, buyer.address),
     });
 
+    buyOrder.checkValidity();
+
     // Sign the order
     await buyOrder.sign(buyer);
 
     // Create matching sell order
     const sellOrder = buyOrder.buildMatching(seller.address, {
+      tokenId: soldTokenId,
+      tokenIds: boughtTokenIds,
       nonce: await exchange.getNonce(ethers.provider, seller.address),
     });
     sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
 
     await buyOrder.checkFillability(ethers.provider);
 
-    const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
-    const sellerWethBalanceBefore = await weth.getBalance(seller.address);
-    const feeRecipientWethBalanceBefore = await weth.getBalance(
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    const feeRecipientBalanceBefore = await weth.getBalance(
       feeRecipient.address
     );
-    const buyerErc1155BalanceBefore = await nft.getBalance(
-      buyer.address,
-      boughtTokenId
-    );
-    const sellerErc1155BalanceBefore = await nft.getBalance(
-      seller.address,
-      boughtTokenId
-    );
+    const ownerBefore = await nft.getOwner(soldTokenId);
 
-    expect(buyerWethBalanceBefore).to.eq(price);
-    expect(sellerWethBalanceBefore).to.eq(0);
-    expect(feeRecipientWethBalanceBefore).to.eq(0);
-    expect(buyerErc1155BalanceBefore).to.eq(0);
-    expect(sellerErc1155BalanceBefore).to.eq(1);
+    expect(buyerBalanceBefore).to.eq(price);
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(feeRecipientBalanceBefore).to.eq(0);
+    expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
     await exchange.match(seller, buyOrder, sellOrder);
 
-    const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
-    const sellerWethBalanceAfter = await weth.getBalance(seller.address);
-    const feeRecipientWethBalanceAfter = await weth.getBalance(
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const feeRecipientBalanceAfter = await weth.getBalance(
       feeRecipient.address
     );
-    const buyerErc1155BalanceAfter = await nft.getBalance(
-      buyer.address,
-      boughtTokenId
-    );
-    const sellerErc1155BalanceAfter = await nft.getBalance(
-      seller.address,
-      boughtTokenId
-    );
+    const ownerAfter = await nft.getOwner(soldTokenId);
 
-    expect(buyerWethBalanceAfter).to.eq(0);
-    expect(sellerWethBalanceAfter).to.eq(price.sub(price.mul(fee).div(10000)));
-    expect(feeRecipientWethBalanceAfter).to.eq(price.mul(fee).div(10000));
-    expect(buyerErc1155BalanceAfter).to.eq(1);
-    expect(sellerErc1155BalanceAfter).to.eq(0);
+    expect(buyerBalanceAfter).to.eq(0);
+    expect(sellerBalanceAfter).to.eq(price.sub(price.mul(fee).div(10000)));
+    expect(feeRecipientBalanceAfter).to.eq(price.mul(fee).div(10000));
+    expect(ownerAfter).to.eq(buyer.address);
   });
 });
