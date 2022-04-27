@@ -1,19 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
-import {IRouterV1} from "./interfaces/IRouterV1.sol";
-import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
+import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
 
-contract RouterV1 is IRouterV1, IERC721Receiver, IERC1155Receiver {
+contract RouterV1 {
+    enum OrderSide {
+        BUY,
+        SELL
+    }
+
+    enum FillKind {
+        WYVERN_V23,
+        LOOKS_RARE,
+        ZEROEX_V4
+    }
+
     address public immutable weth;
 
     address public immutable looksRare;
@@ -23,10 +30,13 @@ contract RouterV1 is IRouterV1, IERC721Receiver, IERC1155Receiver {
     address public immutable wyvernV23;
     address public immutable wyvernV23Proxy;
 
+    address public immutable zeroExV4;
+
     constructor(
         address wethAddress,
         address looksRareAddress,
-        address wyvernV23Address
+        address wyvernV23Address,
+        address zeroExV4Address
     ) {
         weth = wethAddress;
 
@@ -34,7 +44,7 @@ contract RouterV1 is IRouterV1, IERC721Receiver, IERC1155Receiver {
 
         looksRare = looksRareAddress;
 
-        // Cache the transfer contracts
+        // Cache the transfer manager contracts
         address transferSelectorNFT = ILooksRare(looksRare)
             .transferSelectorNFT();
         looksRareTransferManagerERC721 = ILooksRareTransferSelectorNFT(
@@ -60,42 +70,119 @@ contract RouterV1 is IRouterV1, IERC721Receiver, IERC1155Receiver {
             IWyvernV23(wyvernV23).tokenTransferProxy(),
             type(uint256).max
         );
+
+        // --- ZeroExV4 setup ---
+
+        zeroExV4 = zeroExV4Address;
     }
 
     receive() external payable {
         // For unwrapping WETH
     }
 
-    function fillWyvernV23(
-        address, // referrer
-        bytes memory data
-    ) public payable override {
-        // TODO: Optimize for gas efficiency.
-
-        (bool success, ) = wyvernV23.call{value: msg.value}(data);
-        require(success, "Unsuccessfull fill");
-    }
-
-    function fillLooksRare(
+    function genericERC721Fill(
         address, // referrer
         bytes memory data,
+        FillKind fillKind,
+        OrderSide takerSide,
         address collection,
         uint256 tokenId,
-        uint256 amount
-    ) public payable override {
-        // TODO: Optimize for gas efficiency.
+        bool unwrapWeth
+    ) external payable {
+        address target;
+        address operator;
+        if (fillKind == FillKind.WYVERN_V23) {
+            target = wyvernV23;
+            operator = wyvernV23Proxy;
+        } else if (fillKind == FillKind.LOOKS_RARE) {
+            target = looksRare;
+            operator = looksRareTransferManagerERC721;
+        } else if (fillKind == FillKind.ZEROEX_V4) {
+            target = zeroExV4;
+            operator = zeroExV4;
+        } else {
+            revert("Unknown fill kind");
+        }
 
-        (bool success, ) = looksRare.call{value: msg.value}(data);
+        if (takerSide == OrderSide.SELL) {
+            // Approve the exchange to transfer the NFT out of the router.
+            bool isApproved = IERC721(collection).isApprovedForAll(
+                address(this),
+                operator
+            );
+            if (!isApproved) {
+                IERC721(collection).setApprovalForAll(operator, true);
+            }
+        }
+
+        (bool success, ) = target.call{value: msg.value}(data);
         require(success, "Unsuccessfull fill");
 
-        // Need to send the NFT to the actual taker.
-        if (IERC165(collection).supportsInterface(0x80ac58cd)) {
+        if (takerSide == OrderSide.BUY && fillKind != FillKind.WYVERN_V23) {
+            // When filling LooksRare or ZeroExV4 listings we need to send
+            // the NFT to the taker's wallet after the fill (since they do
+            // not allow specifying a different recipient than the taker).
             IERC721(collection).transferFrom(
                 address(this),
                 msg.sender,
                 tokenId
             );
-        } else if (IERC165(collection).supportsInterface(0xd9b67a26)) {
+        } else if (takerSide == OrderSide.SELL) {
+            // Send the payment to the actual taker.
+            uint256 balance = IERC20(weth).balanceOf(address(this));
+            if (unwrapWeth) {
+                IWETH(weth).withdraw(balance);
+                (success, ) = payable(msg.sender).call{value: balance}("");
+                require(success, "Could not send payment");
+            } else {
+                IERC20(weth).transfer(msg.sender, balance);
+            }
+        }
+    }
+
+    function genericERC1155Fill(
+        address, // referrer
+        bytes memory data,
+        FillKind fillKind,
+        OrderSide takerSide,
+        address collection,
+        uint256 tokenId,
+        uint256 amount,
+        bool unwrapWeth
+    ) external payable {
+        address target;
+        address operator;
+        if (fillKind == FillKind.WYVERN_V23) {
+            target = wyvernV23;
+            operator = wyvernV23Proxy;
+        } else if (fillKind == FillKind.LOOKS_RARE) {
+            target = looksRare;
+            operator = looksRareTransferManagerERC1155;
+        } else if (fillKind == FillKind.ZEROEX_V4) {
+            target = zeroExV4;
+            operator = zeroExV4;
+        } else {
+            revert("Unknown fill kind");
+        }
+
+        if (takerSide == OrderSide.SELL) {
+            // Approve the exchange to transfer the NFT out of the router.
+            bool isApproved = IERC1155(collection).isApprovedForAll(
+                address(this),
+                operator
+            );
+            if (!isApproved) {
+                IERC1155(collection).setApprovalForAll(operator, true);
+            }
+        }
+
+        (bool success, ) = target.call{value: msg.value}(data);
+        require(success, "Unsuccessfull fill");
+
+        if (takerSide == OrderSide.BUY && fillKind != FillKind.WYVERN_V23) {
+            // When filling LooksRare or ZeroExV4 listings we need to send
+            // the NFT to the taker's wallet after the fill (since they do
+            // not allow specifying a different recipient than the taker).
             IERC1155(collection).safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -103,85 +190,55 @@ contract RouterV1 is IRouterV1, IERC721Receiver, IERC1155Receiver {
                 amount,
                 ""
             );
-        } else {
-            revert("Unsupported NFT");
+        } else if (takerSide == OrderSide.SELL) {
+            // Send the payment to the actual taker.
+            uint256 balance = IERC20(weth).balanceOf(address(this));
+            if (unwrapWeth) {
+                IWETH(weth).withdraw(balance);
+                (success, ) = payable(msg.sender).call{value: balance}("");
+                require(success, "Could not send payment");
+            } else {
+                IERC20(weth).transfer(msg.sender, balance);
+            }
         }
     }
 
     function onERC721Received(
-        address taker,
+        address, // operator,
         address, // from
         uint256, // tokenId,
-        bytes calldata fillData
+        bytes calldata data
     ) external returns (bytes4) {
-        if (fillData.length == 0) {
-            return 0x00000000;
+        if (data.length == 0) {
+            return this.onERC721Received.selector;
         }
 
-        // Execute the fill
-        bool success;
-        bytes4 selector = bytes4(fillData[:4]);
-        if (selector == IRouterV1.fillWyvernV23.selector) {
-            bool isApproved = IERC721(msg.sender).isApprovedForAll(
-                address(this),
-                wyvernV23Proxy
-            );
-            if (!isApproved) {
-                IERC721(msg.sender).setApprovalForAll(wyvernV23Proxy, true);
-            }
+        bytes4 selector = bytes4(data[:4]);
+        require(selector == this.genericERC721Fill.selector, "Wrong selector");
 
-            (success, ) = address(this).call(fillData);
-        } else if (selector == IRouterV1.fillLooksRare.selector) {
-            bool isApproved = IERC721(msg.sender).isApprovedForAll(
-                address(this),
-                looksRareTransferManagerERC721
-            );
-            if (!isApproved) {
-                IERC721(msg.sender).setApprovalForAll(
-                    looksRareTransferManagerERC721,
-                    true
-                );
-            }
-
-            (success, ) = address(this).call(fillData);
-        }
+        (bool success, ) = address(this).call(data);
         require(success, "Unsuccessfull fill");
 
-        // Send received payment to the actual taker
-        uint256 balance = IERC20(weth).balanceOf(address(this));
-        IWETH(weth).withdraw(balance);
-        (success, ) = taker.call{value: balance}("");
-        require(success, "Could not send payment");
-
-        return IERC721Receiver.onERC721Received.selector;
+        return this.onERC721Received.selector;
     }
 
     function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata fillData
-    ) external pure returns (bytes4) {
-        if (fillData.length == 0) {
-            return 0x00000000;
+        address, // operator
+        address, // from
+        uint256, // tokenId
+        uint256, // amount
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length == 0) {
+            return this.onERC1155Received.selector;
         }
 
-        return IERC1155Receiver.onERC1155Received.selector;
-    }
+        bytes4 selector = bytes4(data[:4]);
+        require(selector == this.genericERC1155Fill.selector, "Wrong selector");
 
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure returns (bytes4) {
-        // Batch transfers not supported
-        return 0x00000000;
-    }
+        (bool success, ) = address(this).call(data);
+        require(success, "Unsuccessfull fill");
 
-    function supportsInterface(bytes4) external pure returns (bool) {
-        return false;
+        return this.onERC1155Received.selector;
     }
 }

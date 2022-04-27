@@ -19,6 +19,17 @@ describe("Router V1", () => {
   let erc721: Contract;
   let router: Contract;
 
+  enum OrderSide {
+    BUY,
+    SELL,
+  }
+
+  enum FillKind {
+    WYVERN_V23,
+    LOOKS_RARE,
+    ZEROEX_V4,
+  }
+
   beforeEach(async () => {
     chainId = await ethers.provider.getNetwork().then((n) => n.chainId);
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
@@ -33,7 +44,8 @@ describe("Router V1", () => {
         factory.deploy(
           Sdk.Common.Addresses.Weth[chainId],
           Sdk.LooksRare.Addresses.Exchange[chainId],
-          Sdk.WyvernV23.Addresses.Exchange[chainId]
+          Sdk.WyvernV23.Addresses.Exchange[chainId],
+          Sdk.ZeroExV4.Addresses.Exchange[chainId]
         )
       );
   });
@@ -52,7 +64,7 @@ describe("Router V1", () => {
     });
   });
 
-  it("fillWyvernV23 - fill listing", async () => {
+  it("WyvernV23 - fill listing", async () => {
     const buyer = alice;
     const seller = bob;
     const feeRecipient = carol;
@@ -107,9 +119,20 @@ describe("Router V1", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
-    await router.connect(buyer).fillWyvernV23(referrer.address, tx.data, {
-      value: tx.value,
-    });
+    await router
+      .connect(buyer)
+      .genericERC721Fill(
+        referrer.address,
+        tx.data,
+        FillKind.WYVERN_V23,
+        OrderSide.BUY,
+        erc721.address,
+        soldTokenId,
+        true,
+        {
+          value: tx.value,
+        }
+      );
 
     const sellerEthBalanceAfter = await seller.getBalance();
     const ownerAfter = await erc721.ownerOf(soldTokenId);
@@ -119,7 +142,7 @@ describe("Router V1", () => {
     expect(ownerAfter).to.eq(buyer.address);
   });
 
-  it("fillWyvernV23 - fill bid", async () => {
+  it("WyvernV23 - fill bid", async () => {
     const buyer = alice;
     const seller = bob;
     const feeRecipient = carol;
@@ -179,9 +202,281 @@ describe("Router V1", () => {
         seller.address,
         router.address,
         boughtTokenId,
-        router.interface.encodeFunctionData("fillWyvernV23", [
+        router.interface.encodeFunctionData("genericERC721Fill", [
           referrer.address,
           tx.data,
+          FillKind.WYVERN_V23,
+          OrderSide.SELL,
+          erc721.address,
+          boughtTokenId,
+          0,
+        ]),
+        { gasLimit: 1000000 }
+      );
+
+    const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
+    const ownerAfter = await erc721.ownerOf(boughtTokenId);
+    expect(buyerWethBalanceBefore.sub(buyerWethBalanceAfter)).to.eq(price);
+    expect(ownerAfter).to.eq(buyer.address);
+  });
+
+  it("LooksRare - fill listing", async () => {
+    const buyer = alice;
+    const seller = bob;
+
+    const price = parseEther("1");
+    const fee = 200;
+    const soldTokenId = 0;
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
+
+    // Approve the transfer manager
+    await erc721
+      .connect(seller)
+      .setApprovalForAll(
+        Sdk.LooksRare.Addresses.TransferManagerErc721[chainId],
+        true
+      );
+
+    const exchange = new Sdk.LooksRare.Exchange(chainId);
+    const builder = new Sdk.LooksRare.Builders.SingleToken(chainId);
+
+    // Build sell order
+    let sellOrder = builder.build({
+      isOrderAsk: true,
+      signer: seller.address,
+      collection: erc721.address,
+      tokenId: soldTokenId,
+      price,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+      nonce: await exchange.getNonce(ethers.provider, seller.address),
+    });
+    await sellOrder.sign(seller);
+
+    // Create matching buy order
+    const buyOrder = sellOrder.buildMatching(router.address);
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
+
+    const sellerWethBalanceBefore = await weth.getBalance(seller.address);
+    const ownerBefore = await erc721.ownerOf(soldTokenId);
+    expect(ownerBefore).to.eq(seller.address);
+
+    const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder);
+    await router
+      .connect(buyer)
+      .genericERC721Fill(
+        referrer.address,
+        tx.data,
+        FillKind.LOOKS_RARE,
+        OrderSide.BUY,
+        sellOrder.params.collection,
+        sellOrder.params.tokenId,
+        true,
+        {
+          value: tx.value,
+        }
+      );
+
+    const sellerWethBalanceAfter = await weth.getBalance(seller.address);
+    const ownerAfter = await erc721.ownerOf(soldTokenId);
+    expect(sellerWethBalanceAfter.sub(sellerWethBalanceBefore)).to.eq(
+      price.sub(price.mul(fee).div(10000))
+    );
+    expect(ownerAfter).to.eq(buyer.address);
+  });
+
+  it("LooksRare - fill bid", async () => {
+    const buyer = alice;
+    const seller = bob;
+
+    const price = parseEther("1");
+    const boughtTokenId = 0;
+
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price);
+
+    // Approve the token transfer proxy for the buyer
+    await weth.approve(buyer, Sdk.LooksRare.Addresses.Exchange[chainId]);
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(boughtTokenId);
+
+    const exchange = new Sdk.LooksRare.Exchange(chainId);
+    const builder = new Sdk.LooksRare.Builders.SingleToken(chainId);
+
+    // Build buy order
+    let buyOrder = builder.build({
+      isOrderAsk: false,
+      signer: buyer.address,
+      collection: erc721.address,
+      tokenId: boughtTokenId,
+      price,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+      nonce: await exchange.getNonce(ethers.provider, buyer.address),
+    });
+    await buyOrder.sign(buyer);
+
+    // Create matching sell order
+    const sellOrder = buyOrder.buildMatching(router.address);
+
+    await buyOrder.checkFillability(ethers.provider);
+
+    const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
+    const ownerBefore = await erc721.ownerOf(boughtTokenId);
+    expect(ownerBefore).to.eq(seller.address);
+
+    const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
+    await erc721
+      .connect(seller)
+      ["safeTransferFrom(address,address,uint256,bytes)"](
+        seller.address,
+        router.address,
+        boughtTokenId,
+        router.interface.encodeFunctionData("genericERC721Fill", [
+          referrer.address,
+          tx.data,
+          FillKind.LOOKS_RARE,
+          OrderSide.SELL,
+          buyOrder.params.collection,
+          buyOrder.params.tokenId,
+          true,
+        ])
+      );
+
+    const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
+    const ownerAfter = await erc721.ownerOf(boughtTokenId);
+    expect(buyerWethBalanceBefore.sub(buyerWethBalanceAfter)).to.eq(price);
+    expect(ownerAfter).to.eq(buyer.address);
+  });
+
+  it("ZeroExV4 - fill listing", async () => {
+    const buyer = alice;
+    const seller = bob;
+
+    const price = parseEther("1");
+    const soldTokenId = 0;
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
+
+    // Approve the exchange
+    await erc721
+      .connect(seller)
+      .setApprovalForAll(Sdk.ZeroExV4.Addresses.Exchange[chainId], true);
+
+    const exchange = new Sdk.ZeroExV4.Exchange(chainId);
+    const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
+
+    // Build sell order
+    let sellOrder = builder.build({
+      direction: "sell",
+      maker: seller.address,
+      contract: erc721.address,
+      tokenId: soldTokenId,
+      price,
+      expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+    await sellOrder.sign(seller);
+
+    // Create matching buy order
+    const buyOrder = sellOrder.buildMatching();
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerEthBalanceBefore = await seller.getBalance();
+    const ownerBefore = await erc721.ownerOf(soldTokenId);
+    expect(ownerBefore).to.eq(seller.address);
+
+    const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder, {
+      noDirectTransfer: true,
+    });
+    await router
+      .connect(buyer)
+      .genericERC721Fill(
+        referrer.address,
+        tx.data,
+        FillKind.ZEROEX_V4,
+        OrderSide.BUY,
+        sellOrder.params.nft,
+        sellOrder.params.nftId,
+        true,
+        {
+          value: tx.value,
+        }
+      );
+
+    const sellerEthBalanceAfter = await seller.getBalance();
+    const ownerAfter = await erc721.ownerOf(soldTokenId);
+    expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(price);
+    expect(ownerAfter).to.eq(buyer.address);
+  });
+
+  it("ZeroExV4 - fill bid", async () => {
+    const buyer = alice;
+    const seller = bob;
+
+    const price = parseEther("1");
+    const boughtTokenId = 0;
+
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, 1);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price);
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Sdk.ZeroExV4.Addresses.Exchange[1]);
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(boughtTokenId);
+
+    const exchange = new Sdk.ZeroExV4.Exchange(chainId);
+    const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
+
+    // Build buy order
+    const buyOrder = builder.build({
+      direction: "buy",
+      maker: buyer.address,
+      contract: erc721.address,
+      tokenId: boughtTokenId,
+      price,
+      expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+    await buyOrder.sign(buyer);
+
+    // Create matching sell order
+    const sellOrder = buyOrder.buildMatching({ unwrapNativeToken: false });
+
+    await buyOrder.checkFillability(ethers.provider);
+
+    const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
+    const ownerBefore = await erc721.ownerOf(boughtTokenId);
+    expect(ownerBefore).to.eq(seller.address);
+
+    const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder, {
+      noDirectTransfer: true,
+    });
+    await erc721
+      .connect(seller)
+      ["safeTransferFrom(address,address,uint256,bytes)"](
+        seller.address,
+        router.address,
+        boughtTokenId,
+        router.interface.encodeFunctionData("genericERC721Fill", [
+          referrer.address,
+          tx.data,
+          FillKind.ZEROEX_V4,
+          OrderSide.SELL,
+          buyOrder.params.nft,
+          buyOrder.params.nftId,
+          true,
         ])
       );
 

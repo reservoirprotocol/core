@@ -26,7 +26,10 @@ export class Exchange {
   public matchTransaction(
     taker: string,
     order: Order,
-    matchParams: Types.MatchParams
+    matchParams: Types.MatchParams,
+    options?: {
+      noDirectTransfer?: boolean;
+    }
   ): TxData {
     const exchange = new Contract(
       Addresses.Exchange[this.chainId],
@@ -41,19 +44,33 @@ export class Exchange {
     if (order.params.kind?.startsWith("erc721")) {
       const erc721 = new Contract(order.params.nft, Erc721Abi);
       if (order.params.direction === Types.TradeDirection.BUY) {
-        to = erc721.address;
-        data = erc721.interface.encodeFunctionData(
-          "safeTransferFrom(address,address,uint256,bytes)",
-          [
-            taker,
-            exchange.address,
+        if (options?.noDirectTransfer) {
+          data = exchange.interface.encodeFunctionData("sellERC721", [
+            order.getRaw(),
+            order.getRaw(),
             matchParams.nftId!,
-            defaultAbiCoder.encode(
-              [Erc721OrderAbiType, SignatureAbiType, "bool"],
-              [order.getRaw(), order.getRaw(), true]
-            ),
-          ]
-        );
+            matchParams.unwrapNativeToken ?? true,
+            BytesEmpty,
+          ]);
+        } else {
+          to = erc721.address;
+          data = erc721.interface.encodeFunctionData(
+            "safeTransferFrom(address,address,uint256,bytes)",
+            [
+              taker,
+              exchange.address,
+              matchParams.nftId!,
+              defaultAbiCoder.encode(
+                [Erc721OrderAbiType, SignatureAbiType, "bool"],
+                [
+                  order.getRaw(),
+                  order.getRaw(),
+                  matchParams.unwrapNativeToken ?? true,
+                ]
+              ),
+            ]
+          );
+        }
       } else {
         data = exchange.interface.encodeFunctionData("buyERC721", [
           order.getRaw(),
@@ -65,17 +82,32 @@ export class Exchange {
     } else {
       const erc1155 = new Contract(order.params.nft, Erc1155Abi);
       if (order.params.direction === Types.TradeDirection.BUY) {
-        to = erc1155.address;
-        data = erc1155.interface.encodeFunctionData("safeTransferFrom", [
-          taker,
-          exchange.address,
-          matchParams.nftId!,
-          matchParams.nftAmount!,
-          defaultAbiCoder.encode(
-            [Erc1155OrderAbiType, SignatureAbiType, "bool"],
-            [order.getRaw(), order.getRaw(), true]
-          ),
-        ]);
+        if (options?.noDirectTransfer) {
+          data = exchange.interface.encodeFunctionData("sellERC1155", [
+            order.getRaw(),
+            order.getRaw(),
+            matchParams.nftId!,
+            matchParams.nftAmount!,
+            matchParams.unwrapNativeToken ?? true,
+            BytesEmpty,
+          ]);
+        } else {
+          to = erc1155.address;
+          data = erc1155.interface.encodeFunctionData("safeTransferFrom", [
+            taker,
+            exchange.address,
+            matchParams.nftId!,
+            matchParams.nftAmount!,
+            defaultAbiCoder.encode(
+              [Erc1155OrderAbiType, SignatureAbiType, "bool"],
+              [
+                order.getRaw(),
+                order.getRaw(),
+                matchParams.unwrapNativeToken ?? false,
+              ]
+            ),
+          ]);
+        }
       } else {
         data = exchange.interface.encodeFunctionData("buyERC1155", [
           order.getRaw(),
@@ -125,7 +157,11 @@ export class Exchange {
           matchParams.nftId!,
           defaultAbiCoder.encode(
             [Erc721OrderAbiType, SignatureAbiType, "bool"],
-            [order.getRaw(), order.getRaw(), true]
+            [
+              order.getRaw(),
+              order.getRaw(),
+              matchParams.unwrapNativeToken ?? true,
+            ]
           )
         );
       } else {
@@ -144,7 +180,11 @@ export class Exchange {
           matchParams.nftAmount!,
           defaultAbiCoder.encode(
             [Erc1155OrderAbiType, SignatureAbiType, "bool"],
-            [order.getRaw(), order.getRaw(), true]
+            [
+              order.getRaw(),
+              order.getRaw(),
+              matchParams.unwrapNativeToken ?? true,
+            ]
           )
         );
       } else {

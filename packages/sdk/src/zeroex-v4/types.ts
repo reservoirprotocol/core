@@ -39,4 +39,5 @@ export type BaseOrder = {
 export type MatchParams = {
   nftId?: string;
   nftAmount?: string;
+  unwrapNativeToken?: boolean;
 };
