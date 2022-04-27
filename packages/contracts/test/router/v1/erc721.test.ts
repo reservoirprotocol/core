@@ -24,7 +24,7 @@ describe("Router V1 - ERC721", () => {
     SELL,
   }
 
-  enum FillKind {
+  enum ExchangeKind {
     WYVERN_V23,
     LOOKS_RARE,
     ZEROEX_V4,
@@ -121,14 +121,12 @@ describe("Router V1 - ERC721", () => {
     const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
     await router
       .connect(buyer)
-      .genericERC721Fill(
+      .singleERC721ListingFill(
         referrer.address,
         tx.data,
-        FillKind.WYVERN_V23,
-        OrderSide.BUY,
+        ExchangeKind.WYVERN_V23,
         erc721.address,
         soldTokenId,
-        true,
         {
           value: tx.value,
         }
@@ -202,16 +200,13 @@ describe("Router V1 - ERC721", () => {
         seller.address,
         router.address,
         boughtTokenId,
-        router.interface.encodeFunctionData("genericERC721Fill", [
+        router.interface.encodeFunctionData("singleERC721BidFill", [
           referrer.address,
           tx.data,
-          FillKind.WYVERN_V23,
-          OrderSide.SELL,
+          ExchangeKind.WYVERN_V23,
           erc721.address,
-          boughtTokenId,
-          0,
-        ]),
-        { gasLimit: 1000000 }
+          true,
+        ])
       );
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
@@ -269,14 +264,12 @@ describe("Router V1 - ERC721", () => {
     const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder);
     await router
       .connect(buyer)
-      .genericERC721Fill(
+      .singleERC721ListingFill(
         referrer.address,
         tx.data,
-        FillKind.LOOKS_RARE,
-        OrderSide.BUY,
+        ExchangeKind.LOOKS_RARE,
         sellOrder.params.collection,
         sellOrder.params.tokenId,
-        true,
         {
           value: tx.value,
         }
@@ -340,13 +333,11 @@ describe("Router V1 - ERC721", () => {
         seller.address,
         router.address,
         boughtTokenId,
-        router.interface.encodeFunctionData("genericERC721Fill", [
+        router.interface.encodeFunctionData("singleERC721BidFill", [
           referrer.address,
           tx.data,
-          FillKind.LOOKS_RARE,
-          OrderSide.SELL,
+          ExchangeKind.LOOKS_RARE,
           buyOrder.params.collection,
-          buyOrder.params.tokenId,
           true,
         ])
       );
@@ -400,14 +391,12 @@ describe("Router V1 - ERC721", () => {
     });
     await router
       .connect(buyer)
-      .genericERC721Fill(
+      .singleERC721ListingFill(
         referrer.address,
         tx.data,
-        FillKind.ZEROEX_V4,
-        OrderSide.BUY,
+        ExchangeKind.ZEROEX_V4,
         sellOrder.params.nft,
         sellOrder.params.nftId,
-        true,
         {
           value: tx.value,
         }
@@ -469,13 +458,11 @@ describe("Router V1 - ERC721", () => {
         seller.address,
         router.address,
         boughtTokenId,
-        router.interface.encodeFunctionData("genericERC721Fill", [
+        router.interface.encodeFunctionData("singleERC721BidFill", [
           referrer.address,
           tx.data,
-          FillKind.ZEROEX_V4,
-          OrderSide.SELL,
+          ExchangeKind.ZEROEX_V4,
           buyOrder.params.nft,
-          buyOrder.params.nftId,
           true,
         ])
       );

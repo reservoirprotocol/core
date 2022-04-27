@@ -19,12 +19,7 @@ describe("Router V1 - ERC1155", () => {
   let erc1155: Contract;
   let router: Contract;
 
-  enum OrderSide {
-    BUY,
-    SELL,
-  }
-
-  enum FillKind {
+  enum ExchangeKind {
     WYVERN_V23,
     LOOKS_RARE,
     ZEROEX_V4,
@@ -129,15 +124,13 @@ describe("Router V1 - ERC1155", () => {
     const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
     await router
       .connect(buyer)
-      .genericERC1155Fill(
+      .singleERC1155ListingFill(
         referrer.address,
         tx.data,
-        FillKind.WYVERN_V23,
-        OrderSide.BUY,
+        ExchangeKind.WYVERN_V23,
         erc1155.address,
         soldTokenId,
         1,
-        true,
         {
           value: tx.value,
         }
@@ -228,15 +221,12 @@ describe("Router V1 - ERC1155", () => {
         router.address,
         boughtTokenId,
         1,
-        router.interface.encodeFunctionData("genericERC1155Fill", [
+        router.interface.encodeFunctionData("singleERC1155BidFill", [
           referrer.address,
           tx.data,
-          FillKind.WYVERN_V23,
-          OrderSide.SELL,
+          ExchangeKind.WYVERN_V23,
           erc1155.address,
-          boughtTokenId,
-          1,
-          0,
+          true,
         ])
       );
 
@@ -311,15 +301,13 @@ describe("Router V1 - ERC1155", () => {
     const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder);
     await router
       .connect(buyer)
-      .genericERC1155Fill(
+      .singleERC1155ListingFill(
         referrer.address,
         tx.data,
-        FillKind.LOOKS_RARE,
-        OrderSide.BUY,
+        ExchangeKind.LOOKS_RARE,
         sellOrder.params.collection,
         sellOrder.params.tokenId,
         1,
-        true,
         {
           value: tx.value,
         }
@@ -400,14 +388,11 @@ describe("Router V1 - ERC1155", () => {
         router.address,
         boughtTokenId,
         1,
-        router.interface.encodeFunctionData("genericERC1155Fill", [
+        router.interface.encodeFunctionData("singleERC1155BidFill", [
           referrer.address,
           tx.data,
-          FillKind.LOOKS_RARE,
-          OrderSide.SELL,
+          ExchangeKind.LOOKS_RARE,
           buyOrder.params.collection,
-          buyOrder.params.tokenId,
-          1,
           true,
         ])
       );
@@ -478,15 +463,13 @@ describe("Router V1 - ERC1155", () => {
     });
     await router
       .connect(buyer)
-      .genericERC1155Fill(
+      .singleERC1155ListingFill(
         referrer.address,
         tx.data,
-        FillKind.ZEROEX_V4,
-        OrderSide.BUY,
+        ExchangeKind.ZEROEX_V4,
         sellOrder.params.nft,
         sellOrder.params.nftId,
         1,
-        true,
         {
           value: tx.value,
         }
@@ -504,6 +487,93 @@ describe("Router V1 - ERC1155", () => {
     expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(price);
     expect(sellerNftBalanceAfter).to.eq(0);
     expect(buyerNftBalanceAfter).to.eq(1);
+  });
+
+  it.only("ZeroExV4 - fill listings (batch buy)", async () => {
+    const buyer = alice;
+    const seller = bob;
+
+    const price = parseEther("1");
+    const soldTokenId = 0;
+
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mint(soldTokenId);
+    await erc1155.connect(seller).mint(soldTokenId);
+
+    // Approve the exchange
+    await erc1155
+      .connect(seller)
+      .setApprovalForAll(Sdk.ZeroExV4.Addresses.Exchange[chainId], true);
+
+    const exchange = new Sdk.ZeroExV4.Exchange(chainId);
+    const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
+
+    const sellOrders: Sdk.ZeroExV4.Order[] = [];
+    const buyOrders: Sdk.ZeroExV4.Types.MatchParams[] = [];
+    for (let i = 0; i < 2; i++) {
+      // Build sell order
+      let sellOrder = builder.build({
+        direction: "sell",
+        maker: seller.address,
+        contract: erc1155.address,
+        tokenId: soldTokenId,
+        amount: 1,
+        price,
+        expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
+      });
+      await sellOrder.sign(seller);
+
+      await sellOrder.checkFillability(ethers.provider);
+
+      sellOrders.push(sellOrder);
+
+      const buyOrder = sellOrder.buildMatching({ amount: 1 });
+      buyOrders.push(buyOrder);
+    }
+
+    const sellerEthBalanceBefore = await seller.getBalance();
+    const sellerNftBalanceBefore = await erc1155.balanceOf(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await erc1155.balanceOf(
+      buyer.address,
+      soldTokenId
+    );
+    expect(sellerNftBalanceBefore).to.eq(2);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    const tx = exchange.batchBuyTransaction(
+      buyer.address,
+      sellOrders,
+      buyOrders
+    );
+    await router.connect(buyer).batchERC1155ListingFill(
+      referrer.address,
+      tx.data,
+      ExchangeKind.ZEROEX_V4,
+      sellOrders.map((sellOrder) => sellOrder.params.nft),
+      sellOrders.map((sellOrder) => sellOrder.params.nftId),
+      sellOrders.map((_) => 1),
+      {
+        value: tx.value,
+      }
+    );
+
+    const sellerEthBalanceAfter = await seller.getBalance();
+    const sellerNftBalanceAfter = await erc1155.balanceOf(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await erc1155.balanceOf(
+      buyer.address,
+      soldTokenId
+    );
+    expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(
+      price.mul(2)
+    );
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(2);
   });
 
   it("ZeroExV4 - fill bid", async () => {
@@ -569,14 +639,11 @@ describe("Router V1 - ERC1155", () => {
         router.address,
         boughtTokenId,
         1,
-        router.interface.encodeFunctionData("genericERC1155Fill", [
+        router.interface.encodeFunctionData("singleERC1155BidFill", [
           referrer.address,
           tx.data,
-          FillKind.ZEROEX_V4,
-          OrderSide.SELL,
+          ExchangeKind.ZEROEX_V4,
           buyOrder.params.nft,
-          buyOrder.params.nftId,
-          1,
           true,
         ])
       );
