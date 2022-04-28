@@ -4,35 +4,38 @@ pragma solidity ^0.8.9;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import {IWETH} from "./interfaces/IWETH.sol";
 import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
 
-contract RouterV1 {
+contract RouterV1 is Initializable {
     enum ExchangeKind {
         WYVERN_V23,
         LOOKS_RARE,
         ZEROEX_V4
     }
 
-    address public immutable weth;
+    address public admin;
+    address public weth;
 
-    address public immutable looksRare;
-    address public immutable looksRareTransferManagerERC721;
-    address public immutable looksRareTransferManagerERC1155;
+    address public looksRare;
+    address public looksRareTransferManagerERC721;
+    address public looksRareTransferManagerERC1155;
 
-    address public immutable wyvernV23;
-    address public immutable wyvernV23Proxy;
+    address public wyvernV23;
+    address public wyvernV23Proxy;
 
-    address public immutable zeroExV4;
+    address public zeroExV4;
 
-    constructor(
+    function initialize(
         address wethAddress,
         address looksRareAddress,
         address wyvernV23Address,
         address zeroExV4Address
-    ) {
+    ) public initializer {
+        admin = msg.sender;
         weth = wethAddress;
 
         // --- LooksRare setup ---
@@ -73,6 +76,20 @@ contract RouterV1 {
 
     receive() external payable {
         // For unwrapping WETH
+    }
+
+    function makeCalls(
+        address[] calldata targets,
+        bytes[] calldata data,
+        uint256[] calldata values
+    ) external payable {
+        require(msg.sender == admin, "Unauthorized");
+
+        bool success;
+        for (uint256 i = 0; i < targets.length; i++) {
+            (success, ) = payable(targets[i]).call{value: values[i]}(data[i]);
+            require(success, "Unsuccessfull call");
+        }
     }
 
     function singleERC721ListingFill(

@@ -3,7 +3,7 @@ import { parseEther } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers, network, upgrades } from "hardhat";
 
 import { bn, getCurrentTimestamp } from "../../utils";
 
@@ -33,16 +33,15 @@ describe("Router V1 - ERC1155", () => {
       .getContractFactory("MockERC1155", deployer)
       .then((factory) => factory.deploy());
 
-    router = await ethers
-      .getContractFactory("RouterV1", deployer)
-      .then((factory) =>
-        factory.deploy(
-          Sdk.Common.Addresses.Weth[chainId],
-          Sdk.LooksRare.Addresses.Exchange[chainId],
-          Sdk.WyvernV23.Addresses.Exchange[chainId],
-          Sdk.ZeroExV4.Addresses.Exchange[chainId]
-        )
-      );
+    router = await upgrades.deployProxy(
+      await ethers.getContractFactory("RouterV1", deployer),
+      [
+        Sdk.Common.Addresses.Weth[chainId],
+        Sdk.LooksRare.Addresses.Exchange[chainId],
+        Sdk.WyvernV23.Addresses.Exchange[chainId],
+        Sdk.ZeroExV4.Addresses.Exchange[chainId],
+      ]
+    );
   });
 
   afterEach(async () => {

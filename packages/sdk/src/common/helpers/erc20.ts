@@ -17,6 +17,30 @@ export class Erc20 {
     this.contract = new Contract(address, Erc20Abi as any, provider);
   }
 
+  public async transfer(
+    from: Signer,
+    to: string,
+    amount: BigNumberish
+  ): Promise<TransactionResponse> {
+    return this.contract.connect(from).transfer(to, amount);
+  }
+
+  public transferTransaction(
+    from: string,
+    to: string,
+    amount: BigNumberish
+  ): TxData {
+    const data = this.contract.interface.encodeFunctionData("transfer", [
+      to,
+      amount,
+    ]);
+    return {
+      from,
+      to: this.contract.address,
+      data,
+    };
+  }
+
   public async approve(
     approver: Signer,
     spender: string,
