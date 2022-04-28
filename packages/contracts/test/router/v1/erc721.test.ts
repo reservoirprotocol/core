@@ -5,7 +5,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-import { getCurrentTimestamp } from "../../utils";
+import { bn, getCurrentTimestamp } from "../../utils";
 
 describe("Router V1 - ERC721", () => {
   let chainId: number;
@@ -18,11 +18,6 @@ describe("Router V1 - ERC721", () => {
 
   let erc721: Contract;
   let router: Contract;
-
-  enum OrderSide {
-    BUY,
-    SELL,
-  }
 
   enum ExchangeKind {
     WYVERN_V23,
@@ -71,6 +66,7 @@ describe("Router V1 - ERC721", () => {
 
     const price = parseEther("1");
     const fee = 250;
+    const routerFee = 100;
     const soldTokenId = 0;
 
     // Mint erc721 to seller
@@ -114,6 +110,7 @@ describe("Router V1 - ERC721", () => {
 
     await sellOrder.checkFillability(ethers.provider);
 
+    const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerEthBalanceBefore = await seller.getBalance();
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
@@ -127,17 +124,25 @@ describe("Router V1 - ERC721", () => {
         ExchangeKind.WYVERN_V23,
         erc721.address,
         soldTokenId,
+        routerFee,
         {
-          value: tx.value,
+          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
         }
       );
 
+    const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerEthBalanceAfter = await seller.getBalance();
     const ownerAfter = await erc721.ownerOf(soldTokenId);
+    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
+      price.mul(routerFee).div(10000)
+    );
     expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(
       price.sub(price.mul(fee).div(10000))
     );
     expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
   });
 
   it("WyvernV23 - fill bid", async () => {
@@ -213,6 +218,9 @@ describe("Router V1 - ERC721", () => {
     const ownerAfter = await erc721.ownerOf(boughtTokenId);
     expect(buyerWethBalanceBefore.sub(buyerWethBalanceAfter)).to.eq(price);
     expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await weth.getBalance(router.address)).to.eq(0);
   });
 
   it("LooksRare - fill listing", async () => {
@@ -221,6 +229,7 @@ describe("Router V1 - ERC721", () => {
 
     const price = parseEther("1");
     const fee = 200;
+    const routerFee = 500;
     const soldTokenId = 0;
 
     // Mint erc721 to seller
@@ -257,6 +266,7 @@ describe("Router V1 - ERC721", () => {
 
     const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
 
+    const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerWethBalanceBefore = await weth.getBalance(seller.address);
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
@@ -270,17 +280,26 @@ describe("Router V1 - ERC721", () => {
         ExchangeKind.LOOKS_RARE,
         sellOrder.params.collection,
         sellOrder.params.tokenId,
+        routerFee,
         {
-          value: tx.value,
+          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
         }
       );
 
+    const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerWethBalanceAfter = await weth.getBalance(seller.address);
     const ownerAfter = await erc721.ownerOf(soldTokenId);
+    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
+      price.mul(routerFee).div(10000)
+    );
     expect(sellerWethBalanceAfter.sub(sellerWethBalanceBefore)).to.eq(
       price.sub(price.mul(fee).div(10000))
     );
     expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+    expect(await weth.getBalance(router.address)).to.eq(0);
   });
 
   it("LooksRare - fill bid", async () => {
@@ -346,6 +365,9 @@ describe("Router V1 - ERC721", () => {
     const ownerAfter = await erc721.ownerOf(boughtTokenId);
     expect(buyerWethBalanceBefore.sub(buyerWethBalanceAfter)).to.eq(price);
     expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await weth.getBalance(router.address)).to.eq(0);
   });
 
   it("ZeroExV4 - fill listing", async () => {
@@ -353,6 +375,7 @@ describe("Router V1 - ERC721", () => {
     const seller = bob;
 
     const price = parseEther("1");
+    const routerFee = 200;
     const soldTokenId = 0;
 
     // Mint erc721 to seller
@@ -382,6 +405,7 @@ describe("Router V1 - ERC721", () => {
 
     await sellOrder.checkFillability(ethers.provider);
 
+    const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerEthBalanceBefore = await seller.getBalance();
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
@@ -397,15 +421,23 @@ describe("Router V1 - ERC721", () => {
         ExchangeKind.ZEROEX_V4,
         sellOrder.params.nft,
         sellOrder.params.nftId,
+        routerFee,
         {
-          value: tx.value,
+          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
         }
       );
 
+    const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerEthBalanceAfter = await seller.getBalance();
     const ownerAfter = await erc721.ownerOf(soldTokenId);
+    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
+      price.mul(routerFee).div(10000)
+    );
     expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(price);
     expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
   });
 
   it("ZeroExV4 - fill bid", async () => {
@@ -471,5 +503,8 @@ describe("Router V1 - ERC721", () => {
     const ownerAfter = await erc721.ownerOf(boughtTokenId);
     expect(buyerWethBalanceBefore.sub(buyerWethBalanceAfter)).to.eq(price);
     expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await weth.getBalance(router.address)).to.eq(0);
   });
 });

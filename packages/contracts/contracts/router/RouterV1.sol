@@ -76,11 +76,12 @@ contract RouterV1 {
     }
 
     function singleERC721ListingFill(
-        address, // referrer
+        address referrer,
         bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
-        uint256 tokenId
+        uint256 tokenId,
+        uint16 feeBps
     ) external payable {
         address target;
         if (exchangeKind == ExchangeKind.WYVERN_V23) {
@@ -93,7 +94,9 @@ contract RouterV1 {
             revert("Unsupported exchange");
         }
 
-        (bool success, ) = target.call{value: msg.value}(data);
+        uint256 payment = (10000 * msg.value) / (10000 + feeBps);
+
+        (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
         if (exchangeKind != ExchangeKind.WYVERN_V23) {
@@ -105,6 +108,12 @@ contract RouterV1 {
                 msg.sender,
                 tokenId
             );
+        }
+
+        uint256 fee = msg.value - payment;
+        if (fee > 0) {
+            (success, ) = payable(referrer).call{value: fee}("");
+            require(success, "Could not send payment");
         }
     }
 
@@ -154,12 +163,13 @@ contract RouterV1 {
     }
 
     function singleERC1155ListingFill(
-        address, // referrer
+        address referrer,
         bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
         uint256 tokenId,
-        uint256 amount
+        uint256 amount,
+        uint256 feeBps
     ) external payable {
         address target;
         if (exchangeKind == ExchangeKind.WYVERN_V23) {
@@ -172,7 +182,9 @@ contract RouterV1 {
             revert("Unsupported exchange");
         }
 
-        (bool success, ) = target.call{value: msg.value}(data);
+        uint256 payment = (10000 * msg.value) / (10000 + feeBps);
+
+        (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
         if (exchangeKind != ExchangeKind.WYVERN_V23) {
@@ -187,15 +199,22 @@ contract RouterV1 {
                 ""
             );
         }
+
+        uint256 fee = msg.value - payment;
+        if (fee > 0) {
+            (success, ) = payable(referrer).call{value: fee}("");
+            require(success, "Could not send payment");
+        }
     }
 
     function batchERC1155ListingFill(
-        address, // referrer
+        address referrer,
         bytes memory data,
         ExchangeKind exchangeKind,
         address[] memory collections,
         uint256[] memory tokenIds,
-        uint256[] memory amounts
+        uint256[] memory amounts,
+        uint256 feeBps
     ) external payable {
         address target;
         if (exchangeKind == ExchangeKind.ZEROEX_V4) {
@@ -204,7 +223,9 @@ contract RouterV1 {
             revert("Unsupported exchange");
         }
 
-        (bool success, ) = target.call{value: msg.value}(data);
+        uint256 payment = (10000 * msg.value) / (10000 + feeBps);
+
+        (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
         for (uint256 i = 0; i < collections.length; i++) {
@@ -218,6 +239,12 @@ contract RouterV1 {
                 amounts[i],
                 ""
             );
+        }
+
+        uint256 fee = msg.value - payment;
+        if (fee > 0) {
+            (success, ) = payable(referrer).call{value: fee}("");
+            require(success, "Could not send payment");
         }
     }
 
