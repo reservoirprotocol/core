@@ -9,6 +9,8 @@ import { ethers, network } from "hardhat";
 import { getCurrentTimestamp } from "../../../utils";
 
 describe("LooksRare - SingleToken Erc1155", () => {
+  let chainId: number;
+
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -16,6 +18,7 @@ describe("LooksRare - SingleToken Erc1155", () => {
   let erc1155: Contract;
 
   beforeEach(async () => {
+    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
     [deployer, alice, bob] = await ethers.getSigners();
 
     erc1155 = await ethers
@@ -43,13 +46,13 @@ describe("LooksRare - SingleToken Erc1155", () => {
     const price = parseEther("1");
     const boughtTokenId = 0;
 
-    const weth = new Common.Helpers.Weth(ethers.provider, 1);
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
     // Mint weth to buyer
     await weth.deposit(buyer, price);
 
     // Approve the exchange contract for the buyer
-    await weth.approve(buyer, LooksRare.Addresses.Exchange[1]);
+    await weth.approve(buyer, LooksRare.Addresses.Exchange[chainId]);
 
     // Mint erc1155 to seller
     await erc1155.connect(seller).mint(boughtTokenId);
@@ -57,11 +60,14 @@ describe("LooksRare - SingleToken Erc1155", () => {
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
     // Approve the transfer manager
-    await nft.approve(seller, LooksRare.Addresses.TransferManagerErc1155[1]);
+    await nft.approve(
+      seller,
+      LooksRare.Addresses.TransferManagerErc1155[chainId]
+    );
 
-    const exchange = new LooksRare.Exchange(1);
+    const exchange = new LooksRare.Exchange(chainId);
 
-    const builder = new LooksRare.Builders.SingleToken(1);
+    const builder = new LooksRare.Builders.SingleToken(chainId);
 
     // Build buy order
     const buyOrder = builder.build({
@@ -115,7 +121,7 @@ describe("LooksRare - SingleToken Erc1155", () => {
     const price = parseEther("1");
     const soldTokenId = 0;
 
-    const weth = new Common.Helpers.Weth(ethers.provider, 1);
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
     // Mint erc1155 to seller
     await erc1155.connect(seller).mint(soldTokenId);
@@ -123,11 +129,14 @@ describe("LooksRare - SingleToken Erc1155", () => {
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
     // Approve the transfer manager
-    await nft.approve(seller, LooksRare.Addresses.TransferManagerErc1155[1]);
+    await nft.approve(
+      seller,
+      LooksRare.Addresses.TransferManagerErc1155[chainId]
+    );
 
-    const exchange = new LooksRare.Exchange(1);
+    const exchange = new LooksRare.Exchange(chainId);
 
-    const builder = new LooksRare.Builders.SingleToken(1);
+    const builder = new LooksRare.Builders.SingleToken(chainId);
 
     // Build sell order
     const sellOrder = builder.build({

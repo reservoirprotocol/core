@@ -14,7 +14,7 @@ describe("Router V1 - ERC721", () => {
   let router: Contract;
 
   beforeEach(async () => {
-    chainId = await ethers.provider.getNetwork().then((n) => n.chainId);
+    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
     [deployer, alice] = await ethers.getSigners();
 
     router = await upgrades.deployProxy(

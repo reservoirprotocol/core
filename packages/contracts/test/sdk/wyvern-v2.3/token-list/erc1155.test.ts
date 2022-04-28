@@ -9,6 +9,8 @@ import { ethers, network } from "hardhat";
 import { getCurrentTimestamp } from "../../../utils";
 
 describe("WyvernV2.3 - TokenListErc1155", () => {
+  let chainId: number;
+
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -17,6 +19,7 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
   let erc1155: Contract;
 
   beforeEach(async () => {
+    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
     [deployer, alice, bob, carol] = await ethers.getSigners();
 
     erc1155 = await ethers
@@ -48,16 +51,16 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
     const boughtTokenIds = Array.from(Array(100).keys());
     const soldTokenId = 50;
 
-    const weth = new Common.Helpers.Weth(ethers.provider, 1);
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
     // Mint weth to buyer
     await weth.deposit(buyer, price);
 
     // Approve the token transfer proxy for the buyer
-    await weth.approve(buyer, WyvernV23.Addresses.TokenTransferProxy[1]);
+    await weth.approve(buyer, WyvernV23.Addresses.TokenTransferProxy[chainId]);
 
     // Approve the token transfer proxy for the seller
-    await weth.approve(seller, WyvernV23.Addresses.TokenTransferProxy[1]);
+    await weth.approve(seller, WyvernV23.Addresses.TokenTransferProxy[chainId]);
 
     // Mint erc1155 to seller
     await erc1155.connect(seller).mint(soldTokenId);
@@ -65,7 +68,7 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
     // Register user proxy for the seller
     const proxyRegistry = new WyvernV23.Helpers.ProxyRegistry(
       ethers.provider,
-      1
+      chainId
     );
     await proxyRegistry.registerProxy(seller);
     const proxy = await proxyRegistry.getProxy(seller.address);
@@ -75,9 +78,9 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
     // Approve the user proxy
     await nft.approve(seller, proxy);
 
-    const exchange = new WyvernV23.Exchange(1);
+    const exchange = new WyvernV23.Exchange(chainId);
 
-    const builder = new WyvernV23.Builders.Erc1155.TokenList(1);
+    const builder = new WyvernV23.Builders.Erc1155.TokenList(chainId);
 
     // Build buy order
     let buyOrder = builder.build({
@@ -86,7 +89,7 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
       tokenIds: boughtTokenIds,
       side: "buy",
       price,
-      paymentToken: Common.Addresses.Weth[1],
+      paymentToken: Common.Addresses.Weth[chainId],
       fee,
       feeRecipient: feeRecipient.address,
       listingTime: await getCurrentTimestamp(ethers.provider),

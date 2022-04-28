@@ -1,0 +1,119 @@
+{
+  "manifestVersion": "3.2",
+  "admin": {
+    "address": "0xddE78e6202518FF4936b5302cC2891ec180E8bFf",
+    "txHash": "0x62b9eb97b178447fd39e6522eb43a69d52c6e8c0ef71be68ff3910ccb0885e67"
+  },
+  "proxies": [
+    {
+      "address": "0xaB7B4c595d3cE8C85e16DA86630f2fc223B05057",
+      "txHash": "0xab2a4f32686b48cd2c47309121a3e088b3f6ee16f41c14bb62c1d5e2d245b9ba",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xB06c856C8eaBd1d8321b687E188204C1018BC4E5",
+      "txHash": "0xa3bb67a4ad69e208149229f219492572ebfc374addb44c7a426be0ab1689fe53",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "66f49b8ee87ba086aedb603250732015116d36b5506d9ad2c2e33869456c2720": {
+      "address": "0x5D42EBdBBa61412295D7b0302d6F50aC449Ddb4F",
+      "txHash": "0xb4a2fbed5d478c33fec18e157323634c57999d8e0f08a388e7da2bf14868988d",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "label": "admin",
+            "offset": 2,
+            "slot": "0",
+            "type": "t_address",
+            "contract": "RouterV1",
+            "src": "contracts/router/RouterV1.sol:20"
+          },
+          {
+            "label": "weth",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_address",
+            "contract": "RouterV1",
+            "src": "contracts/router/RouterV1.sol:21"
+          },
+          {
+            "label": "looksRare",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_address",
+            "contract": "RouterV1",
+            "src": "contracts/router/RouterV1.sol:23"
+          },
+          {
+            "label": "looksRareTransferManagerERC721",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_address",
+            "contract": "RouterV1",
+            "src": "contracts/router/RouterV1.sol:24"
+          },
+          {
+            "label": "looksRareTransferManagerERC1155",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_address",
+            "contract": "RouterV1",
+            "src": "contracts/router/RouterV1.sol:25"
+          },
+          {
+            "label": "wyvernV23",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "RouterV1",
+            "src": "contracts/router/RouterV1.sol:27"
+          },
+          {
+            "label": "wyvernV23Proxy",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_address",
+            "contract": "RouterV1",
+            "src": "contracts/router/RouterV1.sol:28"
+          },
+          {
+            "label": "zeroExV4",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_address",
+            "contract": "RouterV1",
+            "src": "contracts/router/RouterV1.sol:30"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    }
+  }
+}

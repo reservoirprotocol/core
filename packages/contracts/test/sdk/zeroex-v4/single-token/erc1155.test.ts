@@ -9,6 +9,8 @@ import { ethers, network } from "hardhat";
 import { getCurrentTimestamp } from "../../../utils";
 
 describe("ZeroEx V4 - SingleToken Erc1155", () => {
+  let chainId: number;
+
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -18,6 +20,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
   let erc1155: Contract;
 
   beforeEach(async () => {
+    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
     [deployer, alice, bob, carol, ted] = await ethers.getSigners();
 
     erc1155 = await ethers
@@ -45,22 +48,22 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     const price = parseEther("1");
     const boughtTokenId = 0;
 
-    const weth = new Common.Helpers.Weth(ethers.provider, 1);
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
     // Mint weth to buyer
     await weth.deposit(buyer, price);
 
     // Approve the exchange contract for the buyer
-    await weth.approve(buyer, ZeroexV4.Addresses.Exchange[1]);
+    await weth.approve(buyer, ZeroexV4.Addresses.Exchange[chainId]);
 
     // Mint erc1155 to seller
     await erc1155.connect(seller).mint(boughtTokenId);
 
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
-    const exchange = new ZeroexV4.Exchange(1);
+    const exchange = new ZeroexV4.Exchange(chainId);
 
-    const builder = new ZeroexV4.Builders.SingleToken(1);
+    const builder = new ZeroexV4.Builders.SingleToken(chainId);
 
     // Build buy order
     const buyOrder = builder.build({
@@ -120,13 +123,13 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     const price = parseEther("1.8");
     const boughtTokenId = 0;
 
-    const weth = new Common.Helpers.Weth(ethers.provider, 1);
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
     // Mint weth to buyer
     await weth.deposit(buyer, price.add(parseEther("0.3")));
 
     // Approve the exchange contract for the buyer
-    await weth.approve(buyer, ZeroexV4.Addresses.Exchange[1]);
+    await weth.approve(buyer, ZeroexV4.Addresses.Exchange[chainId]);
 
     // Mint erc1155 to seller
     await erc1155.connect(seller1).mint(boughtTokenId);
@@ -135,9 +138,9 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
 
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
-    const exchange = new ZeroexV4.Exchange(1);
+    const exchange = new ZeroexV4.Exchange(chainId);
 
-    const builder = new ZeroexV4.Builders.SingleToken(1);
+    const builder = new ZeroexV4.Builders.SingleToken(chainId);
 
     // Build buy order
     const buyOrder = builder.build({
@@ -258,11 +261,11 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
     // Approve the exchange
-    await nft.approve(seller, ZeroexV4.Addresses.Exchange[1]);
+    await nft.approve(seller, ZeroexV4.Addresses.Exchange[chainId]);
 
-    const exchange = new ZeroexV4.Exchange(1);
+    const exchange = new ZeroexV4.Exchange(chainId);
 
-    const builder = new ZeroexV4.Builders.SingleToken(1);
+    const builder = new ZeroexV4.Builders.SingleToken(chainId);
 
     // Build sell order
     const sellOrder = builder.build({
@@ -340,11 +343,11 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
     // Approve the exchange
-    await nft.approve(seller, ZeroexV4.Addresses.Exchange[1]);
+    await nft.approve(seller, ZeroexV4.Addresses.Exchange[chainId]);
 
-    const exchange = new ZeroexV4.Exchange(1);
+    const exchange = new ZeroexV4.Exchange(chainId);
 
-    const builder = new ZeroexV4.Builders.SingleToken(1);
+    const builder = new ZeroexV4.Builders.SingleToken(chainId);
 
     // Build sell order
     const sellOrder = builder.build({
@@ -498,9 +501,9 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       await erc1155.connect(seller).mint(soldTokenId);
 
       // Approve the exchange
-      await nft.approve(seller, ZeroexV4.Addresses.Exchange[1]);
+      await nft.approve(seller, ZeroexV4.Addresses.Exchange[chainId]);
 
-      const builder = new ZeroexV4.Builders.SingleToken(1);
+      const builder = new ZeroexV4.Builders.SingleToken(chainId);
 
       // Build sell order
       const sellOrder = builder.build({
@@ -549,7 +552,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     expect(bobNftBalanceBefore).to.eq(2);
     expect(carolNftBalanceBefore).to.eq(2);
 
-    const exchange = new ZeroexV4.Exchange(1);
+    const exchange = new ZeroexV4.Exchange(chainId);
 
     // Match orders
     await exchange.batchBuy(buyer, sellOrders, matchParams);

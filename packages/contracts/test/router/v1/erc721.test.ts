@@ -26,7 +26,7 @@ describe("Router V1 - ERC721", () => {
   }
 
   beforeEach(async () => {
-    chainId = await ethers.provider.getNetwork().then((n) => n.chainId);
+    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
 
     erc721 = await ethers
