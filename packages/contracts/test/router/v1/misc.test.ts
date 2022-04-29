@@ -70,7 +70,7 @@ describe("Router V1 - ERC721", () => {
     // Only admin can trigger calls
     await expect(
       router.connect(alice).makeCalls(targets, data, values)
-    ).to.be.revertedWith("Unauthorized");
+    ).to.be.revertedWith("Ownable: caller is not the owner");
 
     const aliceEthBalanceBefore = await alice.getBalance();
 

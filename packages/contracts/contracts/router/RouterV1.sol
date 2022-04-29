@@ -4,20 +4,20 @@ pragma solidity ^0.8.9;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import {IWETH} from "./interfaces/IWETH.sol";
 import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
 
-contract RouterV1 is Initializable {
+contract RouterV1 is Initializable, OwnableUpgradeable {
     enum ExchangeKind {
         WYVERN_V23,
         LOOKS_RARE,
         ZEROEX_V4
     }
 
-    address public admin;
     address public weth;
 
     address public looksRare;
@@ -35,7 +35,8 @@ contract RouterV1 is Initializable {
         address wyvernV23Address,
         address zeroExV4Address
     ) public initializer {
-        admin = msg.sender;
+        OwnableUpgradeable.__Ownable_init();
+
         weth = wethAddress;
 
         // --- LooksRare setup ---
@@ -82,9 +83,7 @@ contract RouterV1 is Initializable {
         address[] calldata targets,
         bytes[] calldata data,
         uint256[] calldata values
-    ) external payable {
-        require(msg.sender == admin, "Unauthorized");
-
+    ) external payable onlyOwner {
         bool success;
         for (uint256 i = 0; i < targets.length; i++) {
             (success, ) = payable(targets[i]).call{value: values[i]}(data[i]);
