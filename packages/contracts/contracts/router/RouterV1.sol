@@ -91,12 +91,18 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         }
     }
 
+    // Terminology:
+    // - "single" -> buy single token
+    // - "batch" -> buy multiple tokens (natively, only 0xv4 supports this)
+    // - "multi" -> buy multiple tokens (via the router)
+
     function singleERC721ListingFill(
         address referrer,
         bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
         uint256 tokenId,
+        address receiver,
         uint16 feeBps
     ) external payable {
         address target;
@@ -119,11 +125,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
             // When filling LooksRare or ZeroExV4 listings we need to send
             // the NFT to the taker's wallet after the fill (since they do
             // not allow specifying a different recipient than the taker).
-            IERC721(collection).transferFrom(
-                address(this),
-                msg.sender,
-                tokenId
-            );
+            IERC721(collection).transferFrom(address(this), receiver, tokenId);
         }
 
         uint256 fee = msg.value - payment;
@@ -135,9 +137,10 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
 
     function singleERC721BidFill(
         address, // referrer
-        bytes memory data,
+        bytes calldata data,
         ExchangeKind exchangeKind,
         address collection,
+        address receiver,
         bool unwrapWeth
     ) external payable {
         address target;
@@ -171,10 +174,10 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         uint256 balance = IERC20(weth).balanceOf(address(this));
         if (unwrapWeth) {
             IWETH(weth).withdraw(balance);
-            (success, ) = payable(msg.sender).call{value: balance}("");
+            (success, ) = payable(receiver).call{value: balance}("");
             require(success, "Could not send payment");
         } else {
-            IERC20(weth).transfer(msg.sender, balance);
+            IERC20(weth).transfer(receiver, balance);
         }
     }
 
@@ -185,6 +188,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         address collection,
         uint256 tokenId,
         uint256 amount,
+        address receiver,
         uint256 feeBps
     ) external payable {
         address target;
@@ -209,7 +213,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
             // not allow specifying a different recipient than the taker).
             IERC1155(collection).safeTransferFrom(
                 address(this),
-                msg.sender,
+                receiver,
                 tokenId,
                 amount,
                 ""
@@ -230,6 +234,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         address[] memory collections,
         uint256[] memory tokenIds,
         uint256[] memory amounts,
+        address receiver,
         uint256 feeBps
     ) external payable {
         address target;
@@ -250,7 +255,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
             // not allow specifying a different recipient than the taker).
             IERC1155(collections[i]).safeTransferFrom(
                 address(this),
-                msg.sender,
+                receiver,
                 tokenIds[i],
                 amounts[i],
                 ""
@@ -269,6 +274,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
+        address receiver,
         bool unwrapWeth
     ) external payable {
         address target;
@@ -302,12 +308,31 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         uint256 balance = IERC20(weth).balanceOf(address(this));
         if (unwrapWeth) {
             IWETH(weth).withdraw(balance);
-            (success, ) = payable(msg.sender).call{value: balance}("");
+            (success, ) = payable(receiver).call{value: balance}("");
             require(success, "Could not send payment");
         } else {
-            IERC20(weth).transfer(msg.sender, balance);
+            IERC20(weth).transfer(receiver, balance);
         }
     }
+
+    function multiListingFill(
+        bytes[] calldata data,
+        uint256[] calldata values,
+        bool revertIfIncomplete
+    ) external payable {
+        bool success;
+        for (uint256 i = 0; i < data.length; i++) {
+            (success, ) = address(this).call{value: values[i]}(data[i]);
+            if (revertIfIncomplete) {
+                require(success, "Atomic fill failed");
+            }
+        }
+
+        (success, ) = msg.sender.call{value: address(this).balance}("");
+        require(success, "Could not send payment");
+    }
+
+    // ERC721 / ERC1155 overrides
 
     function onERC721Received(
         address, // operator,

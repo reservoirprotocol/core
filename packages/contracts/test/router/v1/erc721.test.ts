@@ -123,6 +123,7 @@ describe("Router V1 - ERC721", () => {
         ExchangeKind.WYVERN_V23,
         erc721.address,
         soldTokenId,
+        buyer.address,
         routerFee,
         {
           value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
@@ -209,6 +210,7 @@ describe("Router V1 - ERC721", () => {
           tx.data,
           ExchangeKind.WYVERN_V23,
           erc721.address,
+          buyer.address,
           true,
         ])
       );
@@ -279,6 +281,7 @@ describe("Router V1 - ERC721", () => {
         ExchangeKind.LOOKS_RARE,
         sellOrder.params.collection,
         sellOrder.params.tokenId,
+        buyer.address,
         routerFee,
         {
           value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
@@ -356,6 +359,7 @@ describe("Router V1 - ERC721", () => {
           tx.data,
           ExchangeKind.LOOKS_RARE,
           buyOrder.params.collection,
+          buyer.address,
           true,
         ])
       );
@@ -420,6 +424,7 @@ describe("Router V1 - ERC721", () => {
         ExchangeKind.ZEROEX_V4,
         sellOrder.params.nft,
         sellOrder.params.nftId,
+        buyer.address,
         routerFee,
         {
           value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
@@ -494,6 +499,7 @@ describe("Router V1 - ERC721", () => {
           tx.data,
           ExchangeKind.ZEROEX_V4,
           buyOrder.params.nft,
+          buyer.address,
           true,
         ])
       );
