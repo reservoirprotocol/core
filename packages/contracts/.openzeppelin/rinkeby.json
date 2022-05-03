@@ -1,118 +1,20 @@
 {
   "manifestVersion": "3.2",
   "admin": {
-    "address": "0x3105C84904AD30364834a2365e5c812a140f8F6a",
-    "txHash": "0x432ab9fe114c2529b5e2988a2f376e196a69326a403ed5f692d4d77e8081247e"
+    "address": "0xA1B670Cc0E15496FbD7AcB8d939790FB49c22a90",
+    "txHash": "0x7a4e981d0bbc97014e004ff6490d3cec916caaf0cbedcbc4421c876bb74c1681"
   },
   "proxies": [
     {
-      "address": "0x955fa8781356609275da1F7611A6F10693E14053",
-      "txHash": "0x30ef84206c01197dba33eb2d0e2f67836a7146e0e3b922cae19667255067de58",
+      "address": "0xa5c0C6c024460b039B917a77EB564da5817c55E2",
+      "txHash": "0x6514684f2a670d3f8b41125a7d1a8a9cc7b7713c232455580fc04278b4548643",
       "kind": "transparent"
     }
   ],
   "impls": {
-    "66f49b8ee87ba086aedb603250732015116d36b5506d9ad2c2e33869456c2720": {
-      "address": "0xa9f01A3e97b7737b778e19CfDbDAC861d98D744D",
-      "txHash": "0x8bb13d6a0647aa771252de84730fc72e2dd85ff457a525aac9a1c75058ce9eec",
-      "layout": {
-        "storage": [
-          {
-            "label": "_initialized",
-            "offset": 0,
-            "slot": "0",
-            "type": "t_bool",
-            "contract": "Initializable",
-            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
-          },
-          {
-            "label": "_initializing",
-            "offset": 1,
-            "slot": "0",
-            "type": "t_bool",
-            "contract": "Initializable",
-            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
-          },
-          {
-            "label": "admin",
-            "offset": 2,
-            "slot": "0",
-            "type": "t_address",
-            "contract": "RouterV1",
-            "src": "contracts/router/RouterV1.sol:20"
-          },
-          {
-            "label": "weth",
-            "offset": 0,
-            "slot": "1",
-            "type": "t_address",
-            "contract": "RouterV1",
-            "src": "contracts/router/RouterV1.sol:21"
-          },
-          {
-            "label": "looksRare",
-            "offset": 0,
-            "slot": "2",
-            "type": "t_address",
-            "contract": "RouterV1",
-            "src": "contracts/router/RouterV1.sol:23"
-          },
-          {
-            "label": "looksRareTransferManagerERC721",
-            "offset": 0,
-            "slot": "3",
-            "type": "t_address",
-            "contract": "RouterV1",
-            "src": "contracts/router/RouterV1.sol:24"
-          },
-          {
-            "label": "looksRareTransferManagerERC1155",
-            "offset": 0,
-            "slot": "4",
-            "type": "t_address",
-            "contract": "RouterV1",
-            "src": "contracts/router/RouterV1.sol:25"
-          },
-          {
-            "label": "wyvernV23",
-            "offset": 0,
-            "slot": "5",
-            "type": "t_address",
-            "contract": "RouterV1",
-            "src": "contracts/router/RouterV1.sol:27"
-          },
-          {
-            "label": "wyvernV23Proxy",
-            "offset": 0,
-            "slot": "6",
-            "type": "t_address",
-            "contract": "RouterV1",
-            "src": "contracts/router/RouterV1.sol:28"
-          },
-          {
-            "label": "zeroExV4",
-            "offset": 0,
-            "slot": "7",
-            "type": "t_address",
-            "contract": "RouterV1",
-            "src": "contracts/router/RouterV1.sol:30"
-          }
-        ],
-        "types": {
-          "t_address": {
-            "label": "address",
-            "numberOfBytes": "20"
-          },
-          "t_bool": {
-            "label": "bool",
-            "numberOfBytes": "1"
-          }
-        }
-      }
-    },
     "c62a38d7cfec195ebf7cac4115eada713fc9abf341d83edc296d9febb4cc796c": {
-      "address": "0x2DD9f8d07e58B25cfFbe43B26127665E610d0610",
-      "txHash": "0x8374b7046f686df38f1309724f61c52a18e7ee9c92f3d805b4ab83053f5e694f",
+      "address": "0x7472E5014e0Cf714095DF348AAc5917b17a94701",
+      "txHash": "0x98216934ebab84b2bc4ba038f0bc128b1a80fe0e3696997c7efcaf4fc4cb3efa",
       "layout": {
         "storage": [
           {
