@@ -76,7 +76,6 @@ describe("Router V1 - Multi buy", () => {
     const tokenId1 = 0;
     const price1 = parseEther("1");
     const fee1 = bn(0);
-    const totalPaid1 = price1;
     {
       // Mint erc721 to seller
       await erc721.connect(seller1).mint(tokenId1);
@@ -141,7 +140,6 @@ describe("Router V1 - Multi buy", () => {
     const tokenId2 = 1;
     const price2 = parseEther("2");
     const fee2 = bn(200);
-    const totalPaid2 = price2;
     {
       // Mint erc721 to seller
       await erc721.connect(seller2).mint(tokenId2);
