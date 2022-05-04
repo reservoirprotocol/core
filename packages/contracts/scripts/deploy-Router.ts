@@ -13,7 +13,7 @@ const main = async () => {
       Sdk.Common.Addresses.Weth[chainId],
       Sdk.LooksRare.Addresses.Exchange[chainId],
       Sdk.WyvernV23.Addresses.Exchange[chainId],
-      Sdk.OpenDao.Addresses.Exchange[chainId],
+      Sdk.ZeroExV4.Addresses.Exchange[chainId],
     ]
   );
   console.log(`"RouterV1" was deployed at address ${router.address}`);
