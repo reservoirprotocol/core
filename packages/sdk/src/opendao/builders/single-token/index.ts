@@ -74,10 +74,14 @@ export class SingleTokenBuilder extends BaseBuilder {
     });
   }
 
-  public buildMatching(order: Order, data?: { amount?: BigNumberish }) {
+  public buildMatching(
+    order: Order,
+    data?: { amount?: BigNumberish; unwrapNativeToken?: boolean }
+  ) {
     return {
       nftId: order.params.nftId,
       nftAmount: data?.amount ? s(data.amount) : undefined,
+      unwrapNativeToken: data?.unwrapNativeToken,
     };
   }
 }
