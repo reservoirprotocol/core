@@ -7,3 +7,7 @@ export const Exchange: any = {
 export const Eth: any = {
   4: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
 };
+
+export const TokenRangeValidator: any = {
+  4: "0x807220b2722cB6b084c533f40dd67C05E3E188aF",
+};

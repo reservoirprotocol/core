@@ -9,3 +9,8 @@ export const Eth: any = {
   1: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
   3: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
 };
+
+export const TokenRangeValidator: any = {
+  1: "0xf4a4daa2e20f3d249d53e74a15b6a0518c27927d",
+  3: "0x0000000000000000000000000000000000000000",
+};

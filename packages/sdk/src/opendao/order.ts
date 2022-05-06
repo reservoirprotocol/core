@@ -200,9 +200,19 @@ export class Order {
 
   private getBuilder(): BaseBuilder {
     switch (this.params.kind) {
+      case "erc721-contract-wide":
+      case "erc1155-contract-wide": {
+        return new Builders.ContractWide(this.chainId);
+      }
+
       case "erc721-single-token":
       case "erc1155-single-token": {
         return new Builders.SingleToken(this.chainId);
+      }
+
+      case "erc721-token-range":
+      case "erc1155-token-range": {
+        return new Builders.TokenRange(this.chainId);
       }
 
       default: {
@@ -212,6 +222,16 @@ export class Order {
   }
 
   private detectKind(): Types.OrderKind {
+    // contract-wide
+    {
+      const builder = new Builders.ContractWide(this.chainId);
+      if (builder.isValid(this)) {
+        return this.params.nftAmount
+          ? "erc1155-contract-wide"
+          : "erc721-contract-wide";
+      }
+    }
+
     // single-token
     {
       const builder = new Builders.SingleToken(this.chainId);
@@ -219,6 +239,16 @@ export class Order {
         return this.params.nftAmount
           ? "erc1155-single-token"
           : "erc721-single-token";
+      }
+    }
+
+    // token-range
+    {
+      const builder = new Builders.TokenRange(this.chainId);
+      if (builder.isValid(this)) {
+        return this.params.nftAmount
+          ? "erc1155-token-range"
+          : "erc721-token-range";
       }
     }
 
