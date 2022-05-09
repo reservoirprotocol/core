@@ -15,7 +15,8 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
     enum ExchangeKind {
         WYVERN_V23,
         LOOKS_RARE,
-        ZEROEX_V4
+        ZEROEX_V4,
+        FOUNDATION
     }
 
     address public weth;
@@ -29,11 +30,14 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
 
     address public zeroExV4;
 
+    address public foundation;
+
     function initialize(
         address wethAddress,
         address looksRareAddress,
         address wyvernV23Address,
-        address zeroExV4Address
+        address zeroExV4Address,
+        address foundationAddress
     ) public initializer {
         OwnableUpgradeable.__Ownable_init();
 
@@ -73,6 +77,10 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         // --- ZeroExV4 setup ---
 
         zeroExV4 = zeroExV4Address;
+
+        // --- Foundation setup ---
+
+        foundation = foundationAddress;
     }
 
     receive() external payable {
@@ -112,6 +120,8 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
             target = looksRare;
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
+        } else if (exchangeKind == ExchangeKind.FOUNDATION) {
+            target = foundation;
         } else {
             revert("Unsupported exchange");
         }
