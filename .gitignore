@@ -30,3 +30,6 @@ cache
 
 # Tenderly
 tenderly.yaml
+
+# Test files
+test.ts
