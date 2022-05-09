@@ -31,5 +31,5 @@ export type TxData = {
   from: string;
   to: string;
   data: string;
-  value?: BigNumberish;
+  value?: string;
 };
