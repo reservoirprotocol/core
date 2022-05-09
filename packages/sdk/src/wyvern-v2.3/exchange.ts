@@ -108,7 +108,7 @@ export class Exchange {
       from: taker,
       to: buyOrder.params.exchange,
       data,
-      value: value && bn(value).toHexString(),
+      value: value ? bn(value).toHexString() : undefined,
     };
   }
 
