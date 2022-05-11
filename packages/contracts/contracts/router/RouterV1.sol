@@ -16,7 +16,8 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         WYVERN_V23,
         LOOKS_RARE,
         ZEROEX_V4,
-        FOUNDATION
+        FOUNDATION,
+        X2Y2
     }
 
     address public weth;
@@ -32,12 +33,17 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
 
     address public foundation;
 
+    address public x2y2;
+    address public x2y2ERC721Delegate;
+
     function initialize(
         address wethAddress,
         address looksRareAddress,
         address wyvernV23Address,
         address zeroExV4Address,
-        address foundationAddress
+        address foundationAddress,
+        address x2y2Address,
+        address x2y2ERC721DelegateAddress
     ) public initializer {
         OwnableUpgradeable.__Ownable_init();
 
@@ -81,6 +87,11 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         // --- Foundation setup ---
 
         foundation = foundationAddress;
+
+        // --- X2Y2 setup ---
+
+        x2y2 = x2y2Address;
+        x2y2ERC721Delegate = x2y2ERC721DelegateAddress;
     }
 
     receive() external payable {
@@ -120,6 +131,8 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
             target = looksRare;
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
+        } else if (exchangeKind == ExchangeKind.X2Y2) {
+            target = x2y2;
         } else if (exchangeKind == ExchangeKind.FOUNDATION) {
             target = foundation;
         } else {
@@ -164,6 +177,9 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
             operator = zeroExV4;
+        } else if (exchangeKind == ExchangeKind.X2Y2) {
+            target = x2y2;
+            operator = x2y2ERC721Delegate;
         } else {
             revert("Unsupported exchange");
         }
