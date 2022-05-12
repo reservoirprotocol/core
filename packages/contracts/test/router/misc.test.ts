@@ -11,11 +11,20 @@ describe("Router - misc", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
 
+  let erc721: Contract;
+  let erc1155: Contract;
   let router: Contract;
 
   beforeEach(async () => {
     chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [deployer, alice] = await ethers.getSigners();
+
+    erc721 = await ethers
+      .getContractFactory("MockERC721", deployer)
+      .then((factory) => factory.deploy());
+    erc1155 = await ethers
+      .getContractFactory("MockERC1155", deployer)
+      .then((factory) => factory.deploy());
 
     // Make sure testing will not override any mainnet manifest files.
     process.chdir("/tmp");
@@ -100,5 +109,46 @@ describe("Router - misc", () => {
     expect(aliceEthBalanceAfter.sub(aliceEthBalanceBefore)).to.eq(ethAmount);
     expect(await weth.getBalance(router.address)).to.eq(0);
     expect(await weth.getBalance(alice.address)).to.eq(wethAmount);
+  });
+
+  it("Recover stucked ERC721 and ERC1155", async () => {
+    // Send ERC721 to the router
+    await erc721.connect(deployer).mint(0);
+    await erc721
+      .connect(deployer)
+      .transferFrom(deployer.address, router.address, 0);
+
+    expect(await erc721.ownerOf(0)).to.eq(router.address);
+
+    // Send ERC1155 to the router
+    await erc1155.connect(deployer).mint(0);
+    await erc1155
+      .connect(deployer)
+      .safeTransferFrom(deployer.address, router.address, 0, 1, "0x");
+
+    expect(await erc1155.balanceOf(router.address, 0)).to.eq(1);
+
+    const targets = [erc721.address, erc1155.address];
+    const data = [
+      erc721.interface.encodeFunctionData("transferFrom", [
+        router.address,
+        deployer.address,
+        0,
+      ]),
+      erc1155.interface.encodeFunctionData("safeTransferFrom", [
+        router.address,
+        deployer.address,
+        0,
+        1,
+        "0x",
+      ]),
+    ];
+    const values = [0, 0];
+
+    await router.connect(deployer).makeCalls(targets, data, values);
+
+    expect(await erc721.ownerOf(0)).to.eq(deployer.address);
+    expect(await erc1155.balanceOf(router.address, 0)).to.eq(0);
+    expect(await erc1155.balanceOf(deployer.address, 0)).to.eq(1);
   });
 });
