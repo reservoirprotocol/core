@@ -5,9 +5,10 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network, upgrades } from "hardhat";
 
-import { bn, getCurrentTimestamp } from "../../utils";
+import { ExchangeKind } from "./helpers";
+import { bn, getCurrentTimestamp } from "../utils";
 
-describe("Router V1 - Multi buy", () => {
+describe("Router V1 - multi buy", () => {
   let chainId: number;
 
   let deployer: SignerWithAddress;
@@ -21,14 +22,8 @@ describe("Router V1 - Multi buy", () => {
   let erc1155: Contract;
   let router: Contract;
 
-  enum ExchangeKind {
-    WYVERN_V23,
-    LOOKS_RARE,
-    ZEROEX_V4,
-  }
-
   beforeEach(async () => {
-    chainId = (network.config as any).forking?.url?.includes("rinkeby") ? 4 : 1;
+    chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [deployer, referrer, alice, bob, carol, dan] = await ethers.getSigners();
 
     erc721 = await ethers
@@ -37,6 +32,9 @@ describe("Router V1 - Multi buy", () => {
     erc1155 = await ethers
       .getContractFactory("MockERC1155", deployer)
       .then((factory) => factory.deploy());
+
+    // Make sure testing will not override any mainnet manifest files.
+    process.chdir("/tmp");
 
     router = await upgrades.deployProxy(
       await ethers.getContractFactory("RouterV1", deployer),
@@ -47,20 +45,36 @@ describe("Router V1 - Multi buy", () => {
         Sdk.ZeroExV4.Addresses.Exchange[chainId],
       ]
     );
+    router = await upgrades.upgradeProxy(
+      router.address,
+      await ethers.getContractFactory("RouterV2", deployer),
+      {
+        call: {
+          fn: "initializeV2",
+          args: [
+            Sdk.Foundation.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
+          ],
+        },
+      }
+    );
   });
 
   afterEach(async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: (network.config as any).forking.url,
-            blockNumber: (network.config as any).forking.blockNumber,
+    if ((network.config as any).forking) {
+      await network.provider.request({
+        method: "hardhat_reset",
+        params: [
+          {
+            forking: {
+              jsonRpcUrl: (network.config as any).forking.url,
+              blockNumber: (network.config as any).forking.blockNumber,
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
+    }
   });
 
   it("Fill multiple listings", async () => {

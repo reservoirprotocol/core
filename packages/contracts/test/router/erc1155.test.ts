@@ -5,9 +5,10 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network, upgrades } from "hardhat";
 
-import { bn, getCurrentTimestamp } from "../../utils";
+import { ExchangeKind } from "./helpers";
+import { bn, getCurrentTimestamp } from "../utils";
 
-describe("Router V1 - ERC1155", () => {
+describe("Router - filling ERC1155", () => {
   let chainId: number;
 
   let deployer: SignerWithAddress;
@@ -19,19 +20,16 @@ describe("Router V1 - ERC1155", () => {
   let erc1155: Contract;
   let router: Contract;
 
-  enum ExchangeKind {
-    WYVERN_V23,
-    LOOKS_RARE,
-    ZEROEX_V4,
-  }
-
   beforeEach(async () => {
-    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
+    chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
 
     erc1155 = await ethers
       .getContractFactory("MockERC1155", deployer)
       .then((factory) => factory.deploy());
+
+    // Make sure testing will not override any mainnet manifest files.
+    process.chdir("/tmp");
 
     router = await upgrades.deployProxy(
       await ethers.getContractFactory("RouterV1", deployer),
@@ -42,20 +40,36 @@ describe("Router V1 - ERC1155", () => {
         Sdk.ZeroExV4.Addresses.Exchange[chainId],
       ]
     );
+    router = await upgrades.upgradeProxy(
+      router.address,
+      await ethers.getContractFactory("RouterV2", deployer),
+      {
+        call: {
+          fn: "initializeV2",
+          args: [
+            Sdk.Foundation.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
+          ],
+        },
+      }
+    );
   });
 
   afterEach(async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: (network.config as any).forking.url,
-            blockNumber: (network.config as any).forking.blockNumber,
+    if ((network.config as any).forking) {
+      await network.provider.request({
+        method: "hardhat_reset",
+        params: [
+          {
+            forking: {
+              jsonRpcUrl: (network.config as any).forking.url,
+              blockNumber: (network.config as any).forking.blockNumber,
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
+    }
   });
 
   it("WyvernV23 - fill listing", async () => {
@@ -353,6 +367,124 @@ describe("Router V1 - ERC1155", () => {
     // Router is stateless (it shouldn't keep any funds)
     expect(await ethers.provider.getBalance(router.address)).to.eq(0);
     expect(await weth.getBalance(router.address)).to.eq(0);
+  });
+
+  it("LooksRare - fill listing with precheck", async () => {
+    const buyer = alice;
+    const seller = bob;
+
+    const price = parseEther("1");
+    const fee = 200;
+    const routerFee = 100;
+    const soldTokenId = 0;
+
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mint(soldTokenId);
+
+    // Approve the transfer manager
+    await erc1155
+      .connect(seller)
+      .setApprovalForAll(
+        Sdk.LooksRare.Addresses.TransferManagerErc1155[chainId],
+        true
+      );
+
+    const exchange = new Sdk.LooksRare.Exchange(chainId);
+    const builder = new Sdk.LooksRare.Builders.SingleToken(chainId);
+
+    // Build sell order
+    let sellOrder = builder.build({
+      isOrderAsk: true,
+      signer: seller.address,
+      collection: erc1155.address,
+      tokenId: soldTokenId,
+      price,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+      nonce: await exchange.getNonce(ethers.provider, seller.address),
+    });
+    await sellOrder.sign(seller);
+
+    // Create matching buy order
+    const buyOrder = sellOrder.buildMatching(router.address);
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
+
+    const referrerEthBalanceBefore = await referrer.getBalance();
+    const sellerWethBalanceBefore = await weth.getBalance(seller.address);
+    const sellerNftBalanceBefore = await erc1155.balanceOf(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await erc1155.balanceOf(
+      buyer.address,
+      soldTokenId
+    );
+    expect(sellerNftBalanceBefore).to.eq(1);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder);
+    await router
+      .connect(buyer)
+      .singleERC1155ListingFillWithPrecheck(
+        referrer.address,
+        tx.data,
+        ExchangeKind.LOOKS_RARE,
+        sellOrder.params.collection,
+        sellOrder.params.tokenId,
+        1,
+        buyer.address,
+        seller.address,
+        routerFee,
+        {
+          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
+        }
+      );
+
+    const referrerEthBalanceAfter = await referrer.getBalance();
+    const sellerWethBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await erc1155.balanceOf(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await erc1155.balanceOf(
+      buyer.address,
+      soldTokenId
+    );
+    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
+      price.mul(routerFee).div(10000)
+    );
+    expect(sellerWethBalanceAfter.sub(sellerWethBalanceBefore)).to.eq(
+      price.sub(price.mul(fee).div(10000))
+    );
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(1);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+    expect(await weth.getBalance(router.address)).to.eq(0);
+
+    // The precheck will trigger an early-revert
+    await expect(
+      router
+        .connect(buyer)
+        .singleERC1155ListingFillWithPrecheck(
+          referrer.address,
+          tx.data,
+          ExchangeKind.LOOKS_RARE,
+          sellOrder.params.collection,
+          sellOrder.params.tokenId,
+          1,
+          buyer.address,
+          seller.address,
+          routerFee,
+          {
+            value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
+          }
+        )
+    ).to.be.revertedWith("Unexpected owner/balance");
   });
 
   it("LooksRare - fill bid", async () => {

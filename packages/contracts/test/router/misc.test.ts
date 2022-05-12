@@ -5,7 +5,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network, upgrades } from "hardhat";
 
-describe("Router V1 - ERC721", () => {
+describe("Router - misc", () => {
   let chainId: number;
 
   let deployer: SignerWithAddress;
@@ -14,8 +14,11 @@ describe("Router V1 - ERC721", () => {
   let router: Contract;
 
   beforeEach(async () => {
-    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
+    chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [deployer, alice] = await ethers.getSigners();
+
+    // Make sure testing will not override any mainnet manifest files.
+    process.chdir("/tmp");
 
     router = await upgrades.deployProxy(
       await ethers.getContractFactory("RouterV1", deployer),
@@ -26,20 +29,36 @@ describe("Router V1 - ERC721", () => {
         Sdk.ZeroExV4.Addresses.Exchange[chainId],
       ]
     );
+    router = await upgrades.upgradeProxy(
+      router.address,
+      await ethers.getContractFactory("RouterV2", deployer),
+      {
+        call: {
+          fn: "initializeV2",
+          args: [
+            Sdk.Foundation.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
+          ],
+        },
+      }
+    );
   });
 
   afterEach(async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: (network.config as any).forking.url,
-            blockNumber: (network.config as any).forking.blockNumber,
+    if ((network.config as any).forking) {
+      await network.provider.request({
+        method: "hardhat_reset",
+        params: [
+          {
+            forking: {
+              jsonRpcUrl: (network.config as any).forking.url,
+              blockNumber: (network.config as any).forking.blockNumber,
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
+    }
   });
 
   it("Recover stucked ETH and WETH", async () => {

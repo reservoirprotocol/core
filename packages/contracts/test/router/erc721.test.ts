@@ -5,9 +5,10 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers, network, upgrades } from "hardhat";
 
-import { bn, getCurrentTimestamp } from "../../utils";
+import { ExchangeKind } from "./helpers";
+import { bn, getCurrentTimestamp } from "../utils";
 
-describe("Router V1 - ERC721", () => {
+describe("Router - filling ERC721", () => {
   let chainId: number;
 
   let deployer: SignerWithAddress;
@@ -19,20 +20,16 @@ describe("Router V1 - ERC721", () => {
   let erc721: Contract;
   let router: Contract;
 
-  enum ExchangeKind {
-    WYVERN_V23,
-    LOOKS_RARE,
-    ZEROEX_V4,
-    FOUNDATION,
-  }
-
   beforeEach(async () => {
-    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
+    chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
 
     erc721 = await ethers
       .getContractFactory("MockERC721", deployer)
       .then((factory) => factory.deploy());
+
+    // Make sure testing will not override any mainnet manifest files.
+    process.chdir("/tmp");
 
     router = await upgrades.deployProxy(
       await ethers.getContractFactory("RouterV1", deployer),
@@ -41,23 +38,38 @@ describe("Router V1 - ERC721", () => {
         Sdk.LooksRare.Addresses.Exchange[chainId],
         Sdk.WyvernV23.Addresses.Exchange[chainId],
         Sdk.ZeroExV4.Addresses.Exchange[chainId],
-        Sdk.Foundation.Addresses.Exchange[chainId],
       ]
+    );
+    router = await upgrades.upgradeProxy(
+      router.address,
+      await ethers.getContractFactory("RouterV2", deployer),
+      {
+        call: {
+          fn: "initializeV2",
+          args: [
+            Sdk.Foundation.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
+          ],
+        },
+      }
     );
   });
 
   afterEach(async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: (network.config as any).forking.url,
-            blockNumber: (network.config as any).forking.blockNumber,
+    if ((network.config as any).forking) {
+      await network.provider.request({
+        method: "hardhat_reset",
+        params: [
+          {
+            forking: {
+              jsonRpcUrl: (network.config as any).forking.url,
+              blockNumber: (network.config as any).forking.blockNumber,
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
+    }
   });
 
   it("WyvernV23 - fill listing", async () => {
@@ -145,6 +157,113 @@ describe("Router V1 - ERC721", () => {
 
     // Router is stateless (it shouldn't keep any funds)
     expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+  });
+
+  it.only("WyvernV23 - fill listing with precheck", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const feeRecipient = carol;
+
+    const price = parseEther("1");
+    const fee = 250;
+    const routerFee = 100;
+    const soldTokenId = 0;
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
+
+    // Register user proxy for the seller
+    const proxyRegistry = new Sdk.WyvernV23.Helpers.ProxyRegistry(
+      ethers.provider,
+      chainId
+    );
+    await proxyRegistry.registerProxy(seller);
+    const proxy = await proxyRegistry.getProxy(seller.address);
+
+    // Approve the user proxy
+    await erc721.connect(seller).setApprovalForAll(proxy, true);
+
+    const exchange = new Sdk.WyvernV23.Exchange(chainId);
+    const builder = new Sdk.WyvernV23.Builders.Erc721.SingleToken.V2(chainId);
+
+    // Build sell order
+    let sellOrder = builder.build({
+      maker: seller.address,
+      contract: erc721.address,
+      tokenId: soldTokenId,
+      side: "sell",
+      price,
+      paymentToken: Sdk.Common.Addresses.Eth[chainId],
+      fee,
+      feeRecipient: feeRecipient.address,
+      listingTime: await getCurrentTimestamp(ethers.provider),
+      nonce: await exchange.getNonce(ethers.provider, seller.address),
+    });
+    await sellOrder.sign(seller);
+
+    // Create matching buy order
+    const buyOrder = sellOrder.buildMatching(router.address, {
+      nonce: await exchange.getNonce(ethers.provider, router.address),
+      recipient: buyer.address,
+    });
+    buyOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    const referrerEthBalanceBefore = await referrer.getBalance();
+    const sellerEthBalanceBefore = await seller.getBalance();
+    const ownerBefore = await erc721.ownerOf(soldTokenId);
+    expect(ownerBefore).to.eq(seller.address);
+
+    const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
+    await router
+      .connect(buyer)
+      .singleERC721ListingFillWithPrecheck(
+        referrer.address,
+        tx.data,
+        ExchangeKind.WYVERN_V23,
+        erc721.address,
+        soldTokenId,
+        buyer.address,
+        seller.address,
+        routerFee,
+        {
+          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
+        }
+      );
+
+    const referrerEthBalanceAfter = await referrer.getBalance();
+    const sellerEthBalanceAfter = await seller.getBalance();
+    const ownerAfter = await erc721.ownerOf(soldTokenId);
+    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
+      price.mul(routerFee).div(10000)
+    );
+    expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(
+      price.sub(price.mul(fee).div(10000))
+    );
+    expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+
+    // The precheck will trigger an early-revert
+    await expect(
+      router
+        .connect(buyer)
+        .singleERC721ListingFillWithPrecheck(
+          referrer.address,
+          tx.data,
+          ExchangeKind.WYVERN_V23,
+          erc721.address,
+          soldTokenId,
+          buyer.address,
+          seller.address,
+          routerFee,
+          {
+            value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
+          }
+        )
+    ).to.be.revertedWith("Unexpected owner");
   });
 
   it("WyvernV23 - fill bid", async () => {

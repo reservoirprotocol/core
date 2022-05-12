@@ -12,7 +12,9 @@ import {IWETH} from "./interfaces/IWETH.sol";
 import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
 
-contract RouterV1 is Initializable, OwnableUpgradeable {
+contract RouterV2 is Initializable, OwnableUpgradeable {
+    // --- V1 storage ---
+
     address public weth;
 
     address public looksRare;
@@ -24,50 +26,31 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
 
     address public zeroExV4;
 
-    function initialize(
-        address wethAddress,
-        address looksRareAddress,
-        address wyvernV23Address,
-        address zeroExV4Address
-    ) public initializer {
-        OwnableUpgradeable.__Ownable_init();
+    // --- V2 storage ---
 
-        weth = wethAddress;
+    bool private _initializedV2;
 
-        // --- LooksRare setup ---
+    address public foundation;
 
-        looksRare = looksRareAddress;
+    address public x2y2;
+    address public x2y2ERC721Delegate;
 
-        // Cache the transfer manager contracts
-        address transferSelectorNFT = ILooksRare(looksRare)
-            .transferSelectorNFT();
-        looksRareTransferManagerERC721 = ILooksRareTransferSelectorNFT(
-            transferSelectorNFT
-        ).TRANSFER_MANAGER_ERC721();
-        looksRareTransferManagerERC1155 = ILooksRareTransferSelectorNFT(
-            transferSelectorNFT
-        ).TRANSFER_MANAGER_ERC1155();
+    function initializeV2(
+        address foundationAddress,
+        address x2y2Address,
+        address x2y2ERC721DelegateAddress
+    ) public {
+        require(!_initializedV2, "V2: Already initialized");
+        _initializedV2 = true;
 
-        // --- WyvernV23 setup ---
+        // --- Foundation setup ---
 
-        wyvernV23 = wyvernV23Address;
+        foundation = foundationAddress;
 
-        // Create a user proxy
-        address proxyRegistry = IWyvernV23(wyvernV23).registry();
-        IWyvernV23ProxyRegistry(proxyRegistry).registerProxy();
-        wyvernV23Proxy = IWyvernV23ProxyRegistry(proxyRegistry).proxies(
-            address(this)
-        );
+        // --- X2Y2 setup ---
 
-        // Approve the token transfer proxy
-        IERC20(weth).approve(
-            IWyvernV23(wyvernV23).tokenTransferProxy(),
-            type(uint256).max
-        );
-
-        // --- ZeroExV4 setup ---
-
-        zeroExV4 = zeroExV4Address;
+        x2y2 = x2y2Address;
+        x2y2ERC721Delegate = x2y2ERC721DelegateAddress;
     }
 
     receive() external payable {
@@ -107,6 +90,61 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
             target = looksRare;
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
+        } else if (exchangeKind == ExchangeKind.X2Y2) {
+            target = x2y2;
+        } else if (exchangeKind == ExchangeKind.FOUNDATION) {
+            target = foundation;
+        } else {
+            revert("Unsupported exchange");
+        }
+
+        uint256 payment = (10000 * msg.value) / (10000 + feeBps);
+
+        (bool success, ) = target.call{value: payment}(data);
+        require(success, "Unsuccessfull fill");
+
+        if (exchangeKind != ExchangeKind.WYVERN_V23) {
+            // When filling LooksRare or ZeroExV4 listings we need to send
+            // the NFT to the taker's wallet after the fill (since they do
+            // not allow specifying a different recipient than the taker).
+            IERC721(collection).transferFrom(address(this), receiver, tokenId);
+        }
+
+        uint256 fee = msg.value - payment;
+        if (fee > 0) {
+            (success, ) = payable(referrer).call{value: fee}("");
+            require(success, "Could not send payment");
+        }
+    }
+
+    function singleERC721ListingFillWithPrecheck(
+        address referrer,
+        bytes memory data,
+        ExchangeKind exchangeKind,
+        address collection,
+        uint256 tokenId,
+        address receiver,
+        address expectedOwner,
+        uint16 feeBps
+    ) external payable {
+        if (expectedOwner != address(0)) {
+            require(
+                IERC721(collection).ownerOf(tokenId) == expectedOwner,
+                "Unexpected owner"
+            );
+        }
+
+        address target;
+        if (exchangeKind == ExchangeKind.WYVERN_V23) {
+            target = wyvernV23;
+        } else if (exchangeKind == ExchangeKind.LOOKS_RARE) {
+            target = looksRare;
+        } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
+            target = zeroExV4;
+        } else if (exchangeKind == ExchangeKind.X2Y2) {
+            target = x2y2;
+        } else if (exchangeKind == ExchangeKind.FOUNDATION) {
+            target = foundation;
         } else {
             revert("Unsupported exchange");
         }
@@ -149,6 +187,9 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
             operator = zeroExV4;
+        } else if (exchangeKind == ExchangeKind.X2Y2) {
+            target = x2y2;
+            operator = x2y2ERC721Delegate;
         } else {
             revert("Unsupported exchange");
         }
@@ -186,6 +227,61 @@ contract RouterV1 is Initializable, OwnableUpgradeable {
         address receiver,
         uint256 feeBps
     ) external payable {
+        address target;
+        if (exchangeKind == ExchangeKind.WYVERN_V23) {
+            target = wyvernV23;
+        } else if (exchangeKind == ExchangeKind.LOOKS_RARE) {
+            target = looksRare;
+        } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
+            target = zeroExV4;
+        } else {
+            revert("Unsupported exchange");
+        }
+
+        uint256 payment = (10000 * msg.value) / (10000 + feeBps);
+
+        (bool success, ) = target.call{value: payment}(data);
+        require(success, "Unsuccessfull fill");
+
+        if (exchangeKind != ExchangeKind.WYVERN_V23) {
+            // When filling LooksRare or ZeroExV4 listings we need to send
+            // the NFT to the taker's wallet after the fill (since they do
+            // not allow specifying a different recipient than the taker).
+            IERC1155(collection).safeTransferFrom(
+                address(this),
+                receiver,
+                tokenId,
+                amount,
+                ""
+            );
+        }
+
+        uint256 fee = msg.value - payment;
+        if (fee > 0) {
+            (success, ) = payable(referrer).call{value: fee}("");
+            require(success, "Could not send payment");
+        }
+    }
+
+    function singleERC1155ListingFillWithPrecheck(
+        address referrer,
+        bytes memory data,
+        ExchangeKind exchangeKind,
+        address collection,
+        uint256 tokenId,
+        uint256 amount,
+        address receiver,
+        address expectedOwner,
+        uint256 feeBps
+    ) external payable {
+        if (expectedOwner != address(0)) {
+            require(
+                IERC1155(collection).balanceOf(expectedOwner, tokenId) >=
+                    amount,
+                "Unexpected owner/balance"
+            );
+        }
+
         address target;
         if (exchangeKind == ExchangeKind.WYVERN_V23) {
             target = wyvernV23;
