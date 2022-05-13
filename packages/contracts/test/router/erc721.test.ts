@@ -159,7 +159,7 @@ describe("Router - filling ERC721", () => {
     expect(await ethers.provider.getBalance(router.address)).to.eq(0);
   });
 
-  it.only("WyvernV23 - fill listing with precheck", async () => {
+  it("WyvernV23 - fill listing with precheck", async () => {
     const buyer = alice;
     const seller = bob;
     const feeRecipient = carol;
