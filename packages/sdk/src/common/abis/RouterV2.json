@@ -31,7 +31,7 @@
         "type": "bytes"
       },
       {
-        "internalType": "enum RouterV1.ExchangeKind",
+        "internalType": "enum ExchangeKind",
         "name": "exchangeKind",
         "type": "uint8"
       },
@@ -67,29 +67,37 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "foundation",
+    "outputs": [
       {
         "internalType": "address",
-        "name": "wethAddress",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "looksRareAddress",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "wyvernV23Address",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "zeroExV4Address",
+        "name": "",
         "type": "address"
       }
     ],
-    "name": "initialize",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "foundationAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "x2y2Address",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "x2y2ERC721DelegateAddress",
+        "type": "address"
+      }
+    ],
+    "name": "initializeV2",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -285,7 +293,7 @@
         "type": "bytes"
       },
       {
-        "internalType": "enum RouterV1.ExchangeKind",
+        "internalType": "enum ExchangeKind",
         "name": "exchangeKind",
         "type": "uint8"
       },
@@ -323,7 +331,7 @@
         "type": "bytes"
       },
       {
-        "internalType": "enum RouterV1.ExchangeKind",
+        "internalType": "enum ExchangeKind",
         "name": "exchangeKind",
         "type": "uint8"
       },
@@ -362,6 +370,59 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "referrer",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      },
+      {
+        "internalType": "enum ExchangeKind",
+        "name": "exchangeKind",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "collection",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "expectedOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "feeBps",
+        "type": "uint256"
+      }
+    ],
+    "name": "singleERC1155ListingFillWithPrecheck",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "",
         "type": "address"
       },
@@ -371,7 +432,7 @@
         "type": "bytes"
       },
       {
-        "internalType": "enum RouterV1.ExchangeKind",
+        "internalType": "enum ExchangeKind",
         "name": "exchangeKind",
         "type": "uint8"
       },
@@ -409,7 +470,7 @@
         "type": "bytes"
       },
       {
-        "internalType": "enum RouterV1.ExchangeKind",
+        "internalType": "enum ExchangeKind",
         "name": "exchangeKind",
         "type": "uint8"
       },
@@ -435,6 +496,54 @@
       }
     ],
     "name": "singleERC721ListingFill",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "referrer",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      },
+      {
+        "internalType": "enum ExchangeKind",
+        "name": "exchangeKind",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "collection",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "expectedOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint16",
+        "name": "feeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "singleERC721ListingFillWithPrecheck",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"
@@ -481,6 +590,32 @@
   {
     "inputs": [],
     "name": "wyvernV23Proxy",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "x2y2",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "x2y2ERC721Delegate",
     "outputs": [
       {
         "internalType": "address",
