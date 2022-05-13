@@ -14,5 +14,5 @@ export const Weth: any = {
 
 export const Router: any = {
   1: "0xc52b521b284792498c1036d4c2ed4b73387b3859",
-  4: "0xa5c0C6c024460b039B917a77EB564da5817c55E2",
+  4: "0xa5c0c6c024460b039b917a77eb564da5817c55e2",
 };

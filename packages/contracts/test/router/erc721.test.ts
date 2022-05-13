@@ -6,7 +6,7 @@ import { expect } from "chai";
 import { ethers, network, upgrades } from "hardhat";
 
 import { ExchangeKind } from "./helpers";
-import { bn, getCurrentTimestamp } from "../utils";
+import { bn, getCurrentTimestamp, lc } from "../utils";
 
 describe("Router - filling ERC721", () => {
   let chainId: number;
@@ -659,7 +659,7 @@ describe("Router - filling ERC721", () => {
     const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerEthBalanceBefore = await seller.getBalance();
     const ownerBefore = await erc721.ownerOf(soldTokenId);
-    expect(ownerBefore).to.eq(exchange.contract.address);
+    expect(ownerBefore).to.eq(lc(exchange.contract.address));
 
     const tx = exchange.fillOrderTx(
       buyer.address,

@@ -68,8 +68,6 @@ describe("X2Y2 - SingleToken Erc721", () => {
     const price = parseEther("1");
     const tokenId = 0;
 
-    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
-
     // Mint ERC721 to the seller.
     await erc721.connect(seller).mint(tokenId);
 

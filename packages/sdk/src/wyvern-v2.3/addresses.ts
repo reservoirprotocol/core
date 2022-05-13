@@ -16,13 +16,13 @@ export const TokenTransferProxy: any = {
 };
 
 export const TokenListVerifier: any = {
-  1: "0x13cA300c11B70E555C7BC93f898F67503c8619c9",
-  4: "0xAB429e7cb5c441b8275F90a419e213BD4a795E67",
+  1: "0x13ca300c11b70e555c7bc93f898f67503c8619c9",
+  4: "0xab429e7cb5c441b8275f90a419e213bd4a795e67",
 };
 
 export const TokenRangeVerifier: any = {
-  1: "0x12f313f763EAb71481EFB70Fb0254A77Ed6AB829",
-  4: "0x253C0d8F6AA4D89b57D5A0CaEa6131090Fd13cC5",
+  1: "0x12f313f763eab71481efb70fb0254a77ed6ab829",
+  4: "0x253c0d8f6aa4d89b57d5a0caea6131090fd13cc5",
 };
 
 export const OpenSeaMekleValidator: any = {

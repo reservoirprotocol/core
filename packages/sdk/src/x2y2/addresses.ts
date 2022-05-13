@@ -6,10 +6,10 @@ export const Exchange: ChainIdToAddress = {
 };
 
 export const Erc721Delegate: ChainIdToAddress = {
-  1: "0xF849de01B080aDC3A814FaBE1E2087475cF2E354",
+  1: "0xf849de01b080adc3a814fabe1e2087475cf2e354",
   4: "0x0000000000000000000000000000000000000000",
 };
 
 export const FeeManager: ChainIdToAddress = {
-  1: "0xD823C605807cC5E6Bd6fC0d7e4eEa50d3e2d66cd",
+  1: "0xd823c605807cc5e6bd6fc0d7e4eea50d3e2d66cd",
 };
