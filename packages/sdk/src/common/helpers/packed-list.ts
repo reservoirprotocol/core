@@ -12,7 +12,7 @@ export const getPackedListCalldataSize = (tokenIds: BigNumberish[]) => {
   }
   numBytes = Math.max(numBytes, 1);
 
-  return numBytes * tokenIds.length;
+  return 96 + numBytes * tokenIds.length;
 };
 
 export const generatePackedList = (tokenIds: BigNumberish[]) => {
