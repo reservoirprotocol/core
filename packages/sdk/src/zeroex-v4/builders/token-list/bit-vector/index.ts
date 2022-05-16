@@ -1,32 +1,28 @@
-import { defaultAbiCoder } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 
-import { BaseBuildParams, BaseBuilder, BaseOrderInfo } from "../base";
-import * as Addresses from "../../addresses";
-import { Order } from "../../order";
-import * as Types from "../../types";
-import * as CommonAddresses from "../../../common/addresses";
-import { BytesEmpty, lc, s } from "../../../utils";
+import { BaseBuildParams, BaseBuilder, BaseOrderInfo } from "../../base";
+import * as Addresses from "../../../addresses";
+import { Order } from "../../../order";
+import * as Types from "../../../types";
+import * as CommonAddresses from "../../../../common/addresses";
+import {
+  decomposeBitVector,
+  generateBitVector,
+} from "../../../../common/helpers/bit-vector";
+import { BytesEmpty, lc, s } from "../../../../utils";
 
 interface BuildParams extends BaseBuildParams {
-  startTokenId: BigNumberish;
-  endTokenId: BigNumberish;
+  tokenIds: BigNumberish[];
 }
 
 interface OrderInfo extends BaseOrderInfo {
-  startTokenId: BigNumberish;
-  endTokenId: BigNumberish;
+  tokenIds: BigNumberish[];
 }
 
-export class TokenRangeBuilder extends BaseBuilder {
+export class BitVectorTokenListBuilder extends BaseBuilder {
   public isValid(order: Order): boolean {
     try {
-      const [startTokenId, endTokenId] = defaultAbiCoder.decode(
-        ["uint256", "uint256"],
-        order.params.nftProperties[0].propertyData
-      );
-
       const copyOrder = this.build({
         ...order.params,
         direction:
@@ -35,8 +31,9 @@ export class TokenRangeBuilder extends BaseBuilder {
         maker: order.params.maker,
         price: order.params.erc20TokenAmount,
         amount: order.params.nftAmount,
-        startTokenId,
-        endTokenId,
+        tokenIds: decomposeBitVector(
+          order.params.nftProperties[0].propertyData
+        ),
       });
 
       if (!copyOrder) {
@@ -80,11 +77,8 @@ export class TokenRangeBuilder extends BaseBuilder {
       nftId: "0",
       nftProperties: [
         {
-          propertyValidator: Addresses.TokenRangeValidator[this.chainId],
-          propertyData: defaultAbiCoder.encode(
-            ["uint256", "uint256"],
-            [s(params.startTokenId), s(params.endTokenId)]
-          ),
+          propertyValidator: Addresses.BitVectorValidator[this.chainId],
+          propertyData: generateBitVector(params.tokenIds.map(Number)),
         },
       ],
       nftAmount: params.amount ? s(params.amount) : undefined,
@@ -111,11 +105,9 @@ export class TokenRangeBuilder extends BaseBuilder {
   }
 
   public getInfo(order: Order): OrderInfo {
-    const [startTokenId, endTokenId] = defaultAbiCoder.decode(
-      ["uint256", "uint256"],
+    const tokenIds = decomposeBitVector(
       order.params.nftProperties[0].propertyData
     );
-
-    return { startTokenId, endTokenId };
+    return { tokenIds };
   }
 }

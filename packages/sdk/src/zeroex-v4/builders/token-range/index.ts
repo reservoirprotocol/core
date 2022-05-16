@@ -2,7 +2,7 @@ import { defaultAbiCoder } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 
-import { BaseBuildParams, BaseBuilder } from "../base";
+import { BaseBuildParams, BaseBuilder, BaseOrderInfo } from "../base";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
 import * as Types from "../../types";
@@ -10,6 +10,11 @@ import * as CommonAddresses from "../../../common/addresses";
 import { BytesEmpty, lc, s } from "../../../utils";
 
 interface BuildParams extends BaseBuildParams {
+  startTokenId: BigNumberish;
+  endTokenId: BigNumberish;
+}
+
+interface OrderInfo extends BaseOrderInfo {
   startTokenId: BigNumberish;
   endTokenId: BigNumberish;
 }
@@ -103,5 +108,14 @@ export class TokenRangeBuilder extends BaseBuilder {
       nftAmount: data.amount ? s(data.amount) : undefined,
       unwrapNativeToken: data.unwrapNativeToken,
     };
+  }
+
+  public getInfo(order: Order): OrderInfo {
+    const [startTokenId, endTokenId] = defaultAbiCoder.decode(
+      ["uint256", "uint256"],
+      order.params.nftProperties[0].propertyData
+    );
+
+    return { startTokenId, endTokenId };
   }
 }

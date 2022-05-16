@@ -23,6 +23,8 @@ export interface BaseBuildParams {
   s?: string;
 }
 
+export interface BaseOrderInfo {}
+
 export abstract class BaseBuilder {
   public chainId: number;
 
@@ -42,6 +44,10 @@ export abstract class BaseBuilder {
     params.v = params.v ?? 0;
     params.r = params.r ?? HashZero;
     params.s = params.s ?? HashZero;
+  }
+
+  public getInfo(_order: Order): BaseOrderInfo {
+    return {};
   }
 
   public abstract isValid(order: Order): boolean;

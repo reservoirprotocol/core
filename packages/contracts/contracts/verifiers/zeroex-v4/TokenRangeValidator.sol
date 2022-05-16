@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
-contract TokenRangeValidator {
+import {IPropertyValidator} from "./interfaces/IPropertyValidator.sol";
+
+contract TokenRangeValidator is IPropertyValidator {
     function validateProperty(
         address, // tokenAddress
         uint256 tokenId,
