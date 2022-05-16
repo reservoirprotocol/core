@@ -9,7 +9,7 @@ import { verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
 import { Builders } from "./builders";
-import { BaseBuilder } from "./builders/base";
+import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import * as Common from "../common";
 import { bn, lc, n, s } from "../utils";
@@ -94,6 +94,10 @@ export class Order {
     if (!this.getBuilder().isValid(this)) {
       throw new Error("Invalid order");
     }
+  }
+
+  public getInfo(): BaseOrderInfo | undefined {
+    return this.getBuilder().getInfo(this);
   }
 
   public async checkFillability(provider: Provider) {
