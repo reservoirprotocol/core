@@ -46,7 +46,7 @@ describe("ZeroEx V4 - BitVector TokenList Erc721", () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
-    const boughtTokenId = 1;
+    const boughtTokenId = 827;
 
     const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
@@ -71,7 +71,7 @@ describe("ZeroEx V4 - BitVector TokenList Erc721", () => {
       contract: erc721.address,
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
-      tokenIds: [0, 1, 2, 100, 101, 102],
+      tokenIds: [0, 1, 2, 100, 101, 102, 675, 373, 748, 253, 827, 576],
     });
 
     // Sign the order

@@ -15,16 +15,16 @@ export const generateBitVector = (tokenIds: number[]) => {
     result[tokenId >> 3] |= 0x80 >> (tokenId & 7);
   }
 
-  return "0x" + result.map((b) => b.toString(16)).join("");
+  return "0x" + result.map((b) => b.toString(16).padStart(2, "0")).join("");
 };
 
 export const decomposeBitVector = (bitVector: string) => {
   const result: number[] = [];
   for (let i = 2; i < bitVector.length; i += 2) {
     const byte = parseInt(bitVector[i] + bitVector[i + 1], 16);
-    for (let j = 0; j < 8; j++) {
-      if (byte & (2 << j)) {
-        result.push((i << 3) + j);
+    for (let j = 7; j >= 0; j--) {
+      if (byte & (1 << j)) {
+        result.push((((i - 2) / 2) << 3) + (7 - j));
       }
     }
   }
