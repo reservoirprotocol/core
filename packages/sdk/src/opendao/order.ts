@@ -219,6 +219,16 @@ export class Order {
         return new Builders.TokenRange(this.chainId);
       }
 
+      case "erc721-token-list-bit-vector":
+      case "erc1155-token-list-bit-vector": {
+        return new Builders.TokenList.BitVector(this.chainId);
+      }
+
+      case "erc721-token-list-packed-list":
+      case "erc1155-token-list-packed-list": {
+        return new Builders.TokenList.PackedList(this.chainId);
+      }
+
       default: {
         throw new Error("Unknown order kind");
       }
@@ -253,6 +263,24 @@ export class Order {
         return this.params.nftAmount
           ? "erc1155-token-range"
           : "erc721-token-range";
+      }
+    }
+
+    // token-list
+    {
+      const builder = new Builders.TokenList.BitVector(this.chainId);
+      if (builder.isValid(this)) {
+        return this.params.nftAmount
+          ? "erc1155-token-list-bit-vector"
+          : "erc721-token-list-bit-vector";
+      }
+    }
+    {
+      const builder = new Builders.TokenList.PackedList(this.chainId);
+      if (builder.isValid(this)) {
+        return this.params.nftAmount
+          ? "erc1155-token-list-packed-list"
+          : "erc721-token-list-packed-list";
       }
     }
 

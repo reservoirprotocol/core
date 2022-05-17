@@ -54,7 +54,9 @@ export class PackedListTokenListBuilder extends BaseBuilder {
     this.defaultInitialize(params);
 
     return new Order(this.chainId, {
-      kind: params.amount ? "erc1155-contract-wide" : "erc721-contract-wide",
+      kind: params.amount
+        ? "erc1155-token-list-packed-list"
+        : "erc721-token-list-packed-list",
       direction:
         params.direction === "sell"
           ? Types.TradeDirection.SELL

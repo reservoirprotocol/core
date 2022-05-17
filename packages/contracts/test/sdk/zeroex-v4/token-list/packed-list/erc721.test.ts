@@ -15,21 +15,11 @@ describe("ZeroEx V4 - PackedList TokenList Erc721", () => {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
 
-  let packedListValidator: Contract;
-
   let erc721: Contract;
 
   beforeEach(async () => {
     chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [deployer, alice, bob] = await ethers.getSigners();
-
-    packedListValidator = await ethers
-      .getContractFactory("PackedListValidator", deployer)
-      .then((factory) => factory.deploy());
-
-    // TODO: Remove once the bit vector validator contract gets deployed
-    ZeroexV4.Addresses.PackedListValidator[chainId] =
-      packedListValidator.address;
 
     erc721 = await ethers
       .getContractFactory("MockERC721", deployer)

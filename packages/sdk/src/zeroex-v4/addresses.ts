@@ -16,11 +16,11 @@ export const TokenRangeValidator: ChainIdToAddress = {
 };
 
 export const BitVectorValidator: ChainIdToAddress = {
-  1: "0x0000000000000000000000000000000000000000",
+  1: "0x345db61cf74cea41c0a58155470020e1392eff2b",
   3: "0x0000000000000000000000000000000000000000",
 };
 
 export const PackedListValidator: ChainIdToAddress = {
-  1: "0x0000000000000000000000000000000000000000",
+  1: "0xda9881fcdf8e73d57727e929380ef20eb50521fe",
   3: "0x0000000000000000000000000000000000000000",
 };

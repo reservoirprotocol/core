@@ -4,7 +4,11 @@ export type OrderKind =
   | "erc721-contract-wide"
   | "erc1155-contract-wide"
   | "erc721-token-range"
-  | "erc1155-token-range";
+  | "erc1155-token-range"
+  | "erc721-token-list-bit-vector"
+  | "erc1155-token-list-bit-vector"
+  | "erc721-token-list-packed-list"
+  | "erc1155-token-list-packed-list";
 
 export enum TradeDirection {
   SELL,
