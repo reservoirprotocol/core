@@ -32,7 +32,12 @@ export const generatePackedList = (tokenIds: BigNumberish[]) => {
       numBytes,
       "0x" +
         tokenIds
-          .map((x) => bn(x).toHexString().slice(2).padStart(numBytes, "0"))
+          .map((x) =>
+            bn(x)
+              .toHexString()
+              .slice(2)
+              .padStart(numBytes * 2, "0")
+          )
           .join(""),
     ]
   );
@@ -46,8 +51,8 @@ export const decomposePackedList = (packedList: string) => {
   numBytes = Number(numBytes);
 
   const result: BigNumberish[] = [];
-  for (let i = 0; i < list.length; i += numBytes) {
-    result.push(bn("0x" + list.slice(i, i + numBytes)));
+  for (let i = 2; i < list.length; i += numBytes * 2) {
+    result.push(bn("0x" + list.slice(i, i + numBytes * 2)));
   }
   return result;
 };
