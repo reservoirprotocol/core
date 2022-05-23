@@ -1,111 +1,96 @@
-import { defaultAbiCoder } from "@ethersproject/abi";
 import { Signer } from "@ethersproject/abstract-signer";
-import { Contract, ContractTransaction } from "@ethersproject/contracts";
-import { keccak256 } from "@ethersproject/solidity";
+import { Contract } from "@ethersproject/contracts";
+import axios from "axios";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
-import * as Types from "./types";
-import { getCurrentTimestamp } from "../utils";
+import { TxData, bn } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
-
-type Signature = {
-  v: number;
-  r: string;
-  s: string;
-};
 
 export class Exchange {
   public chainId: number;
   public contract: Contract;
+  public apiKey: string;
 
-  constructor(chainId: number) {
+  constructor(chainId: number, apiKey: string) {
     if (chainId !== 1) {
       throw new Error("Unsupported chain id");
     }
 
     this.chainId = chainId;
     this.contract = new Contract(Addresses.Exchange[this.chainId], ExchangeAbi);
+    this.apiKey = apiKey;
   }
 
   // --- Fill order ---
 
-  public async fillOrder(
-    taker: Signer,
-    order: Order,
-    detail: Types.SettleDetail,
-    shared: Types.SettleShared,
-    signerSignature: Signature
-  ): Promise<ContractTransaction> {
-    return this.contract.connect(taker).run(
+  public async fillOrder(taker: Signer, order: Order) {
+    const response = await axios.post(
+      "https://api.x2y2.org/api/orders/sign",
       {
-        orders: [order.params],
-        details: [detail],
-        shared,
-        ...signerSignature,
+        caller: await taker.getAddress(),
+        // COMPLETE_SELL_OFFER
+        op: 1,
+        amountToEth: "0",
+        amountToWeth: "0",
+        items: [
+          {
+            orderId: order.params.id,
+            currency: order.params.currency,
+            price: order.params.price,
+          },
+        ],
       },
-      { value: detail.price }
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": this.apiKey,
+        },
+      }
     );
+
+    return taker.sendTransaction({
+      data:
+        this.contract.interface.getSighash("run") +
+        response.data.data[0].input.slice(2),
+      to: this.contract.address,
+      value: bn(order.params.price).toHexString(),
+    });
   }
 
-  // --- Cancel order ---
-
-  public async cancelOrder(
-    maker: Signer,
-    order: Order,
-    signerSignature: Signature
-  ): Promise<ContractTransaction> {
-    return this.contract.connect(maker).cancel(
-      order.params.items.map((_, i) => order.itemHash(i)),
-      getCurrentTimestamp() + 5 * 60,
-      signerSignature.v,
-      signerSignature.r,
-      signerSignature.s
+  public async fillOrderTx(taker: string, order: Order): Promise<TxData> {
+    const response = await axios.post(
+      "https://api.x2y2.org/api/orders/sign",
+      {
+        caller: taker,
+        // COMPLETE_SELL_OFFER
+        op: 1,
+        amountToEth: "0",
+        amountToWeth: "0",
+        items: [
+          {
+            orderId: order.params.id,
+            currency: order.params.currency,
+            price: order.params.price,
+          },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": this.apiKey,
+        },
+      }
     );
-  }
 
-  // --- Get run input hash ---
-
-  public getRunInputHash(
-    detail: Types.SettleDetail,
-    shared: Types.SettleShared
-  ): string {
-    return keccak256(
-      ["bytes"],
-      [
-        defaultAbiCoder.encode(
-          [
-            `
-              (
-                uint256 salt,
-                uint256 deadline,
-                uint256 amountToEth,
-                uint256 amountToWeth,
-                address user,
-                bool canFail
-              )
-            `,
-            "uint256",
-            `
-              (
-                uint8 op,
-                uint256 orderIdx,
-                uint256 itemIdx,
-                uint256 price,
-                bytes32 itemHash,
-                address executionDelegate,
-                bytes dataReplacement,
-                uint256 bidIncentivePct,
-                uint256 aucMinIncrementPct,
-                uint256 aucIncDurationSecs,
-                (uint256 percentage,address to)[] fees
-              )[]
-            `,
-          ],
-          [shared, 1, [detail]]
-        ),
-      ]
-    );
+    return {
+      from: taker,
+      data:
+        this.contract.interface.getSighash("run") +
+        response.data.data[0].input.slice(2),
+      to: this.contract.address,
+      value: bn(order.params.price).toHexString(),
+    };
   }
 }

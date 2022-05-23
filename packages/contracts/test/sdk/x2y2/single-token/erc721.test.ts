@@ -1,51 +1,21 @@
-import { arrayify } from "@ethersproject/bytes";
-import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
 import { Wallet } from "@ethersproject/wallet";
 import * as Common from "@reservoir0x/sdk/src/common";
+import { bn, lc } from "@reservoir0x/sdk/src/utils";
 import * as X2Y2 from "@reservoir0x/sdk/src/x2y2";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
+import axios from "axios";
 
 describe("X2Y2 - SingleToken Erc721", () => {
   let chainId: number;
 
-  let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
-  let bob: SignerWithAddress;
-
-  let x2y2Signer: Wallet;
-
-  let erc721: Contract;
 
   beforeEach(async () => {
     chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
-    [deployer, alice, bob] = await ethers.getSigners();
-
-    x2y2Signer = new Wallet("0x01");
-
-    // Impersonate the X2Y2 admin.
-    const x2y2AdminAddress = "0x5d7cca9fb832bbd99c8bd720ebda39b028648301";
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [x2y2AdminAddress],
-    });
-    const x2y2Admin = await ethers.getSigner(x2y2AdminAddress);
-
-    // Add a new signer to the exchange.
-    const exchange = new X2Y2.Exchange(chainId);
-    await deployer.sendTransaction({
-      to: x2y2AdminAddress,
-      value: parseEther("0.1"),
-    });
-    await exchange.contract
-      .connect(x2y2Admin)
-      .updateSigners([x2y2Signer.address], []);
-
-    erc721 = await ethers
-      .getContractFactory("MockERC721", deployer)
-      .then((factory) => factory.deploy());
+    [alice] = await ethers.getSigners();
   });
 
   afterEach(async () => {
@@ -62,73 +32,65 @@ describe("X2Y2 - SingleToken Erc721", () => {
     });
   });
 
-  it("build and match sell order", async () => {
-    const buyer = alice;
-    const seller = bob;
-    const price = parseEther("1");
-    const tokenId = 0;
+  it("fill sell orders", async () => {
+    const orders = await axios.get(
+      "https://api.x2y2.org/api/orders?status=open",
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": String(process.env.X2Y2_API_KEY),
+        },
+      }
+    );
+    const orderData = orders.data.data[0];
 
-    // Mint ERC721 to the seller.
-    await erc721.connect(seller).mint(tokenId);
-
-    const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
-
-    // Approve the X2Y2 ERC721 delegate.
-    await nft.approve(seller, X2Y2.Addresses.Erc721Delegate[chainId]);
-
-    const exchange = new X2Y2.Exchange(chainId);
-    const builder = new X2Y2.Builders.SingleToken(chainId);
-
-    // Build sell order.
-    const sellOrder = builder.build({
-      side: "sell",
-      tokenKind: "erc721",
-      maker: seller.address,
-      price,
-      contract: nft.contract.address,
-      tokenId,
+    const order = new X2Y2.Order(chainId, {
+      kind: "single-token",
+      id: orderData.id,
+      type: orderData.type,
+      currency: orderData.currency,
+      price: orderData.price,
+      maker: orderData.maker,
+      taker: orderData.taker,
+      deadline: orderData.end_at,
+      itemHash: orderData.item_hash,
+      nft: {
+        token: orderData.nft.token,
+        tokenId: orderData.nft.token_id,
+      },
     });
 
-    // Sign the order.
-    await sellOrder.sign(seller);
-
-    // Create matching buy params.
-    const buyOrder = sellOrder.buildMatching(buyer.address);
-
-    // Generate input hash and have the signer sign it.
-    const runInputHash = exchange.getRunInputHash(
-      buyOrder.detail,
-      buyOrder.shared
-    );
-    const runInputSignature = x2y2Signer
-      ._signingKey()
-      .signDigest(arrayify(runInputHash));
-
-    await sellOrder.checkFillability(ethers.provider);
-
-    const buyerEthBalanceBefore = await buyer.getBalance();
-    const sellerEthBalanceBefore = await seller.getBalance();
-    const ownerBefore = await nft.getOwner(tokenId);
-
-    expect(ownerBefore).to.eq(seller.address);
-
-    // Fill the sell order.
-    await exchange.fillOrder(
-      buyer,
-      sellOrder,
-      buyOrder.detail,
-      buyOrder.shared,
-      runInputSignature
+    const nft = new Common.Helpers.Erc721(
+      ethers.provider,
+      order.params.nft.token
     );
 
-    const buyerEthBalanceAfter = await buyer.getBalance();
-    const sellerEthBalanceAfter = await seller.getBalance();
-    const ownerAfter = await nft.getOwner(tokenId);
-
-    expect(buyerEthBalanceAfter).to.be.lt(buyerEthBalanceBefore.sub(price));
-    expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(
-      price.sub(price.mul(500).div(1000000))
+    const buyerBalanceBefore = await ethers.provider.getBalance(alice.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      order.params.maker
     );
-    expect(ownerAfter).to.eq(buyer.address);
+    const ownerBefore = await nft.getOwner(order.params.nft.tokenId);
+
+    expect(lc(ownerBefore)).to.eq(lc(order.params.maker));
+
+    const exchange = new X2Y2.Exchange(
+      chainId,
+      String(process.env.X2Y2_API_KEY)
+    );
+    await exchange.fillOrder(alice, order);
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(alice.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(
+      order.params.maker
+    );
+    const ownerAfter = await nft.getOwner(order.params.nft.tokenId);
+
+    expect(buyerBalanceAfter).to.be.lt(
+      buyerBalanceBefore.sub(order.params.price)
+    );
+    expect(sellerBalanceAfter.sub(sellerBalanceBefore)).to.eq(
+      bn(order.params.price).sub(bn(order.params.price).mul(50).div(10000))
+    );
+    expect(lc(ownerAfter)).to.eq(lc(alice.address));
   });
 });
