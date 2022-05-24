@@ -1,7 +1,7 @@
 type ChainIdToAddress = { [chainId: number]: string };
 
 export const Exchange: ChainIdToAddress = {
-  1: "0x74312363e45DCaBA76c59ec49a7Aa8A65a67EeD3",
+  1: "0x74312363e45dcaba76c59ec49a7aa8a65a67eed3",
   4: "0x0000000000000000000000000000000000000000",
 };
 
