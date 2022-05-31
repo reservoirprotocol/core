@@ -2,6 +2,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
+import { MatchParams } from "../../types";
 import { getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
 export interface BaseBuildParams {
@@ -16,7 +17,6 @@ export interface BaseBuildParams {
     amount: BigNumberish;
   }[];
   nonce: BigNumberish;
-  nonPartial?: boolean;
   salt?: BigNumberish;
   startTime?: number;
   endTime?: number;
@@ -60,4 +60,5 @@ export abstract class BaseBuilder {
   public abstract getInfo(order: Order): BaseOrderInfo | undefined;
   public abstract isValid(order: Order): boolean;
   public abstract build(params: BaseBuildParams): Order;
+  public abstract buildMatching(order: Order, data: any): MatchParams;
 }

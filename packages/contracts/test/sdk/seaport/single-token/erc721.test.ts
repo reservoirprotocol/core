@@ -69,6 +69,9 @@ describe("Seaport - SingleToken Erc721", () => {
 
     await sellOrder.checkFillability(ethers.provider);
 
+    // Create matching params
+    const matchParams = sellOrder.buildMatching();
+
     const buyerEthBalanceBefore = await ethers.provider.getBalance(
       buyer.address
     );
@@ -80,7 +83,7 @@ describe("Seaport - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.fillOrder(buyer, sellOrder);
+    await exchange.fillOrder(buyer, sellOrder, matchParams);
 
     const buyerEthBalanceAfter = await ethers.provider.getBalance(
       buyer.address
@@ -146,6 +149,9 @@ describe("Seaport - SingleToken Erc721", () => {
 
     await sellOrder.checkFillability(ethers.provider);
 
+    // Create matching params
+    const matchParams = sellOrder.buildMatching();
+
     const buyerEthBalanceBefore = await ethers.provider.getBalance(
       buyer.address
     );
@@ -163,7 +169,7 @@ describe("Seaport - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.fillOrder(buyer, sellOrder);
+    await exchange.fillOrder(buyer, sellOrder, matchParams);
 
     const buyerEthBalanceAfter = await ethers.provider.getBalance(
       buyer.address
@@ -235,6 +241,9 @@ describe("Seaport - SingleToken Erc721", () => {
 
     await buyOrder.checkFillability(ethers.provider);
 
+    // Create matching params
+    const matchParams = buyOrder.buildMatching();
+
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
     const sellerWethBalanceBefore = await weth.getBalance(seller.address);
     const ownerBefore = await nft.getOwner(boughtTokenId);
@@ -242,7 +251,7 @@ describe("Seaport - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.fillOrder(seller, buyOrder);
+    await exchange.fillOrder(seller, buyOrder, matchParams);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const sellerWethBalanceAfter = await weth.getBalance(seller.address);
@@ -312,6 +321,9 @@ describe("Seaport - SingleToken Erc721", () => {
 
     await buyOrder.checkFillability(ethers.provider);
 
+    // Create matching params
+    const matchParams = buyOrder.buildMatching();
+
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
     const sellerWethBalanceBefore = await weth.getBalance(seller.address);
     const feeRecipient1WethBalanceBefore = await weth.getBalance(
@@ -325,7 +337,7 @@ describe("Seaport - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.fillOrder(seller, buyOrder);
+    await exchange.fillOrder(seller, buyOrder, matchParams);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const sellerWethBalanceAfter = await weth.getBalance(seller.address);

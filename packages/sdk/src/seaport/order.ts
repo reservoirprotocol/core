@@ -102,6 +102,10 @@ export class Order {
     return feeAmount;
   }
 
+  public buildMatching(data?: any) {
+    return this.getBuilder().buildMatching(this, data);
+  }
+
   public async checkFillability(provider: Provider) {
     const conduitController = new Contract(
       Addresses.ConduitController[this.chainId],

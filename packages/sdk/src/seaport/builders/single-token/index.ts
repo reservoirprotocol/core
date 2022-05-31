@@ -180,9 +180,10 @@ export class SingleTokenBuilder extends BaseBuilder {
             recipient,
           })),
         ],
-        orderType: params.nonPartial
-          ? Types.OrderType.FULL_OPEN
-          : Types.OrderType.PARTIAL_OPEN,
+        orderType:
+          params.tokenKind === "erc1155" && bn(params.amount ?? 1).gt(1)
+            ? Types.OrderType.PARTIAL_OPEN
+            : Types.OrderType.FULL_OPEN,
         startTime: params.startTime!,
         endTime: params.endTime!,
         zoneHash: HashZero,
@@ -230,9 +231,10 @@ export class SingleTokenBuilder extends BaseBuilder {
             recipient,
           })),
         ],
-        orderType: params.nonPartial
-          ? Types.OrderType.FULL_OPEN
-          : Types.OrderType.PARTIAL_OPEN,
+        orderType:
+          params.tokenKind === "erc1155" && bn(params.amount ?? 1).gt(1)
+            ? Types.OrderType.PARTIAL_OPEN
+            : Types.OrderType.FULL_OPEN,
         startTime: params.startTime!,
         endTime: params.endTime!,
         zoneHash: HashZero,
@@ -242,5 +244,11 @@ export class SingleTokenBuilder extends BaseBuilder {
         signature: params.signature,
       });
     }
+  }
+
+  public buildMatching(_order: Order, data?: { amount?: BigNumberish }) {
+    return {
+      amount: data?.amount ? s(data.amount) : undefined,
+    };
   }
 }
