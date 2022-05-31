@@ -60,10 +60,18 @@ export class Exchange {
           fulfillerConduitKey: conduitKey,
           totalOriginalAdditionalRecipients:
             order.params.consideration.length - 1,
-          additionalRecipients: feesOnTop,
+          additionalRecipients: [
+            ...order.params.consideration
+              .slice(1)
+              .map(({ startAmount, recipient }) => ({
+                amount: startAmount,
+                recipient,
+              })),
+            ...feesOnTop,
+          ],
           signature: order.params.signature!,
         },
-        { value: info.price }
+        { value: bn(info.price).add(order.getFeeAmount()) }
       );
     } else {
       return this.contract.connect(taker).fulfillBasicOrder({
@@ -88,7 +96,15 @@ export class Exchange {
         fulfillerConduitKey: conduitKey,
         totalOriginalAdditionalRecipients:
           order.params.consideration.length - 1,
-        additionalRecipients: feesOnTop,
+        additionalRecipients: [
+          ...order.params.consideration
+            .slice(1)
+            .map(({ startAmount, recipient }) => ({
+              amount: startAmount,
+              recipient,
+            })),
+          ...feesOnTop,
+        ],
         signature: order.params.signature!,
       });
     }

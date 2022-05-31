@@ -57,7 +57,6 @@ export class SingleTokenBuilder extends BaseBuilder {
           if (consideration.token !== paymentToken) {
             throw new Error("Invalid consideration");
           }
-          price = price.add(consideration.startAmount);
           fees.push({
             recipient: consideration.recipient,
             amount: consideration.startAmount,
@@ -223,7 +222,7 @@ export class SingleTokenBuilder extends BaseBuilder {
             recipient: params.offerer,
           },
           ...(params.fees || []).map(({ amount, recipient }) => ({
-            itemType: Types.ItemType.NATIVE,
+            itemType: Types.ItemType.ERC20,
             token: params.paymentToken,
             identifierOrCriteria: "0",
             startAmount: s(amount),

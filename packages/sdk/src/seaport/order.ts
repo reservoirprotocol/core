@@ -103,8 +103,6 @@ export class Order {
   }
 
   public async checkFillability(provider: Provider) {
-    const chainId = await provider.getNetwork().then((n) => n.chainId);
-
     const conduitController = new Contract(
       Addresses.ConduitController[this.chainId],
       ConduitControllerAbi as any,
