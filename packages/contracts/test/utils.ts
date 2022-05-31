@@ -96,5 +96,17 @@ export const setupRouter = async (
     }
   );
 
+  // V3
+  router = await upgrades.upgradeProxy(
+    router.address,
+    await ethers.getContractFactory("RouterV3", deployer),
+    {
+      call: {
+        fn: "initializeV3",
+        args: [Sdk.Seaport.Addresses.Exchange[chainId]],
+      },
+    }
+  );
+
   return router;
 };

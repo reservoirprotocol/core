@@ -6,5 +6,6 @@ enum ExchangeKind {
     LOOKS_RARE,
     ZEROEX_V4,
     FOUNDATION,
-    X2Y2
+    X2Y2,
+    SEAPORT
 }
