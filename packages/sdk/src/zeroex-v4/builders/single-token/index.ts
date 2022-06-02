@@ -80,7 +80,7 @@ export class SingleTokenBuilder extends BaseBuilder {
   ) {
     return {
       nftId: order.params.nftId,
-      nftAmount: data?.amount ? s(data.amount) : undefined,
+      nftAmount: data?.amount ? s(data.amount) : "1",
       unwrapNativeToken: data?.unwrapNativeToken,
     };
   }

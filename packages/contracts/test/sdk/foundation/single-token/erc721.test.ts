@@ -45,7 +45,13 @@ describe("Foundation - SingleToken Erc721", () => {
     expect(await erc721.ownerOf(tokenId), seller.address);
 
     // Create sell order.
-    await exchange.createOrder(seller, erc721.address, tokenId, price);
+    const order = new Foundation.Order(chainId, {
+      maker: seller.address,
+      contract: erc721.address,
+      tokenId: tokenId.toString(),
+      price: price.toString(),
+    });
+    await exchange.createOrder(seller, order);
 
     // Foundation escrows the NFT when creating sell orders.
     expect(await erc721.ownerOf(tokenId), exchange.contract.address);
@@ -54,13 +60,7 @@ describe("Foundation - SingleToken Erc721", () => {
     const referrerEthBalanceBefore = await referrer.getBalance();
 
     // Fill sell order.
-    await exchange.fillOrder(
-      buyer,
-      erc721.address,
-      tokenId,
-      price,
-      referrer.address
-    );
+    await exchange.fillOrder(buyer, order, referrer.address);
 
     const sellerEthBalanceAfter = await seller.getBalance();
     const referrerEthBalanceAfter = await referrer.getBalance();

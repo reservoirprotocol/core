@@ -6,14 +6,11 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import {
-  ExchangeKind,
-  bn,
   getChainId,
   getCurrentTimestamp,
   lc,
   reset,
   setupNFTs,
-  setupRouter,
 } from "../utils";
 
 describe("Router - filling ERC721", () => {
@@ -26,13 +23,11 @@ describe("Router - filling ERC721", () => {
   let carol: SignerWithAddress;
 
   let erc721: Contract;
-  let router: Contract;
 
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
 
     ({ erc721 } = await setupNFTs(deployer));
-    router = await setupRouter(chainId, deployer);
   });
 
   afterEach(reset);
@@ -79,13 +74,6 @@ describe("Router - filling ERC721", () => {
     });
     await sellOrder.sign(seller);
 
-    // Create matching buy order
-    const buyOrder = sellOrder.buildMatching(router.address, {
-      nonce: await exchange.getNonce(ethers.provider, router.address),
-      recipient: buyer.address,
-    });
-    buyOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
-
     await sellOrder.checkFillability(ethers.provider);
 
     const referrerEthBalanceBefore = await referrer.getBalance();
@@ -93,21 +81,24 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
-    await router
-      .connect(buyer)
-      .singleERC721ListingFill(
-        referrer.address,
-        tx.data,
-        ExchangeKind.WYVERN_V23,
-        erc721.address,
-        soldTokenId,
-        buyer.address,
-        routerFee,
+    const router = new Sdk.Router(chainId, ethers.provider);
+    const tx = await router.fillListingsTx(
+      [
         {
-          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
-        }
-      );
+          kind: "wyvern-v2.3",
+          contractKind: "erc721",
+          contract: erc721.address,
+          tokenId: soldTokenId.toString(),
+          order: sellOrder,
+        },
+      ],
+      buyer.address,
+      {
+        referrer: referrer.address,
+        referrerFeeBps: routerFee,
+      }
+    );
+    await buyer.sendTransaction(tx);
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerEthBalanceAfter = await seller.getBalance();
@@ -121,114 +112,12 @@ describe("Router - filling ERC721", () => {
     expect(ownerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
-  });
-
-  it("WyvernV23 - fill listing with precheck", async () => {
-    const buyer = alice;
-    const seller = bob;
-    const feeRecipient = carol;
-
-    const price = parseEther("1");
-    const fee = 250;
-    const routerFee = 100;
-    const soldTokenId = 0;
-
-    // Mint erc721 to seller
-    await erc721.connect(seller).mint(soldTokenId);
-
-    // Register user proxy for the seller
-    const proxyRegistry = new Sdk.WyvernV23.Helpers.ProxyRegistry(
-      ethers.provider,
-      chainId
-    );
-    await proxyRegistry.registerProxy(seller);
-    const proxy = await proxyRegistry.getProxy(seller.address);
-
-    // Approve the user proxy
-    await erc721.connect(seller).setApprovalForAll(proxy, true);
-
-    const exchange = new Sdk.WyvernV23.Exchange(chainId);
-    const builder = new Sdk.WyvernV23.Builders.Erc721.SingleToken.V2(chainId);
-
-    // Build sell order
-    let sellOrder = builder.build({
-      maker: seller.address,
-      contract: erc721.address,
-      tokenId: soldTokenId,
-      side: "sell",
-      price,
-      paymentToken: Sdk.Common.Addresses.Eth[chainId],
-      fee,
-      feeRecipient: feeRecipient.address,
-      listingTime: await getCurrentTimestamp(ethers.provider),
-      nonce: await exchange.getNonce(ethers.provider, seller.address),
-    });
-    await sellOrder.sign(seller);
-
-    // Create matching buy order
-    const buyOrder = sellOrder.buildMatching(router.address, {
-      nonce: await exchange.getNonce(ethers.provider, router.address),
-      recipient: buyer.address,
-    });
-    buyOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
-
-    await sellOrder.checkFillability(ethers.provider);
-
-    const referrerEthBalanceBefore = await referrer.getBalance();
-    const sellerEthBalanceBefore = await seller.getBalance();
-    const ownerBefore = await erc721.ownerOf(soldTokenId);
-    expect(ownerBefore).to.eq(seller.address);
-
-    const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
-    await router
-      .connect(buyer)
-      .singleERC721ListingFillWithPrecheck(
-        referrer.address,
-        tx.data,
-        ExchangeKind.WYVERN_V23,
-        erc721.address,
-        soldTokenId,
-        buyer.address,
-        seller.address,
-        routerFee,
-        {
-          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
-        }
-      );
-
-    const referrerEthBalanceAfter = await referrer.getBalance();
-    const sellerEthBalanceAfter = await seller.getBalance();
-    const ownerAfter = await erc721.ownerOf(soldTokenId);
-    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
-      price.mul(routerFee).div(10000)
-    );
-    expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(
-      price.sub(price.mul(fee).div(10000))
-    );
-    expect(ownerAfter).to.eq(buyer.address);
-
-    // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
 
     // The precheck will trigger an early-revert
-    await expect(
-      router
-        .connect(buyer)
-        .singleERC721ListingFillWithPrecheck(
-          referrer.address,
-          tx.data,
-          ExchangeKind.WYVERN_V23,
-          erc721.address,
-          soldTokenId,
-          buyer.address,
-          seller.address,
-          routerFee,
-          {
-            value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
-          }
-        )
-    ).to.be.revertedWith("Unexpected owner");
+    await expect(buyer.sendTransaction(tx)).to.be.revertedWith(
+      "Unexpected owner"
+    );
   });
 
   it("WyvernV23 - fill bid", async () => {
@@ -272,34 +161,25 @@ describe("Router - filling ERC721", () => {
     });
     await buyOrder.sign(buyer);
 
-    // Create matching sell order
-    const sellOrder = buyOrder.buildMatching(router.address, {
-      nonce: await exchange.getNonce(ethers.provider, router.address),
-    });
-    sellOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
-
-    await buyOrder.checkFillability(ethers.provider);
-
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
     const ownerBefore = await erc721.ownerOf(boughtTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const tx = exchange.matchTransaction(seller.address, buyOrder, sellOrder);
-    await erc721
-      .connect(seller)
-      ["safeTransferFrom(address,address,uint256,bytes)"](
-        seller.address,
-        router.address,
-        boughtTokenId,
-        router.interface.encodeFunctionData("singleERC721BidFill", [
-          referrer.address,
-          tx.data,
-          ExchangeKind.WYVERN_V23,
-          erc721.address,
-          buyer.address,
-          true,
-        ])
-      );
+    const router = new Sdk.Router(chainId, ethers.provider);
+    const tx = await router.fillBidTx(
+      {
+        kind: "wyvern-v2.3",
+        contractKind: "erc721",
+        contract: erc721.address,
+        tokenId: boughtTokenId.toString(),
+        order: buyOrder,
+      },
+      seller.address,
+      {
+        referrer: referrer.address,
+      }
+    );
+    await seller.sendTransaction(tx);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const ownerAfter = await erc721.ownerOf(boughtTokenId);
@@ -307,7 +187,7 @@ describe("Router - filling ERC721", () => {
     expect(ownerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await weth.getBalance(router.address)).to.eq(0);
+    expect(await weth.getBalance(router.contract.address)).to.eq(0);
   });
 
   it("LooksRare - fill listing", async () => {
@@ -346,9 +226,6 @@ describe("Router - filling ERC721", () => {
     });
     await sellOrder.sign(seller);
 
-    // Create matching buy order
-    const buyOrder = sellOrder.buildMatching(router.address);
-
     await sellOrder.checkFillability(ethers.provider);
 
     const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
@@ -358,21 +235,24 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder);
-    await router
-      .connect(buyer)
-      .singleERC721ListingFill(
-        referrer.address,
-        tx.data,
-        ExchangeKind.LOOKS_RARE,
-        sellOrder.params.collection,
-        sellOrder.params.tokenId,
-        buyer.address,
-        routerFee,
+    const router = new Sdk.Router(chainId, ethers.provider);
+    const tx = await router.fillListingsTx(
+      [
         {
-          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
-        }
-      );
+          kind: "looks-rare",
+          contractKind: "erc721",
+          contract: erc721.address,
+          tokenId: soldTokenId.toString(),
+          order: sellOrder,
+        },
+      ],
+      buyer.address,
+      {
+        referrer: referrer.address,
+        referrerFeeBps: routerFee,
+      }
+    );
+    await buyer.sendTransaction(tx);
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerWethBalanceAfter = await weth.getBalance(seller.address);
@@ -386,8 +266,8 @@ describe("Router - filling ERC721", () => {
     expect(ownerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
-    expect(await weth.getBalance(router.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
+    expect(await weth.getBalance(router.contract.address)).to.eq(0);
   });
 
   it("LooksRare - fill bid", async () => {
@@ -424,31 +304,27 @@ describe("Router - filling ERC721", () => {
     });
     await buyOrder.sign(buyer);
 
-    // Create matching sell order
-    const sellOrder = buyOrder.buildMatching(router.address);
-
     await buyOrder.checkFillability(ethers.provider);
 
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
     const ownerBefore = await erc721.ownerOf(boughtTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
-    await erc721
-      .connect(seller)
-      ["safeTransferFrom(address,address,uint256,bytes)"](
-        seller.address,
-        router.address,
-        boughtTokenId,
-        router.interface.encodeFunctionData("singleERC721BidFill", [
-          referrer.address,
-          tx.data,
-          ExchangeKind.LOOKS_RARE,
-          buyOrder.params.collection,
-          buyer.address,
-          true,
-        ])
-      );
+    const router = new Sdk.Router(chainId, ethers.provider);
+    const tx = await router.fillBidTx(
+      {
+        kind: "looks-rare",
+        contractKind: "erc721",
+        contract: erc721.address,
+        tokenId: boughtTokenId.toString(),
+        order: buyOrder,
+      },
+      seller.address,
+      {
+        referrer: referrer.address,
+      }
+    );
+    await seller.sendTransaction(tx);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const ownerAfter = await erc721.ownerOf(boughtTokenId);
@@ -456,7 +332,7 @@ describe("Router - filling ERC721", () => {
     expect(ownerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await weth.getBalance(router.address)).to.eq(0);
+    expect(await weth.getBalance(router.contract.address)).to.eq(0);
   });
 
   it("ZeroExV4 - fill listing", async () => {
@@ -475,7 +351,6 @@ describe("Router - filling ERC721", () => {
       .connect(seller)
       .setApprovalForAll(Sdk.ZeroExV4.Addresses.Exchange[chainId], true);
 
-    const exchange = new Sdk.ZeroExV4.Exchange(chainId);
     const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
 
     // Build sell order
@@ -489,9 +364,6 @@ describe("Router - filling ERC721", () => {
     });
     await sellOrder.sign(seller);
 
-    // Create matching buy order
-    const buyOrder = sellOrder.buildMatching();
-
     await sellOrder.checkFillability(ethers.provider);
 
     const referrerEthBalanceBefore = await referrer.getBalance();
@@ -499,23 +371,24 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder, {
-      noDirectTransfer: true,
-    });
-    await router
-      .connect(buyer)
-      .singleERC721ListingFill(
-        referrer.address,
-        tx.data,
-        ExchangeKind.ZEROEX_V4,
-        sellOrder.params.nft,
-        sellOrder.params.nftId,
-        buyer.address,
-        routerFee,
+    const router = new Sdk.Router(chainId, ethers.provider);
+    const tx = await router.fillListingsTx(
+      [
         {
-          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
-        }
-      );
+          kind: "zeroex-v4",
+          contractKind: "erc721",
+          contract: erc721.address,
+          tokenId: soldTokenId.toString(),
+          order: sellOrder,
+        },
+      ],
+      buyer.address,
+      {
+        referrer: referrer.address,
+        referrerFeeBps: routerFee,
+      }
+    );
+    await buyer.sendTransaction(tx);
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerEthBalanceAfter = await seller.getBalance();
@@ -527,7 +400,7 @@ describe("Router - filling ERC721", () => {
     expect(ownerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
   });
 
   it("ZeroExV4 - fill bid", async () => {
@@ -548,7 +421,6 @@ describe("Router - filling ERC721", () => {
     // Mint erc721 to seller
     await erc721.connect(seller).mint(boughtTokenId);
 
-    const exchange = new Sdk.ZeroExV4.Exchange(chainId);
     const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
 
     // Build buy order
@@ -562,33 +434,27 @@ describe("Router - filling ERC721", () => {
     });
     await buyOrder.sign(buyer);
 
-    // Create matching sell order
-    const sellOrder = buyOrder.buildMatching({ unwrapNativeToken: false });
-
     await buyOrder.checkFillability(ethers.provider);
 
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
     const ownerBefore = await erc721.ownerOf(boughtTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder, {
-      noDirectTransfer: true,
-    });
-    await erc721
-      .connect(seller)
-      ["safeTransferFrom(address,address,uint256,bytes)"](
-        seller.address,
-        router.address,
-        boughtTokenId,
-        router.interface.encodeFunctionData("singleERC721BidFill", [
-          referrer.address,
-          tx.data,
-          ExchangeKind.ZEROEX_V4,
-          buyOrder.params.nft,
-          buyer.address,
-          true,
-        ])
-      );
+    const router = new Sdk.Router(chainId, ethers.provider);
+    const tx = await router.fillBidTx(
+      {
+        kind: "zeroex-v4",
+        contractKind: "erc721",
+        contract: erc721.address,
+        tokenId: boughtTokenId.toString(),
+        order: buyOrder,
+      },
+      seller.address,
+      {
+        referrer: referrer.address,
+      }
+    );
+    await seller.sendTransaction(tx);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const ownerAfter = await erc721.ownerOf(boughtTokenId);
@@ -596,7 +462,7 @@ describe("Router - filling ERC721", () => {
     expect(ownerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await weth.getBalance(router.address)).to.eq(0);
+    expect(await weth.getBalance(router.contract.address)).to.eq(0);
   });
 
   it("Foundation - fill listing", async () => {
@@ -618,40 +484,46 @@ describe("Router - filling ERC721", () => {
 
     const exchange = new Sdk.Foundation.Exchange(chainId);
 
+    const sellOrder = new Sdk.Foundation.Order(chainId, {
+      maker: seller.address,
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+    });
+
     // Create sell order.
-    await exchange.createOrder(seller, erc721.address, soldTokenId, price);
+    await exchange.createOrder(seller, sellOrder);
 
     const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerEthBalanceBefore = await seller.getBalance();
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(lc(ownerBefore)).to.eq(lc(exchange.contract.address));
 
-    const tx = exchange.fillOrderTx(
-      buyer.address,
-      erc721.address,
-      soldTokenId,
-      price
-    );
-    await router
-      .connect(buyer)
-      .singleERC721ListingFill(
-        referrer.address,
-        tx.data,
-        ExchangeKind.FOUNDATION,
-        erc721.address,
-        soldTokenId,
-        buyer.address,
-        routerFee,
+    const router = new Sdk.Router(chainId, ethers.provider);
+    const tx = await router.fillListingsTx(
+      [
         {
-          value: bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)),
-        }
-      );
+          kind: "foundation",
+          contractKind: "erc721",
+          contract: erc721.address,
+          tokenId: soldTokenId.toString(),
+          order: sellOrder,
+        },
+      ],
+      buyer.address,
+      {
+        referrer: referrer.address,
+        referrerFeeBps: routerFee,
+      }
+    );
+    await buyer.sendTransaction(tx);
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerEthBalanceAfter = await seller.getBalance();
     const ownerAfter = await erc721.ownerOf(soldTokenId);
     expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
-      price.mul(routerFee).div(10000)
+      // Router fee + Foundation referral fee
+      price.mul(routerFee).div(10000).add(price.mul(100).div(10000))
     );
     expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(
       price.sub(price.mul(fee).div(10000))
@@ -659,6 +531,6 @@ describe("Router - filling ERC721", () => {
     expect(ownerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
   });
 });

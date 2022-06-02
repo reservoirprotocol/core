@@ -67,7 +67,7 @@ describe("ZeroEx V4 - TokenRange Erc721", () => {
     await buyOrder.sign(buyer);
 
     // Create matching sell order
-    const sellOrder = buyOrder.buildMatching({ nftId: boughtTokenId });
+    const sellOrder = buyOrder.buildMatching({ tokenId: boughtTokenId });
 
     await buyOrder.checkFillability(ethers.provider);
 

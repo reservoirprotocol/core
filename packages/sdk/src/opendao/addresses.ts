@@ -1,4 +1,4 @@
-type ChainIdToAddress = { [chainId: number]: string };
+import { ChainIdToAddress } from "../utils";
 
 export const Exchange: ChainIdToAddress = {
   4: "0xb446f2fddf9f2d7c0ad2a5c061f8a62223976ecc",

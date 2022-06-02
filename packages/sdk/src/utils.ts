@@ -22,8 +22,8 @@ export const getCurrentTimestamp = (delay = 0) =>
 // Ease of use
 
 export const lc = (x: string) => x?.toLowerCase();
-export const n = (x: any) => Number(x);
-export const s = (x: any) => String(x);
+export const n = (x: any) => (x ? Number(x) : x);
+export const s = (x: any) => (x ? String(x) : x);
 
 // Types
 
@@ -33,3 +33,5 @@ export type TxData = {
   data: string;
   value?: string;
 };
+
+export type ChainIdToAddress = { [chainId: number]: string };

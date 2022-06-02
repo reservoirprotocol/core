@@ -98,14 +98,14 @@ export class TokenRangeBuilder extends BaseBuilder {
   public buildMatching(
     _order: Order,
     data: {
-      nftId: BigNumberish;
+      tokenId: BigNumberish;
       amount?: BigNumberish;
       unwrapNativeToken?: boolean;
     }
   ) {
     return {
-      nftId: s(data.nftId),
-      nftAmount: data.amount ? s(data.amount) : undefined,
+      nftId: s(data.tokenId),
+      nftAmount: data.amount ? s(data.amount) : "1",
       unwrapNativeToken: data.unwrapNativeToken,
     };
   }

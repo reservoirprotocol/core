@@ -80,13 +80,13 @@ export class ContractWideBuilder extends BaseBuilder {
   public buildMatching(
     _order: Order,
     data: {
-      nftId: BigNumberish;
+      tokenId: BigNumberish;
       amount?: BigNumberish;
       unwrapNativeToken?: boolean;
     }
   ) {
     return {
-      nftId: s(data.nftId),
+      nftId: s(data.tokenId),
       nftAmount: data.amount ? s(data.amount) : undefined,
       unwrapNativeToken: data.unwrapNativeToken,
     };

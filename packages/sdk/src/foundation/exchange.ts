@@ -1,9 +1,9 @@
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
+import { Order } from "./order";
 import { TxData, bn } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
@@ -29,26 +29,25 @@ export class Exchange {
 
   public async createOrder(
     maker: Signer,
-    contract: string,
-    tokenId: BigNumberish,
-    price: BigNumberish
+    order: Order
   ): Promise<ContractTransaction> {
-    return this.contract.connect(maker).setBuyPrice(contract, tokenId, price);
+    return this.contract
+      .connect(maker)
+      .setBuyPrice(
+        order.params.contract,
+        order.params.tokenId,
+        order.params.price
+      );
   }
 
-  public createOrderTx(
-    maker: string,
-    contract: string,
-    tokenId: BigNumberish,
-    price: BigNumberish
-  ): TxData {
+  public createOrderTx(order: Order): TxData {
     return {
-      from: maker,
+      from: order.params.maker,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("setBuyPrice", [
-        contract,
-        tokenId,
-        price,
+        order.params.contract,
+        order.params.tokenId,
+        order.params.price,
       ]),
     };
   }
@@ -57,35 +56,33 @@ export class Exchange {
 
   public async fillOrder(
     taker: Signer,
-    contract: string,
-    tokenId: BigNumberish,
-    price: BigNumberish,
+    order: Order,
     referrer?: string
   ): Promise<ContractTransaction> {
     return this.contract
       .connect(taker)
-      .buyV2(contract, tokenId, price, referrer ?? AddressZero, {
-        value: price,
-      });
+      .buyV2(
+        order.params.contract,
+        order.params.tokenId,
+        order.params.price,
+        referrer ?? AddressZero,
+        {
+          value: order.params.price,
+        }
+      );
   }
 
-  public fillOrderTx(
-    taker: string,
-    contract: string,
-    tokenId: BigNumberish,
-    price: BigNumberish,
-    referrer?: string
-  ): TxData {
+  public fillOrderTx(taker: string, order: Order, referrer?: string): TxData {
     return {
       from: taker,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("buyV2", [
-        contract,
-        tokenId,
-        price,
+        order.params.contract,
+        order.params.tokenId,
+        order.params.price,
         referrer ?? AddressZero,
       ]),
-      value: bn(price).toHexString(),
+      value: bn(order.params.price).toHexString(),
     };
   }
 
@@ -93,23 +90,20 @@ export class Exchange {
 
   public async cancelOrder(
     maker: Signer,
-    contract: string,
-    tokenId: BigNumberish
+    order: Order
   ): Promise<ContractTransaction> {
-    return this.contract.connect(maker).cancelBuyPrice(contract, tokenId);
+    return this.contract
+      .connect(maker)
+      .cancelBuyPrice(order.params.contract, order.params.tokenId);
   }
 
-  public cancelOrderTx(
-    maker: string,
-    contract: string,
-    tokenId: BigNumberish
-  ): TxData {
+  public cancelOrderTx(order: Order): TxData {
     return {
-      from: maker,
+      from: order.params.maker,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("cancelBuyPrice", [
-        contract,
-        tokenId,
+        order.params.contract,
+        order.params.tokenId,
       ]),
     };
   }

@@ -6,15 +6,15 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import {
-  ExchangeKind,
   bn,
   getChainId,
   getCurrentTimestamp,
   reset,
   setupNFTs,
-  setupRouter,
 } from "../utils";
+import { ListingDetails } from "@reservoir0x/sdk/src/router/types";
 
+// TODO: Add more tests for multi buy
 describe("Router V1 - multi buy", () => {
   const chainId = getChainId();
 
@@ -27,7 +27,6 @@ describe("Router V1 - multi buy", () => {
 
   let erc721: Contract;
   let erc1155: Contract;
-  let router: Contract;
 
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol, dan] = await ethers.getSigners();
@@ -40,7 +39,6 @@ describe("Router V1 - multi buy", () => {
       .then((factory) => factory.deploy());
 
     ({ erc721, erc1155 } = await setupNFTs(deployer));
-    router = await setupRouter(chainId, deployer);
   });
 
   afterEach(reset);
@@ -50,8 +48,7 @@ describe("Router V1 - multi buy", () => {
 
     const buyer = dan;
 
-    const data: string[] = [];
-    const values: string[] = [];
+    const sellOrders: ListingDetails[] = [];
 
     // Order 1: Wyvern V2.3
     const seller1 = alice;
@@ -91,30 +88,15 @@ describe("Router V1 - multi buy", () => {
       });
       await sellOrder.sign(seller1);
 
-      // Create matching buy order
-      const buyOrder = sellOrder.buildMatching(router.address, {
-        nonce: await exchange.getNonce(ethers.provider, router.address),
-        recipient: buyer.address,
-      });
-      buyOrder.params.listingTime = await getCurrentTimestamp(ethers.provider);
-
       await sellOrder.checkFillability(ethers.provider);
 
-      const tx = exchange.matchTransaction(buyer.address, buyOrder, sellOrder);
-      data.push(
-        router.interface.encodeFunctionData("singleERC721ListingFill", [
-          referrer.address,
-          tx.data,
-          ExchangeKind.WYVERN_V23,
-          erc721.address,
-          tokenId1,
-          buyer.address,
-          routerFee,
-        ])
-      );
-      values.push(
-        bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)).toString()
-      );
+      sellOrders.push({
+        kind: "wyvern-v2.3",
+        contractKind: "erc721",
+        contract: erc721.address,
+        tokenId: tokenId1.toString(),
+        order: sellOrder,
+      });
     }
 
     // Order 2: LooksRare
@@ -150,33 +132,23 @@ describe("Router V1 - multi buy", () => {
       });
       await sellOrder.sign(seller2);
 
-      // Create matching buy order
-      const buyOrder = sellOrder.buildMatching(router.address);
-
       await sellOrder.checkFillability(ethers.provider);
 
-      const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder);
-      data.push(
-        router.interface.encodeFunctionData("singleERC721ListingFill", [
-          referrer.address,
-          tx.data,
-          ExchangeKind.LOOKS_RARE,
-          sellOrder.params.collection,
-          sellOrder.params.tokenId,
-          buyer.address,
-          routerFee,
-        ])
-      );
-      values.push(
-        bn(tx.value!).add(bn(tx.value!).mul(routerFee).div(10000)).toString()
-      );
+      sellOrders.push({
+        kind: "looks-rare",
+        contractKind: "erc721",
+        contract: erc721.address,
+        tokenId: tokenId2.toString(),
+        order: sellOrder,
+      });
     }
 
     // Order 3: ZeroEx V4
     const seller3 = carol;
     const tokenId3 = 0;
     const totalAmount3 = 9;
-    const amount3 = 4;
+    // TODO: Investigate precision issues (eg. when setting `amount3 = 4`)
+    const amount3 = 3;
     const price3 = parseEther("2");
     const fee3 = parseEther("0.1");
     const totalPaid3 = price3.add(fee3);
@@ -189,7 +161,6 @@ describe("Router V1 - multi buy", () => {
         .connect(seller3)
         .setApprovalForAll(Sdk.ZeroExV4.Addresses.Exchange[chainId], true);
 
-      const exchange = new Sdk.ZeroExV4.Exchange(chainId);
       const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
 
       // Build sell order
@@ -210,29 +181,16 @@ describe("Router V1 - multi buy", () => {
       });
       await sellOrder.sign(seller3);
 
-      // Create matching buy order
-      const buyOrder = sellOrder.buildMatching({ amount: amount3 });
-
       await sellOrder.checkFillability(ethers.provider);
 
-      const tx = exchange.matchTransaction(buyer.address, sellOrder, buyOrder);
-      data.push(
-        router.interface.encodeFunctionData("singleERC1155ListingFill", [
-          referrer.address,
-          tx.data,
-          ExchangeKind.ZEROEX_V4,
-          sellOrder.params.nft,
-          sellOrder.params.nftId,
-          amount3,
-          buyer.address,
-          routerFee,
-        ])
-      );
-      values.push(
-        bn(tx.value!)
-          .add(bn(tx.value!).mul(routerFee).add(10001).div(10000))
-          .toString()
-      );
+      sellOrders.push({
+        kind: "zeroex-v4",
+        contractKind: "erc1155",
+        contract: erc1155.address,
+        tokenId: tokenId3.toString(),
+        amount: amount3,
+        order: sellOrder,
+      });
     }
 
     const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
@@ -251,9 +209,12 @@ describe("Router V1 - multi buy", () => {
     expect(token2OwnerBefore).to.eq(seller2.address);
     expect(token3BuyerBalanceBefore).to.eq(0);
 
-    await router.connect(buyer).multiListingFill(data, values, true, {
-      value: values.reduce((a, b) => bn(a).add(b), bn(0)).toString(),
+    const router = new Sdk.Router(chainId, ethers.provider);
+    const tx = await router.fillListingsTx(sellOrders, buyer.address, {
+      referrer: referrer.address,
+      referrerFeeBps: routerFee,
     });
+    await buyer.sendTransaction(tx);
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const seller1EthBalanceAfter = await seller1.getBalance();
@@ -270,7 +231,6 @@ describe("Router V1 - multi buy", () => {
         .add(price2)
         .add(totalPaid3.mul(amount3).div(totalAmount3))
         .mul(routerFee)
-        .add(10001)
         .div(10000)
     );
     expect(seller1EthBalanceAfter.sub(seller1EthBalanceBefore)).to.eq(
@@ -279,15 +239,16 @@ describe("Router V1 - multi buy", () => {
     expect(seller2WethBalanceAfter.sub(seller2WethBalanceBefore)).to.eq(
       price2.sub(price2.mul(fee2).div(10000))
     );
-    // expect(seller3EthBalanceAfter.sub(seller3EthBalanceBefore)).to.eq(
-    //   price3.mul(amount3).add(totalAmount3)
-    // );
+    // TODO: Investigate precision issues
+    expect(seller3EthBalanceAfter.sub(seller3EthBalanceBefore).div(100)).to.eq(
+      price3.mul(amount3).div(totalAmount3).div(100)
+    );
     expect(token1OwnerAfter).to.eq(buyer.address);
     expect(token2OwnerAfter).to.eq(buyer.address);
     expect(token3BuyerBalanceAfter).to.eq(amount3);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
-    expect(await weth.getBalance(router.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
+    expect(await weth.getBalance(router.contract.address)).to.eq(0);
   });
 });

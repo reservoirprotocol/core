@@ -15,7 +15,7 @@ describe("Router - upgrades", () => {
   beforeEach(async () => {
     [deployer] = await ethers.getSigners();
 
-    // Make sure testing will not override any mainnet manifest files.
+    // Make sure testing will not override any mainnet manifest files
     process.chdir("/tmp");
   });
 
