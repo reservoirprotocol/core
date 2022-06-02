@@ -1,7 +1,6 @@
 import { config as dotEnvConfig } from "dotenv";
 dotEnvConfig();
 
-import { HashZero } from "@ethersproject/constants";
 import { HardhatUserConfig } from "hardhat/types";
 
 import "@nomiclabs/hardhat-ethers";
@@ -38,11 +37,11 @@ const config: HardhatUserConfig = {
     },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: [process.env.DEPLOYER_PK || HashZero],
+      accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
     },
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: [process.env.DEPLOYER_PK || HashZero],
+      accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
     },
   },
   etherscan: {
