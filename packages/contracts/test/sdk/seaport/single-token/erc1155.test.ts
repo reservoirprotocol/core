@@ -32,7 +32,7 @@ describe("Seaport - SingleToken Erc1155", () => {
 
   afterEach(reset);
 
-  it("build and match sell order", async () => {
+  it("Build and fill sell order", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -114,7 +114,7 @@ describe("Seaport - SingleToken Erc1155", () => {
     expect(sellerEthBalanceAfter).to.eq(sellerEthBalanceBefore.add(price));
   });
 
-  it("build and match sell order with partial filling", async () => {
+  it("Build and fill sell order with partial filling", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -203,7 +203,7 @@ describe("Seaport - SingleToken Erc1155", () => {
     );
   });
 
-  it("build and match sell order with fees", async () => {
+  it("Build and fill sell order with fees", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -317,7 +317,7 @@ describe("Seaport - SingleToken Erc1155", () => {
     ).to.eq(fee2);
   });
 
-  it("build and match sell order with partial filling and fees", async () => {
+  it("Build and fill sell order with partial filling and fees", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -423,7 +423,7 @@ describe("Seaport - SingleToken Erc1155", () => {
     );
   });
 
-  it("build and match buy order", async () => {
+  it("Build and fill buy order", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -505,7 +505,7 @@ describe("Seaport - SingleToken Erc1155", () => {
     expect(sellerWethBalanceAfter).to.eq(sellerWethBalanceBefore.add(price));
   });
 
-  it("build and match buy order with partial filling", async () => {
+  it("Build and fill buy order with partial filling", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -594,7 +594,7 @@ describe("Seaport - SingleToken Erc1155", () => {
     );
   });
 
-  it("build and match buy order with fees", async () => {
+  it("Build and fill buy order with fees", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -710,7 +710,7 @@ describe("Seaport - SingleToken Erc1155", () => {
     ).to.eq(fee2);
   });
 
-  it("build and match buy order with partial filling and fees", async () => {
+  it("Build and fill buy order with partial filling and fees", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");

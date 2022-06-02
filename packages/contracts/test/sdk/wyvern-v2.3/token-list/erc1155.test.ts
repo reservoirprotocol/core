@@ -4,12 +4,17 @@ import * as Common from "@reservoir0x/sdk/src/common";
 import * as WyvernV23 from "@reservoir0x/sdk/src/wyvern-v2.3";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 
-import { getCurrentTimestamp } from "../../../utils";
+import {
+  getChainId,
+  getCurrentTimestamp,
+  reset,
+  setupNFTs,
+} from "../../../utils";
 
 describe("WyvernV2.3 - TokenListErc1155", () => {
-  let chainId: number;
+  const chainId = getChainId();
 
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
@@ -19,29 +24,14 @@ describe("WyvernV2.3 - TokenListErc1155", () => {
   let erc1155: Contract;
 
   beforeEach(async () => {
-    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
     [deployer, alice, bob, carol] = await ethers.getSigners();
 
-    erc1155 = await ethers
-      .getContractFactory("MockERC1155", deployer)
-      .then((factory) => factory.deploy());
+    ({ erc1155 } = await setupNFTs(deployer));
   });
 
-  afterEach(async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: (network.config as any).forking.url,
-            blockNumber: (network.config as any).forking.blockNumber,
-          },
-        },
-      ],
-    });
-  });
+  afterEach(reset);
 
-  it("build and match buy order", async () => {
+  it("Build and fill buy order", async () => {
     const buyer = alice;
     const seller = bob;
     const feeRecipient = carol;

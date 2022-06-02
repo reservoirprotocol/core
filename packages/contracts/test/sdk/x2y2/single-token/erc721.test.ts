@@ -1,38 +1,26 @@
-import { parseEther } from "@ethersproject/units";
-import { Wallet } from "@ethersproject/wallet";
 import * as Common from "@reservoir0x/sdk/src/common";
 import { bn, lc } from "@reservoir0x/sdk/src/utils";
 import * as X2Y2 from "@reservoir0x/sdk/src/x2y2";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { expect } from "chai";
-import { ethers, network } from "hardhat";
 import axios from "axios";
+import { expect } from "chai";
+import { ethers } from "hardhat";
 
+import { getChainId, reset } from "../../../utils";
+
+// These tests depend on a X2Y2 API key
 describe("X2Y2 - SingleToken Erc721", () => {
-  let chainId: number;
+  const chainId = getChainId();
 
   let alice: SignerWithAddress;
 
   beforeEach(async () => {
-    chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [alice] = await ethers.getSigners();
   });
 
-  afterEach(async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: (network.config as any).forking.url,
-            blockNumber: (network.config as any).forking.blockNumber,
-          },
-        },
-      ],
-    });
-  });
+  afterEach(reset);
 
-  it("fill sell orders", async () => {
+  it("Fill sell order", async () => {
     const orders = await axios.get(
       "https://api.x2y2.org/api/orders?status=open",
       {

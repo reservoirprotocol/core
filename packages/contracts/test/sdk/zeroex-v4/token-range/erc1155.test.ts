@@ -4,12 +4,17 @@ import * as Common from "@reservoir0x/sdk/src/common";
 import * as ZeroexV4 from "@reservoir0x/sdk/src/zeroex-v4";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 
-import { getCurrentTimestamp } from "../../../utils";
+import {
+  getChainId,
+  getCurrentTimestamp,
+  reset,
+  setupNFTs,
+} from "../../../utils";
 
-describe("ZeroEx V4 - ContractWide Erc1155", () => {
-  let chainId: number;
+describe("ZeroEx V4 - TokenRange Erc1155", () => {
+  const chainId = getChainId();
 
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
@@ -18,29 +23,14 @@ describe("ZeroEx V4 - ContractWide Erc1155", () => {
   let erc1155: Contract;
 
   beforeEach(async () => {
-    chainId = (network.config as any).forking.url.includes("mainnet") ? 1 : 4;
     [deployer, alice, bob] = await ethers.getSigners();
 
-    erc1155 = await ethers
-      .getContractFactory("MockERC1155", deployer)
-      .then((factory) => factory.deploy());
+    ({ erc1155 } = await setupNFTs(deployer));
   });
 
-  afterEach(async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: (network.config as any).forking.url,
-            blockNumber: (network.config as any).forking.blockNumber,
-          },
-        },
-      ],
-    });
-  });
+  afterEach(reset);
 
-  it("build and match buy order", async () => {
+  it("Build and fill buy order", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -117,7 +107,7 @@ describe("ZeroEx V4 - ContractWide Erc1155", () => {
     expect(sellerNftBalanceAfter).to.eq(0);
   });
 
-  it("fails to match buy order if token id out of range", async () => {
+  it("Fails to fill buy order if token id out of range", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");

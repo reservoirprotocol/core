@@ -3,10 +3,12 @@ import { parseEther } from "@ethersproject/units";
 import * as Foundation from "@reservoir0x/sdk/src/foundation";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
+
+import { getChainId, reset, setupNFTs } from "../../../utils";
 
 describe("Foundation - SingleToken Erc721", () => {
-  let chainId: number;
+  const chainId = getChainId();
 
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
@@ -16,38 +18,14 @@ describe("Foundation - SingleToken Erc721", () => {
   let erc721: Contract;
 
   beforeEach(async () => {
-    if (process.env.CHAIN_ID) {
-      chainId = Number(process.env.CHAIN_ID);
-    } else {
-      chainId = (network.config as any).forking?.url.includes("rinkeby")
-        ? 4
-        : 1;
-    }
-
     [deployer, alice, bob, carol] = await ethers.getSigners();
 
-    erc721 = await ethers
-      .getContractFactory("MockERC721", deployer)
-      .then((factory) => factory.deploy());
+    ({ erc721 } = await setupNFTs(deployer));
   });
 
-  afterEach(async () => {
-    if ((network.config as any).forking) {
-      await network.provider.request({
-        method: "hardhat_reset",
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: (network.config as any).forking.url,
-              blockNumber: (network.config as any).forking.blockNumber,
-            },
-          },
-        ],
-      });
-    }
-  });
+  afterEach(reset);
 
-  it("fill sell order", async () => {
+  it("Fill sell order", async () => {
     const seller = alice;
     const buyer = bob;
     const referrer = carol;

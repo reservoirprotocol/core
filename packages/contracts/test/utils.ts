@@ -57,6 +57,7 @@ export enum ExchangeKind {
   ZEROEX_V4,
   FOUNDATION,
   X2Y2,
+  SEAPORT,
 }
 
 // Deploy and upgrade router up to the latest version

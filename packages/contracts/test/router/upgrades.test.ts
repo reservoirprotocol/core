@@ -3,38 +3,23 @@ import { Contract } from "@ethersproject/contracts";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { ethers, network, upgrades } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
-import { lc } from "../utils";
+import { getChainId, lc, reset } from "../utils";
 
 describe("Router - upgrades", () => {
-  let chainId: number;
+  const chainId = getChainId();
 
   let deployer: SignerWithAddress;
 
   beforeEach(async () => {
-    chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [deployer] = await ethers.getSigners();
 
     // Make sure testing will not override any mainnet manifest files.
     process.chdir("/tmp");
   });
 
-  afterEach(async () => {
-    if ((network.config as any).forking) {
-      await network.provider.request({
-        method: "hardhat_reset",
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: (network.config as any).forking.url,
-              blockNumber: (network.config as any).forking.blockNumber,
-            },
-          },
-        ],
-      });
-    }
-  });
+  afterEach(reset);
 
   // --- V1 deployment ---
 
@@ -74,7 +59,7 @@ describe("Router - upgrades", () => {
     );
   };
 
-  it("v1 deployment", async () => {
+  it("V1 deployment", async () => {
     const routerV1 = await deployV1();
     await checkV1(routerV1);
   });
@@ -118,11 +103,50 @@ describe("Router - upgrades", () => {
     );
   };
 
-  it("v2 upgrade", async () => {
+  it("V2 upgrade", async () => {
     const routerV1 = await deployV1();
     const routerV2 = await upgradeV2(routerV1);
 
     await checkV1(routerV2);
     await checkV2(routerV2);
+  });
+
+  // --- V3 upgrade ---
+
+  const upgradeV3 = async (routerV2: Contract) => {
+    const v3InitializationParams = [Sdk.Seaport.Addresses.Exchange[chainId]];
+
+    const router = await upgrades.upgradeProxy(
+      routerV2.address,
+      await ethers.getContractFactory("RouterV3", deployer),
+      {
+        call: {
+          fn: "initializeV3",
+          args: v3InitializationParams,
+        },
+      }
+    );
+
+    await expect(router.initializeV3(...[AddressZero])).to.be.revertedWith(
+      "V3: Already initialized"
+    );
+
+    return router;
+  };
+
+  const checkV3 = async (router: Contract) => {
+    expect(lc(await router.seaport())).to.eq(
+      lc(Sdk.Seaport.Addresses.Exchange[chainId])
+    );
+  };
+
+  it("V3 upgrade", async () => {
+    const routerV1 = await deployV1();
+    const routerV2 = await upgradeV2(routerV1);
+    const routerV3 = await upgradeV3(routerV2);
+
+    await checkV1(routerV2);
+    await checkV2(routerV2);
+    await checkV3(routerV3);
   });
 });

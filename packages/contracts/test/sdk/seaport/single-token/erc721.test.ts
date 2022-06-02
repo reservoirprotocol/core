@@ -32,7 +32,7 @@ describe("Seaport - SingleToken Erc721", () => {
 
   afterEach(reset);
 
-  it("build and match sell order", async () => {
+  it("Build and fill sell order", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -98,7 +98,7 @@ describe("Seaport - SingleToken Erc721", () => {
     expect(ownerAfter).to.eq(buyer.address);
   });
 
-  it("build and match sell order with fees", async () => {
+  it("Build and fill sell order with fees", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -196,7 +196,7 @@ describe("Seaport - SingleToken Erc721", () => {
     expect(ownerAfter).to.eq(buyer.address);
   });
 
-  it("build and match buy order", async () => {
+  it("Build and fill buy order", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -262,7 +262,7 @@ describe("Seaport - SingleToken Erc721", () => {
     expect(ownerAfter).to.eq(buyer.address);
   });
 
-  it("build and match buy order with fees", async () => {
+  it("Build and fill buy order with fees", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");

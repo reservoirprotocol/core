@@ -3,13 +3,20 @@ import { parseEther } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { ethers, network, upgrades } from "hardhat";
+import { ethers } from "hardhat";
 
-import { ExchangeKind } from "./helpers";
-import { bn, getCurrentTimestamp } from "../utils";
+import {
+  ExchangeKind,
+  bn,
+  getChainId,
+  getCurrentTimestamp,
+  reset,
+  setupNFTs,
+  setupRouter,
+} from "../utils";
 
 describe("Router V1 - multi buy", () => {
-  let chainId: number;
+  const chainId = getChainId();
 
   let deployer: SignerWithAddress;
   let referrer: SignerWithAddress;
@@ -23,7 +30,6 @@ describe("Router V1 - multi buy", () => {
   let router: Contract;
 
   beforeEach(async () => {
-    chainId = (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
     [deployer, referrer, alice, bob, carol, dan] = await ethers.getSigners();
 
     erc721 = await ethers
@@ -33,49 +39,11 @@ describe("Router V1 - multi buy", () => {
       .getContractFactory("MockERC1155", deployer)
       .then((factory) => factory.deploy());
 
-    // Make sure testing will not override any mainnet manifest files.
-    process.chdir("/tmp");
-
-    router = await upgrades.deployProxy(
-      await ethers.getContractFactory("RouterV1", deployer),
-      [
-        Sdk.Common.Addresses.Weth[chainId],
-        Sdk.LooksRare.Addresses.Exchange[chainId],
-        Sdk.WyvernV23.Addresses.Exchange[chainId],
-        Sdk.ZeroExV4.Addresses.Exchange[chainId],
-      ]
-    );
-    router = await upgrades.upgradeProxy(
-      router.address,
-      await ethers.getContractFactory("RouterV2", deployer),
-      {
-        call: {
-          fn: "initializeV2",
-          args: [
-            Sdk.Foundation.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
-          ],
-        },
-      }
-    );
+    ({ erc721, erc1155 } = await setupNFTs(deployer));
+    router = await setupRouter(chainId, deployer);
   });
 
-  afterEach(async () => {
-    if ((network.config as any).forking) {
-      await network.provider.request({
-        method: "hardhat_reset",
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: (network.config as any).forking.url,
-              blockNumber: (network.config as any).forking.blockNumber,
-            },
-          },
-        ],
-      });
-    }
-  });
+  afterEach(reset);
 
   it("Fill multiple listings", async () => {
     const routerFee = 100;
