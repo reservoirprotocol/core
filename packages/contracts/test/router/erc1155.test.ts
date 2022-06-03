@@ -23,14 +23,14 @@ describe("Router - filling ERC1155", () => {
   let carol: SignerWithAddress;
 
   let erc1155: Contract;
-  let router: Sdk.Router;
+  let router: Sdk.Router.Router;
 
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
 
     ({ erc1155 } = await setupNFTs(deployer));
 
-    router = new Sdk.Router(chainId, ethers.provider);
+    router = new Sdk.Router.Router(chainId, ethers.provider);
     router.contract = await setupRouter(chainId, deployer, "v2");
   });
 

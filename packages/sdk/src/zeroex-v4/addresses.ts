@@ -3,6 +3,7 @@ import { ChainIdToAddress } from "../utils";
 export const Exchange: ChainIdToAddress = {
   1: "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
   3: "0x1aa777972073ff66dcfded85749bdd555c0665da",
+  4: "0x0000000000000000000000000000000000000000",
 };
 
 export const Eth: ChainIdToAddress = {

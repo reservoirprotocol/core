@@ -28,7 +28,7 @@ describe("Router - multi buy", () => {
 
   let erc721: Contract;
   let erc1155: Contract;
-  let router: Sdk.Router;
+  let router: Sdk.Router.Router;
 
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol, dan] = await ethers.getSigners();
@@ -42,7 +42,7 @@ describe("Router - multi buy", () => {
 
     ({ erc721, erc1155 } = await setupNFTs(deployer));
 
-    router = new Sdk.Router(chainId, ethers.provider);
+    router = new Sdk.Router.Router(chainId, ethers.provider);
     router.contract = await setupRouter(chainId, deployer, "v2");
   });
 
