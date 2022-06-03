@@ -5,12 +5,12 @@ import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
 import { verifyTypedData } from "@ethersproject/wallet";
-import { Common } from "@reservoir0x/sdk/src";
 
 import * as Addresses from "./addresses";
 import { Builders } from "./builders";
 import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
+import * as Common from "../common";
 import { bn, lc, n, s } from "../utils";
 
 import ConduitControllerAbi from "./abis/ConduitController.json";

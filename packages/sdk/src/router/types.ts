@@ -1,4 +1,4 @@
-import * as Sdk from "@reservoir0x/sdk/src";
+import * as Sdk from "../index";
 
 export enum ExchangeKind {
   WYVERN_V23,

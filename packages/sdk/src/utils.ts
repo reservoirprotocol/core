@@ -35,3 +35,4 @@ export type TxData = {
 };
 
 export type ChainIdToAddress = { [chainId: number]: string };
+export type ChainIdToAddressList = { [chainId: number]: string[] };

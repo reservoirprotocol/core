@@ -2,9 +2,10 @@ import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { AddressZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
-import * as Sdk from "@reservoir0x/sdk/src";
 
+import * as Addresses from "./addresses";
 import { ExchangeKind, BidDetails, ListingDetails } from "./types";
+import * as Sdk from "../index";
 import { TxData, bn } from "../utils";
 
 import Erc721Abi from "../common/abis/Erc721.json";
@@ -23,7 +24,7 @@ export class Router {
 
     this.chainId = chainId;
     this.contract = new Contract(
-      Sdk.Router.Addresses.Router[chainId],
+      Addresses.Router[chainId],
       RouterAbi,
       provider
     );
