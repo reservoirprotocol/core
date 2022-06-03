@@ -31,7 +31,9 @@ describe("Router - filling ERC1155", () => {
     ({ erc1155 } = await setupNFTs(deployer));
 
     router = new Sdk.Router.Router(chainId, ethers.provider);
-    router.contract = await setupRouter(chainId, deployer, "v2");
+    if (!process.env.USE_DEPLOYED_ROUTER) {
+      router.contract = await setupRouter(chainId, deployer, "v2");
+    }
   });
 
   afterEach(reset);
