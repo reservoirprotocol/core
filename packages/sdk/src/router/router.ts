@@ -463,7 +463,7 @@ export class Router {
       order = order as Sdk.OpenDao.Order;
 
       const matchParams = order.buildMatching({
-        nftId: tokenId,
+        tokenId,
         amount: 1,
         // Do not unwrap in order to be compatible with the router
         unwrapNativeToken: false,
@@ -499,7 +499,7 @@ export class Router {
       order = order as Sdk.ZeroExV4.Order;
 
       const matchParams = order.buildMatching({
-        nftId: tokenId,
+        tokenId,
         amount: 1,
         // Do not unwrap in order to be compatible with the router
         unwrapNativeToken: false,
