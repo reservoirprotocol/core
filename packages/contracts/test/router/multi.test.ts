@@ -11,11 +11,12 @@ import {
   getCurrentTimestamp,
   reset,
   setupNFTs,
+  setupRouter,
 } from "../utils";
 import { ListingDetails } from "@reservoir0x/sdk/src/router/types";
 
 // TODO: Add more tests for multi buy
-describe("Router V1 - multi buy", () => {
+describe("Router - multi buy", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -27,6 +28,7 @@ describe("Router V1 - multi buy", () => {
 
   let erc721: Contract;
   let erc1155: Contract;
+  let router: Sdk.Router;
 
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol, dan] = await ethers.getSigners();
@@ -39,6 +41,9 @@ describe("Router V1 - multi buy", () => {
       .then((factory) => factory.deploy());
 
     ({ erc721, erc1155 } = await setupNFTs(deployer));
+
+    router = new Sdk.Router(chainId, ethers.provider);
+    router.contract = await setupRouter(chainId, deployer, "v2");
   });
 
   afterEach(reset);
@@ -209,7 +214,6 @@ describe("Router V1 - multi buy", () => {
     expect(token2OwnerBefore).to.eq(seller2.address);
     expect(token3BuyerBalanceBefore).to.eq(0);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(sellOrders, buyer.address, {
       referrer: referrer.address,
       referrerFeeBps: routerFee,

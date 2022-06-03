@@ -11,6 +11,7 @@ import {
   lc,
   reset,
   setupNFTs,
+  setupRouter,
 } from "../utils";
 
 describe("Router - filling ERC721", () => {
@@ -23,11 +24,15 @@ describe("Router - filling ERC721", () => {
   let carol: SignerWithAddress;
 
   let erc721: Contract;
+  let router: Sdk.Router;
 
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
 
     ({ erc721 } = await setupNFTs(deployer));
+
+    router = new Sdk.Router(chainId, ethers.provider);
+    router.contract = await setupRouter(chainId, deployer, "v2");
   });
 
   afterEach(reset);
@@ -81,7 +86,6 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(
       [
         {
@@ -165,7 +169,6 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(boughtTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillBidTx(
       {
         kind: "wyvern-v2.3",
@@ -235,7 +238,6 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(
       [
         {
@@ -310,7 +312,6 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(boughtTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillBidTx(
       {
         kind: "looks-rare",
@@ -371,7 +372,6 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(
       [
         {
@@ -440,7 +440,6 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(boughtTokenId);
     expect(ownerBefore).to.eq(seller.address);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillBidTx(
       {
         kind: "zeroex-v4",
@@ -499,7 +498,6 @@ describe("Router - filling ERC721", () => {
     const ownerBefore = await erc721.ownerOf(soldTokenId);
     expect(lc(ownerBefore)).to.eq(lc(exchange.contract.address));
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(
       [
         {

@@ -5,7 +5,13 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { getChainId, getCurrentTimestamp, reset, setupNFTs } from "../utils";
+import {
+  getChainId,
+  getCurrentTimestamp,
+  reset,
+  setupNFTs,
+  setupRouter,
+} from "../utils";
 
 describe("Router - filling ERC1155", () => {
   const chainId = getChainId();
@@ -17,11 +23,15 @@ describe("Router - filling ERC1155", () => {
   let carol: SignerWithAddress;
 
   let erc1155: Contract;
+  let router: Sdk.Router;
 
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
 
     ({ erc1155 } = await setupNFTs(deployer));
+
+    router = new Sdk.Router(chainId, ethers.provider);
+    router.contract = await setupRouter(chainId, deployer, "v2");
   });
 
   afterEach(reset);
@@ -83,7 +93,6 @@ describe("Router - filling ERC1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
     expect(buyerNftBalanceBefore).to.eq(0);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(
       [
         {
@@ -180,7 +189,6 @@ describe("Router - filling ERC1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
     expect(buyerNftBalanceBefore).to.eq(0);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillBidTx(
       {
         kind: "wyvern-v2.3",
@@ -266,7 +274,6 @@ describe("Router - filling ERC1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
     expect(buyerNftBalanceBefore).to.eq(0);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(
       [
         {
@@ -357,7 +364,6 @@ describe("Router - filling ERC1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
     expect(buyerNftBalanceBefore).to.eq(0);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillBidTx(
       {
         kind: "looks-rare",
@@ -435,7 +441,6 @@ describe("Router - filling ERC1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
     expect(buyerNftBalanceBefore).to.eq(0);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(
       [
         {
@@ -526,7 +531,6 @@ describe("Router - filling ERC1155", () => {
     expect(sellerNftBalanceBefore).to.eq(2);
     expect(buyerNftBalanceBefore).to.eq(0);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillListingsTx(
       sellOrders.map((o) => ({
         kind: "zeroex-v4",
@@ -612,7 +616,6 @@ describe("Router - filling ERC1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
     expect(buyerNftBalanceBefore).to.eq(0);
 
-    const router = new Sdk.Router(chainId, ethers.provider);
     const tx = await router.fillBidTx(
       {
         kind: "zeroex-v4",

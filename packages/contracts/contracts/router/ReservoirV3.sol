@@ -4,17 +4,14 @@ pragma solidity ^0.8.9;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ExchangeKind} from "./interfaces/IExchangeKind.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
 
-contract RouterV3 is Initializable, OwnableUpgradeable {
-    // --- V1 storage ---
-
+contract ReservoirV3 is Ownable {
     address public weth;
 
     address public looksRare;
@@ -26,24 +23,68 @@ contract RouterV3 is Initializable, OwnableUpgradeable {
 
     address public zeroExV4;
 
-    // --- V2 storage ---
-
-    bool private _initializedV2;
-
     address public foundation;
 
     address public x2y2;
     address public x2y2ERC721Delegate;
 
-    // --- V3 storage ---
-
-    bool private _initializedV3;
-
     address public seaport;
 
-    function initializeV3(address seaportAddress) public {
-        require(!_initializedV3, "V3: Already initialized");
-        _initializedV3 = true;
+    constructor(
+        address wethAddress,
+        address looksRareAddress,
+        address wyvernV23Address,
+        address zeroExV4Address,
+        address foundationAddress,
+        address x2y2Address,
+        address x2y2ERC721DelegateAddress,
+        address seaportAddress
+    ) {
+        weth = wethAddress;
+
+        // --- LooksRare setup ---
+
+        looksRare = looksRareAddress;
+
+        // Cache the transfer manager contracts
+        address transferSelectorNFT = ILooksRare(looksRare)
+            .transferSelectorNFT();
+        looksRareTransferManagerERC721 = ILooksRareTransferSelectorNFT(
+            transferSelectorNFT
+        ).TRANSFER_MANAGER_ERC721();
+        looksRareTransferManagerERC1155 = ILooksRareTransferSelectorNFT(
+            transferSelectorNFT
+        ).TRANSFER_MANAGER_ERC1155();
+
+        // --- WyvernV23 setup ---
+
+        wyvernV23 = wyvernV23Address;
+
+        // Create a user proxy
+        address proxyRegistry = IWyvernV23(wyvernV23).registry();
+        IWyvernV23ProxyRegistry(proxyRegistry).registerProxy();
+        wyvernV23Proxy = IWyvernV23ProxyRegistry(proxyRegistry).proxies(
+            address(this)
+        );
+
+        // Approve the token transfer proxy
+        IERC20(weth).approve(
+            IWyvernV23(wyvernV23).tokenTransferProxy(),
+            type(uint256).max
+        );
+
+        // --- ZeroExV4 setup ---
+
+        zeroExV4 = zeroExV4Address;
+
+        // --- Foundation setup ---
+
+        foundation = foundationAddress;
+
+        // --- X2Y2 setup ---
+
+        x2y2 = x2y2Address;
+        x2y2ERC721Delegate = x2y2ERC721DelegateAddress;
 
         // --- Seaport setup ---
 

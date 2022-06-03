@@ -21,7 +21,7 @@ describe("Router - misc", () => {
     [deployer, alice] = await ethers.getSigners();
 
     ({ erc721, erc1155 } = await setupNFTs(deployer));
-    router = await setupRouter(chainId, deployer);
+    router = await setupRouter(chainId, deployer, "v2");
   });
 
   afterEach(reset);
