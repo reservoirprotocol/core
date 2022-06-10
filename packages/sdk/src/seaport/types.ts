@@ -80,3 +80,18 @@ export type MatchParams = {
   tokenId?: string;
   amount?: string;
 };
+
+export type SpentItem = {
+  itemType: ItemType;
+  token: string;
+  identifier: string;
+  amount: string;
+};
+
+export type ReceivedItem = {
+  itemType: ItemType;
+  token: string;
+  identifier: string;
+  amount: string;
+  recipient: string;
+};

@@ -176,4 +176,70 @@ export class Exchange {
             ]
           ).slice(-40);
   }
+
+  // --- Derive basic sale information ---
+
+  public deriveBasicSale(
+    spentItems: Types.SpentItem[],
+    receivedItems: Types.ReceivedItem[]
+  ) {
+    try {
+      if (spentItems.length === 1) {
+        if (spentItems[0].itemType >= 2) {
+          // Listing got filled
+
+          const mainConsideration = receivedItems[0];
+          if (mainConsideration.itemType >= 2) {
+            throw new Error("Not a basic sale");
+          }
+
+          for (let i = 1; i < receivedItems.length; i++) {
+            if (
+              receivedItems[i].itemType !== mainConsideration.itemType ||
+              receivedItems[i].token !== mainConsideration.token
+            ) {
+              throw new Error("Not a basic sale");
+            }
+          }
+
+          return {
+            contract: spentItems[0].token,
+            tokenId: spentItems[0].identifier,
+            amount: spentItems[0].amount,
+            paymentToken: mainConsideration.token,
+            price: receivedItems
+              .map((c) => bn(c.amount))
+              .reduce((a, b) => a.add(b))
+              .toString(),
+          };
+        } else {
+          // Bid got filled
+
+          const mainConsideration = receivedItems[0];
+          if (mainConsideration.itemType < 2) {
+            throw new Error("Not a basic sale");
+          }
+
+          for (let i = 1; i < receivedItems.length; i++) {
+            if (
+              receivedItems[i].itemType !== spentItems[0].itemType ||
+              receivedItems[i].token !== spentItems[0].token
+            ) {
+              throw new Error("Not a basic sale");
+            }
+          }
+
+          return {
+            contract: mainConsideration.token,
+            tokenId: mainConsideration.identifier,
+            amount: mainConsideration.amount,
+            paymentToken: spentItems[0].token,
+            price: spentItems[0].amount,
+          };
+        }
+      }
+    } catch {
+      return undefined;
+    }
+  }
 }
