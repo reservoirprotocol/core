@@ -2,11 +2,12 @@ import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
+import { keccak256 } from "@ethersproject/solidity";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn } from "../utils";
+import { bn } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -156,5 +157,23 @@ export class Exchange {
         );
       }
     }
+  }
+
+  // --- Derive conduit from key ---
+
+  public deriveConduit(conduitKey: string) {
+    return (
+      "0x" +
+      keccak256(
+        ["bytes1", "address", "bytes32", "bytes32"],
+        [
+          "0xff",
+          Addresses.ConduitController[this.chainId],
+          conduitKey,
+          // https://github.com/ProjectOpenSea/seaport/blob/0a8e82ce7262b5ce0e67fa98a2131fd4c47c84e9/contracts/conduit/ConduitController.sol#L493
+          "0xdd41111aee3f9f5fbd5a2ec5fdd992a682b33f0e9a49bce086cfc12c11d63bcd",
+        ]
+      ).slice(-40)
+    );
   }
 }
