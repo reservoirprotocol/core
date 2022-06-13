@@ -186,45 +186,51 @@ export class Exchange {
     receivedItems: Types.ReceivedItem[]
   ) {
     // Normalize
+    const nSpentItems: Types.SpentItem[] = [];
     for (const spentItem of spentItems) {
-      spentItem.itemType = n(spentItem.itemType);
-      spentItem.token = lc(spentItem.token);
-      spentItem.identifier = s(spentItem.identifier);
-      spentItem.amount = s(spentItem.amount);
+      nSpentItems.push({
+        itemType: n(spentItem.itemType),
+        token: lc(spentItem.token),
+        identifier: s(spentItem.identifier),
+        amount: s(spentItem.amount),
+      });
     }
+    const nReceivedItems: Types.ReceivedItem[] = [];
     for (const receivedItem of receivedItems) {
-      receivedItem.itemType = n(receivedItem.itemType);
-      receivedItem.token = lc(receivedItem.token);
-      receivedItem.identifier = s(receivedItem.identifier);
-      receivedItem.amount = s(receivedItem.amount);
-      receivedItem.recipient = lc(receivedItem.recipient);
+      nReceivedItems.push({
+        itemType: n(receivedItem.itemType),
+        token: lc(receivedItem.token),
+        identifier: s(receivedItem.identifier),
+        amount: s(receivedItem.amount),
+        recipient: lc(receivedItem.recipient),
+      });
     }
 
     try {
-      if (spentItems.length === 1) {
-        if (spentItems[0].itemType >= 2) {
+      if (nSpentItems.length === 1) {
+        if (nSpentItems[0].itemType >= 2) {
           // Listing got filled
 
-          const mainConsideration = receivedItems[0];
+          const mainConsideration = nReceivedItems[0];
           if (mainConsideration.itemType >= 2) {
             throw new Error("Not a basic sale");
           }
 
-          for (let i = 1; i < receivedItems.length; i++) {
+          for (let i = 1; i < nReceivedItems.length; i++) {
             if (
-              receivedItems[i].itemType !== mainConsideration.itemType ||
-              receivedItems[i].token !== mainConsideration.token
+              nReceivedItems[i].itemType !== mainConsideration.itemType ||
+              nReceivedItems[i].token !== mainConsideration.token
             ) {
               throw new Error("Not a basic sale");
             }
           }
 
           return {
-            contract: spentItems[0].token,
-            tokenId: spentItems[0].identifier,
-            amount: spentItems[0].amount,
+            contract: nSpentItems[0].token,
+            tokenId: nSpentItems[0].identifier,
+            amount: nSpentItems[0].amount,
             paymentToken: mainConsideration.token,
-            price: receivedItems
+            price: nReceivedItems
               .map((c) => bn(c.amount))
               .reduce((a, b) => a.add(b))
               .toString(),
@@ -232,15 +238,15 @@ export class Exchange {
         } else {
           // Bid got filled
 
-          const mainConsideration = receivedItems[0];
+          const mainConsideration = nReceivedItems[0];
           if (mainConsideration.itemType < 2) {
             throw new Error("Not a basic sale");
           }
 
-          for (let i = 1; i < receivedItems.length; i++) {
+          for (let i = 1; i < nReceivedItems.length; i++) {
             if (
-              receivedItems[i].itemType !== spentItems[0].itemType ||
-              receivedItems[i].token !== spentItems[0].token
+              nReceivedItems[i].itemType !== nSpentItems[0].itemType ||
+              nReceivedItems[i].token !== nSpentItems[0].token
             ) {
               throw new Error("Not a basic sale");
             }
@@ -250,8 +256,8 @@ export class Exchange {
             contract: mainConsideration.token,
             tokenId: mainConsideration.identifier,
             amount: mainConsideration.amount,
-            paymentToken: spentItems[0].token,
-            price: spentItems[0].amount,
+            paymentToken: nSpentItems[0].token,
+            price: nSpentItems[0].amount,
           };
         }
       }
