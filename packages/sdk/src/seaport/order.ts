@@ -228,7 +228,7 @@ export class Order {
 
 const EIP712_DOMAIN = (chainId: number) => ({
   name: "Seaport",
-  version: "1",
+  version: "1.1",
   chainId,
   verifyingContract: Addresses.Exchange[chainId],
 });
@@ -245,7 +245,7 @@ export const ORDER_EIP712_TYPES = {
     { name: "zoneHash", type: "bytes32" },
     { name: "salt", type: "uint256" },
     { name: "conduitKey", type: "bytes32" },
-    { name: "nonce", type: "uint256" },
+    { name: "counter", type: "uint256" },
   ],
   OfferItem: [
     { name: "itemType", type: "uint8" },
@@ -295,6 +295,6 @@ const normalize = (order: Types.OrderComponents): Types.OrderComponents => {
     zoneHash: lc(order.zoneHash),
     salt: s(order.salt),
     conduitKey: lc(order.conduitKey),
-    nonce: s(order.nonce),
+    counter: s(order.counter),
   };
 };

@@ -75,6 +75,7 @@
   },
   { "inputs": [], "name": "InexactFraction", "type": "error" },
   { "inputs": [], "name": "InsufficientEtherSupplied", "type": "error" },
+  { "inputs": [], "name": "Invalid1155BatchTransferEncoding", "type": "error" },
   {
     "inputs": [],
     "name": "InvalidBasicOrderParameterEncoding",
@@ -105,6 +106,7 @@
     "name": "InvalidMsgValue",
     "type": "error"
   },
+  { "inputs": [], "name": "InvalidNativeOfferItem", "type": "error" },
   { "inputs": [], "name": "InvalidProof", "type": "error" },
   {
     "inputs": [
@@ -185,13 +187,14 @@
   },
   { "inputs": [], "name": "UnresolvedConsiderationCriteria", "type": "error" },
   { "inputs": [], "name": "UnresolvedOfferCriteria", "type": "error" },
+  { "inputs": [], "name": "UnusedItemParameters", "type": "error" },
   {
     "anonymous": false,
     "inputs": [
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "newNonce",
+        "name": "newCounter",
         "type": "uint256"
       },
       {
@@ -201,7 +204,7 @@
         "type": "address"
       }
     ],
-    "name": "NonceIncremented",
+    "name": "CounterIncremented",
     "type": "event"
   },
   {
@@ -253,7 +256,7 @@
       {
         "indexed": false,
         "internalType": "address",
-        "name": "fulfiller",
+        "name": "recipient",
         "type": "address"
       },
       {
@@ -411,7 +414,7 @@
             "name": "conduitKey",
             "type": "bytes32"
           },
-          { "internalType": "uint256", "name": "nonce", "type": "uint256" }
+          { "internalType": "uint256", "name": "counter", "type": "uint256" }
         ],
         "internalType": "struct OrderComponents[]",
         "name": "orders",
@@ -583,7 +586,8 @@
         "internalType": "bytes32",
         "name": "fulfillerConduitKey",
         "type": "bytes32"
-      }
+      },
+      { "internalType": "address", "name": "recipient", "type": "address" }
     ],
     "name": "fulfillAdvancedOrder",
     "outputs": [
@@ -777,6 +781,7 @@
         "name": "fulfillerConduitKey",
         "type": "bytes32"
       },
+      { "internalType": "address", "name": "recipient", "type": "address" },
       {
         "internalType": "uint256",
         "name": "maximumFulfilled",
@@ -1266,9 +1271,9 @@
     "inputs": [
       { "internalType": "address", "name": "offerer", "type": "address" }
     ],
-    "name": "getNonce",
+    "name": "getCounter",
     "outputs": [
-      { "internalType": "uint256", "name": "nonce", "type": "uint256" }
+      { "internalType": "uint256", "name": "counter", "type": "uint256" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -1354,7 +1359,7 @@
             "name": "conduitKey",
             "type": "bytes32"
           },
-          { "internalType": "uint256", "name": "nonce", "type": "uint256" }
+          { "internalType": "uint256", "name": "counter", "type": "uint256" }
         ],
         "internalType": "struct OrderComponents",
         "name": "order",
@@ -1384,9 +1389,9 @@
   },
   {
     "inputs": [],
-    "name": "incrementNonce",
+    "name": "incrementCounter",
     "outputs": [
-      { "internalType": "uint256", "name": "newNonce", "type": "uint256" }
+      { "internalType": "uint256", "name": "newCounter", "type": "uint256" }
     ],
     "stateMutability": "nonpayable",
     "type": "function"

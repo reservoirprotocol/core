@@ -1,6 +1,6 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumberish } from "@ethersproject/bignumber";
-import { HashZero } from "@ethersproject/constants";
+import { AddressZero, HashZero } from "@ethersproject/constants";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import { keccak256 } from "@ethersproject/solidity";
 
@@ -30,6 +30,7 @@ export class Exchange {
     taker: Signer,
     order: Order,
     matchParams: Types.MatchParams,
+    recipient = AddressZero,
     conduitKey = HashZero,
     feesOnTop: {
       amount: string;
@@ -93,12 +94,12 @@ export class Exchange {
           },
           [],
           conduitKey,
+          recipient,
           {
             value: bn(info.price)
               .add(order.getFeeAmount())
               .mul(matchParams.amount)
               .div(info.amount),
-            gasLimit: 1000000,
           }
         );
       }
@@ -153,7 +154,8 @@ export class Exchange {
             extraData: "0x",
           },
           [],
-          conduitKey
+          conduitKey,
+          recipient
         );
       }
     }

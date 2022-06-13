@@ -72,7 +72,7 @@ export type OrderComponents = {
   zoneHash: string;
   salt: string;
   conduitKey: string;
-  nonce: string;
+  counter: string;
   signature?: string;
 };
 

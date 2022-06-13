@@ -189,7 +189,7 @@ export class SingleTokenBuilder extends BaseBuilder {
         zoneHash: HashZero,
         salt: s(params.salt!),
         conduitKey: HashZero,
-        nonce: s(params.nonce),
+        counter: s(params.counter),
         signature: params.signature,
       });
     } else {
@@ -240,7 +240,7 @@ export class SingleTokenBuilder extends BaseBuilder {
         zoneHash: HashZero,
         salt: s(params.salt!),
         conduitKey: HashZero,
-        nonce: s(params.nonce),
+        counter: s(params.counter),
         signature: params.signature,
       });
     }

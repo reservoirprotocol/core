@@ -29,6 +29,19 @@
     "type": "error"
   },
   { "inputs": [], "name": "InvalidCreator", "type": "error" },
+  { "inputs": [], "name": "InvalidInitialOwner", "type": "error" },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "conduit", "type": "address" },
+      {
+        "internalType": "address",
+        "name": "newPotentialOwner",
+        "type": "address"
+      }
+    ],
+    "name": "NewPotentialOwnerAlreadySet",
+    "type": "error"
+  },
   {
     "inputs": [
       { "internalType": "address", "name": "conduit", "type": "address" }
@@ -37,6 +50,13 @@
     "type": "error"
   },
   { "inputs": [], "name": "NoConduit", "type": "error" },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "conduit", "type": "address" }
+    ],
+    "name": "NoPotentialOwnerCurrentlySet",
+    "type": "error"
+  },
   {
     "anonymous": false,
     "inputs": [
@@ -84,12 +104,6 @@
   {
     "anonymous": false,
     "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "conduit",
-        "type": "address"
-      },
       {
         "indexed": true,
         "internalType": "address",

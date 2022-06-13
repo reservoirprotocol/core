@@ -16,7 +16,7 @@ export interface BaseBuildParams {
     recipient: string;
     amount: BigNumberish;
   }[];
-  nonce: BigNumberish;
+  counter: BigNumberish;
   salt?: BigNumberish;
   startTime?: number;
   endTime?: number;

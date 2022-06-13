@@ -59,7 +59,7 @@ describe("Seaport - SingleToken Erc721", () => {
       tokenId: soldTokenId,
       paymentToken: Common.Addresses.Eth[chainId],
       price,
-      nonce: 0,
+      counter: 0,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -139,7 +139,7 @@ describe("Seaport - SingleToken Erc721", () => {
           recipient: feeRecipient2.address,
         },
       ],
-      nonce: 0,
+      counter: 0,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -231,7 +231,7 @@ describe("Seaport - SingleToken Erc721", () => {
       tokenId: boughtTokenId,
       paymentToken: Common.Addresses.Weth[chainId],
       price,
-      nonce: 0,
+      counter: 0,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -311,7 +311,7 @@ describe("Seaport - SingleToken Erc721", () => {
           recipient: feeRecipient2.address,
         },
       ],
-      nonce: 0,
+      counter: 0,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
