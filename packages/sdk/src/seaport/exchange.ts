@@ -7,7 +7,7 @@ import { keccak256 } from "@ethersproject/solidity";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { bn } from "../utils";
+import { bn, lc, n, s } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -185,6 +185,21 @@ export class Exchange {
     spentItems: Types.SpentItem[],
     receivedItems: Types.ReceivedItem[]
   ) {
+    // Normalize
+    for (const spentItem of spentItems) {
+      spentItem.itemType = n(spentItem.itemType);
+      spentItem.token = lc(spentItem.token);
+      spentItem.identifier = s(spentItem.identifier);
+      spentItem.amount = s(spentItem.amount);
+    }
+    for (const receivedItem of receivedItems) {
+      receivedItem.itemType = n(receivedItem.itemType);
+      receivedItem.token = lc(receivedItem.token);
+      receivedItem.identifier = s(receivedItem.identifier);
+      receivedItem.amount = s(receivedItem.amount);
+      receivedItem.recipient = lc(receivedItem.recipient);
+    }
+
     try {
       if (spentItems.length === 1) {
         if (spentItems[0].itemType >= 2) {
