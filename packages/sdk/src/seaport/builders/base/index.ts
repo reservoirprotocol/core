@@ -1,5 +1,5 @@
 import { BigNumberish } from "@ethersproject/bignumber";
-import { HashZero } from "@ethersproject/constants";
+import { AddressZero, HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
 import { MatchParams } from "../../types";
@@ -17,6 +17,7 @@ export interface BaseBuildParams {
     amount: BigNumberish;
   }[];
   counter: BigNumberish;
+  zone?: string;
   salt?: BigNumberish;
   startTime?: number;
   endTime?: number;
@@ -53,6 +54,7 @@ export abstract class BaseBuilder {
     // time discrepancies when checking the order's validity on-chain
     params.startTime = params.startTime ?? getCurrentTimestamp(-5 * 60);
     params.endTime = params.endTime ?? 0;
+    params.zone = params.zone ?? AddressZero;
     params.salt = params.salt ?? getRandomBytes();
     params.signature = params.signature ?? HashZero;
   }

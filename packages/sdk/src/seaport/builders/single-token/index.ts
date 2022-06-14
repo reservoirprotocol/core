@@ -145,7 +145,7 @@ export class SingleTokenBuilder extends BaseBuilder {
       return new Order(this.chainId, {
         kind: "single-token",
         offerer: params.offerer,
-        zone: AddressZero,
+        zone: params.zone!,
         offer: [
           {
             itemType:
@@ -196,7 +196,7 @@ export class SingleTokenBuilder extends BaseBuilder {
       return new Order(this.chainId, {
         kind: "single-token",
         offerer: params.offerer,
-        zone: AddressZero,
+        zone: params.zone!,
         offer: [
           {
             itemType: Types.ItemType.ERC20,
