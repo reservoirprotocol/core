@@ -188,7 +188,7 @@ export class SingleTokenBuilder extends BaseBuilder {
         endTime: params.endTime!,
         zoneHash: HashZero,
         salt: s(params.salt!),
-        conduitKey: HashZero,
+        conduitKey: params.conduitKey!,
         counter: s(params.counter),
         signature: params.signature,
       });
@@ -239,7 +239,7 @@ export class SingleTokenBuilder extends BaseBuilder {
         endTime: params.endTime!,
         zoneHash: HashZero,
         salt: s(params.salt!),
-        conduitKey: HashZero,
+        conduitKey: params.conduitKey!,
         counter: s(params.counter),
         signature: params.signature,
       });

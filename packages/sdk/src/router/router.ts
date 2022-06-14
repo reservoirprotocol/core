@@ -10,7 +10,7 @@ import { TxData, bn } from "../utils";
 
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
-import RouterAbi from "./abis/ReservoirV2.json";
+import RouterAbi from "./abis/ReservoirV3.json";
 
 export class Router {
   public chainId: number;

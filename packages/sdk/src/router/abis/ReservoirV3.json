@@ -35,6 +35,11 @@
         "internalType": "address",
         "name": "x2y2ERC721DelegateAddress",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "seaportAddress",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -103,6 +108,49 @@
       }
     ],
     "name": "batchERC1155ListingFill",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "referrer",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      },
+      {
+        "internalType": "enum ExchangeKind",
+        "name": "exchangeKind",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address[]",
+        "name": "collections",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "tokenIds",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "feeBps",
+        "type": "uint256"
+      }
+    ],
+    "name": "batchERC721ListingFill",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"
@@ -296,6 +344,19 @@
     "name": "renounceOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "seaport",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
