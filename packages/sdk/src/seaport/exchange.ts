@@ -1,13 +1,14 @@
+import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero, HashZero } from "@ethersproject/constants";
-import { Contract, ContractTransaction } from "@ethersproject/contracts";
+import { Contract } from "@ethersproject/contracts";
 import { keccak256 } from "@ethersproject/solidity";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { bn, lc, n, s } from "../utils";
+import { TxData, bn, lc, n, s } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -36,127 +37,184 @@ export class Exchange {
       amount: string;
       recipient: BigNumberish;
     }[] = []
-  ): Promise<ContractTransaction> {
+  ): Promise<TransactionResponse> {
+    const tx = this.fillOrderTx(
+      await taker.getAddress(),
+      order,
+      matchParams,
+      recipient,
+      conduitKey,
+      feesOnTop
+    );
+    return taker.sendTransaction(tx);
+  }
+
+  public fillOrderTx(
+    taker: string,
+    order: Order,
+    matchParams: Types.MatchParams,
+    recipient = AddressZero,
+    conduitKey = HashZero,
+    feesOnTop: {
+      amount: string;
+      recipient: BigNumberish;
+    }[] = []
+  ): TxData {
     const info = order.getInfo()!;
 
     if (info.side === "sell") {
-      if (!matchParams.amount || bn(matchParams.amount).eq(1)) {
+      if (
+        recipient === AddressZero &&
+        (!matchParams.amount || bn(matchParams.amount).eq(1))
+      ) {
         // Use "basic" fulfillment
-        return this.contract.connect(taker).fulfillBasicOrder(
-          {
-            considerationToken: info.paymentToken,
-            considerationIdentifier: "0",
-            considerationAmount: info.price,
-            offerer: order.params.offerer,
-            zone: order.params.zone,
-            offerToken: info.contract,
-            offerIdentifier: info.tokenId,
-            offerAmount: info.amount,
-            basicOrderType:
-              (info.tokenKind === "erc721"
-                ? Types.BasicOrderType.ETH_TO_ERC721_FULL_OPEN
-                : Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN) +
-              order.params.orderType,
-            startTime: order.params.startTime,
-            endTime: order.params.endTime,
-            zoneHash: order.params.zoneHash,
-            salt: order.params.salt,
-            offererConduitKey: order.params.conduitKey,
-            fulfillerConduitKey: conduitKey,
-            totalOriginalAdditionalRecipients:
-              order.params.consideration.length - 1,
-            additionalRecipients: [
-              ...order.params.consideration
-                .slice(1)
-                .map(({ startAmount, recipient }) => ({
-                  amount: startAmount,
-                  recipient,
-                })),
-              ...feesOnTop,
-            ],
-            signature: order.params.signature!,
-          },
-          { value: bn(info.price).add(order.getFeeAmount()) }
-        );
+        return {
+          from: taker,
+          to: this.contract.address,
+          data: this.contract.interface.encodeFunctionData(
+            "fulfillBasicOrder",
+            [
+              {
+                considerationToken: info.paymentToken,
+                considerationIdentifier: "0",
+                considerationAmount: info.price,
+                offerer: order.params.offerer,
+                zone: order.params.zone,
+                offerToken: info.contract,
+                offerIdentifier: info.tokenId,
+                offerAmount: info.amount,
+                basicOrderType:
+                  (info.tokenKind === "erc721"
+                    ? Types.BasicOrderType.ETH_TO_ERC721_FULL_OPEN
+                    : Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN) +
+                  order.params.orderType,
+                startTime: order.params.startTime,
+                endTime: order.params.endTime,
+                zoneHash: order.params.zoneHash,
+                salt: order.params.salt,
+                offererConduitKey: order.params.conduitKey,
+                fulfillerConduitKey: conduitKey,
+                totalOriginalAdditionalRecipients:
+                  order.params.consideration.length - 1,
+                additionalRecipients: [
+                  ...order.params.consideration
+                    .slice(1)
+                    .map(({ startAmount, recipient }) => ({
+                      amount: startAmount,
+                      recipient,
+                    })),
+                  ...feesOnTop,
+                ],
+                signature: order.params.signature!,
+              },
+            ]
+          ),
+          value: bn(info.price).add(order.getFeeAmount()).toHexString(),
+        };
       } else {
         // Use "standard" fullfillment
-        return this.contract.connect(taker).fulfillAdvancedOrder(
-          {
-            parameters: {
-              ...order.params,
-              totalOriginalConsiderationItems:
-                order.params.consideration.length,
-            },
-            numerator: matchParams.amount,
-            denominator: info.amount,
-            signature: order.params.signature!,
-            extraData: "0x",
-          },
-          [],
-          conduitKey,
-          recipient,
-          {
-            value: bn(info.price)
-              .add(order.getFeeAmount())
-              .mul(matchParams.amount)
-              .div(info.amount),
-          }
-        );
+        return {
+          from: taker,
+          to: this.contract.address,
+          data: this.contract.interface.encodeFunctionData(
+            "fulfillAdvancedOrder",
+            [
+              {
+                parameters: {
+                  ...order.params,
+                  totalOriginalConsiderationItems:
+                    order.params.consideration.length,
+                },
+                numerator: matchParams.amount || "1",
+                denominator: info.amount,
+                signature: order.params.signature!,
+                extraData: "0x",
+              },
+              [],
+              conduitKey,
+              recipient,
+            ]
+          ),
+          value: bn(info.price)
+            .add(order.getFeeAmount())
+            .mul(matchParams.amount || "1")
+            .div(info.amount)
+            .toHexString(),
+        };
       }
     } else {
-      if (!matchParams.amount || bn(matchParams.amount).eq(1)) {
+      if (
+        recipient === AddressZero &&
+        (!matchParams.amount || bn(matchParams.amount).eq(1))
+      ) {
         // Use "basic" fulfillment
-        return this.contract.connect(taker).fulfillBasicOrder({
-          considerationToken: info.contract,
-          considerationIdentifier: info.tokenId,
-          considerationAmount: info.amount,
-          offerer: order.params.offerer,
-          zone: order.params.zone,
-          offerToken: info.paymentToken,
-          offerIdentifier: "0",
-          offerAmount: info.price,
-          basicOrderType:
-            (info.tokenKind === "erc721"
-              ? Types.BasicOrderType.ERC721_TO_ERC20_FULL_OPEN
-              : Types.BasicOrderType.ERC1155_TO_ERC20_FULL_OPEN) +
-            order.params.orderType,
-          startTime: order.params.startTime,
-          endTime: order.params.endTime,
-          zoneHash: order.params.zoneHash,
-          salt: order.params.salt,
-          offererConduitKey: order.params.conduitKey,
-          fulfillerConduitKey: conduitKey,
-          totalOriginalAdditionalRecipients:
-            order.params.consideration.length - 1,
-          additionalRecipients: [
-            ...order.params.consideration
-              .slice(1)
-              .map(({ startAmount, recipient }) => ({
-                amount: startAmount,
-                recipient,
-              })),
-            ...feesOnTop,
-          ],
-          signature: order.params.signature!,
-        });
+        return {
+          from: taker,
+          to: this.contract.address,
+          data: this.contract.interface.encodeFunctionData(
+            "fulfillBasicOrder",
+            [
+              {
+                considerationToken: info.contract,
+                considerationIdentifier: info.tokenId,
+                considerationAmount: info.amount,
+                offerer: order.params.offerer,
+                zone: order.params.zone,
+                offerToken: info.paymentToken,
+                offerIdentifier: "0",
+                offerAmount: info.price,
+                basicOrderType:
+                  (info.tokenKind === "erc721"
+                    ? Types.BasicOrderType.ERC721_TO_ERC20_FULL_OPEN
+                    : Types.BasicOrderType.ERC1155_TO_ERC20_FULL_OPEN) +
+                  order.params.orderType,
+                startTime: order.params.startTime,
+                endTime: order.params.endTime,
+                zoneHash: order.params.zoneHash,
+                salt: order.params.salt,
+                offererConduitKey: order.params.conduitKey,
+                fulfillerConduitKey: conduitKey,
+                totalOriginalAdditionalRecipients:
+                  order.params.consideration.length - 1,
+                additionalRecipients: [
+                  ...order.params.consideration
+                    .slice(1)
+                    .map(({ startAmount, recipient }) => ({
+                      amount: startAmount,
+                      recipient,
+                    })),
+                  ...feesOnTop,
+                ],
+                signature: order.params.signature!,
+              },
+            ]
+          ),
+        };
       } else {
         // Use "standard" fulfillment
-        return this.contract.connect(taker).fulfillAdvancedOrder(
-          {
-            parameters: {
-              ...order.params,
-              totalOriginalConsiderationItems:
-                order.params.consideration.length,
-            },
-            numerator: matchParams.amount,
-            denominator: info.amount,
-            signature: order.params.signature!,
-            extraData: "0x",
-          },
-          [],
-          conduitKey,
-          recipient
-        );
+        return {
+          from: taker,
+          to: this.contract.address,
+          data: this.contract.interface.encodeFunctionData(
+            "fulfillAdvancedOrder",
+            [
+              {
+                parameters: {
+                  ...order.params,
+                  totalOriginalConsiderationItems:
+                    order.params.consideration.length,
+                },
+                numerator: matchParams.amount || "1",
+                denominator: info.amount,
+                signature: order.params.signature!,
+                extraData: "0x",
+              },
+              [],
+              conduitKey,
+              recipient,
+            ]
+          ),
+        };
       }
     }
   }

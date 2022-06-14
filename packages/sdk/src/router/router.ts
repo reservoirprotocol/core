@@ -433,6 +433,23 @@ export class Router {
         exchangeKind: ExchangeKind.ZEROEX_V4,
         maker: order.params.maker,
       };
+    } else if (kind === "seaport") {
+      order = order as Sdk.Seaport.Order;
+
+      // Support passing an amount for partially fillable orders
+      const matchParams = order.buildMatching({ amount });
+
+      const exchange = new Sdk.Seaport.Exchange(this.chainId);
+      return {
+        tx: exchange.fillOrderTx(
+          this.contract.address,
+          order,
+          matchParams,
+          taker
+        ),
+        exchangeKind: ExchangeKind.SEAPORT,
+        maker: order.params.offerer,
+      };
     }
 
     throw new Error("Unreachable");
@@ -514,6 +531,8 @@ export class Router {
         exchangeKind: ExchangeKind.ZEROEX_V4,
       };
     }
+
+    // TODO: Add Seaport support
 
     throw new Error("Unreachable");
   }

@@ -33,6 +33,10 @@ export type GenericOrder =
   | {
       kind: "zeroex-v4";
       order: Sdk.ZeroExV4.Order;
+    }
+  | {
+      kind: "seaport";
+      order: Sdk.Seaport.Order;
     };
 
 export type ListingFillDetails = {

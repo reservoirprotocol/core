@@ -146,10 +146,13 @@ contract ReservoirV3 is Ownable {
         (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
-        if (exchangeKind != ExchangeKind.WYVERN_V23) {
-            // When filling anything other than Wyvern we need to send the
-            // NFT to the taker's wallet after the fill (we cannot specify
-            // a different recipient than the taker).
+        if (
+            exchangeKind != ExchangeKind.SEAPORT &&
+            exchangeKind != ExchangeKind.WYVERN_V23
+        ) {
+            // When filling anything other than Wyvern or Seaport we need to send
+            // the NFT to the taker's wallet after the fill (since we cannot have
+            // a recipient recipient than the taker).
             IERC721(collection).transferFrom(address(this), receiver, tokenId);
         }
 
@@ -199,10 +202,13 @@ contract ReservoirV3 is Ownable {
         (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
-        if (exchangeKind != ExchangeKind.WYVERN_V23) {
-            // When filling anything other than Wyvern we need to send the
-            // NFT to the taker's wallet after the fill (we cannot specify
-            // a different recipient than the taker).
+        if (
+            exchangeKind != ExchangeKind.SEAPORT &&
+            exchangeKind != ExchangeKind.WYVERN_V23
+        ) {
+            // When filling anything other than Wyvern or Seaport we need to send
+            // the NFT to the taker's wallet after the fill (since we cannot have
+            // a recipient recipient than the taker).
             IERC721(collection).transferFrom(address(this), receiver, tokenId);
         }
 
@@ -236,16 +242,18 @@ contract ReservoirV3 is Ownable {
         (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
-        for (uint256 i = 0; i < collections.length; i++) {
-            // When filling anything other than Wyvern we need to send the
-            // NFT to the taker's wallet after the fill (we cannot specify
-            // a different recipient than the taker).
-            IERC721(collections[i]).safeTransferFrom(
-                address(this),
-                receiver,
-                tokenIds[i],
-                ""
-            );
+        if (exchangeKind != ExchangeKind.SEAPORT) {
+            // When filling anything other than Wyvern or Seaport we need to send
+            // the NFT to the taker's wallet after the fill (since we cannot have
+            // a recipient recipient than the taker).
+            for (uint256 i = 0; i < collections.length; i++) {
+                IERC721(collections[i]).safeTransferFrom(
+                    address(this),
+                    receiver,
+                    tokenIds[i],
+                    ""
+                );
+            }
         }
 
         uint256 fee = msg.value - payment;
@@ -335,10 +343,13 @@ contract ReservoirV3 is Ownable {
         (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
-        if (exchangeKind != ExchangeKind.WYVERN_V23) {
-            // When filling anything other than Wyvern we need to send the
-            // NFT to the taker's wallet after the fill (we cannot specify
-            // a different recipient than the taker).
+        if (
+            exchangeKind != ExchangeKind.SEAPORT &&
+            exchangeKind != ExchangeKind.WYVERN_V23
+        ) {
+            // When filling anything other than Wyvern or Seaport we need to send
+            // the NFT to the taker's wallet after the fill (since we cannot have
+            // a recipient recipient than the taker).
             IERC1155(collection).safeTransferFrom(
                 address(this),
                 receiver,
@@ -392,10 +403,13 @@ contract ReservoirV3 is Ownable {
         (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
-        if (exchangeKind != ExchangeKind.WYVERN_V23) {
-            // When filling anything other than Wyvern we need to send the
-            // NFT to the taker's wallet after the fill (we cannot specify
-            // a different recipient than the taker).
+        if (
+            exchangeKind != ExchangeKind.SEAPORT &&
+            exchangeKind != ExchangeKind.WYVERN_V23
+        ) {
+            // When filling anything other than Wyvern or Seaport we need to send
+            // the NFT to the taker's wallet after the fill (since we cannot have
+            // a recipient recipient than the taker).
             IERC1155(collection).safeTransferFrom(
                 address(this),
                 receiver,
@@ -436,17 +450,19 @@ contract ReservoirV3 is Ownable {
         (bool success, ) = target.call{value: payment}(data);
         require(success, "Unsuccessfull fill");
 
-        for (uint256 i = 0; i < collections.length; i++) {
-            // When filling anything other than Wyvern we need to send the
-            // NFT to the taker's wallet after the fill (we cannot specify
-            // a different recipient than the taker).
-            IERC1155(collections[i]).safeTransferFrom(
-                address(this),
-                receiver,
-                tokenIds[i],
-                amounts[i],
-                ""
-            );
+        if (exchangeKind != ExchangeKind.SEAPORT) {
+            // When filling anything other than Wyvern or Seaport we need to send
+            // the NFT to the taker's wallet after the fill (since we cannot have
+            // a recipient recipient than the taker).
+            for (uint256 i = 0; i < collections.length; i++) {
+                IERC1155(collections[i]).safeTransferFrom(
+                    address(this),
+                    receiver,
+                    tokenIds[i],
+                    amounts[i],
+                    ""
+                );
+            }
         }
 
         uint256 fee = msg.value - payment;

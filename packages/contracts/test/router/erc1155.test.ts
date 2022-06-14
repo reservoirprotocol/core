@@ -32,7 +32,7 @@ describe("Router - filling ERC1155", () => {
 
     router = new Sdk.Router.Router(chainId, ethers.provider);
     if (!process.env.USE_DEPLOYED_ROUTER) {
-      router.contract = await setupRouter(chainId, deployer, "v2");
+      router.contract = await setupRouter(chainId, deployer, "v3");
     }
   });
 
@@ -221,6 +221,102 @@ describe("Router - filling ERC1155", () => {
 
     // Router is stateless (it shouldn't keep any funds)
     expect(await weth.getBalance(router.contract.address)).to.eq(0);
+  });
+
+  it("Seaport - fill listing", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const feeRecipient = carol;
+
+    const price = parseEther("1");
+    const fee = 250;
+    const routerFee = 100;
+    const soldTokenId = 0;
+
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mint(soldTokenId);
+
+    // Approve the user ecchange
+    await erc1155
+      .connect(seller)
+      .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
+
+    // Build sell order
+    const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
+    const sellOrder = builder.build({
+      side: "sell",
+      tokenKind: "erc1155",
+      offerer: seller.address,
+      contract: erc1155.address,
+      tokenId: soldTokenId,
+      paymentToken: Sdk.Common.Addresses.Eth[chainId],
+      price: price.sub(price.mul(fee).div(10000)),
+      fees: [
+        {
+          amount: price.mul(fee).div(10000),
+          recipient: feeRecipient.address,
+        },
+      ],
+      counter: 0,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+    await sellOrder.sign(seller);
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    const referrerEthBalanceBefore = await referrer.getBalance();
+    const sellerEthBalanceBefore = await seller.getBalance();
+    const sellerNftBalanceBefore = await erc1155.balanceOf(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await erc1155.balanceOf(
+      buyer.address,
+      soldTokenId
+    );
+    expect(sellerNftBalanceBefore).to.eq(1);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    const tx = await router.fillListingsTx(
+      [
+        {
+          kind: "seaport",
+          contractKind: "erc1155",
+          contract: erc1155.address,
+          tokenId: soldTokenId.toString(),
+          order: sellOrder,
+        },
+      ],
+      buyer.address,
+      {
+        referrer: referrer.address,
+        referrerFeeBps: routerFee,
+      }
+    );
+    await buyer.sendTransaction(tx);
+
+    const referrerEthBalanceAfter = await referrer.getBalance();
+    const sellerEthBalanceAfter = await seller.getBalance();
+    const sellerNftBalanceAfter = await erc1155.balanceOf(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await erc1155.balanceOf(
+      buyer.address,
+      soldTokenId
+    );
+    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
+      price.mul(routerFee).div(10000)
+    );
+    expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(
+      price.sub(price.mul(fee).div(10000))
+    );
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(1);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
   });
 
   it("LooksRare - fill listing", async () => {

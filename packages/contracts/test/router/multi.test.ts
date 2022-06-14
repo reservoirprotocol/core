@@ -44,7 +44,7 @@ describe("Router - multi buy", () => {
 
     router = new Sdk.Router.Router(chainId, ethers.provider);
     if (!process.env.USE_DEPLOYED_ROUTER) {
-      router.contract = await setupRouter(chainId, deployer, "v2");
+      router.contract = await setupRouter(chainId, deployer, "v3");
     }
   });
 
@@ -57,48 +57,46 @@ describe("Router - multi buy", () => {
 
     const sellOrders: ListingDetails[] = [];
 
-    // Order 1: Wyvern V2.3
+    // Order 1: Seaport
     const seller1 = alice;
     const tokenId1 = 0;
     const price1 = parseEther("1");
-    const fee1 = bn(0);
+    const fee1 = bn(550);
     {
       // Mint erc721 to seller
       await erc721.connect(seller1).mint(tokenId1);
 
-      // Register user proxy for the seller
-      const proxyRegistry = new Sdk.WyvernV23.Helpers.ProxyRegistry(
-        ethers.provider,
-        chainId
-      );
-      await proxyRegistry.registerProxy(seller1);
-      const proxy = await proxyRegistry.getProxy(seller1.address);
-
-      // Approve the user proxy
-      await erc721.connect(seller1).setApprovalForAll(proxy, true);
-
-      const exchange = new Sdk.WyvernV23.Exchange(chainId);
-      const builder = new Sdk.WyvernV23.Builders.Erc721.SingleToken.V2(chainId);
+      // Approve the exchange
+      await erc721
+        .connect(seller1)
+        .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
 
       // Build sell order
+      const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
       const sellOrder = builder.build({
-        maker: seller1.address,
+        side: "sell",
+        tokenKind: "erc721",
+        offerer: seller1.address,
         contract: erc721.address,
         tokenId: tokenId1,
-        side: "sell",
-        price: price1,
         paymentToken: Sdk.Common.Addresses.Eth[chainId],
-        fee: 0,
-        feeRecipient: referrer.address,
-        listingTime: await getCurrentTimestamp(ethers.provider),
-        nonce: await exchange.getNonce(ethers.provider, seller1.address),
+        price: price1.sub(price1.mul(fee1).div(10000)),
+        fees: [
+          {
+            amount: price1.mul(fee1).div(10000),
+            recipient: deployer.address,
+          },
+        ],
+        counter: 0,
+        startTime: await getCurrentTimestamp(ethers.provider),
+        endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
       });
       await sellOrder.sign(seller1);
 
       await sellOrder.checkFillability(ethers.provider);
 
       sellOrders.push({
-        kind: "wyvern-v2.3",
+        kind: "seaport",
         contractKind: "erc721",
         contract: erc721.address,
         tokenId: tokenId1.toString(),

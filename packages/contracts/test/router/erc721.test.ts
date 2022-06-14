@@ -33,7 +33,7 @@ describe("Router - filling ERC721", () => {
 
     router = new Sdk.Router.Router(chainId, ethers.provider);
     if (!process.env.USE_DEPLOYED_ROUTER) {
-      router.contract = await setupRouter(chainId, deployer, "v2");
+      router.contract = await setupRouter(chainId, deployer, "v3");
     }
   });
 
@@ -193,6 +193,91 @@ describe("Router - filling ERC721", () => {
 
     // Router is stateless (it shouldn't keep any funds)
     expect(await weth.getBalance(router.contract.address)).to.eq(0);
+  });
+
+  it("Seaport - fill listing", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const feeRecipient = carol;
+
+    const price = parseEther("1");
+    const fee = 250;
+    const routerFee = 100;
+    const soldTokenId = 0;
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
+
+    // Approve the exchange
+    await erc721
+      .connect(seller)
+      .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
+
+    // Build sell order
+    const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
+    const sellOrder = builder.build({
+      side: "sell",
+      tokenKind: "erc721",
+      offerer: seller.address,
+      contract: erc721.address,
+      tokenId: soldTokenId,
+      paymentToken: Sdk.Common.Addresses.Eth[chainId],
+      price: price.sub(price.mul(fee).div(10000)),
+      fees: [
+        {
+          amount: price.mul(fee).div(10000),
+          recipient: feeRecipient.address,
+        },
+      ],
+      counter: 0,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+    await sellOrder.sign(seller);
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    const referrerEthBalanceBefore = await referrer.getBalance();
+    const sellerEthBalanceBefore = await seller.getBalance();
+    const ownerBefore = await erc721.ownerOf(soldTokenId);
+    expect(ownerBefore).to.eq(seller.address);
+
+    const tx = await router.fillListingsTx(
+      [
+        {
+          kind: "seaport",
+          contractKind: "erc721",
+          contract: erc721.address,
+          tokenId: soldTokenId.toString(),
+          order: sellOrder,
+        },
+      ],
+      buyer.address,
+      {
+        referrer: referrer.address,
+        referrerFeeBps: routerFee,
+      }
+    );
+    await buyer.sendTransaction(tx);
+
+    const referrerEthBalanceAfter = await referrer.getBalance();
+    const sellerEthBalanceAfter = await seller.getBalance();
+    const ownerAfter = await erc721.ownerOf(soldTokenId);
+    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
+      price.mul(routerFee).div(10000)
+    );
+    expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.eq(
+      price.sub(price.mul(fee).div(10000))
+    );
+    expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
+
+    // The precheck will trigger an early-revert
+    await expect(buyer.sendTransaction(tx)).to.be.revertedWith(
+      "Unexpected owner"
+    );
   });
 
   it("LooksRare - fill listing", async () => {
