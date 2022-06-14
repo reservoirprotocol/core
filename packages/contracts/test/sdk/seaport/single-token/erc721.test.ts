@@ -32,7 +32,7 @@ describe("Seaport - SingleToken Erc721", () => {
 
   afterEach(reset);
 
-  it.only("Build and fill sell order", async () => {
+  it("Build and fill sell order", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
