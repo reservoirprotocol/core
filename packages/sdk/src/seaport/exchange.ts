@@ -222,6 +222,26 @@ export class Exchange {
     }
   }
 
+  // --- Cancel order ---
+
+  public async cancelOrder(
+    maker: Signer,
+    order: Order
+  ): Promise<TransactionResponse> {
+    const tx = this.cancelOrderTx(await maker.getAddress(), order);
+    return maker.sendTransaction(tx);
+  }
+
+  public cancelOrderTx(maker: string, order: Order): TxData {
+    return {
+      from: maker,
+      to: this.contract.address,
+      data: this.contract.interface.encodeFunctionData("cancel", [
+        [order.params],
+      ]),
+    };
+  }
+
   // --- Get counter (eg. nonce) ---
 
   public async getCounter(
