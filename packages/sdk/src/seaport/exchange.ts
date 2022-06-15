@@ -1,4 +1,7 @@
-import { TransactionResponse } from "@ethersproject/abstract-provider";
+import {
+  Provider,
+  TransactionResponse,
+} from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero, HashZero } from "@ethersproject/constants";
@@ -217,6 +220,15 @@ export class Exchange {
         };
       }
     }
+  }
+
+  // --- Get counter (eg. nonce) ---
+
+  public async getCounter(
+    provider: Provider,
+    user: string
+  ): Promise<BigNumberish> {
+    return this.contract.connect(provider).getCounter(user);
   }
 
   // --- Derive conduit from key ---
