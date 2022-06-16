@@ -11,21 +11,21 @@ describe("Test tokens", () => {
   beforeEach(async () => {
     [deployer] = await ethers.getSigners();
 
-    erc721 = await ethers
+    erc721 = (await ethers
       .getContractFactory("ReservoirErc721", deployer)
       .then((factory) =>
         factory.deploy(
           "https://metadata-production.up.railway.app/api/test/erc721/"
         )
-      );
+      )) as any;
 
-    erc1155 = await ethers
+    erc1155 = (await ethers
       .getContractFactory("ReservoirErc1155", deployer)
       .then((factory) =>
         factory.deploy(
           "https://metadata-production.up.railway.app/api/test/erc1155/"
         )
-      );
+      )) as any;
   });
 
   it("Minting", async () => {
