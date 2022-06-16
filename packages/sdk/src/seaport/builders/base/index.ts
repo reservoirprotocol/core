@@ -37,6 +37,8 @@ export interface BaseOrderInfo {
     recipient: string;
     amount: BigNumberish;
   }[];
+  // For supporting dutch auctions
+  isDynamic?: boolean;
 }
 
 export abstract class BaseBuilder {

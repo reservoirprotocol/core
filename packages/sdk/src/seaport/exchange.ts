@@ -112,7 +112,7 @@ export class Exchange {
               },
             ]
           ),
-          value: bn(info.price).add(order.getFeeAmount()).toHexString(),
+          value: bn(order.getMatchingPrice()).toHexString(),
         };
       } else {
         // Use "standard" fullfillment
@@ -138,8 +138,7 @@ export class Exchange {
               recipient,
             ]
           ),
-          value: bn(info.price)
-            .add(order.getFeeAmount())
+          value: bn(order.getMatchingPrice())
             .mul(matchParams.amount || "1")
             .div(info.amount)
             .toHexString(),

@@ -33,13 +33,6 @@ describe("Router - multi buy", () => {
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol, dan] = await ethers.getSigners();
 
-    erc721 = await ethers
-      .getContractFactory("MockERC721", deployer)
-      .then((factory) => factory.deploy());
-    erc1155 = await ethers
-      .getContractFactory("MockERC1155", deployer)
-      .then((factory) => factory.deploy());
-
     ({ erc721, erc1155 } = await setupNFTs(deployer));
 
     router = new Sdk.Router.Router(chainId, ethers.provider);

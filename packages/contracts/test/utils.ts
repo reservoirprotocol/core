@@ -38,12 +38,14 @@ export const getChainId = () =>
 
 // --- CONTRACT UTILS ---
 
+// TODO: Fix type issues and avoi returning `any`
+
 // Deploy mock ERC721/1155 contracts
 export const setupNFTs = async (deployer: SignerWithAddress) => {
-  const erc721 = await ethers
+  const erc721: any = await ethers
     .getContractFactory("MockERC721", deployer)
     .then((factory) => factory.deploy());
-  const erc1155 = await ethers
+  const erc1155: any = await ethers
     .getContractFactory("MockERC1155", deployer)
     .then((factory) => factory.deploy());
 
@@ -75,7 +77,7 @@ export const setupRouter = async (
             Sdk.WyvernV23.Addresses.Exchange[chainId],
             Sdk.ZeroExV4.Addresses.Exchange[chainId]
           )
-        );
+        ) as any;
 
     case "v2":
       return ethers
@@ -90,7 +92,7 @@ export const setupRouter = async (
             Sdk.X2Y2.Addresses.Exchange[chainId],
             Sdk.X2Y2.Addresses.Erc721Delegate[chainId]
           )
-        );
+        ) as any;
 
     case "v3":
       return ethers
@@ -106,6 +108,6 @@ export const setupRouter = async (
             Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
             Sdk.Seaport.Addresses.Exchange[chainId]
           )
-        );
+        ) as any;
   }
 };

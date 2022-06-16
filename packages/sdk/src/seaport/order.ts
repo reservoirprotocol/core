@@ -1,6 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
-import { BigNumber } from "@ethersproject/bignumber";
+import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
@@ -11,7 +11,7 @@ import { Builders } from "./builders";
 import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import * as Common from "../common";
-import { bn, lc, n, s } from "../utils";
+import { bn, getCurrentTimestamp, lc, n, s } from "../utils";
 
 import ConduitControllerAbi from "./abis/ConduitController.json";
 import ExchangeAbi from "./abis/Exchange.json";
@@ -90,6 +90,31 @@ export class Order {
 
   public getInfo(): BaseOrderInfo | undefined {
     return this.getBuilder().getInfo(this);
+  }
+
+  public getMatchingPrice(timestampOverride?: number): BigNumberish {
+    const info = this.getInfo();
+    if (!info) {
+      throw new Error("Could not get order info");
+    }
+
+    if (!info.isDynamic) {
+      return bn(info.price).add(this.getFeeAmount());
+    } else {
+      let price = bn(0);
+      for (const c of this.params.consideration) {
+        price = price.add(
+          // startAmount - (currentTime - startTime) / (endTime - startTime) * (startAmount - endAmount)
+          bn(c.startAmount).sub(
+            bn(timestampOverride ?? getCurrentTimestamp(-60))
+              .sub(this.params.startTime)
+              .mul(bn(c.startAmount).sub(c.endAmount))
+              .div(bn(this.params.endTime).sub(this.params.startTime))
+          )
+        );
+      }
+      return price;
+    }
   }
 
   public getFeeAmount(): BigNumber {

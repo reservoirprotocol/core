@@ -7,6 +7,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import {
+  bn,
   getChainId,
   getCurrentTimestamp,
   reset,
@@ -96,6 +97,41 @@ describe("Seaport - SingleToken Erc721", () => {
     expect(buyerEthBalanceBefore.sub(buyerEthBalanceAfter)).to.be.gt(price);
     expect(sellerEthBalanceAfter).to.eq(sellerEthBalanceBefore.add(price));
     expect(ownerAfter).to.eq(buyer.address);
+  });
+
+  it("Dutch auction order's price is properly computed", async () => {
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 1;
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
+
+    const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
+
+    // Approve the exchange
+    await nft.approve(seller, Seaport.Addresses.Exchange[chainId]);
+
+    const builder = new Seaport.Builders.SingleToken(chainId);
+
+    // Build sell order
+    const sellOrder = builder.build({
+      side: "sell",
+      tokenKind: "erc721",
+      offerer: seller.address,
+      contract: erc721.address,
+      tokenId: soldTokenId,
+      paymentToken: Common.Addresses.Eth[chainId],
+      price,
+      counter: 0,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 10000,
+    });
+    sellOrder.params.consideration[0].endAmount = price.div(2).toString();
+
+    expect(
+      bn(sellOrder.getMatchingPrice(sellOrder.params.startTime + 1000))
+    ).to.eq(price.sub(price.div(2).mul(10).div(100)));
   });
 
   it("Build and fill sell order with fees", async () => {

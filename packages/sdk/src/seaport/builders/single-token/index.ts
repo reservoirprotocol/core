@@ -37,6 +37,10 @@ export class SingleTokenBuilder extends BaseBuilder {
         throw new Error("Invalid item");
       }
 
+      const isDynamic =
+        order.params.consideration.some((c) => c.startAmount !== c.endAmount) ||
+        order.params.offer.some((c) => c.startAmount !== c.endAmount);
+
       if (side === "sell") {
         // The offer item is the sold token
         const tokenKind =
@@ -72,8 +76,13 @@ export class SingleTokenBuilder extends BaseBuilder {
           paymentToken,
           price: s(price),
           fees,
+          isDynamic,
         };
       } else {
+        if (isDynamic) {
+          throw new Error("Reverse dutch auctions are not supported");
+        }
+
         const paymentToken = offerItem.token;
         const price = offerItem.startAmount;
 
