@@ -1,6 +1,6 @@
 {
   "name": "@reservoir0x/sdk",
-  "version": "0.0.100",
+  "version": "0.0.101",
   "description": "Reservoir Protocol SDK",
   "license": "MIT",
   "main": "dist/index.js",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "ethers": "^5.6.8",
-    "merkletreejs": "^0.2.27"
+    "merkletreejs": "0.2.31"
   },
   "files": [
     "dist/**/*"

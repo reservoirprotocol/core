@@ -177,14 +177,18 @@ export class Order {
     return this.getBuilder().getInfo(this);
   }
 
-  public getMatchingPrice(): BigNumberish {
+  public getMatchingPrice(timestampOverride?: number): BigNumberish {
     // https://github.com/ProjectWyvern/wyvern-ethereum/blob/bfca101b2407e4938398fccd8d1c485394db7e01/contracts/exchange/SaleKindInterface.sol#L70-L87
     if (this.params.saleKind === Types.OrderSaleKind.FIXED_PRICE) {
       return bn(this.params.basePrice);
     } else {
       // Set a delay of 1 minute to allow for any timestamp discrepancies
       const diff = bn(this.params.extra)
-        .mul(bn(getCurrentTimestamp(-60)).sub(this.params.listingTime))
+        .mul(
+          bn(timestampOverride ?? getCurrentTimestamp(-60)).sub(
+            this.params.listingTime
+          )
+        )
         .div(bn(this.params.expirationTime).sub(this.params.listingTime));
       return bn(this.params.basePrice).sub(diff);
     }

@@ -1,32 +1,31 @@
-import { BigNumberish } from "@ethersproject/bignumber";
-import { keccak256 } from "@ethersproject/solidity";
+import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
+import { keccak256 } from "ethers/lib/utils";
 import MerkleTree from "merkletreejs";
+
+export const hashFn = (tokenId: BigNumberish) =>
+  keccak256(
+    Buffer.from(
+      BigNumber.from(tokenId).toHexString().slice(2).padStart(64, "0"),
+      "hex"
+    )
+  );
 
 export const generateMerkleTree = (tokenIds: BigNumberish[]) => {
   if (!tokenIds.length) {
     throw new Error("Could not generate merkle tree");
   }
 
-  const hashFn = (buffer: Buffer) =>
-    Buffer.from(keccak256(["bytes"], [buffer]).slice(2), "hex");
-  const leaves = tokenIds
-    .sort()
-    .map((tokenId) =>
-      Buffer.from(keccak256(["uint256"], [tokenId]).slice(2), "hex")
-    );
-  return new MerkleTree(leaves, hashFn, { sortPairs: true });
+  const leaves = tokenIds.map(hashFn);
+  return new MerkleTree(leaves, hashFn, { sort: true });
 };
 
 export const generateMerkleProof = (
   merkleTree: MerkleTree,
   tokenId: BigNumberish
 ) => {
-  const leaf = Buffer.from(keccak256(["uint256"], [tokenId]).slice(2), "hex");
+  const leaf = hashFn(tokenId);
   const proof = merkleTree.getHexProof(leaf);
-  if (
-    "0x" + leaf.toString("hex") !== merkleTree.getHexRoot() &&
-    proof.length === 0
-  ) {
+  if (leaf !== merkleTree.getHexRoot() && proof.length === 0) {
     throw new Error("Could not generate merkle proof");
   } else {
     const numMerkleTreeLevels = merkleTree.getDepth();

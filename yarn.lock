@@ -1318,7 +1318,7 @@ __metadata:
   dependencies:
     "@types/node": ^16.11.12
     ethers: ^5.6.8
-    merkletreejs: ^0.2.27
+    merkletreejs: 0.2.31
     typescript: ^4.5.2
   languageName: unknown
   linkType: soft
@@ -7885,16 +7885,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"merkletreejs@npm:^0.2.27":
-  version: 0.2.27
-  resolution: "merkletreejs@npm:0.2.27"
+"merkletreejs@npm:0.2.31":
+  version: 0.2.31
+  resolution: "merkletreejs@npm:0.2.31"
   dependencies:
     bignumber.js: ^9.0.1
     buffer-reverse: ^1.0.1
     crypto-js: ^3.1.9-1
     treeify: ^1.1.0
     web3-utils: ^1.3.4
-  checksum: 6e5832944698d1192db966639baabb2c512c10d56bea5851a8d5eb8e715ae49c23927df7902b0252e4d1d1d5aacc4ab2f38d55ee8daf0133524b673204715c3d
+  checksum: d84a7d8b07b6ec37f8de8e6b9d1cfb361e49d75e30be1e1e9e269e8847408535265df1bb99be88b8d260362e6513491cdf07a5a5a03d4980faa5f23341ae3909
   languageName: node
   linkType: hard
 
