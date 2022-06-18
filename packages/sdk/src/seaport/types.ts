@@ -1,4 +1,4 @@
-export type OrderKind = "single-token";
+export type OrderKind = "single-token" | "token-list";
 
 export enum ItemType {
   NATIVE,
@@ -43,6 +43,11 @@ export enum BasicOrderType {
   ERC1155_TO_ERC20_PARTIAL_RESTRICTED,
 }
 
+export enum Side {
+  OFFER,
+  CONSIDERATION,
+}
+
 export type OfferItem = {
   itemType: ItemType;
   token: string;
@@ -77,8 +82,8 @@ export type OrderComponents = {
 };
 
 export type MatchParams = {
-  tokenId?: string;
   amount?: string;
+  criteriaResolvers?: CriteriaResolver[];
 };
 
 export type SpentItem = {
@@ -94,4 +99,12 @@ export type ReceivedItem = {
   identifier: string;
   amount: string;
   recipient: string;
+};
+
+export type CriteriaResolver = {
+  orderIndex: number;
+  side: Side;
+  index: number;
+  identifier: string;
+  criteriaProof: string[];
 };

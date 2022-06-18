@@ -15,32 +15,9 @@ interface BuildParams extends BaseBuildParams {
 export class SingleTokenBuilder extends BaseBuilder {
   public getInfo(order: Order): BaseOrderInfo | undefined {
     try {
-      // Offer should always consists of a single item
-      if (order.params.offer.length !== 1) {
-        throw new Error("Invalid offer");
-      }
-      if (order.params.consideration.length < 1) {
-        throw new Error("Invalid consideration");
-      }
+      const { side, isDynamic } = this.getBaseInfo(order);
 
       const offerItem = order.params.offer[0];
-
-      let side: "sell" | "buy";
-      if (
-        offerItem.itemType === Types.ItemType.ERC721 ||
-        offerItem.itemType === Types.ItemType.ERC1155
-      ) {
-        side = "sell";
-      } else if (offerItem.itemType === Types.ItemType.ERC20) {
-        side = "buy";
-      } else {
-        throw new Error("Invalid item");
-      }
-
-      const isDynamic =
-        order.params.consideration.some((c) => c.startAmount !== c.endAmount) ||
-        order.params.offer.some((c) => c.startAmount !== c.endAmount);
-
       if (side === "sell") {
         // The offer item is the sold token
         const tokenKind =
@@ -129,10 +106,15 @@ export class SingleTokenBuilder extends BaseBuilder {
 
   public isValid(order: Order): boolean {
     try {
+      const info = this.getInfo(order);
+      if (!info?.tokenId) {
+        return false;
+      }
+
       const copyOrder = this.build({
         ...order.params,
-        ...this.getInfo(order)!,
-      });
+        ...info,
+      } as any);
       if (!copyOrder) {
         return false;
       }

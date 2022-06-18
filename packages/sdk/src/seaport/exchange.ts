@@ -68,7 +68,8 @@ export class Exchange {
     if (info.side === "sell") {
       if (
         recipient === AddressZero &&
-        (!matchParams.amount || bn(matchParams.amount).eq(1))
+        (!matchParams.amount || bn(matchParams.amount).eq(1)) &&
+        !matchParams.criteriaResolvers
       ) {
         // Use "basic" fulfillment
         return {
@@ -133,7 +134,7 @@ export class Exchange {
                 signature: order.params.signature!,
                 extraData: "0x",
               },
-              [],
+              matchParams.criteriaResolvers || [],
               conduitKey,
               recipient,
             ]
@@ -147,7 +148,8 @@ export class Exchange {
     } else {
       if (
         recipient === AddressZero &&
-        (!matchParams.amount || bn(matchParams.amount).eq(1))
+        (!matchParams.amount || bn(matchParams.amount).eq(1)) &&
+        !matchParams.criteriaResolvers
       ) {
         // Use "basic" fulfillment
         return {
@@ -211,7 +213,7 @@ export class Exchange {
                 signature: order.params.signature!,
                 extraData: "0x",
               },
-              [],
+              matchParams.criteriaResolvers || [],
               conduitKey,
               recipient,
             ]

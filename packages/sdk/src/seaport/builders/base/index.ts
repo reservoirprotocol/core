@@ -2,7 +2,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero, HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
-import { MatchParams } from "../../types";
+import * as Types from "../../types";
 import { getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
 export interface BaseBuildParams {
@@ -29,7 +29,8 @@ export interface BaseOrderInfo {
   tokenKind: "erc721" | "erc1155";
   side: "sell" | "buy";
   contract: string;
-  tokenId: string;
+  tokenId?: string;
+  merkleRoot?: string;
   amount: string;
   paymentToken: string;
   price: string;
@@ -63,8 +64,40 @@ export abstract class BaseBuilder {
     params.signature = params.signature ?? HashZero;
   }
 
+  protected getBaseInfo(order: Order) {
+    // Offer should always consists of a single item
+    if (order.params.offer.length !== 1) {
+      throw new Error("Invalid offer");
+    }
+    // Must have at least one consideration
+    if (order.params.consideration.length < 1) {
+      throw new Error("Invalid consideration");
+    }
+
+    const offerItem = order.params.offer[0];
+
+    let side: "sell" | "buy";
+    if (
+      offerItem.itemType === Types.ItemType.ERC721 ||
+      offerItem.itemType === Types.ItemType.ERC1155
+    ) {
+      side = "sell";
+    } else if (offerItem.itemType === Types.ItemType.ERC20) {
+      side = "buy";
+    } else {
+      throw new Error("Invalid item");
+    }
+
+    // A dynamic order has at least one item with different start/end amounts
+    const isDynamic =
+      order.params.consideration.some((c) => c.startAmount !== c.endAmount) ||
+      order.params.offer.some((c) => c.startAmount !== c.endAmount);
+
+    return { side, isDynamic };
+  }
+
   public abstract getInfo(order: Order): BaseOrderInfo | undefined;
   public abstract isValid(order: Order): boolean;
   public abstract build(params: BaseBuildParams): Order;
-  public abstract buildMatching(order: Order, data: any): MatchParams;
+  public abstract buildMatching(order: Order, data: any): Types.MatchParams;
 }

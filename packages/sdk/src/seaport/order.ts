@@ -187,7 +187,7 @@ export class Order {
         const erc721 = new Common.Helpers.Erc721(provider, info.contract);
 
         // Check ownership
-        const owner = await erc721.getOwner(info.tokenId);
+        const owner = await erc721.getOwner(info.tokenId!);
         if (lc(owner) !== lc(this.params.offerer)) {
           throw new Error("no-balance");
         }
@@ -206,7 +206,7 @@ export class Order {
         // Check balance
         const balance = await erc1155.getBalance(
           this.params.offerer,
-          info.tokenId
+          info.tokenId!
         );
         if (bn(balance).lt(info.amount)) {
           throw new Error("no-balance");
@@ -230,6 +230,10 @@ export class Order {
         return new Builders.SingleToken(this.chainId);
       }
 
+      case "token-list": {
+        return new Builders.TokenList(this.chainId);
+      }
+
       default: {
         throw new Error("Unknown order kind");
       }
@@ -242,6 +246,14 @@ export class Order {
       const builder = new Builders.SingleToken(this.chainId);
       if (builder.isValid(this)) {
         return "single-token";
+      }
+    }
+
+    // token-list
+    {
+      const builder = new Builders.TokenList(this.chainId);
+      if (builder.isValid(this)) {
+        return "token-list";
       }
     }
 
