@@ -226,6 +226,10 @@ export class Order {
 
   private getBuilder(): BaseBuilder {
     switch (this.params.kind) {
+      case "contract-wide": {
+        return new Builders.ContractWide(this.chainId);
+      }
+
       case "single-token": {
         return new Builders.SingleToken(this.chainId);
       }
@@ -241,6 +245,14 @@ export class Order {
   }
 
   private detectKind(): Types.OrderKind {
+    // contract-wide
+    {
+      const builder = new Builders.ContractWide(this.chainId);
+      if (builder.isValid(this)) {
+        return "contract-wide";
+      }
+    }
+
     // single-token
     {
       const builder = new Builders.SingleToken(this.chainId);

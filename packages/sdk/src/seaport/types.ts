@@ -1,4 +1,4 @@
-export type OrderKind = "single-token" | "token-list";
+export type OrderKind = "contract-wide" | "single-token" | "token-list";
 
 export enum ItemType {
   NATIVE,
