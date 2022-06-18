@@ -99,21 +99,30 @@ export class Order {
     }
 
     if (!info.isDynamic) {
-      return bn(info.price).add(this.getFeeAmount());
-    } else {
-      let price = bn(0);
-      for (const c of this.params.consideration) {
-        price = price.add(
-          // startAmount - (currentTime - startTime) / (endTime - startTime) * (startAmount - endAmount)
-          bn(c.startAmount).sub(
-            bn(timestampOverride ?? getCurrentTimestamp(-60))
-              .sub(this.params.startTime)
-              .mul(bn(c.startAmount).sub(c.endAmount))
-              .div(bn(this.params.endTime).sub(this.params.startTime))
-          )
-        );
+      if (info.side === "buy") {
+        return bn(info.price);
+      } else {
+        return bn(info.price).add(this.getFeeAmount());
       }
-      return price;
+    } else {
+      if (info.side === "buy") {
+        // Reverse dutch-auctions are not supported
+        return bn(info.price);
+      } else {
+        let price = bn(0);
+        for (const c of this.params.consideration) {
+          price = price.add(
+            // startAmount - (currentTime - startTime) / (endTime - startTime) * (startAmount - endAmount)
+            bn(c.startAmount).sub(
+              bn(timestampOverride ?? getCurrentTimestamp(-60))
+                .sub(this.params.startTime)
+                .mul(bn(c.startAmount).sub(c.endAmount))
+                .div(bn(this.params.endTime).sub(this.params.startTime))
+            )
+          );
+        }
+        return price;
+      }
     }
   }
 
