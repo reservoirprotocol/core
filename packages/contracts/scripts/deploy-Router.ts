@@ -65,13 +65,13 @@ const deployV3 = async () => {
     Sdk.Seaport.Addresses.Exchange[chainId],
   ];
 
-  // const router = await ethers
-  //   .getContractFactory("ReservoirV3", deployer)
-  //   .then((factory) => factory.deploy(...args));
-  // console.log(`"ReservoirV3" was deployed at address ${router.address}`);
+  const router = await ethers
+    .getContractFactory("ReservoirV3", deployer)
+    .then((factory) => factory.deploy(...args));
+  console.log(`"ReservoirV3" was deployed at address ${router.address}`);
 
   await hre.run("verify:verify", {
-    address: "0x7C9733B19e14f37aCA367fBD78922C098C55C874",
+    address: router.address,
     constructorArguments: args,
   });
   console.log(`"ReservoirV3" successfully verified on Etherscan`);
