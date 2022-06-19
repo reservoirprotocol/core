@@ -530,9 +530,26 @@ export class Router {
         }),
         exchangeKind: ExchangeKind.ZEROEX_V4,
       };
-    }
+    } else if (kind === "seaport") {
+      order = order as Sdk.Seaport.Order;
 
-    // TODO: Add Seaport support
+      const matchParams = order.buildMatching({
+        tokenId,
+        ...(extraArgs || {}),
+        amount: 1,
+      });
+
+      const exchange = new Sdk.Seaport.Exchange(this.chainId);
+      return {
+        tx: exchange.fillOrderTx(
+          this.contract.address,
+          order,
+          matchParams,
+          taker
+        ),
+        exchangeKind: ExchangeKind.SEAPORT,
+      };
+    }
 
     throw new Error("Unreachable");
   }
