@@ -33,7 +33,7 @@ describe("Router - filling ERC721", () => {
 
     router = new Sdk.Router.Router(chainId, ethers.provider);
     if (!process.env.USE_DEPLOYED_ROUTER) {
-      router.contract = await setupRouter(chainId, deployer, "v3");
+      router.contract = await setupRouter(chainId, deployer, "v4");
     }
   });
 

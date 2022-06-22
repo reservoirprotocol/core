@@ -77,7 +77,34 @@ const deployV3 = async () => {
   console.log(`"ReservoirV3" successfully verified on Etherscan`);
 };
 
-deployV3()
+const deployV4 = async () => {
+  const chainId = await ethers.provider.getNetwork().then((n) => n.chainId);
+  const [deployer] = await ethers.getSigners();
+
+  const args = [
+    Sdk.Common.Addresses.Weth[chainId],
+    Sdk.LooksRare.Addresses.Exchange[chainId],
+    Sdk.WyvernV23.Addresses.Exchange[chainId],
+    Sdk.OpenDao.Addresses.Exchange[chainId],
+    Sdk.Foundation.Addresses.Exchange[chainId],
+    Sdk.X2Y2.Addresses.Exchange[chainId],
+    Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
+    Sdk.Seaport.Addresses.Exchange[chainId],
+  ];
+
+  // const router = await ethers
+  //   .getContractFactory("ReservoirV4", deployer)
+  //   .then((factory) => factory.deploy(...args));
+  // console.log(`"ReservoirV4" was deployed at address ${router.address}`);
+
+  await hre.run("verify:verify", {
+    address: "0xC226bB0A5EBB944DF0B18e85e9800D463c5AfE3F",
+    constructorArguments: args,
+  });
+  console.log(`"ReservoirV4" successfully verified on Etherscan`);
+};
+
+deployV4()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);
