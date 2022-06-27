@@ -307,6 +307,8 @@ export class Exchange {
             throw new Error("Not a basic sale");
           }
 
+          // Keep track of any "false" consideration items and remove them from price computation
+          const falseReceivedItemsIndexes: number[] = [];
           let recipientOverride: string | undefined;
           for (let i = 1; i < nReceivedItems.length; i++) {
             if (
@@ -315,6 +317,7 @@ export class Exchange {
               nReceivedItems[i].identifier == nSpentItems[0].identifier
             ) {
               recipientOverride = nReceivedItems[i].recipient;
+              falseReceivedItemsIndexes.push(i);
             } else if (
               nReceivedItems[i].itemType !== mainConsideration.itemType ||
               nReceivedItems[i].token !== mainConsideration.token
@@ -331,6 +334,7 @@ export class Exchange {
             amount: nSpentItems[0].amount,
             paymentToken: mainConsideration.token,
             price: nReceivedItems
+              .filter((_, i) => !falseReceivedItemsIndexes.includes(i))
               .map((c) => bn(c.amount))
               .reduce((a, b) => a.add(b))
               .toString(),
