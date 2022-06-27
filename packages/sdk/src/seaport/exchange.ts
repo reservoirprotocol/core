@@ -307,8 +307,15 @@ export class Exchange {
             throw new Error("Not a basic sale");
           }
 
+          let recipientOverride: string | undefined;
           for (let i = 1; i < nReceivedItems.length; i++) {
             if (
+              nReceivedItems[i].itemType == nSpentItems[0].itemType &&
+              nReceivedItems[i].token == nSpentItems[0].token &&
+              nReceivedItems[i].identifier == nSpentItems[0].identifier
+            ) {
+              recipientOverride = nReceivedItems[i].recipient;
+            } else if (
               nReceivedItems[i].itemType !== mainConsideration.itemType ||
               nReceivedItems[i].token !== mainConsideration.token
             ) {
@@ -317,6 +324,8 @@ export class Exchange {
           }
 
           return {
+            // To cover the generic `matchOrders` case
+            recipientOverride,
             contract: nSpentItems[0].token,
             tokenId: nSpentItems[0].identifier,
             amount: nSpentItems[0].amount,
@@ -344,6 +353,7 @@ export class Exchange {
           }
 
           return {
+            recipientOverride: undefined,
             contract: mainConsideration.token,
             tokenId: mainConsideration.identifier,
             amount: mainConsideration.amount,
