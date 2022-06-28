@@ -2,13 +2,14 @@ import { ChainIdToAddress } from "../utils";
 
 export const Exchange: ChainIdToAddress = {
   1: "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
-  3: "0x1aa777972073ff66dcfded85749bdd555c0665da",
   4: "0x0000000000000000000000000000000000000000",
+  10: "0xdef1abe32c034e558cdd535791643c58a13acc10",
 };
 
 export const Eth: ChainIdToAddress = {
   1: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-  3: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  4: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  10: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
 };
 
 export const TokenRangeValidator: ChainIdToAddress = {
