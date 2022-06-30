@@ -57,7 +57,7 @@ export class TokenRangeBuilder extends BaseBuilder {
     this.defaultInitialize(params);
 
     return new Order(this.chainId, {
-      kind: params.amount ? "erc1155-contract-wide" : "erc721-contract-wide",
+      kind: params.amount ? "erc1155-token-range" : "erc721-token-range",
       direction:
         params.direction === "sell"
           ? Types.TradeDirection.SELL
