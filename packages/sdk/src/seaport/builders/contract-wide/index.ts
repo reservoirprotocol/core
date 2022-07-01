@@ -151,7 +151,7 @@ export class ContractWideBuilder extends BaseBuilder {
             : Types.OrderType.FULL_OPEN),
         startTime: params.startTime!,
         endTime: params.endTime!,
-        zoneHash: HashZero,
+        zoneHash: params.zoneHash!,
         salt: s(params.salt!),
         conduitKey: params.conduitKey!,
         counter: s(params.counter),

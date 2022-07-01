@@ -1,5 +1,5 @@
 import { BigNumberish } from "@ethersproject/bignumber";
-import { AddressZero, HashZero } from "@ethersproject/constants";
+import { AddressZero } from "@ethersproject/constants";
 
 import {
   generateMerkleProof,
@@ -163,7 +163,7 @@ export class TokenListBuilder extends BaseBuilder {
             : Types.OrderType.FULL_OPEN),
         startTime: params.startTime!,
         endTime: params.endTime!,
-        zoneHash: HashZero,
+        zoneHash: params.zoneHash!,
         salt: s(params.salt!),
         conduitKey: params.conduitKey!,
         counter: s(params.counter),

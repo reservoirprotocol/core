@@ -18,6 +18,7 @@ export interface BaseBuildParams {
   }[];
   counter: BigNumberish;
   zone?: string;
+  zoneHash?: string;
   conduitKey?: string;
   salt?: BigNumberish;
   startTime?: number;
@@ -60,6 +61,7 @@ export abstract class BaseBuilder {
     params.endTime = params.endTime ?? 0;
     params.conduitKey = params.conduitKey ?? HashZero;
     params.zone = params.zone ?? AddressZero;
+    params.zoneHash = params.zoneHash ?? HashZero;
     params.salt = params.salt ?? getRandomBytes();
     params.signature = params.signature ?? HashZero;
   }
