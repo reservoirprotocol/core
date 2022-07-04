@@ -33,7 +33,7 @@ describe("Router - filling ERC721", () => {
 
     router = new Sdk.Router.Router(chainId, ethers.provider);
     if (!process.env.USE_DEPLOYED_ROUTER) {
-      router.contract = await setupRouter(chainId, deployer, "v4");
+      router.contract = await setupRouter(chainId, deployer);
     }
   });
 
@@ -122,7 +122,7 @@ describe("Router - filling ERC721", () => {
 
     // The precheck will trigger an early-revert
     await expect(buyer.sendTransaction(tx)).to.be.revertedWith(
-      "Unexpected owner"
+      "reverted with custom error 'UnexpectedOwnerOrBalance()'"
     );
   });
 
@@ -276,7 +276,7 @@ describe("Router - filling ERC721", () => {
 
     // The precheck will trigger an early-revert
     await expect(buyer.sendTransaction(tx)).to.be.revertedWith(
-      "Unexpected owner"
+      "reverted with custom error 'UnexpectedOwnerOrBalance()'"
     );
   });
 

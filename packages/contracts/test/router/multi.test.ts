@@ -37,7 +37,7 @@ describe("Router - multi buy", () => {
 
     router = new Sdk.Router.Router(chainId, ethers.provider);
     if (!process.env.USE_DEPLOYED_ROUTER) {
-      router.contract = await setupRouter(chainId, deployer, "v4");
+      router.contract = await setupRouter(chainId, deployer);
     }
   });
 

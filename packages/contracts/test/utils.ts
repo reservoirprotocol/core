@@ -64,7 +64,7 @@ export enum ExchangeKind {
 export const setupRouter = async (
   chainId: number,
   deployer: SignerWithAddress,
-  version: "v1" | "v2" | "v3" | "v4"
+  version: "v1" | "v2" | "v3" | "v4" | "v5" = "v5"
 ) => {
   switch (version) {
     case "v1":
@@ -113,6 +113,22 @@ export const setupRouter = async (
     case "v4":
       return ethers
         .getContractFactory("ReservoirV4", deployer)
+        .then((factory) =>
+          factory.deploy(
+            Sdk.Common.Addresses.Weth[chainId],
+            Sdk.LooksRare.Addresses.Exchange[chainId],
+            Sdk.WyvernV23.Addresses.Exchange[chainId],
+            Sdk.ZeroExV4.Addresses.Exchange[chainId],
+            Sdk.Foundation.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Exchange[chainId],
+            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
+            Sdk.Seaport.Addresses.Exchange[chainId]
+          )
+        ) as any;
+
+    case "v5":
+      return ethers
+        .getContractFactory("ReservoirV5", deployer)
         .then((factory) =>
           factory.deploy(
             Sdk.Common.Addresses.Weth[chainId],

@@ -46,6 +46,36 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "UnexpectedOwnerOrBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnexpectedSelector",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsuccessfulCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsuccessfulFill",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsuccessfulPayment",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsupportedExchange",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -102,9 +132,9 @@
         "type": "address"
       },
       {
-        "internalType": "uint256",
+        "internalType": "uint16",
         "name": "feeBps",
-        "type": "uint256"
+        "type": "uint16"
       }
     ],
     "name": "batchERC1155ListingFill",
@@ -145,9 +175,9 @@
         "type": "address"
       },
       {
-        "internalType": "uint256",
+        "internalType": "uint16",
         "name": "feeBps",
-        "type": "uint256"
+        "type": "uint16"
       }
     ],
     "name": "batchERC721ListingFill",
@@ -435,9 +465,9 @@
         "type": "address"
       },
       {
-        "internalType": "uint256",
+        "internalType": "uint16",
         "name": "feeBps",
-        "type": "uint256"
+        "type": "uint16"
       }
     ],
     "name": "singleERC1155ListingFill",
@@ -488,9 +518,9 @@
         "type": "address"
       },
       {
-        "internalType": "uint256",
+        "internalType": "uint16",
         "name": "feeBps",
-        "type": "uint256"
+        "type": "uint16"
       }
     ],
     "name": "singleERC1155ListingFillWithPrecheck",
