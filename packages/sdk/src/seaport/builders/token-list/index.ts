@@ -157,10 +157,12 @@ export class TokenListBuilder extends BaseBuilder {
           })),
         ],
         orderType:
-          (params.zone === AddressZero ? 0 : 2) +
-          (params.tokenKind === "erc1155" || bn(params.amount ?? 1).gt(1)
-            ? Types.OrderType.PARTIAL_OPEN
-            : Types.OrderType.FULL_OPEN),
+          params.orderType !== undefined
+            ? params.orderType
+            : (params.zone === AddressZero ? 0 : 2) +
+              (params.tokenKind === "erc1155" || bn(params.amount ?? 1).gt(1)
+                ? Types.OrderType.PARTIAL_OPEN
+                : Types.OrderType.FULL_OPEN),
         startTime: params.startTime!,
         endTime: params.endTime!,
         zoneHash: params.zoneHash!,

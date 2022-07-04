@@ -17,6 +17,7 @@ export interface BaseBuildParams {
     amount: BigNumberish;
   }[];
   counter: BigNumberish;
+  orderType?: number;
   zone?: string;
   zoneHash?: string;
   conduitKey?: string;
