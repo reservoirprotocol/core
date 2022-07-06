@@ -187,7 +187,7 @@ export class SingleTokenBuilder extends BaseBuilder {
             endAmount: s(amount),
             recipient,
           })),
-          ...(params.taker
+          ...(params.taker && params.taker !== AddressZero
             ? [
                 {
                   itemType:
@@ -223,7 +223,7 @@ export class SingleTokenBuilder extends BaseBuilder {
         signature: params.signature,
       });
     } else {
-      if (params.taker) {
+      if (params.taker && params.taker !== AddressZero) {
         throw new Error("Private bids are not yet supported");
       }
 
