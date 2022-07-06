@@ -17,6 +17,7 @@ export interface BaseBuildParams {
     amount: BigNumberish;
   }[];
   counter: BigNumberish;
+  taker?: string;
   orderType?: number;
   zone?: string;
   zoneHash?: string;
@@ -33,6 +34,7 @@ export interface BaseOrderInfo {
   contract: string;
   tokenId?: string;
   merkleRoot?: string;
+  taker: string;
   amount: string;
   paymentToken: string;
   price: string;

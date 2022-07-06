@@ -74,6 +74,7 @@ export class TokenListBuilder extends BaseBuilder {
           paymentToken,
           price,
           fees,
+          taker: AddressZero,
         };
       } else {
         throw new Error("Unsupported order side");

@@ -17,6 +17,8 @@ export class SingleTokenBuilder extends BaseBuilder {
     try {
       const { side, isDynamic } = this.getBaseInfo(order);
 
+      let taker = AddressZero;
+
       const offerItem = order.params.offer[0];
       if (side === "sell") {
         // The offer item is the sold token
@@ -26,22 +28,34 @@ export class SingleTokenBuilder extends BaseBuilder {
         const tokenId = offerItem.identifierOrCriteria;
         const amount = offerItem.startAmount;
 
-        // Ensure all consideration items match
+        // Ensure all consideration items match (with the exception of the
+        // last one which can match the offer item if the listing is meant
+        // to be fillable only by a specific taker - eg. private)
         const fees: {
           recipient: string;
           amount: BigNumberish;
         }[] = [];
-        const paymentToken = order.params.consideration[0].token;
-        let price = bn(order.params.consideration[0].startAmount);
-        for (let i = 1; i < order.params.consideration.length; i++) {
-          const consideration = order.params.consideration[i];
-          if (consideration.token !== paymentToken) {
+
+        const c = order.params.consideration;
+
+        const paymentToken = c[0].token;
+        let price = bn(c[0].startAmount);
+        for (let i = 1; i < c.length; i++) {
+          // Seaport private listings have the last consideration item match the offer item
+          if (
+            i === c.length - 1 &&
+            c[i].token === offerItem.token &&
+            c[i].identifierOrCriteria === offerItem.identifierOrCriteria
+          ) {
+            taker = c[i].recipient;
+          } else if (c[i].token !== paymentToken) {
             throw new Error("Invalid consideration");
+          } else {
+            fees.push({
+              recipient: c[i].recipient,
+              amount: c[i].startAmount,
+            });
           }
-          fees.push({
-            recipient: consideration.recipient,
-            amount: consideration.startAmount,
-          });
         }
 
         return {
@@ -54,6 +68,7 @@ export class SingleTokenBuilder extends BaseBuilder {
           price: s(price),
           fees,
           isDynamic,
+          taker,
         };
       } else {
         if (isDynamic) {
@@ -97,6 +112,7 @@ export class SingleTokenBuilder extends BaseBuilder {
           paymentToken,
           price,
           fees,
+          taker,
         };
       }
     } catch {
@@ -115,6 +131,7 @@ export class SingleTokenBuilder extends BaseBuilder {
         ...order.params,
         ...info,
       } as any);
+
       if (!copyOrder) {
         return false;
       }
@@ -170,6 +187,25 @@ export class SingleTokenBuilder extends BaseBuilder {
             endAmount: s(amount),
             recipient,
           })),
+          ...(params.taker
+            ? [
+                {
+                  itemType:
+                    params.tokenKind === "erc721"
+                      ? Types.ItemType.ERC721
+                      : Types.ItemType.ERC1155,
+                  token: params.contract,
+                  identifierOrCriteria: s(params.tokenId),
+                  startAmount: s(
+                    params.tokenKind === "erc1155" ? params.amount ?? 1 : 1
+                  ),
+                  endAmount: s(
+                    params.tokenKind === "erc1155" ? params.amount ?? 1 : 1
+                  ),
+                  recipient: params.taker,
+                },
+              ]
+            : []),
         ],
         orderType:
           params.orderType !== undefined
@@ -187,6 +223,10 @@ export class SingleTokenBuilder extends BaseBuilder {
         signature: params.signature,
       });
     } else {
+      if (params.taker) {
+        throw new Error("Private bids are not yet supported");
+      }
+
       return new Order(this.chainId, {
         kind: "single-token",
         offerer: params.offerer,

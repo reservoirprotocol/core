@@ -1,5 +1,5 @@
 import { BigNumberish } from "@ethersproject/bignumber";
-import { AddressZero, HashZero } from "@ethersproject/constants";
+import { AddressZero } from "@ethersproject/constants";
 
 import { BaseBuilder, BaseBuildParams, BaseOrderInfo } from "../base";
 import { Order } from "../../order";
@@ -65,6 +65,7 @@ export class ContractWideBuilder extends BaseBuilder {
           paymentToken,
           price,
           fees,
+          taker: AddressZero,
         };
       } else {
         throw new Error("Unsupported order side");
