@@ -15,6 +15,7 @@ import { bn, getCurrentTimestamp, lc, n, s } from "../utils";
 
 import ConduitControllerAbi from "./abis/ConduitController.json";
 import ExchangeAbi from "./abis/Exchange.json";
+import { BundleBuilder, BundleOrderInfo } from "./builders/bundles";
 
 export class Order {
   public chainId: number;
@@ -88,7 +89,7 @@ export class Order {
     }
   }
 
-  public getInfo(): BaseOrderInfo | undefined {
+  public getInfo(): BaseOrderInfo | BundleOrderInfo | undefined {
     return this.getBuilder().getInfo(this);
   }
 
@@ -98,7 +99,7 @@ export class Order {
       throw new Error("Could not get order info");
     }
 
-    if (!info.isDynamic) {
+    if (!(info as any).isDynamic) {
       if (info.side === "buy") {
         return bn(info.price);
       } else {
@@ -141,6 +142,8 @@ export class Order {
   }
 
   public async checkFillability(provider: Provider) {
+    // TODO: Add support for bundles
+
     const conduitController = new Contract(
       Addresses.ConduitController[this.chainId],
       ConduitControllerAbi as any,
@@ -173,7 +176,7 @@ export class Order {
               }
             });
 
-    const info = this.getInfo()!;
+    const info = this.getInfo()! as BaseOrderInfo;
     if (info.side === "buy") {
       // Check that maker has enough balance to cover the payment
       // and the approval to the corresponding conduit is set
@@ -233,8 +236,12 @@ export class Order {
     }
   }
 
-  private getBuilder(): BaseBuilder {
+  private getBuilder(): BaseBuilder | BundleBuilder {
     switch (this.params.kind) {
+      case "bundle": {
+        return new Builders.Bundle(this.chainId);
+      }
+
       case "contract-wide": {
         return new Builders.ContractWide(this.chainId);
       }
@@ -254,6 +261,14 @@ export class Order {
   }
 
   private detectKind(): Types.OrderKind {
+    // bundle
+    {
+      const builder = new Builders.Bundle(this.chainId);
+      if (builder.isValid(this)) {
+        return "bundle";
+      }
+    }
+
     // contract-wide
     {
       const builder = new Builders.ContractWide(this.chainId);

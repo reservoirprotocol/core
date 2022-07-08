@@ -9,6 +9,7 @@ import { Contract } from "@ethersproject/contracts";
 import { keccak256 } from "@ethersproject/solidity";
 
 import * as Addresses from "./addresses";
+import { BaseOrderInfo } from "./builders/base";
 import { Order } from "./order";
 import * as Types from "./types";
 import { TxData, bn, lc, n, s } from "../utils";
@@ -20,10 +21,6 @@ export class Exchange {
   public contract: Contract;
 
   constructor(chainId: number) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
     this.contract = new Contract(Addresses.Exchange[this.chainId], ExchangeAbi);
   }
@@ -63,14 +60,17 @@ export class Exchange {
       recipient: BigNumberish;
     }[] = []
   ): TxData {
-    const info = order.getInfo()!;
+    let info = order.getInfo()!;
 
     if (info.side === "sell") {
       if (
         recipient === AddressZero &&
         (!matchParams.amount || bn(matchParams.amount).eq(1)) &&
-        !matchParams.criteriaResolvers
+        !matchParams.criteriaResolvers &&
+        order.params.kind !== "bundle"
       ) {
+        info = info as BaseOrderInfo;
+
         // Use "basic" fulfillment
         return {
           from: taker,
@@ -149,8 +149,11 @@ export class Exchange {
       if (
         recipient === AddressZero &&
         (!matchParams.amount || bn(matchParams.amount).eq(1)) &&
-        !matchParams.criteriaResolvers
+        !matchParams.criteriaResolvers &&
+        order.params.kind !== "bundle"
       ) {
+        info = info as BaseOrderInfo;
+
         // Use "basic" fulfillment
         return {
           from: taker,
