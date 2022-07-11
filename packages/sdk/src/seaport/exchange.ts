@@ -256,7 +256,7 @@ export class Exchange {
               recipient,
             ]
           ),
-          value: bn((info as any).price)
+          value: bn(order.getMatchingPrice())
             .mul(matchParams.amount || "1")
             .toHexString(),
         };

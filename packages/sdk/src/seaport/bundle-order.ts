@@ -84,6 +84,19 @@ export class BundleOrder {
     }
   }
 
+  public getMatchingPrice(): BigNumber {
+    const info = this.getInfo();
+    if (!info) {
+      throw new Error("Could not get order info");
+    }
+
+    if (this.params.kind === "bundle-ask") {
+      return bn((info as any).price).add(this.getFeeAmount());
+    }
+
+    return bn(0);
+  }
+
   public getInfo(): BaseBundleOrderInfo | undefined {
     return this.getBuilder().getInfo(this);
   }
