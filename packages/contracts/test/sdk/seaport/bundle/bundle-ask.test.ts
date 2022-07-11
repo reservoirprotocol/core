@@ -92,6 +92,8 @@ describe("Seaport - Bundle ask", () => {
     });
     await sellOrder.sign(seller);
 
+    await sellOrder.checkFillability(ethers.provider);
+
     // Create matching params
     const matchParams = sellOrder.buildMatching();
 
