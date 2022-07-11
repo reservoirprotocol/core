@@ -13,7 +13,7 @@ import {
   setupNFTs,
 } from "../../../utils";
 
-describe("Seaport - Bundles", () => {
+describe("Seaport - Bundle ask", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -72,15 +72,20 @@ describe("Seaport - Bundles", () => {
     }
 
     const exchange = new Seaport.Exchange(chainId);
-    const builder = new Seaport.Builders.Bundle(chainId);
+    const builder = new Seaport.Builders.Bundle.BundleAsk(chainId);
 
     // Build sell order
     const sellOrder = builder.build({
-      items: items as any,
-      side: "sell",
+      offerItems: items as any,
       offerer: seller.address,
-      paymentToken: Common.Addresses.Eth[chainId],
-      price,
+      considerationItems: [
+        {
+          tokenKind: "erc20",
+          contract: Common.Addresses.Eth[chainId],
+          tokenId: "0",
+          amount: price.toString(),
+        },
+      ],
       counter: 0,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,

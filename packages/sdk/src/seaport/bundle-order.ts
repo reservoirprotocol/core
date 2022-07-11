@@ -1,6 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
-import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
+import { BigNumber } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
@@ -8,15 +8,15 @@ import { verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
 import { Builders } from "./builders";
-import { BaseBuilder, BaseOrderInfo } from "./builders/base";
+import { BaseBundleBuilder, BaseBundleOrderInfo } from "./builders/base/bundle";
 import * as Types from "./types";
 import * as Common from "../common";
-import { bn, getCurrentTimestamp, lc, n, s } from "../utils";
+import { bn, lc, n, s } from "../utils";
 
 import ConduitControllerAbi from "./abis/ConduitController.json";
 import ExchangeAbi from "./abis/Exchange.json";
 
-export class Order {
+export class BundleOrder {
   public chainId: number;
   public params: Types.OrderComponents;
 
@@ -84,52 +84,22 @@ export class Order {
     }
   }
 
-  public getInfo(): BaseOrderInfo | undefined {
+  public getInfo(): BaseBundleOrderInfo | undefined {
     return this.getBuilder().getInfo(this);
   }
 
-  public getMatchingPrice(timestampOverride?: number): BigNumberish {
-    const info = this.getInfo();
-    if (!info) {
-      throw new Error("Could not get order info");
-    }
-
-    if (!(info as any).isDynamic) {
-      if (info.side === "buy") {
-        return bn(info.price);
-      } else {
-        return bn(info.price).add(this.getFeeAmount());
-      }
-    } else {
-      if (info.side === "buy") {
-        // Reverse dutch-auctions are not supported
-        return bn(info.price);
-      } else {
-        let price = bn(0);
-        for (const c of this.params.consideration) {
-          price = price.add(
-            // startAmount - (currentTime - startTime) / (endTime - startTime) * (startAmount - endAmount)
-            bn(c.startAmount).sub(
-              bn(timestampOverride ?? getCurrentTimestamp(-60))
-                .sub(this.params.startTime)
-                .mul(bn(c.startAmount).sub(c.endAmount))
-                .div(bn(this.params.endTime).sub(this.params.startTime))
-            )
-          );
-        }
-        return price;
-      }
-    }
-  }
-
   public getFeeAmount(): BigNumber {
-    const { fees } = this.getBuilder()!.getInfo(this)!;
+    const info = this.getBuilder()!.getInfo(this)!;
 
-    let feeAmount = bn(0);
-    for (const { amount } of fees) {
-      feeAmount = feeAmount.add(amount);
+    if (info.fees) {
+      let feeAmount = bn(0);
+      for (const { amount } of info.fees) {
+        feeAmount = feeAmount.add(amount);
+      }
+      return feeAmount;
     }
-    return feeAmount;
+
+    return bn(0);
   }
 
   public buildMatching(data?: any) {
@@ -169,30 +139,29 @@ export class Order {
               }
             });
 
-    const info = this.getInfo()! as BaseOrderInfo;
-    if (info.side === "buy") {
-      // Check that maker has enough balance to cover the payment
-      // and the approval to the corresponding conduit is set
-      const erc20 = new Common.Helpers.Erc20(provider, info.paymentToken);
-      const balance = await erc20.getBalance(this.params.offerer);
-      if (bn(balance).lt(info.price)) {
-        throw new Error("no-balance");
-      }
+    for (const item of this.getInfo()!.offerItems) {
+      if (item.tokenKind === "erc20") {
+        // Check that maker has enough balance to cover the payment
+        // and the approval to the corresponding conduit is set
+        const erc20 = new Common.Helpers.Erc20(provider, item.amount!);
+        const balance = await erc20.getBalance(this.params.offerer);
+        if (bn(balance).lt(item.amount!)) {
+          throw new Error("no-balance");
+        }
 
-      // Check allowance
-      const allowance = await erc20.getAllowance(
-        this.params.offerer,
-        makerConduit
-      );
-      if (bn(allowance).lt(info.price)) {
-        throw new Error("no-approval");
-      }
-    } else {
-      if (info.tokenKind === "erc721") {
-        const erc721 = new Common.Helpers.Erc721(provider, info.contract);
+        // Check allowance
+        const allowance = await erc20.getAllowance(
+          this.params.offerer,
+          makerConduit
+        );
+        if (bn(allowance).lt(item.amount!)) {
+          throw new Error("no-approval");
+        }
+      } else if (item.tokenKind === "erc721") {
+        const erc721 = new Common.Helpers.Erc721(provider, item.contract);
 
         // Check ownership
-        const owner = await erc721.getOwner(info.tokenId!);
+        const owner = await erc721.getOwner(item.tokenId!);
         if (lc(owner) !== lc(this.params.offerer)) {
           throw new Error("no-balance");
         }
@@ -206,14 +175,14 @@ export class Order {
           throw new Error("no-approval");
         }
       } else {
-        const erc1155 = new Common.Helpers.Erc1155(provider, info.contract);
+        const erc1155 = new Common.Helpers.Erc1155(provider, item.contract);
 
         // Check balance
         const balance = await erc1155.getBalance(
           this.params.offerer,
-          info.tokenId!
+          item.tokenId!
         );
-        if (bn(balance).lt(info.amount)) {
+        if (bn(balance).lt(item.amount || 1)) {
           throw new Error("no-balance");
         }
 
@@ -229,18 +198,10 @@ export class Order {
     }
   }
 
-  private getBuilder(): BaseBuilder {
+  private getBuilder(): BaseBundleBuilder {
     switch (this.params.kind) {
-      case "contract-wide": {
-        return new Builders.ContractWide(this.chainId);
-      }
-
-      case "single-token": {
-        return new Builders.SingleToken(this.chainId);
-      }
-
-      case "token-list": {
-        return new Builders.TokenList(this.chainId);
+      case "bundle-ask": {
+        return new Builders.Bundle.BundleAsk(this.chainId);
       }
 
       default: {
@@ -250,27 +211,11 @@ export class Order {
   }
 
   private detectKind(): Types.OrderKind {
-    // contract-wide
+    // bundle-ask
     {
-      const builder = new Builders.ContractWide(this.chainId);
+      const builder = new Builders.Bundle.BundleAsk(this.chainId);
       if (builder.isValid(this)) {
-        return "contract-wide";
-      }
-    }
-
-    // single-token
-    {
-      const builder = new Builders.SingleToken(this.chainId);
-      if (builder.isValid(this)) {
-        return "single-token";
-      }
-    }
-
-    // token-list
-    {
-      const builder = new Builders.TokenList(this.chainId);
-      if (builder.isValid(this)) {
-        return "token-list";
+        return "bundle-ask";
       }
     }
 

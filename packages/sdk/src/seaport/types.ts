@@ -2,7 +2,7 @@ export type OrderKind =
   | "contract-wide"
   | "single-token"
   | "token-list"
-  | "bundle";
+  | "bundle-ask";
 
 export enum ItemType {
   NATIVE,
