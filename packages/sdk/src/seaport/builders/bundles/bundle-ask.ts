@@ -91,6 +91,10 @@ export class BundleAskBuilder extends BaseBundleBuilder {
 
   public isValid(order: BundleOrder): boolean {
     try {
+      if (!this.baseIsValid(order)) {
+        return false;
+      }
+
       // Extract info from the order
       const info = this.getInfo(order);
 

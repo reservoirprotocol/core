@@ -77,6 +77,10 @@ export class ContractWideBuilder extends BaseBuilder {
 
   public isValid(order: Order): boolean {
     try {
+      if (!this.baseIsValid(order)) {
+        return false;
+      }
+
       const info = this.getInfo(order);
       if (!info?.merkleRoot) {
         return false;

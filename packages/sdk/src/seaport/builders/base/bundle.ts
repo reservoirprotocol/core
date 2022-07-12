@@ -75,6 +75,28 @@ export abstract class BaseBundleBuilder {
     params.signature = params.signature ?? HashZero;
   }
 
+  protected baseIsValid(order: BundleOrder): boolean {
+    for (let i = 0; i < order.params.offer.length; i++) {
+      if (
+        order.params.offer[i].startAmount == "0" ||
+        order.params.offer[i].endAmount == "0"
+      ) {
+        return false;
+      }
+    }
+
+    for (let i = 0; i < order.params.consideration.length; i++) {
+      if (
+        order.params.consideration[i].startAmount == "0" ||
+        order.params.consideration[i].endAmount == "0"
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   public abstract getInfo(order: BundleOrder): BaseBundleOrderInfo | undefined;
   public abstract isValid(order: BundleOrder): boolean;
   public abstract build(params: BaseBundleBuildParams): BundleOrder;
