@@ -248,4 +248,108 @@ describe("Router - multi buy", () => {
     expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
     expect(await weth.getBalance(router.contract.address)).to.eq(0);
   });
+
+  it("Fill multiple listings with skipped reverts", async () => {
+    const routerFee = 100;
+
+    const buyer = dan;
+
+    const sellOrders: ListingDetails[] = [];
+
+    // Order 1: Seaport
+    const seller1 = alice;
+    const tokenId1 = 0;
+    const price1 = parseEther("1");
+    const fee1 = bn(550);
+    {
+      // Mint erc721 to seller
+      await erc721.connect(seller1).mint(tokenId1);
+
+      // Approve the exchange
+      await erc721
+        .connect(seller1)
+        .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
+
+      // Build sell order
+      const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
+      const sellOrder = builder.build({
+        side: "sell",
+        tokenKind: "erc721",
+        offerer: seller1.address,
+        contract: erc721.address,
+        tokenId: tokenId1,
+        paymentToken: Sdk.Common.Addresses.Eth[chainId],
+        price: price1.sub(price1.mul(fee1).div(10000)),
+        fees: [
+          {
+            amount: price1.mul(fee1).div(10000),
+            recipient: deployer.address,
+          },
+        ],
+        counter: 0,
+        startTime: await getCurrentTimestamp(ethers.provider),
+        endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+      });
+      await sellOrder.sign(seller1);
+
+      await sellOrder.checkFillability(ethers.provider);
+
+      sellOrders.push({
+        kind: "seaport",
+        contractKind: "erc721",
+        contract: erc721.address,
+        tokenId: tokenId1.toString(),
+        order: sellOrder,
+      });
+
+      sellOrders.push({
+        kind: "seaport",
+        contractKind: "erc721",
+        contract: erc721.address,
+        tokenId: tokenId1.toString(),
+        order: sellOrder,
+      });
+    }
+
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
+
+    const referrerEthBalanceBefore = await referrer.getBalance();
+    const seller1EthBalanceBefore = await seller1.getBalance();
+    const token1OwnerBefore = await erc721.ownerOf(tokenId1);
+    expect(token1OwnerBefore).to.eq(seller1.address);
+
+    const nonPartialTx = await router.fillListingsTx(
+      sellOrders,
+      buyer.address,
+      {
+        referrer: referrer.address,
+        referrerFeeBps: routerFee,
+      }
+    );
+    await expect(buyer.sendTransaction(nonPartialTx)).to.be.revertedWith(
+      "reverted with custom error 'UnsuccessfulFill()'"
+    );
+
+    const partialTx = await router.fillListingsTx(sellOrders, buyer.address, {
+      referrer: referrer.address,
+      referrerFeeBps: routerFee,
+      partial: true,
+    });
+    await buyer.sendTransaction(partialTx);
+
+    const referrerEthBalanceAfter = await referrer.getBalance();
+    const seller1EthBalanceAfter = await seller1.getBalance();
+    const token1OwnerAfter = await erc721.ownerOf(tokenId1);
+    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
+      price1.mul(routerFee).div(10000)
+    );
+    expect(seller1EthBalanceAfter.sub(seller1EthBalanceBefore)).to.eq(
+      price1.sub(price1.mul(fee1).div(10000))
+    );
+    expect(token1OwnerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
+    expect(await weth.getBalance(router.contract.address)).to.eq(0);
+  });
 });
