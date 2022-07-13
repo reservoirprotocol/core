@@ -541,12 +541,7 @@ export class Router {
 
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(
-          this.contract.address,
-          order,
-          matchParams,
-          taker
-        ),
+        tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
         exchangeKind: ExchangeKind.SEAPORT,
       };
     }
