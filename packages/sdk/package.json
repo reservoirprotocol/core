@@ -1,6 +1,6 @@
 {
   "name": "@reservoir0x/sdk",
-  "version": "0.0.122",
+  "version": "0.0.123",
   "description": "Reservoir Protocol SDK",
   "license": "MIT",
   "main": "dist/index.js",
