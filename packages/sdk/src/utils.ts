@@ -57,3 +57,6 @@ export enum Network {
 
 export type ChainIdToAddress = { [chainId: number]: string };
 export type ChainIdToAddressList = { [chainId: number]: string[] };
+export type ChainIdToAddressMap = {
+  [chainId: number]: { [address: string]: boolean };
+};
