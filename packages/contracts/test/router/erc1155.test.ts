@@ -107,8 +107,8 @@ describe("Router - filling ERC1155", () => {
       ],
       buyer.address,
       {
-        referrer: referrer.address,
-        referrerFeeBps: routerFee,
+        referrer: "reservoir.market",
+        fee: { bps: routerFee, recipient: referrer.address },
       }
     );
     await buyer.sendTransaction(tx);
@@ -199,10 +199,7 @@ describe("Router - filling ERC1155", () => {
         tokenId: boughtTokenId.toString(),
         order: buyOrder,
       },
-      seller.address,
-      {
-        referrer: referrer.address,
-      }
+      seller.address
     );
     await seller.sendTransaction(tx);
 
@@ -290,8 +287,8 @@ describe("Router - filling ERC1155", () => {
       ],
       buyer.address,
       {
-        referrer: referrer.address,
-        referrerFeeBps: routerFee,
+        referrer: "reservoir.market",
+        fee: { bps: routerFee, recipient: referrer.address },
       }
     );
     await buyer.sendTransaction(tx);
@@ -384,8 +381,8 @@ describe("Router - filling ERC1155", () => {
       ],
       buyer.address,
       {
-        referrer: referrer.address,
-        referrerFeeBps: routerFee,
+        referrer: "reservoir.market",
+        fee: { bps: routerFee, recipient: referrer.address },
       }
     );
     await buyer.sendTransaction(tx);
@@ -472,7 +469,7 @@ describe("Router - filling ERC1155", () => {
       },
       seller.address,
       {
-        referrer: referrer.address,
+        referrer: "reservoir.market",
       }
     );
     await seller.sendTransaction(tx);
@@ -551,8 +548,8 @@ describe("Router - filling ERC1155", () => {
       ],
       buyer.address,
       {
-        referrer: referrer.address,
-        referrerFeeBps: routerFee,
+        referrer: "reservoir.market",
+        fee: { bps: routerFee, recipient: referrer.address },
       }
     );
     await buyer.sendTransaction(tx);
@@ -639,8 +636,8 @@ describe("Router - filling ERC1155", () => {
       })),
       buyer.address,
       {
-        referrer: referrer.address,
-        referrerFeeBps: routerFee,
+        referrer: "reservoir.market",
+        fee: { bps: routerFee, recipient: referrer.address },
       }
     );
     await buyer.sendTransaction(tx);
@@ -724,7 +721,7 @@ describe("Router - filling ERC1155", () => {
       },
       seller.address,
       {
-        referrer: referrer.address,
+        referrer: "reservoir.market",
       }
     );
     await seller.sendTransaction(tx);

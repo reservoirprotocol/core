@@ -208,8 +208,8 @@ describe("Router - multi buy", () => {
     expect(token3BuyerBalanceBefore).to.eq(0);
 
     const tx = await router.fillListingsTx(sellOrders, buyer.address, {
-      referrer: referrer.address,
-      referrerFeeBps: routerFee,
+      referrer: "reservoir.market",
+      fee: { bps: routerFee, recipient: referrer.address },
     });
     await buyer.sendTransaction(tx);
 
@@ -322,8 +322,8 @@ describe("Router - multi buy", () => {
       sellOrders,
       buyer.address,
       {
-        referrer: referrer.address,
-        referrerFeeBps: routerFee,
+        referrer: "reservoir.market",
+        fee: { bps: routerFee, recipient: referrer.address },
       }
     );
     await expect(buyer.sendTransaction(nonPartialTx)).to.be.revertedWith(
@@ -331,8 +331,8 @@ describe("Router - multi buy", () => {
     );
 
     const partialTx = await router.fillListingsTx(sellOrders, buyer.address, {
-      referrer: referrer.address,
-      referrerFeeBps: routerFee,
+      referrer: "reservoir.market",
+      fee: { bps: routerFee, recipient: referrer.address },
       partial: true,
     });
     await buyer.sendTransaction(partialTx);

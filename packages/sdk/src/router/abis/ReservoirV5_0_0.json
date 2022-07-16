@@ -97,19 +97,14 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "referrer",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
         "name": "data",
         "type": "bytes"
-      },
-      {
-        "internalType": "enum ExchangeKind",
-        "name": "exchangeKind",
-        "type": "uint8"
       },
       {
         "internalType": "address[]",
@@ -132,6 +127,11 @@
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "feeRecipient",
+        "type": "address"
+      },
+      {
         "internalType": "uint16",
         "name": "feeBps",
         "type": "uint16"
@@ -145,19 +145,14 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "referrer",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
         "name": "data",
         "type": "bytes"
-      },
-      {
-        "internalType": "enum ExchangeKind",
-        "name": "exchangeKind",
-        "type": "uint8"
       },
       {
         "internalType": "address[]",
@@ -172,6 +167,11 @@
       {
         "internalType": "address",
         "name": "receiver",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "feeRecipient",
         "type": "address"
       },
       {
@@ -392,9 +392,9 @@
   {
     "inputs": [
       {
-        "internalType": "address",
+        "internalType": "bytes32",
         "name": "",
-        "type": "address"
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
@@ -430,9 +430,9 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "referrer",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
@@ -465,6 +465,11 @@
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "feeRecipient",
+        "type": "address"
+      },
+      {
         "internalType": "uint16",
         "name": "feeBps",
         "type": "uint16"
@@ -478,9 +483,9 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "referrer",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
@@ -518,6 +523,11 @@
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "feeRecipient",
+        "type": "address"
+      },
+      {
         "internalType": "uint16",
         "name": "feeBps",
         "type": "uint16"
@@ -531,9 +541,9 @@
   {
     "inputs": [
       {
-        "internalType": "address",
+        "internalType": "bytes32",
         "name": "",
-        "type": "address"
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
@@ -569,9 +579,9 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "referrer",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
@@ -599,6 +609,11 @@
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "feeRecipient",
+        "type": "address"
+      },
+      {
         "internalType": "uint16",
         "name": "feeBps",
         "type": "uint16"
@@ -612,9 +627,9 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "referrer",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
@@ -644,6 +659,11 @@
       {
         "internalType": "address",
         "name": "expectedOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "feeRecipient",
         "type": "address"
       },
       {

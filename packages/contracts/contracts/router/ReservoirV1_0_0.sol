@@ -11,7 +11,7 @@ import {IWETH} from "./interfaces/IWETH.sol";
 import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
 
-contract ReservoirV1 is Ownable {
+contract ReservoirV1_0_0 is Ownable {
     address public weth;
 
     address public looksRare;

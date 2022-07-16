@@ -69,7 +69,7 @@ export const setupRouter = async (
   switch (version) {
     case "v1":
       return ethers
-        .getContractFactory("ReservoirV1", deployer)
+        .getContractFactory("ReservoirV1_0_0", deployer)
         .then((factory) =>
           factory.deploy(
             Sdk.Common.Addresses.Weth[chainId],
@@ -81,7 +81,7 @@ export const setupRouter = async (
 
     case "v2":
       return ethers
-        .getContractFactory("ReservoirV2", deployer)
+        .getContractFactory("ReservoirV2_0_0", deployer)
         .then((factory) =>
           factory.deploy(
             Sdk.Common.Addresses.Weth[chainId],
@@ -96,7 +96,7 @@ export const setupRouter = async (
 
     case "v3":
       return ethers
-        .getContractFactory("ReservoirV3", deployer)
+        .getContractFactory("ReservoirV3_0_0", deployer)
         .then((factory) =>
           factory.deploy(
             Sdk.Common.Addresses.Weth[chainId],
@@ -112,7 +112,7 @@ export const setupRouter = async (
 
     case "v4":
       return ethers
-        .getContractFactory("ReservoirV4", deployer)
+        .getContractFactory("ReservoirV4_0_0", deployer)
         .then((factory) =>
           factory.deploy(
             Sdk.Common.Addresses.Weth[chainId],
@@ -128,7 +128,7 @@ export const setupRouter = async (
 
     case "v5":
       return ethers
-        .getContractFactory("ReservoirV5", deployer)
+        .getContractFactory("ReservoirV5_0_0", deployer)
         .then((factory) =>
           factory.deploy(
             Sdk.Common.Addresses.Weth[chainId],

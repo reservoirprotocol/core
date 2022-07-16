@@ -1,47 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ExchangeKind} from "./interfaces/IExchangeKind.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
-
-import {IFoundation} from "./interfaces/IFoundation.sol";
 import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
-import {ISeaport} from "./interfaces/ISeaport.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
-import {IX2Y2} from "./interfaces/IX2Y2.sol";
-import {IZeroExV4} from "./interfaces/IZeroExV4.sol";
 
-contract ReservoirV5 is Ownable, ReentrancyGuard {
-    address public immutable weth;
+contract ReservoirV3_0_0 is Ownable {
+    address public weth;
 
-    address public immutable looksRare;
-    address public immutable looksRareTransferManagerERC721;
-    address public immutable looksRareTransferManagerERC1155;
+    address public looksRare;
+    address public looksRareTransferManagerERC721;
+    address public looksRareTransferManagerERC1155;
 
-    address public immutable wyvernV23;
-    address public immutable wyvernV23Proxy;
+    address public wyvernV23;
+    address public wyvernV23Proxy;
 
-    address public immutable zeroExV4;
+    address public zeroExV4;
 
-    address public immutable foundation;
+    address public foundation;
 
-    address public immutable x2y2;
-    address public immutable x2y2ERC721Delegate;
+    address public x2y2;
+    address public x2y2ERC721Delegate;
 
-    address public immutable seaport;
-
-    error UnexpectedOwnerOrBalance();
-    error UnexpectedSelector();
-    error UnsuccessfulCall();
-    error UnsuccessfulFill();
-    error UnsuccessfulPayment();
-    error UnsupportedExchange();
+    address public seaport;
 
     constructor(
         address wethAddress,
@@ -115,19 +102,11 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         address[] calldata targets,
         bytes[] calldata data,
         uint256[] calldata values
-    ) external payable onlyOwner nonReentrant {
+    ) external payable onlyOwner {
         bool success;
-
-        uint256 length = targets.length;
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < targets.length; i++) {
             (success, ) = payable(targets[i]).call{value: values[i]}(data[i]);
-            if (!success) {
-                revert UnsuccessfulCall();
-            }
-
-            unchecked {
-                ++i;
-            }
+            require(success, "Unsuccessfull call");
         }
     }
 
@@ -138,59 +117,34 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
 
     function singleERC721ListingFill(
         address referrer,
-        bytes calldata data,
+        bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
         uint256 tokenId,
         address receiver,
         uint16 feeBps
-    ) external payable nonReentrant {
-        bytes4 selector = bytes4(data[:4]);
-
+    ) external payable {
         address target;
         if (exchangeKind == ExchangeKind.SEAPORT) {
             target = seaport;
-            if (selector != ISeaport.fulfillAdvancedOrder.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.WYVERN_V23) {
             target = wyvernV23;
-            if (selector != IWyvernV23.atomicMatch_.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.LOOKS_RARE) {
             target = looksRare;
-            if (
-                selector !=
-                ILooksRare.matchAskWithTakerBidUsingETHAndWETH.selector
-            ) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
-            if (selector != IZeroExV4.buyERC721.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.X2Y2) {
             target = x2y2;
-            if (selector != IX2Y2.run.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.FOUNDATION) {
             target = foundation;
-            if (selector != IFoundation.buyV2.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
-            revert UnsupportedExchange();
+            revert("Unsupported exchange");
         }
 
         uint256 payment = (10000 * msg.value) / (10000 + feeBps);
 
         (bool success, ) = target.call{value: payment}(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
         if (
             exchangeKind != ExchangeKind.SEAPORT &&
@@ -198,86 +152,55 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         ) {
             // When filling anything other than Wyvern or Seaport we need to send
             // the NFT to the taker's wallet after the fill (since we cannot have
-            // a recipient other than the taker)
-            IERC721(collection).safeTransferFrom(
-                address(this),
-                receiver,
-                tokenId
-            );
+            // a recipient recipient than the taker).
+            IERC721(collection).transferFrom(address(this), receiver, tokenId);
         }
 
         uint256 fee = msg.value - payment;
         if (fee > 0) {
             (success, ) = payable(referrer).call{value: fee}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
-            }
+            require(success, "Could not send payment");
         }
     }
 
     function singleERC721ListingFillWithPrecheck(
         address referrer,
-        bytes calldata data,
+        bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
         uint256 tokenId,
         address receiver,
         address expectedOwner,
         uint16 feeBps
-    ) external payable nonReentrant {
-        if (
-            expectedOwner != address(0) &&
-            IERC721(collection).ownerOf(tokenId) != expectedOwner
-        ) {
-            revert UnexpectedOwnerOrBalance();
+    ) external payable {
+        if (expectedOwner != address(0)) {
+            require(
+                IERC721(collection).ownerOf(tokenId) == expectedOwner,
+                "Unexpected owner"
+            );
         }
-
-        bytes4 selector = bytes4(data[:4]);
 
         address target;
         if (exchangeKind == ExchangeKind.SEAPORT) {
             target = seaport;
-            if (selector != ISeaport.fulfillAdvancedOrder.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.WYVERN_V23) {
             target = wyvernV23;
-            if (selector != IWyvernV23.atomicMatch_.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.LOOKS_RARE) {
             target = looksRare;
-            if (
-                selector !=
-                ILooksRare.matchAskWithTakerBidUsingETHAndWETH.selector
-            ) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
-            if (selector != IZeroExV4.buyERC721.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.X2Y2) {
             target = x2y2;
-            if (selector != IX2Y2.run.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.FOUNDATION) {
             target = foundation;
-            if (selector != IFoundation.buyV2.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
-            revert UnsupportedExchange();
+            revert("Unsupported exchange");
         }
 
         uint256 payment = (10000 * msg.value) / (10000 + feeBps);
 
         (bool success, ) = target.call{value: payment}(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
         if (
             exchangeKind != ExchangeKind.SEAPORT &&
@@ -285,71 +208,58 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         ) {
             // When filling anything other than Wyvern or Seaport we need to send
             // the NFT to the taker's wallet after the fill (since we cannot have
-            // a recipient other than the taker)
-            IERC721(collection).safeTransferFrom(
-                address(this),
-                receiver,
-                tokenId
-            );
+            // a recipient recipient than the taker).
+            IERC721(collection).transferFrom(address(this), receiver, tokenId);
         }
 
         uint256 fee = msg.value - payment;
         if (fee > 0) {
             (success, ) = payable(referrer).call{value: fee}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
-            }
+            require(success, "Could not send payment");
         }
     }
 
     function batchERC721ListingFill(
         address referrer,
-        bytes calldata data,
+        bytes memory data,
         ExchangeKind exchangeKind,
-        address[] calldata collections,
-        uint256[] calldata tokenIds,
+        address[] memory collections,
+        uint256[] memory tokenIds,
         address receiver,
-        uint16 feeBps
-    ) external payable nonReentrant {
+        uint256 feeBps
+    ) external payable {
         address target;
-        if (exchangeKind == ExchangeKind.ZEROEX_V4) {
+        if (exchangeKind == ExchangeKind.SEAPORT) {
+            target = seaport;
+        } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
-            if (bytes4(data[:4]) != IZeroExV4.batchBuyERC721s.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
-            revert UnsupportedExchange();
+            revert("Unsupported exchange");
         }
 
         uint256 payment = (10000 * msg.value) / (10000 + feeBps);
 
         (bool success, ) = target.call{value: payment}(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
-        // When filling anything other than Wyvern or Seaport we need to send
-        // the NFT to the taker's wallet after the fill (since we cannot have
-        // a recipient other than the taker)
-        uint256 length = collections.length;
-        for (uint256 i = 0; i < length; ) {
-            IERC721(collections[i]).safeTransferFrom(
-                address(this),
-                receiver,
-                tokenIds[i]
-            );
-
-            unchecked {
-                ++i;
+        if (exchangeKind != ExchangeKind.SEAPORT) {
+            // When filling anything other than Wyvern or Seaport we need to send
+            // the NFT to the taker's wallet after the fill (since we cannot have
+            // a recipient recipient than the taker).
+            for (uint256 i = 0; i < collections.length; i++) {
+                IERC721(collections[i]).safeTransferFrom(
+                    address(this),
+                    receiver,
+                    tokenIds[i],
+                    ""
+                );
             }
         }
 
         uint256 fee = msg.value - payment;
         if (fee > 0) {
             (success, ) = payable(referrer).call{value: fee}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
-            }
+            require(success, "Could not send payment");
         }
     }
 
@@ -360,43 +270,26 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         address collection,
         address receiver,
         bool unwrapWeth
-    ) external payable nonReentrant {
-        bytes4 selector = bytes4(data[:4]);
-
+    ) external payable {
         address target;
         address operator;
         if (exchangeKind == ExchangeKind.SEAPORT) {
             target = seaport;
             operator = seaport;
-            if (selector != ISeaport.fulfillAdvancedOrder.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.WYVERN_V23) {
             target = wyvernV23;
             operator = wyvernV23Proxy;
-            if (selector != IWyvernV23.atomicMatch_.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.LOOKS_RARE) {
             target = looksRare;
             operator = looksRareTransferManagerERC721;
-            if (selector != ILooksRare.matchBidWithTakerAsk.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
             operator = zeroExV4;
-            if (selector != IZeroExV4.sellERC721.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.X2Y2) {
             target = x2y2;
             operator = x2y2ERC721Delegate;
-            if (selector != IX2Y2.run.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
-            revert UnsupportedExchange();
+            revert("Unsupported exchange");
         }
 
         // Approve the exchange to transfer the NFT out of the router.
@@ -409,19 +302,14 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         }
 
         (bool success, ) = target.call{value: msg.value}(data);
-        if (!success) {
-            revert UnsuccessfulPayment();
-        }
+        require(success, "Unsuccessfull fill");
 
         // Send the payment to the actual taker.
         uint256 balance = IERC20(weth).balanceOf(address(this));
         if (unwrapWeth) {
             IWETH(weth).withdraw(balance);
-
             (success, ) = payable(receiver).call{value: balance}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
-            }
+            require(success, "Could not send payment");
         } else {
             IERC20(weth).transfer(receiver, balance);
         }
@@ -429,50 +317,31 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
 
     function singleERC1155ListingFill(
         address referrer,
-        bytes calldata data,
+        bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
         uint256 tokenId,
         uint256 amount,
         address receiver,
-        uint16 feeBps
-    ) external payable nonReentrant {
-        bytes4 selector = bytes4(data[:4]);
-
+        uint256 feeBps
+    ) external payable {
         address target;
         if (exchangeKind == ExchangeKind.SEAPORT) {
             target = seaport;
-            if (selector != ISeaport.fulfillAdvancedOrder.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.WYVERN_V23) {
             target = wyvernV23;
-            if (selector != IWyvernV23.atomicMatch_.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.LOOKS_RARE) {
             target = looksRare;
-            if (
-                selector !=
-                ILooksRare.matchAskWithTakerBidUsingETHAndWETH.selector
-            ) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
-            if (selector != IZeroExV4.buyERC1155.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
-            revert UnsupportedExchange();
+            revert("Unsupported exchange");
         }
 
         uint256 payment = (10000 * msg.value) / (10000 + feeBps);
 
         (bool success, ) = target.call{value: payment}(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
         if (
             exchangeKind != ExchangeKind.SEAPORT &&
@@ -480,7 +349,7 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         ) {
             // When filling anything other than Wyvern or Seaport we need to send
             // the NFT to the taker's wallet after the fill (since we cannot have
-            // a recipient other than the taker)
+            // a recipient recipient than the taker).
             IERC1155(collection).safeTransferFrom(
                 address(this),
                 receiver,
@@ -493,66 +362,46 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         uint256 fee = msg.value - payment;
         if (fee > 0) {
             (success, ) = payable(referrer).call{value: fee}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
-            }
+            require(success, "Could not send payment");
         }
     }
 
     function singleERC1155ListingFillWithPrecheck(
         address referrer,
-        bytes calldata data,
+        bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
         uint256 tokenId,
         uint256 amount,
         address receiver,
         address expectedOwner,
-        uint16 feeBps
-    ) external payable nonReentrant {
-        if (
-            expectedOwner != address(0) &&
-            IERC1155(collection).balanceOf(expectedOwner, tokenId) < amount
-        ) {
-            revert UnexpectedOwnerOrBalance();
+        uint256 feeBps
+    ) external payable {
+        if (expectedOwner != address(0)) {
+            require(
+                IERC1155(collection).balanceOf(expectedOwner, tokenId) >=
+                    amount,
+                "Unexpected owner/balance"
+            );
         }
-
-        bytes4 selector = bytes4(data[:4]);
 
         address target;
         if (exchangeKind == ExchangeKind.SEAPORT) {
             target = seaport;
-            if (selector != ISeaport.fulfillAdvancedOrder.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.WYVERN_V23) {
             target = wyvernV23;
-            if (selector != IWyvernV23.atomicMatch_.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.LOOKS_RARE) {
             target = looksRare;
-            if (
-                selector !=
-                ILooksRare.matchAskWithTakerBidUsingETHAndWETH.selector
-            ) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
-            if (selector != IZeroExV4.buyERC1155.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
-            revert UnsupportedExchange();
+            revert("Unsupported exchange");
         }
 
         uint256 payment = (10000 * msg.value) / (10000 + feeBps);
 
         (bool success, ) = target.call{value: payment}(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
         if (
             exchangeKind != ExchangeKind.SEAPORT &&
@@ -560,7 +409,7 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         ) {
             // When filling anything other than Wyvern or Seaport we need to send
             // the NFT to the taker's wallet after the fill (since we cannot have
-            // a recipient other than the taker)
+            // a recipient recipient than the taker).
             IERC1155(collection).safeTransferFrom(
                 address(this),
                 receiver,
@@ -573,46 +422,39 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         uint256 fee = msg.value - payment;
         if (fee > 0) {
             (success, ) = payable(referrer).call{value: fee}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
-            }
+            require(success, "Could not send payment");
         }
     }
 
     function batchERC1155ListingFill(
         address referrer,
-        bytes calldata data,
+        bytes memory data,
         ExchangeKind exchangeKind,
-        address[] calldata collections,
-        uint256[] calldata tokenIds,
-        uint256[] calldata amounts,
+        address[] memory collections,
+        uint256[] memory tokenIds,
+        uint256[] memory amounts,
         address receiver,
-        uint16 feeBps
-    ) external payable nonReentrant {
+        uint256 feeBps
+    ) external payable {
         address target;
-        if (exchangeKind == ExchangeKind.ZEROEX_V4) {
+        if (exchangeKind == ExchangeKind.SEAPORT) {
+            target = seaport;
+        } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
-            if (bytes4(data[:4]) != IZeroExV4.batchBuyERC1155s.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
-            revert UnsupportedExchange();
+            revert("Unsupported exchange");
         }
 
         uint256 payment = (10000 * msg.value) / (10000 + feeBps);
 
         (bool success, ) = target.call{value: payment}(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
-        // Avoid "Stack too deep" errors
-        {
+        if (exchangeKind != ExchangeKind.SEAPORT) {
             // When filling anything other than Wyvern or Seaport we need to send
             // the NFT to the taker's wallet after the fill (since we cannot have
-            // a recipient other than the taker)
-            uint256 length = collections.length;
-            for (uint256 i = 0; i < length; ) {
+            // a recipient recipient than the taker).
+            for (uint256 i = 0; i < collections.length; i++) {
                 IERC1155(collections[i]).safeTransferFrom(
                     address(this),
                     receiver,
@@ -620,60 +462,40 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
                     amounts[i],
                     ""
                 );
-
-                unchecked {
-                    ++i;
-                }
             }
         }
 
         uint256 fee = msg.value - payment;
         if (fee > 0) {
             (success, ) = payable(referrer).call{value: fee}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
-            }
+            require(success, "Could not send payment");
         }
     }
 
     function singleERC1155BidFill(
         address, // referrer
-        bytes calldata data,
+        bytes memory data,
         ExchangeKind exchangeKind,
         address collection,
         address receiver,
         bool unwrapWeth
-    ) external payable nonReentrant {
-        bytes4 selector = bytes4(data[:4]);
-
+    ) external payable {
         address target;
         address operator;
         if (exchangeKind == ExchangeKind.SEAPORT) {
             target = seaport;
             operator = seaport;
-            if (selector != ISeaport.fulfillAdvancedOrder.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.WYVERN_V23) {
             target = wyvernV23;
             operator = wyvernV23Proxy;
-            if (selector != IWyvernV23.atomicMatch_.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.LOOKS_RARE) {
             target = looksRare;
             operator = looksRareTransferManagerERC1155;
-            if (selector != ILooksRare.matchBidWithTakerAsk.selector) {
-                revert UnexpectedSelector();
-            }
         } else if (exchangeKind == ExchangeKind.ZEROEX_V4) {
             target = zeroExV4;
             operator = zeroExV4;
-            if (selector != IZeroExV4.sellERC1155.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
-            revert UnsupportedExchange();
+            revert("Unsupported exchange");
         }
 
         // Approve the exchange to transfer the NFT out of the router.
@@ -686,19 +508,14 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         }
 
         (bool success, ) = target.call{value: msg.value}(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
         // Send the payment to the actual taker.
         uint256 balance = IERC20(weth).balanceOf(address(this));
         if (unwrapWeth) {
             IWETH(weth).withdraw(balance);
-
             (success, ) = payable(receiver).call{value: balance}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
-            }
+            require(success, "Could not send payment");
         } else {
             IERC20(weth).transfer(receiver, balance);
         }
@@ -710,23 +527,15 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         bool revertIfIncomplete
     ) external payable {
         bool success;
-
-        uint256 length = data.length;
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < data.length; i++) {
             (success, ) = address(this).call{value: values[i]}(data[i]);
-            if (revertIfIncomplete && !success) {
-                revert UnsuccessfulFill();
-            }
-
-            unchecked {
-                ++i;
+            if (revertIfIncomplete) {
+                require(success, "Atomic fill failed");
             }
         }
 
         (success, ) = msg.sender.call{value: address(this).balance}("");
-        if (!success) {
-            revert UnsuccessfulPayment();
-        }
+        require(success, "Could not send payment");
     }
 
     // ERC721 / ERC1155 overrides
@@ -742,14 +551,13 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         }
 
         bytes4 selector = bytes4(data[:4]);
-        if (selector != this.singleERC721BidFill.selector) {
-            revert UnexpectedSelector();
-        }
+        require(
+            selector == this.singleERC721BidFill.selector,
+            "Wrong selector"
+        );
 
         (bool success, ) = address(this).call(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
         return this.onERC721Received.selector;
     }
@@ -766,14 +574,13 @@ contract ReservoirV5 is Ownable, ReentrancyGuard {
         }
 
         bytes4 selector = bytes4(data[:4]);
-        if (selector != this.singleERC1155BidFill.selector) {
-            revert UnexpectedSelector();
-        }
+        require(
+            selector == this.singleERC1155BidFill.selector,
+            "Wrong selector"
+        );
 
         (bool success, ) = address(this).call(data);
-        if (!success) {
-            revert UnsuccessfulFill();
-        }
+        require(success, "Unsuccessfull fill");
 
         return this.onERC1155Received.selector;
     }

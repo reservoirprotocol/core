@@ -12,7 +12,7 @@ import {IWETH} from "./interfaces/IWETH.sol";
 import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
 
-contract ReservoirV4 is Ownable, ReentrancyGuard {
+contract ReservoirV4_0_0 is Ownable, ReentrancyGuard {
     address public weth;
 
     address public looksRare;

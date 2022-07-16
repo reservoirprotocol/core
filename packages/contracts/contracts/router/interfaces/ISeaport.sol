@@ -83,6 +83,11 @@ interface ISeaport {
         uint256 itemIndex;
     }
 
+    struct Fulfillment {
+        FulfillmentComponent[] offerComponents;
+        FulfillmentComponent[] considerationComponents;
+    }
+
     struct Execution {
         ReceivedItem item;
         address offerer;
@@ -108,4 +113,10 @@ interface ISeaport {
         external
         payable
         returns (bool[] memory availableOrders, Execution[] memory executions);
+
+    function matchAdvancedOrders(
+        AdvancedOrder[] calldata advancedOrders,
+        CriteriaResolver[] calldata criteriaResolvers,
+        Fulfillment[] calldata fulfillments
+    ) external payable returns (Execution[] memory executions);
 }

@@ -2,6 +2,7 @@ import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { AddressZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
+import { formatBytes32String } from "@ethersproject/strings";
 
 import * as Addresses from "./addresses";
 import { ExchangeKind, BidDetails, ListingDetails } from "./types";
@@ -10,7 +11,7 @@ import { TxData, bn } from "../utils";
 
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
-import RouterAbi from "./abis/ReservoirV5.json";
+import RouterAbi from "./abis/ReservoirV5_0_0.json";
 
 export class Router {
   public chainId: number;
@@ -18,10 +19,6 @@ export class Router {
   public provider: Provider;
 
   constructor(chainId: number, provider: Provider) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
     this.contract = new Contract(
       Addresses.Router[chainId],
@@ -36,7 +33,10 @@ export class Router {
     taker: string,
     options?: {
       referrer?: string;
-      referrerFeeBps?: number | string;
+      fee?: {
+        recipient: string;
+        bps: number | string;
+      };
       skipPrecheck?: boolean;
       partial?: boolean;
     }
@@ -65,8 +65,8 @@ export class Router {
       }
     }
 
-    const referrer = options?.referrer || AddressZero;
-    const referrerFeeBps = options?.referrer ? options?.referrerFeeBps ?? 0 : 0;
+    const referrer = formatBytes32String(options?.referrer || "");
+    const fee = options?.fee ? options.fee : { recipient: AddressZero, bps: 0 };
 
     // Keep track of all listings to be filled through the router
     const routerTxs: TxData[] = [];
@@ -94,16 +94,16 @@ export class Router {
           [
             referrer,
             tx.data,
-            ExchangeKind.ZEROEX_V4,
             opendaoErc1155Details.map((detail) => detail.contract),
             opendaoErc1155Details.map((detail) => detail.tokenId),
             opendaoErc1155Details.map((detail) => detail.amount ?? 1),
             taker,
-            referrerFeeBps,
+            fee.recipient,
+            fee.bps,
           ]
         ),
         value: bn(tx.value!)
-          .add(bn(tx.value!).mul(referrerFeeBps).div(10000))
+          .add(bn(tx.value!).mul(fee.bps).div(10000))
           .toHexString(),
       });
 
@@ -132,16 +132,16 @@ export class Router {
           [
             referrer,
             tx.data,
-            ExchangeKind.ZEROEX_V4,
             zeroexV4Erc1155Details.map((detail) => detail.contract),
             zeroexV4Erc1155Details.map((detail) => detail.tokenId),
             zeroexV4Erc1155Details.map((detail) => detail.amount ?? 1),
             taker,
-            referrerFeeBps,
+            fee.recipient,
+            fee.bps,
           ]
         ),
         value: bn(tx.value!)
-          .add(bn(tx.value!).mul(referrerFeeBps).div(10000))
+          .add(bn(tx.value!).mul(fee.bps).div(10000))
           .toHexString(),
       });
 
@@ -170,7 +170,8 @@ export class Router {
                     detail.tokenId,
                     taker,
                     maker,
-                    referrerFeeBps,
+                    fee.recipient,
+                    fee.bps,
                   ]
                 )
               : this.contract.interface.encodeFunctionData(
@@ -182,12 +183,13 @@ export class Router {
                     detail.contract,
                     detail.tokenId,
                     taker,
-                    referrerFeeBps,
+                    fee.recipient,
+                    fee.bps,
                   ]
                 ),
           value: bn(tx.value!)
             // Add the referrer fee
-            .add(bn(tx.value!).mul(referrerFeeBps).div(10000))
+            .add(bn(tx.value!).mul(fee.bps).div(10000))
             .toHexString(),
         });
       } else {
@@ -207,7 +209,8 @@ export class Router {
                     detail.amount ?? 1,
                     taker,
                     maker,
-                    referrerFeeBps,
+                    fee.recipient,
+                    fee.bps,
                   ]
                 )
               : this.contract.interface.encodeFunctionData(
@@ -220,12 +223,13 @@ export class Router {
                     detail.tokenId,
                     detail.amount ?? 1,
                     taker,
-                    referrerFeeBps,
+                    fee.recipient,
+                    fee.bps,
                   ]
                 ),
           value: bn(tx.value!)
             // Add the referrer fee
-            .add(bn(tx.value!).mul(referrerFeeBps).div(10000))
+            .add(bn(tx.value!).mul(fee.bps).div(10000))
             .toHexString(),
         });
       }
@@ -266,7 +270,7 @@ export class Router {
       taker
     );
 
-    const referrer = options?.referrer || AddressZero;
+    const referrer = formatBytes32String(options?.referrer || "");
 
     // Wrap the exchange-specific fill transaction via the router.
     // We are using the `onReceived` hooks for single-tx filling.
@@ -320,7 +324,7 @@ export class Router {
   private async generateNativeListingFillTx(
     { kind, order, tokenId, amount }: ListingDetails,
     taker: string,
-    options?: { referrer?: string }
+    options?: { fee?: { recipient: string } }
   ): Promise<{
     tx: TxData;
     exchangeKind: ExchangeKind;
@@ -342,7 +346,7 @@ export class Router {
           this.contract.address,
           order,
           // Foundation has built-in referral support
-          options?.referrer || AddressZero
+          options?.fee?.recipient || AddressZero
         ),
         exchangeKind: ExchangeKind.FOUNDATION,
         maker: order.params.maker,
