@@ -58,7 +58,11 @@ export class Router {
     // of treating Seaport as a special case (this is not possible
     // at the moment because the router has separate functions for
     // filling ERC721 vs ERC1155).
-    if (details.every(({ kind }) => kind === "seaport") && !options?.fee) {
+    if (
+      details.every(({ kind }) => kind === "seaport") &&
+      // TODO: Look into using tips for fees on top (only doable on Seaport)
+      (!options?.fee || Number(options.fee.bps) === 0)
+    ) {
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       if (details.length === 1) {
         const order = details[0].order as Sdk.Seaport.Order;
