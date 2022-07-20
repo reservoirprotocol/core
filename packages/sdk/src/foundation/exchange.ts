@@ -4,7 +4,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
-import { TxData, bn } from "../utils";
+import { TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -17,10 +17,6 @@ export class Exchange {
   public contract: Contract;
 
   constructor(chainId: number) {
-    if (chainId !== 1) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
     this.contract = new Contract(Addresses.Exchange[this.chainId], ExchangeAbi);
   }
@@ -31,13 +27,8 @@ export class Exchange {
     maker: Signer,
     order: Order
   ): Promise<ContractTransaction> {
-    return this.contract
-      .connect(maker)
-      .setBuyPrice(
-        order.params.contract,
-        order.params.tokenId,
-        order.params.price
-      );
+    const tx = this.createOrderTx(order);
+    return maker.sendTransaction(tx);
   }
 
   public createOrderTx(order: Order): TxData {
@@ -57,31 +48,33 @@ export class Exchange {
   public async fillOrder(
     taker: Signer,
     order: Order,
-    referrer?: string
+    options?: {
+      referrer?: string;
+      nativeReferrerAddress?: string;
+    }
   ): Promise<ContractTransaction> {
-    return this.contract
-      .connect(taker)
-      .buyV2(
-        order.params.contract,
-        order.params.tokenId,
-        order.params.price,
-        referrer ?? AddressZero,
-        {
-          value: order.params.price,
-        }
-      );
+    const tx = this.fillOrderTx(await taker.getAddress(), order, options);
+    return taker.sendTransaction(tx);
   }
 
-  public fillOrderTx(taker: string, order: Order, referrer?: string): TxData {
+  public fillOrderTx(
+    taker: string,
+    order: Order,
+    options?: {
+      referrer?: string;
+      nativeReferrerAddress?: string;
+    }
+  ): TxData {
     return {
       from: taker,
       to: this.contract.address,
-      data: this.contract.interface.encodeFunctionData("buyV2", [
-        order.params.contract,
-        order.params.tokenId,
-        order.params.price,
-        referrer ?? AddressZero,
-      ]),
+      data:
+        this.contract.interface.encodeFunctionData("buyV2", [
+          order.params.contract,
+          order.params.tokenId,
+          order.params.price,
+          options?.nativeReferrerAddress ?? AddressZero,
+        ]) + generateReferrerBytes(options?.referrer),
       value: bn(order.params.price).toHexString(),
     };
   }
@@ -92,9 +85,8 @@ export class Exchange {
     maker: Signer,
     order: Order
   ): Promise<ContractTransaction> {
-    return this.contract
-      .connect(maker)
-      .cancelBuyPrice(order.params.contract, order.params.tokenId);
+    const tx = this.cancelOrderTx(order);
+    return maker.sendTransaction(tx);
   }
 
   public cancelOrderTx(order: Order): TxData {

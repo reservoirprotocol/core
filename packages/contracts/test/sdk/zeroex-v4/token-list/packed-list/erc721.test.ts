@@ -77,7 +77,7 @@ describe("ZeroEx V4 - PackedList TokenList Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder);
+    await exchange.fillOrder(seller, buyOrder, sellOrder);
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
     const ownerAfter = await nft.getOwner(boughtTokenId);
@@ -125,6 +125,7 @@ describe("ZeroEx V4 - PackedList TokenList Erc721", () => {
     await buyOrder.checkFillability(ethers.provider);
 
     // Match orders
-    await expect(exchange.match(seller, buyOrder, sellOrder)).to.be.reverted;
+    await expect(exchange.fillOrder(seller, buyOrder, sellOrder)).to.be
+      .reverted;
   });
 });

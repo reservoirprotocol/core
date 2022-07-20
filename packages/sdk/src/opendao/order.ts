@@ -21,10 +21,6 @@ export class Order {
   public params: Types.BaseOrder;
 
   constructor(chainId: number, params: Types.BaseOrder) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
 
     try {

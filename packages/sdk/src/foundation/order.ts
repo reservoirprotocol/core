@@ -6,10 +6,6 @@ export class Order {
   public params: Types.OrderParams;
 
   constructor(chainId: number, params: Types.OrderParams) {
-    if (chainId !== 1) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
 
     try {

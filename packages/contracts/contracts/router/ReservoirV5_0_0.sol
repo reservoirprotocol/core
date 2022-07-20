@@ -137,7 +137,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     // - "multi" -> buy multiple tokens (via the router)
 
     function singleERC721ListingFill(
-        bytes32, // referrer
         bytes calldata data,
         ExchangeKind exchangeKind,
         address collection,
@@ -220,7 +219,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     }
 
     function singleERC721ListingFillWithPrecheck(
-        bytes32, // referrer
         bytes calldata data,
         ExchangeKind exchangeKind,
         address collection,
@@ -311,7 +309,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     }
 
     function batchERC721ListingFill(
-        bytes32, // referrer
         bytes calldata data,
         address[] calldata collections,
         uint256[] calldata tokenIds,
@@ -357,7 +354,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     }
 
     function singleERC721BidFill(
-        bytes32, // referrer
         bytes calldata data,
         ExchangeKind exchangeKind,
         address collection,
@@ -438,7 +434,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     }
 
     function singleERC1155ListingFill(
-        bytes32, // referrer
         bytes calldata data,
         ExchangeKind exchangeKind,
         address collection,
@@ -514,7 +509,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     }
 
     function singleERC1155ListingFillWithPrecheck(
-        bytes32, // referrer
         bytes calldata data,
         ExchangeKind exchangeKind,
         address collection,
@@ -598,7 +592,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     }
 
     function batchERC1155ListingFill(
-        bytes32, // referrer
         bytes calldata data,
         address[] calldata collections,
         uint256[] calldata tokenIds,
@@ -650,7 +643,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     }
 
     function singleERC1155BidFill(
-        bytes32, // referrer
         bytes calldata data,
         ExchangeKind exchangeKind,
         address collection,

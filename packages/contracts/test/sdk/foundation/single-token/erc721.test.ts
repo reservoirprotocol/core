@@ -60,7 +60,10 @@ describe("Foundation - SingleToken Erc721", () => {
     const referrerEthBalanceBefore = await referrer.getBalance();
 
     // Fill sell order.
-    await exchange.fillOrder(buyer, order, referrer.address);
+    await exchange.fillOrder(buyer, order, {
+      referrer: "reservoir.market",
+      nativeReferrerAddress: referrer.address,
+    });
 
     const sellerEthBalanceAfter = await seller.getBalance();
     const referrerEthBalanceAfter = await referrer.getBalance();

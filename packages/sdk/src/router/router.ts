@@ -7,7 +7,7 @@ import { formatBytes32String } from "@ethersproject/strings";
 import * as Addresses from "./addresses";
 import { ExchangeKind, BidDetails, ListingDetails } from "./types";
 import * as Sdk from "../index";
-import { TxData, bn } from "../utils";
+import { TxData, bn, generateReferrerBytes } from "../utils";
 
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
@@ -48,33 +48,112 @@ export class Router {
     // of the orders will be filled individually.
 
     // Native batch filling:
-    // - OpenDao (only ERC1155 supported for now)
-    // - Seaport (not supported yet)
+    // - OpenDao
+    // - Seaport
     // - X2Y2 (not supported yet)
-    // - ZeroExV4 (only ERC1155 supported for now)
+    // - ZeroExV4
 
-    // Keep track of batch-fillable orders
-    const opendaoErc1155Details: ListingDetails[] = [];
-    const zeroexV4Erc1155Details: ListingDetails[] = [];
-    for (let i = 0; i < details.length; i++) {
-      const { kind, contractKind } = details[i];
-      if (contractKind === "erc1155" && kind === "opendao") {
-        opendaoErc1155Details.push(details[i]);
-      } else if (contractKind === "erc1155" && kind === "zeroex-v4") {
-        zeroexV4Erc1155Details.push(details[i]);
+    // If all orders are Seaport, then we fill on Seaport directly
+    // TODO: Once the modular router is implemented, a refactoring
+    // might be needed - to use the router-generated order instead
+    // of treating Seaport as a special case (this is not possible
+    // at the moment because the router has separate functions for
+    // filling ERC721 vs ERC1155).
+    if (details.every(({ kind }) => kind === "seaport") && !options?.fee) {
+      const exchange = new Sdk.Seaport.Exchange(this.chainId);
+      if (details.length === 1) {
+        const order = details[0].order as Sdk.Seaport.Order;
+        return exchange.fillOrderTx(
+          taker,
+          order,
+          order.buildMatching({ amount: details[0].amount }),
+          options
+        );
+      } else {
+        const orders = details.map((d) => d.order as Sdk.Seaport.Order);
+        return exchange.fillOrdersTx(
+          taker,
+          orders,
+          orders.map((order, i) =>
+            order.buildMatching({ amount: details[i].amount })
+          ),
+          options
+        );
       }
     }
 
-    const referrer = formatBytes32String(options?.referrer || "");
+    // Keep track of batch-fillable orders
+    const opendaoErc721Details: ListingDetails[] = [];
+    const opendaoErc1155Details: ListingDetails[] = [];
+    const zeroexV4Erc721Details: ListingDetails[] = [];
+    const zeroexV4Erc1155Details: ListingDetails[] = [];
+    for (let i = 0; i < details.length; i++) {
+      const { kind, contractKind } = details[i];
+      switch (kind) {
+        case "opendao": {
+          (contractKind === "erc721"
+            ? opendaoErc721Details
+            : opendaoErc1155Details
+          ).push(details[i]);
+          break;
+        }
+
+        case "zeroex-v4": {
+          (contractKind === "erc721"
+            ? zeroexV4Erc721Details
+            : zeroexV4Erc1155Details
+          ).push(details[i]);
+          break;
+        }
+      }
+    }
+
     const fee = options?.fee ? options.fee : { recipient: AddressZero, bps: 0 };
 
     // Keep track of all listings to be filled through the router
     const routerTxs: TxData[] = [];
 
     // Only batch-fill if there are multiple orders
+    if (opendaoErc721Details.length > 1) {
+      const exchange = new Sdk.OpenDao.Exchange(this.chainId);
+      const tx = exchange.batchBuyTx(
+        taker,
+        opendaoErc721Details.map((detail) => detail.order as Sdk.OpenDao.Order),
+        opendaoErc721Details.map((detail) =>
+          (detail.order as Sdk.OpenDao.Order).buildMatching({
+            amount: detail.amount ?? 1,
+          })
+        )
+      );
+
+      routerTxs.push({
+        from: taker,
+        to: this.contract.address,
+        data: this.contract.interface.encodeFunctionData(
+          "batchERC721ListingFill",
+          [
+            tx.data,
+            opendaoErc721Details.map((detail) => detail.contract),
+            opendaoErc721Details.map((detail) => detail.tokenId),
+            taker,
+            fee.recipient,
+            fee.bps,
+          ]
+        ),
+        value: bn(tx.value!)
+          .add(bn(tx.value!).mul(fee.bps).div(10000))
+          .toHexString(),
+      });
+
+      // Delete any batch-filled orders
+      details = details.filter(
+        ({ kind, contractKind }) =>
+          kind !== "opendao" && contractKind !== "erc721"
+      );
+    }
     if (opendaoErc1155Details.length > 1) {
       const exchange = new Sdk.OpenDao.Exchange(this.chainId);
-      const tx = exchange.batchBuyTransaction(
+      const tx = exchange.batchBuyTx(
         taker,
         opendaoErc1155Details.map(
           (detail) => detail.order as Sdk.OpenDao.Order
@@ -92,7 +171,6 @@ export class Router {
         data: this.contract.interface.encodeFunctionData(
           "batchERC1155ListingFill",
           [
-            referrer,
             tx.data,
             opendaoErc1155Details.map((detail) => detail.contract),
             opendaoErc1155Details.map((detail) => detail.tokenId),
@@ -108,11 +186,54 @@ export class Router {
       });
 
       // Delete any batch-filled orders
-      details = details.filter(({ kind }) => kind !== "opendao");
+      details = details.filter(
+        ({ kind, contractKind }) =>
+          kind !== "opendao" && contractKind !== "erc1155"
+      );
+    }
+
+    if (zeroexV4Erc721Details.length > 1) {
+      const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
+      const tx = exchange.batchBuyTx(
+        taker,
+        zeroexV4Erc1155Details.map(
+          (detail) => detail.order as Sdk.ZeroExV4.Order
+        ),
+        zeroexV4Erc1155Details.map((detail) =>
+          (detail.order as Sdk.ZeroExV4.Order).buildMatching({
+            amount: detail.amount ?? 1,
+          })
+        )
+      );
+
+      routerTxs.push({
+        from: taker,
+        to: this.contract.address,
+        data: this.contract.interface.encodeFunctionData(
+          "batchERC721ListingFill",
+          [
+            tx.data,
+            zeroexV4Erc721Details.map((detail) => detail.contract),
+            zeroexV4Erc721Details.map((detail) => detail.tokenId),
+            taker,
+            fee.recipient,
+            fee.bps,
+          ]
+        ),
+        value: bn(tx.value!)
+          .add(bn(tx.value!).mul(fee.bps).div(10000))
+          .toHexString(),
+      });
+
+      // Delete any batch-filled orders
+      details = details.filter(
+        ({ kind, contractKind }) =>
+          kind !== "zeroex-v4" && contractKind !== "erc721"
+      );
     }
     if (zeroexV4Erc1155Details.length > 1) {
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
-      const tx = exchange.batchBuyTransaction(
+      const tx = exchange.batchBuyTx(
         taker,
         zeroexV4Erc1155Details.map(
           (detail) => detail.order as Sdk.ZeroExV4.Order
@@ -130,7 +251,6 @@ export class Router {
         data: this.contract.interface.encodeFunctionData(
           "batchERC1155ListingFill",
           [
-            referrer,
             tx.data,
             zeroexV4Erc1155Details.map((detail) => detail.contract),
             zeroexV4Erc1155Details.map((detail) => detail.tokenId),
@@ -146,13 +266,16 @@ export class Router {
       });
 
       // Delete any batch-filled orders
-      details = details.filter(({ kind }) => kind !== "zeroex-v4");
+      details = details.filter(
+        ({ kind, contractKind }) =>
+          kind !== "zeroex-v4" && contractKind !== "erc1155"
+      );
     }
 
     // Rest of orders are individually filled
     for (const detail of details) {
       const { tx, exchangeKind, maker, isEscrowed } =
-        await this.generateNativeListingFillTx(detail, taker, options);
+        await this.generateNativeListingFillTx(detail, taker);
 
       if (detail.contractKind === "erc721") {
         routerTxs.push({
@@ -163,7 +286,6 @@ export class Router {
               ? this.contract.interface.encodeFunctionData(
                   "singleERC721ListingFillWithPrecheck",
                   [
-                    referrer,
                     tx.data,
                     exchangeKind,
                     detail.contract,
@@ -177,7 +299,6 @@ export class Router {
               : this.contract.interface.encodeFunctionData(
                   "singleERC721ListingFill",
                   [
-                    referrer,
                     tx.data,
                     exchangeKind,
                     detail.contract,
@@ -201,7 +322,6 @@ export class Router {
               ? this.contract.interface.encodeFunctionData(
                   "singleERC1155ListingFillWithPrecheck",
                   [
-                    referrer,
                     tx.data,
                     exchangeKind,
                     detail.contract,
@@ -216,7 +336,6 @@ export class Router {
               : this.contract.interface.encodeFunctionData(
                   "singleERC1155ListingFill",
                   [
-                    referrer,
                     tx.data,
                     exchangeKind,
                     detail.contract,
@@ -236,16 +355,20 @@ export class Router {
     }
 
     if (routerTxs.length === 1) {
-      return routerTxs[0];
+      return {
+        ...routerTxs[0],
+        data: routerTxs[0].data + generateReferrerBytes(options?.referrer),
+      };
     } else if (routerTxs.length > 1) {
       return {
         from: taker,
         to: this.contract.address,
-        data: this.contract.interface.encodeFunctionData("multiListingFill", [
-          routerTxs.map((tx) => tx.data),
-          routerTxs.map((tx) => tx.value!.toString()),
-          !options?.partial,
-        ]),
+        data:
+          this.contract.interface.encodeFunctionData("multiListingFill", [
+            routerTxs.map((tx) => tx.data),
+            routerTxs.map((tx) => tx.value!.toString()),
+            !options?.partial,
+          ]) + generateReferrerBytes(options?.referrer),
         value: routerTxs
           .map((tx) => bn(tx.value!))
           .reduce((a, b) => a.add(b), bn(0))
@@ -259,9 +382,7 @@ export class Router {
   public async fillBidTx(
     detail: BidDetails,
     taker: string,
-    options?: {
-      referrer?: string;
-    }
+    options?: { referrer?: string }
   ) {
     // Assume the bid details are consistent with the underlying order object
 
@@ -270,61 +391,52 @@ export class Router {
       taker
     );
 
-    const referrer = formatBytes32String(options?.referrer || "");
-
     // Wrap the exchange-specific fill transaction via the router.
     // We are using the `onReceived` hooks for single-tx filling.
     if (detail.contractKind === "erc721") {
       return {
         from: taker,
         to: detail.contract,
-        data: new Interface(Erc721Abi).encodeFunctionData(
-          "safeTransferFrom(address,address,uint256,bytes)",
-          [
-            taker,
-            this.contract.address,
-            detail.tokenId,
-            this.contract.interface.encodeFunctionData("singleERC721BidFill", [
-              referrer,
-              tx.data,
-              exchangeKind,
-              detail.contract,
+        data:
+          new Interface(Erc721Abi).encodeFunctionData(
+            "safeTransferFrom(address,address,uint256,bytes)",
+            [
               taker,
-              true,
-            ]),
-          ]
-        ),
+              this.contract.address,
+              detail.tokenId,
+              this.contract.interface.encodeFunctionData(
+                "singleERC721BidFill",
+                [tx.data, exchangeKind, detail.contract, taker, true]
+              ),
+            ]
+          ) + generateReferrerBytes(options?.referrer),
       };
     } else {
       return {
         from: taker,
         to: detail.contract,
-        data: new Interface(Erc1155Abi).encodeFunctionData(
-          "safeTransferFrom(address,address,uint256,uint256,bytes)",
-          [
-            taker,
-            this.contract.address,
-            detail.tokenId,
-            // TODO: Support selling a quantity greater than 1
-            1,
-            this.contract.interface.encodeFunctionData("singleERC1155BidFill", [
-              referrer,
-              tx.data,
-              exchangeKind,
-              detail.contract,
+        data:
+          new Interface(Erc1155Abi).encodeFunctionData(
+            "safeTransferFrom(address,address,uint256,uint256,bytes)",
+            [
               taker,
-              true,
-            ]),
-          ]
-        ),
+              this.contract.address,
+              detail.tokenId,
+              // TODO: Support selling a quantity greater than 1
+              1,
+              this.contract.interface.encodeFunctionData(
+                "singleERC1155BidFill",
+                [tx.data, exchangeKind, detail.contract, taker, true]
+              ),
+            ]
+          ) + generateReferrerBytes(options?.referrer),
       };
     }
   }
 
   private async generateNativeListingFillTx(
     { kind, order, tokenId, amount }: ListingDetails,
-    taker: string,
-    options?: { fee?: { recipient: string } }
+    taker: string
   ): Promise<{
     tx: TxData;
     exchangeKind: ExchangeKind;
@@ -342,12 +454,7 @@ export class Router {
 
       const exchange = new Sdk.Foundation.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(
-          this.contract.address,
-          order,
-          // Foundation has built-in referral support
-          options?.fee?.recipient || AddressZero
-        ),
+        tx: exchange.fillOrderTx(this.contract.address, order),
         exchangeKind: ExchangeKind.FOUNDATION,
         maker: order.params.maker,
         isEscrowed: true,
@@ -361,11 +468,7 @@ export class Router {
 
       const exchange = new Sdk.LooksRare.Exchange(this.chainId);
       return {
-        tx: exchange.matchTransaction(
-          this.contract.address,
-          order,
-          matchParams
-        ),
+        tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
         exchangeKind: ExchangeKind.LOOKS_RARE,
         maker: order.params.signer,
       };
@@ -376,11 +479,7 @@ export class Router {
 
       const exchange = new Sdk.OpenDao.Exchange(this.chainId);
       return {
-        tx: exchange.matchTransaction(
-          this.contract.address,
-          order,
-          matchParams
-        ),
+        tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
         exchangeKind: ExchangeKind.ZEROEX_V4,
         maker: order.params.maker,
       };
@@ -400,11 +499,7 @@ export class Router {
 
       const exchange = new Sdk.WyvernV23.Exchange(this.chainId);
       return {
-        tx: exchange.matchTransaction(
-          this.contract.address,
-          matchParams,
-          order
-        ),
+        tx: exchange.fillOrderTx(this.contract.address, matchParams, order),
         exchangeKind: ExchangeKind.WYVERN_V23,
         maker: order.params.maker,
       };
@@ -429,11 +524,7 @@ export class Router {
 
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
       return {
-        tx: exchange.matchTransaction(
-          this.contract.address,
-          order,
-          matchParams
-        ),
+        tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
         exchangeKind: ExchangeKind.ZEROEX_V4,
         maker: order.params.maker,
       };
@@ -445,12 +536,9 @@ export class Router {
 
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(
-          this.contract.address,
-          order,
-          matchParams,
-          taker
-        ),
+        tx: exchange.fillOrderTx(this.contract.address, order, matchParams, {
+          recipient: taker,
+        }),
         exchangeKind: ExchangeKind.SEAPORT,
         maker: order.params.offerer,
       };
@@ -477,7 +565,7 @@ export class Router {
 
       const exchange = new Sdk.LooksRare.Exchange(this.chainId);
       return {
-        tx: exchange.matchTransaction(taker, order, matchParams),
+        tx: exchange.fillOrderTx(taker, order, matchParams),
         exchangeKind: ExchangeKind.LOOKS_RARE,
       };
     } else if (kind === "opendao") {
@@ -492,7 +580,7 @@ export class Router {
 
       const exchange = new Sdk.OpenDao.Exchange(this.chainId);
       return {
-        tx: exchange.matchTransaction(taker, order, matchParams, {
+        tx: exchange.fillOrderTx(taker, order, matchParams, {
           // Do not use the `onReceived` hook filling to be compatible with the router
           noDirectTransfer: true,
         }),
@@ -513,7 +601,7 @@ export class Router {
 
       const exchange = new Sdk.WyvernV23.Exchange(this.chainId);
       return {
-        tx: exchange.matchTransaction(taker, order, matchParams),
+        tx: exchange.fillOrderTx(taker, order, matchParams),
         exchangeKind: ExchangeKind.WYVERN_V23,
       };
     } else if (kind === "zeroex-v4") {
@@ -528,7 +616,7 @@ export class Router {
 
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
       return {
-        tx: exchange.matchTransaction(taker, order, matchParams, {
+        tx: exchange.fillOrderTx(taker, order, matchParams, {
           // Do not use the `onReceived` hook filling to be compatible with the router
           noDirectTransfer: true,
         }),

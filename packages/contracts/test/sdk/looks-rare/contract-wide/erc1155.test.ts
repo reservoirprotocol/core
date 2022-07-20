@@ -92,7 +92,7 @@ describe("LooksRare - ContractWide Erc1155", () => {
     expect(ownerBalanceBefore).to.eq(1);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder);
+    await exchange.fillOrder(seller, buyOrder, sellOrder);
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
     const sellerBalanceAfter = await weth.getBalance(seller.address);

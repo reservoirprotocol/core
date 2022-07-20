@@ -7,7 +7,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as CommonAddresses from "../common/addresses";
-import { TxData, bn } from "../utils";
+import { TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -15,17 +15,35 @@ export class Exchange {
   public chainId: number;
 
   constructor(chainId: number) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
   }
 
-  public matchTransaction(
+  // --- Fill order ---
+
+  public async fillOrder(
+    taker: Signer,
+    buyOrder: Order,
+    sellOrder: Order,
+    options?: {
+      referrer?: string;
+    }
+  ): Promise<ContractTransaction> {
+    const tx = this.fillOrderTx(
+      await taker.getAddress(),
+      buyOrder,
+      sellOrder,
+      options
+    );
+    return taker.sendTransaction(tx);
+  }
+
+  public fillOrderTx(
     taker: string,
     buyOrder: Order,
-    sellOrder: Order
+    sellOrder: Order,
+    options?: {
+      referrer?: string;
+    }
   ): TxData {
     const addrs = [
       buyOrder.params.exchange,
@@ -107,94 +125,9 @@ export class Exchange {
     return {
       from: taker,
       to: buyOrder.params.exchange,
-      data,
+      data: data + generateReferrerBytes(options?.referrer),
       value: value ? bn(value).toHexString() : undefined,
     };
-  }
-
-  public async match(
-    taker: Signer,
-    buyOrder: Order,
-    sellOrder: Order
-  ): Promise<ContractTransaction> {
-    const addrs = [
-      buyOrder.params.exchange,
-      buyOrder.params.maker,
-      buyOrder.params.taker,
-      buyOrder.params.feeRecipient,
-      buyOrder.params.target,
-      buyOrder.params.staticTarget,
-      buyOrder.params.paymentToken,
-      sellOrder.params.exchange,
-      sellOrder.params.maker,
-      sellOrder.params.taker,
-      sellOrder.params.feeRecipient,
-      sellOrder.params.target,
-      sellOrder.params.staticTarget,
-      sellOrder.params.paymentToken,
-    ];
-
-    const uints = [
-      buyOrder.params.makerRelayerFee,
-      buyOrder.params.takerRelayerFee,
-      0, // makerProtocolFee (always 0)
-      0, // takerProtocolFee (always 0)
-      buyOrder.params.basePrice,
-      buyOrder.params.extra,
-      buyOrder.params.listingTime,
-      buyOrder.params.expirationTime,
-      buyOrder.params.salt,
-      sellOrder.params.makerRelayerFee,
-      sellOrder.params.takerRelayerFee,
-      0, // makerProtocolFee (always 0)
-      0, // takerProtocolFee (always 0)
-      sellOrder.params.basePrice,
-      sellOrder.params.extra,
-      sellOrder.params.listingTime,
-      sellOrder.params.expirationTime,
-      sellOrder.params.salt,
-    ];
-
-    const feeMethodsSidesKindsHowToCalls = [
-      1, // feeMethod (always 1 - SplitFee)
-      buyOrder.params.side,
-      buyOrder.params.saleKind,
-      buyOrder.params.howToCall,
-      1, // feeMethod (always 1 - SplitFee)
-      sellOrder.params.side,
-      sellOrder.params.saleKind,
-      sellOrder.params.howToCall,
-    ];
-
-    return new Contract(buyOrder.params.exchange, ExchangeAbi as any)
-      .connect(taker)
-      .atomicMatch_(
-        addrs,
-        uints,
-        feeMethodsSidesKindsHowToCalls,
-        buyOrder.params.calldata,
-        sellOrder.params.calldata,
-        buyOrder.params.replacementPattern,
-        sellOrder.params.replacementPattern,
-        buyOrder.params.staticExtradata,
-        sellOrder.params.staticExtradata,
-        [buyOrder.params.v, sellOrder.params.v],
-        [
-          buyOrder.params.r,
-          buyOrder.params.s,
-          sellOrder.params.r,
-          sellOrder.params.s,
-          HashZero.slice(0, -1) + "f",
-        ],
-        {
-          value:
-            buyOrder.params.paymentToken === CommonAddresses.Eth[this.chainId]
-              ? buyOrder.params.basePrice
-              : 0,
-          // Uncomment to debug via Tenderly (eg. skip gas estimation and execute failing transaction):
-          // gasLimit: 15000000,
-        }
-      );
   }
 
   public cancelTransaction(maker: string, order: Order): TxData {

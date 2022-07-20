@@ -65,7 +65,7 @@ describe("X2Y2 - SingleToken Erc721", () => {
       chainId,
       String(process.env.X2Y2_API_KEY)
     );
-    await exchange.fillOrder(alice, order);
+    await exchange.fillOrder(alice, order, { referrer: "reservoir.market" });
 
     const buyerBalanceAfter = await ethers.provider.getBalance(alice.address);
     const sellerBalanceAfter = await ethers.provider.getBalance(
