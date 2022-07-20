@@ -31,10 +31,6 @@ export abstract class BaseBuilder {
   public chainId: number;
 
   constructor(chainId: number) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
   }
 

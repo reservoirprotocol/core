@@ -20,10 +20,6 @@ export class Order {
   public params: Types.MakerOrderParams;
 
   constructor(chainId: number, params: Types.MakerOrderParams) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
 
     try {
