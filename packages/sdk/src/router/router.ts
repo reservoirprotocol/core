@@ -2,7 +2,6 @@ import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { AddressZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
-import { formatBytes32String } from "@ethersproject/strings";
 
 import * as Addresses from "./addresses";
 import { ExchangeKind, BidDetails, ListingDetails } from "./types";
