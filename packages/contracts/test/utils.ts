@@ -38,7 +38,7 @@ export const getChainId = () =>
 
 // --- CONTRACT UTILS ---
 
-// TODO: Fix type issues and avoi returning `any`
+// TODO: Fix type issues and avoid returning `any`
 
 // Deploy mock ERC721/1155 contracts
 export const setupNFTs = async (deployer: SignerWithAddress) => {

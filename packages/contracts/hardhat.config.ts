@@ -24,6 +24,7 @@ const config: HardhatUserConfig = {
     ],
   },
   networks: {
+    // Development
     hardhat: {
       chainId: 1,
       forking: {
@@ -34,10 +35,16 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://127.0.0.1:8545",
     },
+    // Testnets
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
       accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
     },
+    goerli: {
+      url: `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
+      accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
+    },
+    // Mainnets
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
       accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
