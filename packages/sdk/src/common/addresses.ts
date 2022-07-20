@@ -42,9 +42,11 @@ export const Routers: ChainIdToAddressMap = {
     "0x83c8f28c26bf6aaca652df1dbbe0e1b56f8baba2": "gem",
     "0x0000000035634b55f3d99b071b5a354f48e10bef": "gem",
     "0x00000000a50bb64b4bbeceb18715748dface08af": "gem",
+    "0xae9c73fd0fd237c1c6f66fe009d24ce969e98704": "gem",
     // Genie
     "0x0a267cf51ef038fc00e71801f5a524aec06e4f07": "genie",
     "0x2af4b707e1dce8fc345f38cfeeaa2421e54976d5": "genie",
+    "0x31837aaf36961274a04b915697fdfca1af31a0c7": "genie",
     // Reservoir
     "0xc52b521b284792498c1036d4c2ed4b73387b3859": "reservoir",
     "0x5aa9ca240174a54af6d9bfc69214b2ed948de86d": "reservoir",

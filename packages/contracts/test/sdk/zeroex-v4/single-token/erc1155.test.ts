@@ -89,7 +89,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder);
+    await exchange.fillOrder(seller, buyOrder, sellOrder);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const buyerNftBalanceAfter = await nft.getBalance(
@@ -174,7 +174,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       expect(sellerNftBalanceBefore).to.eq(2);
 
       // Match orders
-      await exchange.match(seller, buyOrder, sellOrder);
+      await exchange.fillOrder(seller, buyOrder, sellOrder);
 
       const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
       const tedWethBalanceAfter = await weth.getBalance(ted.address);
@@ -219,7 +219,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       expect(sellerNftBalanceBefore).to.eq(1);
 
       // Match orders
-      await exchange.match(seller, buyOrder, sellOrder);
+      await exchange.fillOrder(seller, buyOrder, sellOrder);
 
       const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
       const tedWethBalanceAfter = await weth.getBalance(ted.address);
@@ -295,7 +295,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
 
     // Match orders
-    await exchange.match(buyer, sellOrder, buyOrder);
+    await exchange.fillOrder(buyer, sellOrder, buyOrder);
 
     const buyerEthBalanceAfter = await ethers.provider.getBalance(
       buyer.address
@@ -388,7 +388,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       expect(sellerNftBalanceBefore).to.eq(3);
 
       // Match orders
-      await exchange.match(buyer, sellOrder, buyOrder);
+      await exchange.fillOrder(buyer, sellOrder, buyOrder);
 
       const buyerEthBalanceAfter = await ethers.provider.getBalance(
         buyer.address
@@ -446,7 +446,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       expect(sellerNftBalanceBefore).to.eq(1);
 
       // Match orders
-      await exchange.match(buyer, sellOrder, buyOrder);
+      await exchange.fillOrder(buyer, sellOrder, buyOrder);
 
       const buyerEthBalanceAfter = await ethers.provider.getBalance(
         buyer.address

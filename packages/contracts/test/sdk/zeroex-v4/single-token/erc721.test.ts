@@ -80,7 +80,7 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder);
+    await exchange.fillOrder(seller, buyOrder, sellOrder);
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
     const ownerAfter = await nft.getOwner(boughtTokenId);
@@ -134,7 +134,7 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.match(buyer, sellOrder, buyOrder);
+    await exchange.fillOrder(buyer, sellOrder, buyOrder);
 
     const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
     const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
@@ -203,7 +203,7 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder);
+    await exchange.fillOrder(seller, buyOrder, sellOrder);
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
     const carolBalanceAfter = await weth.getBalance(carol.address);
@@ -273,7 +273,9 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.match(buyer, sellOrder, buyOrder);
+    await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+      referrer: "reservoir.market",
+    });
 
     const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
     const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);

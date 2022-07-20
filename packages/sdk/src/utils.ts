@@ -1,5 +1,6 @@
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { randomBytes } from "@ethersproject/random";
+import { toUtf8Bytes } from "@ethersproject/strings";
 
 // Constants
 
@@ -24,6 +25,11 @@ export const getCurrentTimestamp = (delay = 0) =>
 export const lc = (x: string) => x?.toLowerCase();
 export const n = (x: any) => (x ? Number(x) : x);
 export const s = (x: any) => (x ? String(x) : x);
+
+// Misc
+
+export const generateReferrerBytes = (referrer?: string) =>
+  referrer ? `69${Buffer.from(toUtf8Bytes(referrer)).toString("hex")}69` : "";
 
 // Types
 

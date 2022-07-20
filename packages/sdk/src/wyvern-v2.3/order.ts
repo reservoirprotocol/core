@@ -21,16 +21,7 @@ export class Order {
   public chainId: number;
   public params: Types.OrderParams;
 
-  /**
-   *
-   * @param chainId The chain ID for the Ethereum network to be used. For example, 1 for Ethereum Mainnet and 4 for Rinkeby Testnet.
-   * @param params The order parameters obtained from an API or built locally.
-   */
   constructor(chainId: number, params: Types.OrderParams) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
 
     try {

@@ -117,7 +117,7 @@ describe("WyvernV2.3 - SingleTokenErc1155 V2", () => {
     expect(sellerErc1155BalanceBefore).to.eq(1);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder);
+    await exchange.fillOrder(seller, buyOrder, sellOrder);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const sellerWethBalanceAfter = await weth.getBalance(seller.address);

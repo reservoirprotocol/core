@@ -13,7 +13,8 @@ import { BaseOrderInfo } from "./builders/base";
 import { BundleOrder } from "./bundle-order";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, lc, n, s } from "../utils";
+import * as CommonAddresses from "../common/addresses";
+import { TxData, bn, generateReferrerBytes, lc, n, s } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -32,20 +33,21 @@ export class Exchange {
     taker: Signer,
     order: Order | BundleOrder,
     matchParams: Types.MatchParams,
-    recipient = AddressZero,
-    conduitKey = HashZero,
-    feesOnTop: {
-      amount: string;
-      recipient: BigNumberish;
-    }[] = []
+    options?: {
+      recipient?: string;
+      conduitKey?: string;
+      feesOnTop?: {
+        amount: string;
+        recipient: BigNumberish;
+      }[];
+      referrer?: string;
+    }
   ): Promise<TransactionResponse> {
     const tx = this.fillOrderTx(
       await taker.getAddress(),
       order,
       matchParams,
-      recipient,
-      conduitKey,
-      feesOnTop
+      options
     );
     return taker.sendTransaction(tx);
   }
@@ -54,20 +56,32 @@ export class Exchange {
     taker: string,
     order: Order | BundleOrder,
     matchParams: Types.MatchParams,
-    recipient = AddressZero,
-    conduitKey = HashZero,
-    feesOnTop: {
-      amount: string;
-      recipient: BigNumberish;
-    }[] = []
+    options?: {
+      recipient?: string;
+      conduitKey?: string;
+      feesOnTop?: {
+        amount: string;
+        recipient: BigNumberish;
+      }[];
+      referrer?: string;
+    }
   ): TxData {
+    const recipient = options?.recipient ?? AddressZero;
+    const conduitKey = options?.conduitKey ?? HashZero;
+    const feesOnTop = options?.feesOnTop ?? [];
+
     if (
       ["single-token", "contract-wide", "token-list"].includes(
         order.params.kind || ""
       )
     ) {
+      // Fill non-bundle orders
       order = order as Order;
-      let info = order.getInfo()!;
+
+      let info = order.getInfo();
+      if (!info) {
+        throw new Error("Could not get order info");
+      }
 
       if (info.side === "sell") {
         if (
@@ -81,9 +95,8 @@ export class Exchange {
           return {
             from: taker,
             to: this.contract.address,
-            data: this.contract.interface.encodeFunctionData(
-              "fulfillBasicOrder",
-              [
+            data:
+              this.contract.interface.encodeFunctionData("fulfillBasicOrder", [
                 {
                   considerationToken: info.paymentToken,
                   considerationIdentifier: "0",
@@ -117,34 +130,34 @@ export class Exchange {
                   ],
                   signature: order.params.signature!,
                 },
-              ]
-            ),
+              ]) + generateReferrerBytes(options?.referrer),
             value: bn(order.getMatchingPrice()).toHexString(),
           };
         } else {
-          // Use "standard" fullfillment
+          // Use "advanced" fullfillment
           return {
             from: taker,
             to: this.contract.address,
-            data: this.contract.interface.encodeFunctionData(
-              "fulfillAdvancedOrder",
-              [
-                {
-                  parameters: {
-                    ...order.params,
-                    totalOriginalConsiderationItems:
-                      order.params.consideration.length,
+            data:
+              this.contract.interface.encodeFunctionData(
+                "fulfillAdvancedOrder",
+                [
+                  {
+                    parameters: {
+                      ...order.params,
+                      totalOriginalConsiderationItems:
+                        order.params.consideration.length,
+                    },
+                    numerator: matchParams.amount || "1",
+                    denominator: info.amount,
+                    signature: order.params.signature!,
+                    extraData: "0x",
                   },
-                  numerator: matchParams.amount || "1",
-                  denominator: info.amount,
-                  signature: order.params.signature!,
-                  extraData: "0x",
-                },
-                matchParams.criteriaResolvers || [],
-                conduitKey,
-                recipient,
-              ]
-            ),
+                  matchParams.criteriaResolvers || [],
+                  conduitKey,
+                  recipient,
+                ]
+              ) + generateReferrerBytes(options?.referrer),
             value: bn(order.getMatchingPrice())
               .mul(matchParams.amount || "1")
               .div(info.amount)
@@ -163,9 +176,8 @@ export class Exchange {
           return {
             from: taker,
             to: this.contract.address,
-            data: this.contract.interface.encodeFunctionData(
-              "fulfillBasicOrder",
-              [
+            data:
+              this.contract.interface.encodeFunctionData("fulfillBasicOrder", [
                 {
                   considerationToken: info.contract,
                   considerationIdentifier: info.tokenId,
@@ -199,47 +211,46 @@ export class Exchange {
                   ],
                   signature: order.params.signature!,
                 },
-              ]
-            ),
+              ]) + generateReferrerBytes(options?.referrer),
           };
         } else {
-          // Use "standard" fulfillment
+          // Use "advanced" fulfillment
           return {
             from: taker,
             to: this.contract.address,
-            data: this.contract.interface.encodeFunctionData(
-              "fulfillAdvancedOrder",
-              [
-                {
-                  parameters: {
-                    ...order.params,
-                    totalOriginalConsiderationItems:
-                      order.params.consideration.length,
+            data:
+              this.contract.interface.encodeFunctionData(
+                "fulfillAdvancedOrder",
+                [
+                  {
+                    parameters: {
+                      ...order.params,
+                      totalOriginalConsiderationItems:
+                        order.params.consideration.length,
+                    },
+                    numerator: matchParams.amount || "1",
+                    denominator: info.amount,
+                    signature: order.params.signature!,
+                    extraData: "0x",
                   },
-                  numerator: matchParams.amount || "1",
-                  denominator: info.amount,
-                  signature: order.params.signature!,
-                  extraData: "0x",
-                },
-                matchParams.criteriaResolvers || [],
-                conduitKey,
-                recipient,
-              ]
-            ),
+                  matchParams.criteriaResolvers || [],
+                  conduitKey,
+                  recipient,
+                ]
+              ) + generateReferrerBytes(options?.referrer),
           };
         }
       }
     } else {
+      // Fill bundle orders
       order = order as BundleOrder;
 
-      const info = order.getInfo()!;
       if (order.params.kind === "bundle-ask") {
         return {
           from: taker,
           to: this.contract.address,
-          data: this.contract.interface.encodeFunctionData(
-            "fulfillAdvancedOrder",
-            [
+          data:
+            this.contract.interface.encodeFunctionData("fulfillAdvancedOrder", [
               {
                 parameters: {
                   ...order.params,
@@ -254,8 +265,7 @@ export class Exchange {
               matchParams.criteriaResolvers || [],
               conduitKey,
               recipient,
-            ]
-          ),
+            ]) + generateReferrerBytes(options?.referrer),
           value: bn(order.getMatchingPrice())
             .mul(matchParams.amount || "1")
             .toHexString(),
@@ -264,6 +274,108 @@ export class Exchange {
         throw new Error("Unsupported order kind");
       }
     }
+  }
+
+  // --- Batch fill orders ---
+
+  public async fillOrders(
+    taker: Signer,
+    orders: Order[],
+    matchParams: Types.MatchParams[],
+    options?: {
+      recipient?: string;
+      conduitKey?: string;
+      referrer?: string;
+      maxOrdersToFulfill?: number;
+    }
+  ): Promise<TransactionResponse> {
+    const tx = this.fillOrdersTx(
+      await taker.getAddress(),
+      orders,
+      matchParams,
+      options
+    );
+    return taker.sendTransaction(tx);
+  }
+
+  public fillOrdersTx(
+    taker: string,
+    orders: Order[],
+    matchParams: Types.MatchParams[],
+    options?: {
+      recipient?: string;
+      conduitKey?: string;
+      referrer?: string;
+      maxOrdersToFulfill?: number;
+    }
+  ): TxData {
+    const recipient = options?.recipient ?? AddressZero;
+    const conduitKey = options?.conduitKey ?? HashZero;
+
+    return {
+      from: taker,
+      to: this.contract.address,
+      data:
+        this.contract.interface.encodeFunctionData(
+          "fulfillAvailableAdvancedOrders",
+          [
+            orders.map((order, i) => ({
+              parameters: {
+                ...order.params,
+                totalOriginalConsiderationItems:
+                  order.params.consideration.length,
+              },
+              numerator: matchParams[i].amount || "1",
+              denominator: order.getInfo()!.amount,
+              signature: order.params.signature!,
+              extraData: "0x",
+            })),
+            matchParams
+              .map((m, i) =>
+                (m.criteriaResolvers ?? []).map((resolver) => ({
+                  ...resolver,
+                  orderIndex: i,
+                }))
+              )
+              .flat(),
+            // TODO: Optimize fulfillment components
+            orders
+              .map((order, i) =>
+                order.params.offer.map((_, j) => ({
+                  orderIndex: i,
+                  itemIndex: j,
+                }))
+              )
+              .flat()
+              .map((x) => [x]),
+            orders
+              .map((order, i) =>
+                order.params.consideration.map((_, j) => ({
+                  orderIndex: i,
+                  itemIndex: j,
+                }))
+              )
+              .flat()
+              .map((x) => [x]),
+            conduitKey,
+            recipient,
+            options?.maxOrdersToFulfill ?? 255,
+          ]
+        ) + generateReferrerBytes(options?.referrer),
+      value: bn(
+        orders
+          .filter((order) => {
+            const info = order.getInfo();
+            return (
+              info &&
+              info.side === "sell" &&
+              info.paymentToken === CommonAddresses.Eth[this.chainId]
+            );
+          })
+          .map((order) => order.getMatchingPrice())
+          .reduce((a, b) => bn(a).add(b), bn(0))
+      ).toHexString(),
+    };
   }
 
   // --- Cancel order ---

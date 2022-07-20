@@ -89,7 +89,7 @@ describe("ZeroEx V4 - ContractWide Erc1155", () => {
     expect(sellerNftBalanceBefore).to.eq(1);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder);
+    await exchange.fillOrder(seller, buyOrder, sellOrder);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
     const buyerNftBalanceAfter = await nft.getBalance(

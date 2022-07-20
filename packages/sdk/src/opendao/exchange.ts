@@ -6,7 +6,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, BytesEmpty } from "../utils";
+import { BytesEmpty, TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 import Erc721Abi from "../common/abis/Erc721.json";
@@ -14,38 +14,52 @@ import Erc1155Abi from "../common/abis/Erc1155.json";
 
 export class Exchange {
   public chainId: number;
+  public contract: Contract;
 
   constructor(chainId: number) {
-    if (chainId !== 1 && chainId !== 4) {
-      throw new Error("Unsupported chain id");
-    }
-
     this.chainId = chainId;
+    this.contract = new Contract(Addresses.Exchange[this.chainId], ExchangeAbi);
   }
 
-  public matchTransaction(
+  // --- Fill order ---
+
+  public async fillOrder(
+    taker: Signer,
+    order: Order,
+    matchParams: Types.MatchParams,
+    options?: {
+      noDirectTransfer?: boolean;
+      referrer?: string;
+    }
+  ): Promise<ContractTransaction> {
+    const tx = this.fillOrderTx(
+      await taker.getAddress(),
+      order,
+      matchParams,
+      options
+    );
+    return taker.sendTransaction(tx);
+  }
+
+  public fillOrderTx(
     taker: string,
     order: Order,
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
+      referrer?: string;
     }
   ): TxData {
-    const exchange = new Contract(
-      Addresses.Exchange[this.chainId],
-      ExchangeAbi
-    );
-
     const feeAmount = order.getFeeAmount();
 
-    let to = exchange.address;
+    let to = this.contract.address;
     let data: string;
     let value: BigNumber | undefined;
     if (order.params.kind?.startsWith("erc721")) {
       const erc721 = new Contract(order.params.nft, Erc721Abi);
       if (order.params.direction === Types.TradeDirection.BUY) {
         if (options?.noDirectTransfer) {
-          data = exchange.interface.encodeFunctionData("sellERC721", [
+          data = this.contract.interface.encodeFunctionData("sellERC721", [
             order.getRaw(),
             order.getRaw(),
             matchParams.nftId!,
@@ -58,7 +72,7 @@ export class Exchange {
             "safeTransferFrom(address,address,uint256,bytes)",
             [
               taker,
-              exchange.address,
+              this.contract.address,
               matchParams.nftId!,
               defaultAbiCoder.encode(
                 [Erc721OrderAbiType, SignatureAbiType, "bool"],
@@ -72,7 +86,7 @@ export class Exchange {
           );
         }
       } else {
-        data = exchange.interface.encodeFunctionData("buyERC721", [
+        data = this.contract.interface.encodeFunctionData("buyERC721", [
           order.getRaw(),
           order.getRaw(),
           BytesEmpty,
@@ -83,7 +97,7 @@ export class Exchange {
       const erc1155 = new Contract(order.params.nft, Erc1155Abi);
       if (order.params.direction === Types.TradeDirection.BUY) {
         if (options?.noDirectTransfer) {
-          data = exchange.interface.encodeFunctionData("sellERC1155", [
+          data = this.contract.interface.encodeFunctionData("sellERC1155", [
             order.getRaw(),
             order.getRaw(),
             matchParams.nftId!,
@@ -95,7 +109,7 @@ export class Exchange {
           to = erc1155.address;
           data = erc1155.interface.encodeFunctionData("safeTransferFrom", [
             taker,
-            exchange.address,
+            this.contract.address,
             matchParams.nftId!,
             matchParams.nftAmount!,
             defaultAbiCoder.encode(
@@ -109,7 +123,7 @@ export class Exchange {
           ]);
         }
       } else {
-        data = exchange.interface.encodeFunctionData("buyERC1155", [
+        data = this.contract.interface.encodeFunctionData("buyERC1155", [
           order.getRaw(),
           order.getRaw(),
           matchParams.nftAmount!,
@@ -130,100 +144,54 @@ export class Exchange {
     return {
       from: taker,
       to,
-      data,
+      data: data + generateReferrerBytes(options?.referrer),
       value: value && bn(value).toHexString(),
     };
   }
 
-  public async match(
+  // --- Batch fill listings ---
+
+  public async batchBuy(
     taker: Signer,
-    order: Order,
-    matchParams: Types.MatchParams
-  ): Promise<ContractTransaction | undefined> {
-    const exchange = new Contract(
-      Addresses.Exchange[this.chainId],
-      ExchangeAbi,
-      taker
-    );
-
-    const feeAmount = order.getFeeAmount();
-
-    if (order.params.kind?.startsWith("erc721")) {
-      const erc721 = new Contract(order.params.nft, Erc721Abi, taker);
-      if (order.params.direction === Types.TradeDirection.BUY) {
-        return erc721["safeTransferFrom(address,address,uint256,bytes)"](
-          await taker.getAddress(),
-          exchange.address,
-          matchParams.nftId!,
-          defaultAbiCoder.encode(
-            [Erc721OrderAbiType, SignatureAbiType, "bool"],
-            [order.getRaw(), order.getRaw(), true]
-          )
-        );
-      } else {
-        return exchange.buyERC721(order.getRaw(), order.getRaw(), BytesEmpty, {
-          // Buyer pays the fees
-          value: bn(order.params.erc20TokenAmount).add(feeAmount),
-        });
-      }
-    } else {
-      const erc1155 = new Contract(order.params.nft, Erc1155Abi, taker);
-      if (order.params.direction === Types.TradeDirection.BUY) {
-        return erc1155.safeTransferFrom(
-          await taker.getAddress(),
-          exchange.address,
-          matchParams.nftId!,
-          matchParams.nftAmount!,
-          defaultAbiCoder.encode(
-            [Erc1155OrderAbiType, SignatureAbiType, "bool"],
-            [order.getRaw(), order.getRaw(), true]
-          )
-        );
-      } else {
-        return exchange.buyERC1155(
-          order.getRaw(),
-          order.getRaw(),
-          matchParams.nftAmount!,
-          BytesEmpty,
-          {
-            value: bn(matchParams.nftAmount!)
-              .mul(order.params.erc20TokenAmount)
-              .add(order.params.nftAmount!)
-              .sub(1)
-              .div(order.params.nftAmount!)
-              // Buyer pays the fees
-              .add(
-                feeAmount
-                  .mul(matchParams.nftAmount!)
-                  .div(order.params.nftAmount!)
-              ),
-          }
-        );
-      }
+    orders: Order[],
+    matchParams: Types.MatchParams[],
+    options?: {
+      referrer?: string;
     }
+  ): Promise<ContractTransaction> {
+    const tx = this.batchBuyTx(
+      await taker.getAddress(),
+      orders,
+      matchParams,
+      options
+    );
+    return taker.sendTransaction(tx);
   }
 
-  public batchBuyTransaction(
+  public batchBuyTx(
     taker: string,
     orders: Order[],
-    matchParams: Types.MatchParams[]
+    matchParams: Types.MatchParams[],
+    options?: {
+      referrer?: string;
+    }
   ): TxData {
-    const exchange = new Contract(
-      Addresses.Exchange[this.chainId],
-      ExchangeAbi
-    );
-
     const sellOrders: any[] = [];
     const signatures: any[] = [];
-    const erc1155FillAmounts: string[] = [];
+    const fillAmounts: string[] = [];
     const callbackData: string[] = [];
+
+    const tokenKind = orders[0].params.kind?.split("-").at(-1);
+    if (!tokenKind) {
+      throw new Error("Could not detect token kind");
+    }
 
     let value = bn(0);
     for (let i = 0; i < Math.min(orders.length, matchParams.length); i++) {
       if (orders[i].params.direction !== Types.TradeDirection.SELL) {
         throw new Error("Invalid side");
       }
-      if (!orders[i].params.kind?.startsWith("erc1155")) {
+      if (orders[i].params.kind?.split("-").at(-1) !== tokenKind) {
         throw new Error("Invalid kind");
       }
 
@@ -244,118 +212,59 @@ export class Exchange {
 
       sellOrders.push(orders[i].getRaw());
       signatures.push(orders[i].getRaw());
-      erc1155FillAmounts.push(matchParams[i].nftAmount!);
+      fillAmounts.push(matchParams[i].nftAmount!);
       callbackData.push(BytesEmpty);
     }
 
     return {
       from: taker,
-      to: exchange.address,
-      data: exchange.interface.encodeFunctionData("batchBuyERC1155s", [
-        sellOrders,
-        signatures,
-        erc1155FillAmounts,
-        callbackData,
-        false,
-      ]),
+      to: this.contract.address,
+      data:
+        (tokenKind === "erc1155"
+          ? this.contract.interface.encodeFunctionData("batchBuyERC1155s", [
+              sellOrders,
+              signatures,
+              fillAmounts,
+              callbackData,
+              false,
+            ])
+          : this.contract.interface.encodeFunctionData("batchBuyERC721s", [
+              sellOrders,
+              signatures,
+              callbackData,
+              false,
+            ])) + generateReferrerBytes(options?.referrer),
       value: value && bn(value).toHexString(),
     };
   }
 
-  public async batchBuy(
-    taker: Signer,
-    orders: Order[],
-    matchParams: Types.MatchParams[]
-  ): Promise<ContractTransaction | undefined> {
-    const exchange = new Contract(
-      Addresses.Exchange[this.chainId],
-      ExchangeAbi,
-      taker
-    );
+  // --- Cancel order ---
 
-    const sellOrders: any[] = [];
-    const signatures: any[] = [];
-    const erc1155FillAmounts: string[] = [];
-    const callbackData: string[] = [];
-
-    let value = bn(0);
-    for (let i = 0; i < Math.min(orders.length, matchParams.length); i++) {
-      if (orders[i].params.direction !== Types.TradeDirection.SELL) {
-        throw new Error("Invalid side");
-      }
-      if (!orders[i].params.kind?.startsWith("erc1155")) {
-        throw new Error("Invalid kind");
-      }
-
-      const feeAmount = orders[i].getFeeAmount();
-      value = value.add(
-        bn(matchParams[i].nftAmount!)
-          .mul(orders[i].params.erc20TokenAmount)
-          .add(orders[i].params.nftAmount!)
-          .sub(1)
-          .div(orders[i].params.nftAmount!)
-          // Buyer pays the fees
-          .add(
-            feeAmount
-              .mul(matchParams[i].nftAmount!)
-              .div(orders[i].params.nftAmount!)
-          )
-      );
-
-      sellOrders.push(orders[i].getRaw());
-      signatures.push(orders[i].getRaw());
-      erc1155FillAmounts.push(matchParams[i].nftAmount!);
-      callbackData.push(BytesEmpty);
-    }
-
-    return exchange.batchBuyERC1155s(
-      sellOrders,
-      signatures,
-      erc1155FillAmounts,
-      callbackData,
-      false,
-      { value }
-    );
+  public async cancelOrder(
+    maker: Signer,
+    order: Order
+  ): Promise<ContractTransaction> {
+    const tx = this.cancelOrderTx(await maker.getAddress(), order);
+    return maker.sendTransaction(tx);
   }
 
-  public cancelTransaction(maker: string, order: Order): TxData {
-    const exchange = new Contract(
-      Addresses.Exchange[this.chainId],
-      ExchangeAbi as any
-    );
-
+  public cancelOrderTx(maker: string, order: Order): TxData {
     let data: string;
     if (order.params.kind?.startsWith("erc721")) {
-      data = exchange.interface.encodeFunctionData("cancelERC721Order", [
+      data = this.contract.interface.encodeFunctionData("cancelERC721Order", [
         order.params.nonce,
       ]);
     } else {
-      data = exchange.interface.encodeFunctionData("cancelERC1155Order", [
+      data = this.contract.interface.encodeFunctionData("cancelERC1155Order", [
         order.params.nonce,
       ]);
     }
 
     return {
       from: maker,
-      to: exchange.address,
+      to: this.contract.address,
       data,
     };
-  }
-
-  public async cancel(
-    maker: Signer,
-    order: Order
-  ): Promise<ContractTransaction> {
-    const exchange = new Contract(
-      Addresses.Exchange[this.chainId],
-      ExchangeAbi as any
-    ).connect(maker);
-
-    if (order.params.kind?.startsWith("erc721")) {
-      return exchange.cancelERC721Order(order.params.nonce);
-    } else {
-      return exchange.cancelERC1155Order(order.params.nonce);
-    }
   }
 }
 

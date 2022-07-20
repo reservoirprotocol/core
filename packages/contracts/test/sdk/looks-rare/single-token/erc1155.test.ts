@@ -91,7 +91,7 @@ describe("LooksRare - SingleToken Erc1155", () => {
     expect(ownerBalanceBefore).to.eq(1);
 
     // Match orders
-    await exchange.match(seller, buyOrder, sellOrder);
+    await exchange.fillOrder(seller, buyOrder, sellOrder);
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
     const sellerBalanceAfter = await weth.getBalance(seller.address);
@@ -159,7 +159,7 @@ describe("LooksRare - SingleToken Erc1155", () => {
     expect(ownerBalanceBefore).to.eq(1);
 
     // Match orders
-    await exchange.match(buyer, sellOrder, buyOrder);
+    await exchange.fillOrder(buyer, sellOrder, buyOrder);
 
     const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
     const sellerBalanceAfter = await weth.getBalance(seller.address);
