@@ -28,8 +28,9 @@ export const s = (x: any) => (x ? String(x) : x);
 
 // Misc
 
+// Use the ASCII US (unit separator) character (code = 31) as a delimiter
 export const generateReferrerBytes = (referrer?: string) =>
-  referrer ? `69${Buffer.from(toUtf8Bytes(referrer)).toString("hex")}69` : "";
+  referrer ? `1f${Buffer.from(toUtf8Bytes(referrer)).toString("hex")}1f` : "";
 
 // Types
 
