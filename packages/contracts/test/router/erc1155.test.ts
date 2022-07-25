@@ -156,8 +156,25 @@ describe("Router - filling ERC1155", () => {
       Sdk.WyvernV23.Addresses.TokenTransferProxy[chainId]
     );
 
+    // Approve the token transfer proxy for the seller
+    await weth.approve(
+      seller,
+      Sdk.WyvernV23.Addresses.TokenTransferProxy[chainId]
+    );
+
     // Mint erc1155 to seller
     await erc1155.connect(seller).mint(boughtTokenId);
+
+    // Register user proxy for the seller
+    const proxyRegistry = new Sdk.WyvernV23.Helpers.ProxyRegistry(
+      ethers.provider,
+      chainId
+    );
+    await proxyRegistry.registerProxy(seller);
+    const proxy = await proxyRegistry.getProxy(seller.address);
+
+    // Approve the user proxy
+    await erc1155.connect(seller).setApprovalForAll(proxy, true);
 
     const exchange = new Sdk.WyvernV23.Exchange(chainId);
     const builder = new Sdk.WyvernV23.Builders.Erc1155.SingleToken.V2(chainId);
@@ -429,6 +446,14 @@ describe("Router - filling ERC1155", () => {
     // Mint erc1155 to seller
     await erc1155.connect(seller).mint(boughtTokenId);
 
+    // Approve the transfer proxy
+    await erc1155
+      .connect(seller)
+      .setApprovalForAll(
+        Sdk.LooksRare.Addresses.TransferManagerErc1155[chainId],
+        true
+      );
+
     const exchange = new Sdk.LooksRare.Exchange(chainId);
     const builder = new Sdk.LooksRare.Builders.SingleToken(chainId);
 
@@ -678,10 +703,15 @@ describe("Router - filling ERC1155", () => {
     await weth.deposit(buyer, price);
 
     // Approve the exchange contract for the buyer
-    await weth.approve(buyer, Sdk.ZeroExV4.Addresses.Exchange[1]);
+    await weth.approve(buyer, Sdk.ZeroExV4.Addresses.Exchange[chainId]);
 
     // Mint erc1155 to seller
     await erc1155.connect(seller).mint(boughtTokenId);
+
+    // Approve the exchange
+    await erc1155
+      .connect(seller)
+      .setApprovalForAll(Sdk.ZeroExV4.Addresses.Exchange[chainId], true);
 
     const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
 
