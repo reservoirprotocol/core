@@ -569,9 +569,10 @@ export class Router {
     taker: string,
     options?: { noRouter?: boolean }
   ): Promise<{ tx: TxData; exchangeKind: ExchangeKind }> {
-    // In all below cases we set the router contract as the taker
-    // since forwarding any received token to the actual taker of
-    // the order will be done on-chain by the router.
+    // When filling through the router, in all below cases we set
+    // the router contract as the taker since forwarding received
+    // tokens to the actual taker of the order will be taken care
+    // of on-chain by the router.
 
     const filler = options?.noRouter ? taker : this.contract.address;
 
@@ -585,7 +586,7 @@ export class Router {
 
       const exchange = new Sdk.LooksRare.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(taker, order, matchParams),
+        tx: exchange.fillOrderTx(filler, order, matchParams),
         exchangeKind: ExchangeKind.LOOKS_RARE,
       };
     } else if (kind === "opendao") {
@@ -600,7 +601,7 @@ export class Router {
 
       const exchange = new Sdk.OpenDao.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(taker, order, matchParams, {
+        tx: exchange.fillOrderTx(filler, order, matchParams, {
           // Do not use the `onReceived` hook filling to be compatible with the router
           noDirectTransfer: true,
         }),
@@ -614,6 +615,7 @@ export class Router {
         nonce: 0,
         ...(extraArgs || {}),
       });
+
       // Set the listing time in the past so that on-chain validation passes
       matchParams.params.listingTime = await this.provider
         .getBlock("latest")
@@ -621,7 +623,7 @@ export class Router {
 
       const exchange = new Sdk.WyvernV23.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(taker, order, matchParams),
+        tx: exchange.fillOrderTx(filler, order, matchParams),
         exchangeKind: ExchangeKind.WYVERN_V23,
       };
     } else if (kind === "zeroex-v4") {
@@ -636,7 +638,7 @@ export class Router {
 
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(taker, order, matchParams, {
+        tx: exchange.fillOrderTx(filler, order, matchParams, {
           // Do not use the `onReceived` hook filling to be compatible with the router
           noDirectTransfer: true,
         }),

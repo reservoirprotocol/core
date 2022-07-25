@@ -146,6 +146,12 @@ describe("Router - filling ERC721", () => {
       Sdk.WyvernV23.Addresses.TokenTransferProxy[chainId]
     );
 
+    // Approve the token transfer proxy for the seller
+    await weth.approve(
+      seller,
+      Sdk.WyvernV23.Addresses.TokenTransferProxy[chainId]
+    );
+
     // Mint erc721 to seller
     await erc721.connect(seller).mint(boughtTokenId);
 
@@ -362,6 +368,82 @@ describe("Router - filling ERC721", () => {
     await expect(buyer.sendTransaction(tx)).to.be.revertedWith(
       "reverted with custom error 'UnexpectedOwnerOrBalance()'"
     );
+  });
+
+  it("Seaport - fill bid", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const feeRecipient = carol;
+
+    const price = parseEther("1");
+    const fee = parseEther("0.1");
+    const boughtTokenId = 0;
+
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price);
+
+    // Approve the exchange for the buyer
+    await weth.approve(buyer, Sdk.Seaport.Addresses.Exchange[chainId]);
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(boughtTokenId);
+
+    // Approve the exchange for the seller
+    await erc721
+      .connect(seller)
+      .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
+
+    const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
+
+    // Build buy order
+    let buyOrder = builder.build({
+      offerer: buyer.address,
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: boughtTokenId,
+      side: "buy",
+      price,
+      paymentToken: Sdk.Common.Addresses.Weth[chainId],
+      fees: [
+        {
+          amount: fee,
+          recipient: feeRecipient.address,
+        },
+      ],
+      counter: 0,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+    await buyOrder.sign(buyer);
+
+    const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
+    const ownerBefore = await erc721.ownerOf(boughtTokenId);
+    expect(ownerBefore).to.eq(seller.address);
+
+    const tx = await router.fillBidTx(
+      {
+        kind: "seaport",
+        contractKind: "erc721",
+        contract: erc721.address,
+        tokenId: boughtTokenId.toString(),
+        order: buyOrder,
+      },
+      seller.address,
+      {
+        referrer: "reservoir.market",
+      }
+    );
+    await seller.sendTransaction(tx);
+
+    const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
+    const ownerAfter = await erc721.ownerOf(boughtTokenId);
+    expect(buyerWethBalanceBefore.sub(buyerWethBalanceAfter)).to.eq(price);
+    expect(ownerAfter).to.eq(buyer.address);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(await weth.getBalance(router.contract.address)).to.eq(0);
   });
 
   it("LooksRare - fill listing", async () => {
