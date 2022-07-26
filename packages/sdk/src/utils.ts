@@ -1,6 +1,6 @@
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { randomBytes } from "@ethersproject/random";
-import { toUtf8Bytes } from "@ethersproject/strings";
+import { toUtf8Bytes, toUtf8String } from "@ethersproject/strings";
 
 // Constants
 
@@ -29,8 +29,27 @@ export const s = (x: any) => (x ? String(x) : x);
 // Misc
 
 // Use the ASCII US (unit separator) character (code = 31) as a delimiter
+const SEPARATOR = "1f";
+
 export const generateReferrerBytes = (referrer?: string) =>
-  referrer ? `1f${Buffer.from(toUtf8Bytes(referrer)).toString("hex")}1f` : "";
+  referrer
+    ? `${SEPARATOR}${Buffer.from(toUtf8Bytes(referrer)).toString(
+        "hex"
+      )}${SEPARATOR}`
+    : "";
+
+export const getReferrer = (calldata: string) => {
+  if (calldata.endsWith(SEPARATOR)) {
+    const index = calldata.slice(0, -2).lastIndexOf(SEPARATOR);
+    // If we cannot find the separated referrer string within the last
+    // 32 bytes of the calldata, we simply assume it is missing
+    if (index === -1 || calldata.length - index - 5 > 64) {
+      return undefined;
+    } else {
+      return toUtf8String("0x" + calldata.slice(index + 2, -2));
+    }
+  }
+};
 
 // Types
 
