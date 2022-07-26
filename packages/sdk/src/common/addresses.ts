@@ -34,37 +34,52 @@ export const Weth: ChainIdToAddress = {
   [Network.AvalancheFuji]: "0x1d308089a2d1ced3f1ce36b1fcaf815b07217be3",
 };
 
+// TODO: Include addresses across all supported chains
+export const Usdc: ChainIdToAddress = {
+  [Network.Ethereum]: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  [Network.EthereumKovan]: "0xb7a4f3e9097c08da09517b5ab877f7a917224ede",
+  [Network.Optimism]: "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
+};
+
 export const Routers: ChainIdToAddressMap = {
   [Network.Ethereum]: {
+    // Element
+    "0x69cf8871f61fb03f540bc519dd1f1d4682ea0bf6": "element.market",
     // Gem
-    "0x0000000031f7382a812c64b604da4fc520afef4b": "gem",
-    "0xf24629fbb477e10f2cf331c2b7452d8596b5c7a5": "gem",
-    "0x83c8f28c26bf6aaca652df1dbbe0e1b56f8baba2": "gem",
-    "0x0000000035634b55f3d99b071b5a354f48e10bef": "gem",
-    "0x00000000a50bb64b4bbeceb18715748dface08af": "gem",
-    "0xae9c73fd0fd237c1c6f66fe009d24ce969e98704": "gem",
+    "0x0000000031f7382a812c64b604da4fc520afef4b": "gem.xyz",
+    "0xf24629fbb477e10f2cf331c2b7452d8596b5c7a5": "gem.xyz",
+    "0x83c8f28c26bf6aaca652df1dbbe0e1b56f8baba2": "gem.xyz",
+    "0x0000000035634b55f3d99b071b5a354f48e10bef": "gem.xyz",
+    "0x00000000a50bb64b4bbeceb18715748dface08af": "gem.xyz",
+    "0xae9c73fd0fd237c1c6f66fe009d24ce969e98704": "gem.xyz",
     // Genie
-    "0x0a267cf51ef038fc00e71801f5a524aec06e4f07": "genie",
-    "0x2af4b707e1dce8fc345f38cfeeaa2421e54976d5": "genie",
-    "0x31837aaf36961274a04b915697fdfca1af31a0c7": "genie",
+    "0x0a267cf51ef038fc00e71801f5a524aec06e4f07": "genie.xyz",
+    "0x2af4b707e1dce8fc345f38cfeeaa2421e54976d5": "genie.xyz",
+    "0xcdface5643b90ca4b3160dd2b5de80c1bf1cb088": "genie.xyz",
+    "0x31837aaf36961274a04b915697fdfca1af31a0c7": "genie.xyz",
+    "0xf97e9727d8e7db7aa8f006d1742d107cf9411412": "genie.xyz",
+    // NFTInit
+    "0x7f6cdf5869bd780ea351df4d841f68d73cbcc16b": "nftinit.com",
+    // Rarible
+    "0x2a7251d1e7d708c507b1b0d3ff328007beecce5d": "rarible.com",
     // Reservoir
-    "0xc52b521b284792498c1036d4c2ed4b73387b3859": "reservoir",
-    "0x5aa9ca240174a54af6d9bfc69214b2ed948de86d": "reservoir",
-    "0x7c9733b19e14f37aca367fbd78922c098c55c874": "reservoir",
-    "0x8005488ff4f8982d2d8c1d602e6d747b1428dd41": "reservoir",
+    "0xc52b521b284792498c1036d4c2ed4b73387b3859": "reservoir.market",
+    "0x5aa9ca240174a54af6d9bfc69214b2ed948de86d": "reservoir.market",
+    "0x7c9733b19e14f37aca367fbd78922c098c55c874": "reservoir.market",
+    "0x8005488ff4f8982d2d8c1d602e6d747b1428dd41": "reservoir.market",
+    // X2Y2
+    "0x56dd5bbede9bfdb10a2845c4d70d4a2950163044": "x2y2.io",
   },
   [Network.EthereumRinkeby]: {
     // Reservoir
-    "0xa5c0c6c024460b039b917a77eb564da5817c55e2": "reservoir",
-    "0x060ef49d2f5d7038cc7397936641feb7c5ae3679": "reservoir",
-    "0xf2418e0c7118df2468fa786606c3e5b68088adbc": "reservoir",
-    "0xc226bb0a5ebb944df0b18e85e9800d463c5afe3f": "reservoir",
+    "0xa5c0c6c024460b039b917a77eb564da5817c55e2": "reservoir.market",
+    "0x060ef49d2f5d7038cc7397936641feb7c5ae3679": "reservoir.market",
+    "0xf2418e0c7118df2468fa786606c3e5b68088adbc": "reservoir.market",
+    "0xc226bb0a5ebb944df0b18e85e9800d463c5afe3f": "reservoir.market",
+    "0x0857cc569a239c4e2f7abb5168408d92fb8d63ae": "reservoir.market",
   },
-};
-
-// TODO: Include addresses across all supported chains
-export const Usdc: ChainIdToAddress = {
-  1: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-  10: "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
-  42: "0xb7a4f3e9097c08da09517b5ab877f7a917224ede",
+  [Network.EthereumGoerli]: {
+    // Reservoir
+    "0xf44caa746d184e6fba3071e8adbf9c041620fe44": "reservoir.market",
+  },
 };
