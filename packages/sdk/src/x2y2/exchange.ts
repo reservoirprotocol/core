@@ -1,5 +1,8 @@
+import { defaultAbiCoder } from "@ethersproject/abi";
 import { Signer } from "@ethersproject/abstract-signer";
+import { arrayify } from "@ethersproject/bytes";
 import { Contract } from "@ethersproject/contracts";
+import { keccak256 } from "@ethersproject/keccak256";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
@@ -26,7 +29,7 @@ export class Exchange {
     order: Order,
     options?: { referrer?: string }
   ) {
-    const tx = await this.fillOrderTx(await taker.getAddress(), order);
+    const tx = await this.fillOrderTx(await taker.getAddress(), order, options);
     return taker.sendTransaction(tx);
   }
 
@@ -70,5 +73,52 @@ export class Exchange {
     };
   }
 
-  // TODO: Add support for cancelling orders
+  // --- Cancel order ---
+
+  public async cancelOrder(maker: Signer, order: Order) {
+    const tx = await this.cancelOrderTx(maker, order);
+    return maker.sendTransaction(tx);
+  }
+
+  public async cancelOrderTx(maker: Signer, order: Order): Promise<TxData> {
+    const signMessage = keccak256("0x");
+    const sign = await maker.signMessage(arrayify(signMessage));
+
+    const response = await axios.post(
+      "https://api.x2y2.org/api/orders/cancel",
+      {
+        caller: maker,
+        // CANCEL_OFFER
+        op: 3,
+        items: [{ orderId: order.params.id }],
+        sign_message: signMessage,
+        sign,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": this.apiKey,
+        },
+      }
+    );
+
+    const input = defaultAbiCoder.decode(
+      [
+        "(bytes32[] itemHashes, uint256 deadline, uint8 v, bytes32 r, bytes32 s)",
+      ],
+      response.data.input
+    )[0];
+
+    return {
+      from: await maker.getAddress(),
+      data: this.contract.interface.encodeFunctionData("cancel", [
+        input.itemHashes,
+        input.deadline,
+        input.v,
+        input.r,
+        input.s,
+      ]),
+      to: this.contract.address,
+    };
+  }
 }
