@@ -69,4 +69,6 @@ export class Exchange {
       value: bn(order.params.price).toHexString(),
     };
   }
+
+  // TODO: Add support for cancelling orders
 }
