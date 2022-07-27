@@ -388,7 +388,7 @@ export class Router {
   public async fillBidTx(
     detail: BidDetails,
     taker: string,
-    options?: { referrer?: string; noDirectFilling?: string }
+    options?: { referrer?: string; noDirectFilling?: boolean }
   ) {
     // Assume the bid details are consistent with the underlying order object
 
