@@ -133,7 +133,7 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
 
     // Terminology:
     // - "single" -> buy single token
-    // - "batch" -> buy multiple tokens (natively, only 0xv4 and Seaport support this)
+    // - "batch" -> buy multiple tokens (natively, only 0xv4, Seaport and X2Y2 support this)
     // - "multi" -> buy multiple tokens (via the router)
 
     function singleERC721ListingFill(

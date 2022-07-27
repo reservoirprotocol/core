@@ -122,7 +122,7 @@ const deployV5_0_0 = async () => {
 
   const router = await ethers
     .getContractFactory("ReservoirV5_0_0", deployer)
-    .then((factory) => factory.deploy(...args, { gasLimit: 10000000 }));
+    .then((factory) => factory.deploy(...args));
   console.log(`"ReservoirV5_0_0" was deployed at address ${router.address}`);
 
   await new Promise((resolve) => setTimeout(resolve, 60 * 1000));
