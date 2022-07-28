@@ -388,67 +388,65 @@ export class Router {
   public async fillBidTx(
     detail: BidDetails,
     taker: string,
-    options?: { referrer?: string; noDirectFilling?: boolean }
+    options?: {
+      referrer?: string;
+    }
   ) {
     // Assume the bid details are consistent with the underlying order object
 
-    if (options?.noDirectFilling) {
-      const { tx, exchangeKind } = await this.generateNativeBidFillTx(
-        detail,
-        taker
-      );
+    const { tx, exchangeKind } = await this.generateNativeBidFillTx(detail);
 
-      // Wrap the exchange-specific fill transaction via the router
-      // (use the `onReceived` hooks for single token filling)
-      if (detail.contractKind === "erc721") {
-        return {
-          from: taker,
-          to: detail.contract,
-          data:
-            new Interface(Erc721Abi).encodeFunctionData(
-              "safeTransferFrom(address,address,uint256,bytes)",
-              [
-                taker,
-                this.contract.address,
-                detail.tokenId,
-                this.contract.interface.encodeFunctionData(
-                  "singleERC721BidFill",
-                  [tx.data, exchangeKind, detail.contract, taker, true]
-                ),
-              ]
-            ) + generateReferrerBytes(options?.referrer),
-        };
-      } else {
-        return {
-          from: taker,
-          to: detail.contract,
-          data:
-            new Interface(Erc1155Abi).encodeFunctionData(
-              "safeTransferFrom(address,address,uint256,uint256,bytes)",
-              [
-                taker,
-                this.contract.address,
-                detail.tokenId,
-                // TODO: Support selling a quantity greater than 1
-                1,
-                this.contract.interface.encodeFunctionData(
-                  "singleERC1155BidFill",
-                  [tx.data, exchangeKind, detail.contract, taker, true]
-                ),
-              ]
-            ) + generateReferrerBytes(options?.referrer),
-        };
-      }
-    } else {
-      const { tx } = await this.generateNativeBidFillTx(detail, taker, {
-        noRouter: true,
-      });
-
+    // Wrap the exchange-specific fill transaction via the router
+    // (use the `onReceived` hooks for single token filling)
+    if (detail.contractKind === "erc721") {
       return {
-        ...tx,
-        data: tx.data + generateReferrerBytes(options?.referrer),
+        from: taker,
+        to: detail.contract,
+        data:
+          new Interface(Erc721Abi).encodeFunctionData(
+            "safeTransferFrom(address,address,uint256,bytes)",
+            [
+              taker,
+              this.contract.address,
+              detail.tokenId,
+              this.contract.interface.encodeFunctionData(
+                "singleERC721BidFill",
+                [tx.data, exchangeKind, detail.contract, taker, true]
+              ),
+            ]
+          ) + generateReferrerBytes(options?.referrer),
+      };
+    } else {
+      return {
+        from: taker,
+        to: detail.contract,
+        data:
+          new Interface(Erc1155Abi).encodeFunctionData(
+            "safeTransferFrom(address,address,uint256,uint256,bytes)",
+            [
+              taker,
+              this.contract.address,
+              detail.tokenId,
+              // TODO: Support selling a quantity greater than 1
+              1,
+              this.contract.interface.encodeFunctionData(
+                "singleERC1155BidFill",
+                [tx.data, exchangeKind, detail.contract, taker, true]
+              ),
+            ]
+          ) + generateReferrerBytes(options?.referrer),
       };
     }
+
+    // Direct filling (requires approval):
+    // const { tx } = await this.generateNativeBidFillTx(detail, taker, {
+    //   noRouter: true,
+    // });
+
+    // return {
+    //   ...tx,
+    //   data: tx.data + generateReferrerBytes(options?.referrer),
+    // };
   }
 
   private async generateNativeListingFillTx(
@@ -564,17 +562,18 @@ export class Router {
     throw new Error("Unreachable");
   }
 
-  private async generateNativeBidFillTx(
-    { kind, order, tokenId, extraArgs }: BidDetails,
-    taker: string,
-    options?: { noRouter?: boolean }
-  ): Promise<{ tx: TxData; exchangeKind: ExchangeKind }> {
+  private async generateNativeBidFillTx({
+    kind,
+    order,
+    tokenId,
+    extraArgs,
+  }: BidDetails): Promise<{ tx: TxData; exchangeKind: ExchangeKind }> {
     // When filling through the router, in all below cases we set
     // the router contract as the taker since forwarding received
     // tokens to the actual taker of the order will be taken care
     // of on-chain by the router.
 
-    const filler = options?.noRouter ? taker : this.contract.address;
+    const filler = this.contract.address;
 
     if (kind === "looks-rare") {
       order = order as Sdk.LooksRare.Order;
@@ -655,7 +654,15 @@ export class Router {
 
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(filler, order, matchParams),
+        tx: exchange.fillOrderTx(
+          filler,
+          order,
+          matchParams,
+          // Force using `fulfillAdvancedOrder` to pass router selector whitelist
+          {
+            recipient: filler,
+          }
+        ),
         exchangeKind: ExchangeKind.SEAPORT,
       };
     }
