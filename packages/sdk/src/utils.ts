@@ -39,15 +39,19 @@ export const generateReferrerBytes = (referrer?: string) =>
     : "";
 
 export const getReferrer = (calldata: string) => {
-  if (calldata.endsWith(SEPARATOR)) {
-    const index = calldata.slice(0, -2).lastIndexOf(SEPARATOR);
-    // If we cannot find the separated referrer string within the last
-    // 32 bytes of the calldata, we simply assume it is missing
-    if (index === -1 || calldata.length - index - 5 > 64) {
-      return undefined;
-    } else {
-      return toUtf8String("0x" + calldata.slice(index + 2, -2));
+  try {
+    if (calldata.endsWith(SEPARATOR)) {
+      const index = calldata.slice(0, -2).lastIndexOf(SEPARATOR);
+      // If we cannot find the separated referrer string within the last
+      // 32 bytes of the calldata, we simply assume it is missing
+      if (index === -1 || calldata.length - index - 5 > 64) {
+        return undefined;
+      } else {
+        return toUtf8String("0x" + calldata.slice(index + 2, -2));
+      }
     }
+  } catch {
+    return undefined;
   }
 };
 
