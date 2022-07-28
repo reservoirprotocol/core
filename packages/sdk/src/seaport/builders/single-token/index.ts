@@ -34,12 +34,14 @@ export class SingleTokenBuilder extends BaseBuilder {
         const fees: {
           recipient: string;
           amount: BigNumberish;
+          endAmount?: BigNumberish;
         }[] = [];
 
         const c = order.params.consideration;
 
         const paymentToken = c[0].token;
-        let price = bn(c[0].startAmount);
+        const price = bn(c[0].startAmount);
+        const endPrice = bn(c[0].endAmount);
         for (let i = 1; i < c.length; i++) {
           // Seaport private listings have the last consideration item match the offer item
           if (
@@ -54,6 +56,7 @@ export class SingleTokenBuilder extends BaseBuilder {
             fees.push({
               recipient: c[i].recipient,
               amount: c[i].startAmount,
+              endAmount: c[i].endAmount,
             });
           }
         }
@@ -66,6 +69,7 @@ export class SingleTokenBuilder extends BaseBuilder {
           amount,
           paymentToken,
           price: s(price),
+          endPrice: s(endPrice),
           fees,
           isDynamic,
           taker,
@@ -180,15 +184,15 @@ export class SingleTokenBuilder extends BaseBuilder {
             token: CommonAddresses.Eth[this.chainId],
             identifierOrCriteria: "0",
             startAmount: s(params.price),
-            endAmount: s(params.price),
+            endAmount: s(params.endPrice ?? params.price),
             recipient: params.offerer,
           },
-          ...(params.fees || []).map(({ amount, recipient }) => ({
+          ...(params.fees || []).map(({ amount, endAmount, recipient }) => ({
             itemType: Types.ItemType.NATIVE,
             token: CommonAddresses.Eth[this.chainId],
             identifierOrCriteria: "0",
             startAmount: s(amount),
-            endAmount: s(amount),
+            endAmount: s(endAmount ?? amount),
             recipient,
           })),
           ...(params.taker && params.taker !== AddressZero

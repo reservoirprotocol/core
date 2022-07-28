@@ -2,6 +2,7 @@ import * as Common from "./common";
 import * as Foundation from "./foundation";
 import * as LooksRare from "./looks-rare";
 import * as OpenDao from "./opendao";
+import * as Rarible from "./rarible";
 import * as Seaport from "./seaport";
 import * as WyvernV2 from "./wyvern-v2";
 import * as WyvernV23 from "./wyvern-v2.3";
@@ -15,6 +16,7 @@ export {
   Foundation,
   LooksRare,
   OpenDao,
+  Rarible,
   Seaport,
   WyvernV2,
   WyvernV23,

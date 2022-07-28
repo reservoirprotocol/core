@@ -11,10 +11,12 @@ export interface BaseBuildParams {
   tokenKind: "erc721" | "erc1155";
   contract: string;
   price: BigNumberish;
+  endPrice?: BigNumberish;
   paymentToken: string;
   fees?: {
     recipient: string;
     amount: BigNumberish;
+    endAmount?: BigNumberish;
   }[];
   counter: BigNumberish;
   taker?: string;
@@ -38,9 +40,11 @@ export interface BaseOrderInfo {
   amount: string;
   paymentToken: string;
   price: string;
+  endPrice?: string;
   fees: {
     recipient: string;
     amount: BigNumberish;
+    endAmount?: BigNumberish;
   }[];
   // For supporting dutch auctions
   isDynamic?: boolean;
