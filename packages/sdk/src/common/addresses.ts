@@ -63,24 +63,24 @@ export const Routers: ChainIdToAddressMap = {
     // Rarible
     "0x2a7251d1e7d708c507b1b0d3ff328007beecce5d": "rarible.com",
     // Reservoir
-    "0xc52b521b284792498c1036d4c2ed4b73387b3859": "reservoir.market",
-    "0x5aa9ca240174a54af6d9bfc69214b2ed948de86d": "reservoir.market",
-    "0x7c9733b19e14f37aca367fbd78922c098c55c874": "reservoir.market",
-    "0x8005488ff4f8982d2d8c1d602e6d747b1428dd41": "reservoir.market",
-    "0x9ebfb53fa8526906738856848a27cb11b0285c3f": "reservoir.market",
+    "0xc52b521b284792498c1036d4c2ed4b73387b3859": "reservoir.tools",
+    "0x5aa9ca240174a54af6d9bfc69214b2ed948de86d": "reservoir.tools",
+    "0x7c9733b19e14f37aca367fbd78922c098c55c874": "reservoir.tools",
+    "0x8005488ff4f8982d2d8c1d602e6d747b1428dd41": "reservoir.tools",
+    "0x9ebfb53fa8526906738856848a27cb11b0285c3f": "reservoir.tools",
     // X2Y2
     "0x56dd5bbede9bfdb10a2845c4d70d4a2950163044": "x2y2.io",
   },
   [Network.EthereumRinkeby]: {
     // Reservoir
-    "0xa5c0c6c024460b039b917a77eb564da5817c55e2": "reservoir.market",
-    "0x060ef49d2f5d7038cc7397936641feb7c5ae3679": "reservoir.market",
-    "0xf2418e0c7118df2468fa786606c3e5b68088adbc": "reservoir.market",
-    "0xc226bb0a5ebb944df0b18e85e9800d463c5afe3f": "reservoir.market",
-    "0x0857cc569a239c4e2f7abb5168408d92fb8d63ae": "reservoir.market",
+    "0xa5c0c6c024460b039b917a77eb564da5817c55e2": "reservoir.tools",
+    "0x060ef49d2f5d7038cc7397936641feb7c5ae3679": "reservoir.tools",
+    "0xf2418e0c7118df2468fa786606c3e5b68088adbc": "reservoir.tools",
+    "0xc226bb0a5ebb944df0b18e85e9800d463c5afe3f": "reservoir.tools",
+    "0x0857cc569a239c4e2f7abb5168408d92fb8d63ae": "reservoir.tools",
   },
   [Network.EthereumGoerli]: {
     // Reservoir
-    "0xf44caa746d184e6fba3071e8adbf9c041620fe44": "reservoir.market",
+    "0xf44caa746d184e6fba3071e8adbf9c041620fe44": "reservoir.tools",
   },
 };
