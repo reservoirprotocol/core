@@ -37,7 +37,7 @@ export class Router {
         bps: number | string;
       };
       skipPrecheck?: boolean;
-      noDirectFilling?: boolean;
+      forceRouter?: boolean;
       partial?: boolean;
     }
   ): Promise<TxData> {
@@ -64,7 +64,7 @@ export class Router {
       // TODO: Look into using tips for fees on top (only doable on Seaport)
       (!options?.fee || Number(options.fee.bps) === 0) &&
       // Skip direct filling if disabled via the options
-      !options?.noDirectFilling
+      !options?.forceRouter
     ) {
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       if (details.length === 1) {
