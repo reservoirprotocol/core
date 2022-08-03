@@ -11,6 +11,7 @@ import * as ZeroExV4 from "./zeroex-v4";
 import * as Element from "./element";
 import * as Zora from "./zora";
 import * as SuperRare from "./superrare";
+import * as CryptoPunks from "./cryptopunks";
 
 import * as Router from "./router";
 
@@ -29,4 +30,5 @@ export {
   Element,
   Zora,
   SuperRare,
+  CryptoPunks,
 };
