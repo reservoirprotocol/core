@@ -493,6 +493,7 @@ export class Exchange {
               .map((c) => bn(c.amount))
               .reduce((a, b) => a.add(b))
               .toString(),
+            side: "sell",
           };
         } else {
           // Bid got filled
@@ -518,6 +519,7 @@ export class Exchange {
             amount: mainConsideration.amount,
             paymentToken: nSpentItems[0].token,
             price: nSpentItems[0].amount,
+            side: "buy",
           };
         }
       }
