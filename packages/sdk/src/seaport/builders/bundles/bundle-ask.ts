@@ -10,7 +10,7 @@ import { BundleOrder } from "../../bundle-order";
 import * as Types from "../../types";
 import { bn, s } from "../../../utils";
 
-interface BundleAskOrderInfo extends BaseBundleOrderInfo {
+export interface BundleAskOrderInfo extends BaseBundleOrderInfo {
   paymentToken: string;
   price: string;
   fees: {

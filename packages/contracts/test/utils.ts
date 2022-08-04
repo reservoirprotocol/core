@@ -40,6 +40,15 @@ export const getChainId = () =>
 
 // TODO: Fix type issues and avoid returning `any`
 
+// Deploy mock ERC20 contract
+export const setupTokens = async (deployer: SignerWithAddress) => {
+  const erc20: any = await ethers
+    .getContractFactory("MockERC20", deployer)
+    .then((factory) => factory.deploy());
+
+  return { erc20 };
+};
+
 // Deploy mock ERC721/1155 contracts
 export const setupNFTs = async (deployer: SignerWithAddress) => {
   const erc721: any = await ethers

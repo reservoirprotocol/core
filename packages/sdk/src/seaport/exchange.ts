@@ -10,6 +10,7 @@ import { keccak256 } from "@ethersproject/solidity";
 
 import * as Addresses from "./addresses";
 import { BaseOrderInfo } from "./builders/base";
+import { BundleAskOrderInfo } from "./builders/bundles/bundle-ask";
 import { BundleOrder } from "./bundle-order";
 import { Order } from "./order";
 import * as Types from "./types";
@@ -107,10 +108,14 @@ export class Exchange {
                   offerIdentifier: info.tokenId,
                   offerAmount: info.amount,
                   basicOrderType:
-                    (info.tokenKind === "erc721"
-                      ? Types.BasicOrderType.ETH_TO_ERC721_FULL_OPEN
-                      : Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN) +
-                    order.params.orderType,
+                    info.tokenKind === "erc721"
+                      ? info.paymentToken === CommonAddresses.Eth[this.chainId]
+                        ? Types.BasicOrderType.ETH_TO_ERC721_FULL_OPEN
+                        : Types.BasicOrderType.ERC20_TO_ERC721_FULL_OPEN
+                      : (info.paymentToken === CommonAddresses.Eth[this.chainId]
+                          ? Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN
+                          : Types.BasicOrderType.ERC20_TO_ERC1155_FULL_OPEN) +
+                        order.params.orderType,
                   startTime: order.params.startTime,
                   endTime: order.params.endTime,
                   zoneHash: order.params.zoneHash,
@@ -131,7 +136,10 @@ export class Exchange {
                   signature: order.params.signature!,
                 },
               ]) + generateReferrerBytes(options?.referrer),
-            value: bn(order.getMatchingPrice()).toHexString(),
+            value:
+              info.paymentToken === CommonAddresses.Eth[this.chainId]
+                ? bn(order.getMatchingPrice()).toHexString()
+                : undefined,
           };
         } else {
           // Use "advanced" fullfillment
@@ -158,10 +166,13 @@ export class Exchange {
                   recipient,
                 ]
               ) + generateReferrerBytes(options?.referrer),
-            value: bn(order.getMatchingPrice())
-              .mul(matchParams.amount || "1")
-              .div(info.amount)
-              .toHexString(),
+            value:
+              info.paymentToken === CommonAddresses.Eth[this.chainId]
+                ? bn(order.getMatchingPrice())
+                    .mul(matchParams.amount || "1")
+                    .div(info.amount)
+                    .toHexString()
+                : undefined,
           };
         }
       } else {
@@ -245,6 +256,11 @@ export class Exchange {
       // Fill bundle orders
       order = order as BundleOrder;
 
+      let info = order.getInfo();
+      if (!info) {
+        throw new Error("Could not get order info");
+      }
+
       if (order.params.kind === "bundle-ask") {
         return {
           from: taker,
@@ -266,9 +282,13 @@ export class Exchange {
               conduitKey,
               recipient,
             ]) + generateReferrerBytes(options?.referrer),
-          value: bn(order.getMatchingPrice())
-            .mul(matchParams.amount || "1")
-            .toHexString(),
+          value:
+            (info as BundleAskOrderInfo).paymentToken ===
+            CommonAddresses.Eth[this.chainId]
+              ? bn(order.getMatchingPrice())
+                  .mul(matchParams.amount || "1")
+                  .toHexString()
+              : undefined,
         };
       } else {
         throw new Error("Unsupported order kind");

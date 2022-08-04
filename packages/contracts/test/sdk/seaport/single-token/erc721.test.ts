@@ -12,6 +12,7 @@ import {
   getCurrentTimestamp,
   reset,
   setupNFTs,
+  setupTokens,
 } from "../../../utils";
 
 describe("Seaport - SingleToken Erc721", () => {
@@ -23,11 +24,13 @@ describe("Seaport - SingleToken Erc721", () => {
   let ted: SignerWithAddress;
   let carol: SignerWithAddress;
 
+  let erc20: Contract;
   let erc721: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, ted, carol] = await ethers.getSigners();
 
+    ({ erc20 } = await setupTokens(deployer));
     ({ erc721 } = await setupNFTs(deployer));
   });
 
@@ -98,6 +101,73 @@ describe("Seaport - SingleToken Erc721", () => {
 
     expect(buyerEthBalanceBefore.sub(buyerEthBalanceAfter)).to.be.gt(price);
     expect(sellerEthBalanceAfter).to.eq(sellerEthBalanceBefore.add(price));
+    expect(ownerAfter).to.eq(buyer.address);
+  });
+
+  it("Build and fill ERC20 sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 1;
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
+
+    const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
+
+    // Approve the exchange
+    await nft.approve(seller, Seaport.Addresses.Exchange[chainId]);
+
+    // Mint erc20 to buyer
+    await erc20.connect(buyer).mint(price);
+
+    // Approve the exchange
+    await erc20
+      .connect(buyer)
+      .approve(Seaport.Addresses.Exchange[chainId], price);
+
+    const exchange = new Seaport.Exchange(chainId);
+    const builder = new Seaport.Builders.SingleToken(chainId);
+
+    // Build sell order
+    const sellOrder = builder.build({
+      side: "sell",
+      tokenKind: "erc721",
+      offerer: seller.address,
+      contract: erc721.address,
+      tokenId: soldTokenId,
+      paymentToken: erc20.address,
+      price,
+      counter: 0,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    // Create matching params
+    const matchParams = sellOrder.buildMatching();
+
+    const buyerErc20BalanceBefore = await erc20.balanceOf(buyer.address);
+    const sellerErc20BalanceBefore = await erc20.balanceOf(seller.address);
+    const ownerBefore = await nft.getOwner(soldTokenId);
+
+    expect(ownerBefore).to.eq(seller.address);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, matchParams, {
+      referrer: "reservoir.market",
+    });
+
+    const buyerErc20BalanceAfter = await erc20.balanceOf(buyer.address);
+    const sellerErc20BalanceAfter = await erc20.balanceOf(seller.address);
+    const ownerAfter = await nft.getOwner(soldTokenId);
+
+    expect(buyerErc20BalanceBefore.sub(buyerErc20BalanceAfter)).to.eq(price);
+    expect(sellerErc20BalanceAfter).to.eq(sellerErc20BalanceBefore.add(price));
     expect(ownerAfter).to.eq(buyer.address);
   });
 

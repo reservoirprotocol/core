@@ -4,7 +4,6 @@ import { AddressZero } from "@ethersproject/constants";
 import { BaseBuildParams, BaseBuilder, BaseOrderInfo } from "../base";
 import { Order } from "../../order";
 import * as Types from "../../types";
-import * as CommonAddresses from "../../../common/addresses";
 import { bn, s } from "../../../utils";
 
 interface BuildParams extends BaseBuildParams {
@@ -180,16 +179,22 @@ export class SingleTokenBuilder extends BaseBuilder {
         ],
         consideration: [
           {
-            itemType: Types.ItemType.NATIVE,
-            token: CommonAddresses.Eth[this.chainId],
+            itemType:
+              params.paymentToken === AddressZero
+                ? Types.ItemType.NATIVE
+                : Types.ItemType.ERC20,
+            token: params.paymentToken,
             identifierOrCriteria: "0",
             startAmount: s(params.price),
             endAmount: s(params.endPrice ?? params.price),
             recipient: params.offerer,
           },
           ...(params.fees || []).map(({ amount, endAmount, recipient }) => ({
-            itemType: Types.ItemType.NATIVE,
-            token: CommonAddresses.Eth[this.chainId],
+            itemType:
+              params.paymentToken === AddressZero
+                ? Types.ItemType.NATIVE
+                : Types.ItemType.ERC20,
+            token: params.paymentToken,
             identifierOrCriteria: "0",
             startAmount: s(amount),
             endAmount: s(endAmount ?? amount),
