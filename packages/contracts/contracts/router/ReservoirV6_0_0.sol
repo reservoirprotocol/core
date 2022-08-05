@@ -6,19 +6,19 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-import {BaseMarket} from "./common/BaseMarket.sol";
+import {BaseMarket} from "./markets/BaseMarket.sol";
 
-contract ReservoirV6 is Ownable, ReentrancyGuard {
+contract ReservoirV6_0_0 is Ownable, ReentrancyGuard {
     mapping(address => bool) public markets;
 
+    error InsufficientFunds();
     error UnknownMarket();
     error UnsuccessfulFill();
     error UnsuccessfulPayment();
 
-    struct FillListingInfo {
-        address market;
-        bytes data;
-        uint256 value;
+    struct FeeInfo {
+        address recipient;
+        uint256 bps;
     }
 
     struct FillBidInfo {
@@ -26,14 +26,19 @@ contract ReservoirV6 is Ownable, ReentrancyGuard {
         bytes data;
     }
 
+    // --- Fallback ---
+
+    receive() external payable {}
+
     // --- Helpers ---
 
     modifier refund() {
         _;
 
-        uint256 balance = address(this).balance;
-        if (balance > 0) {
-            (bool success, ) = payable(msg.sender).call{value: balance}("");
+        // Refund any leftover
+        uint256 leftover = address(this).balance;
+        if (leftover > 0) {
+            (bool success, ) = payable(msg.sender).call{value: leftover}("");
             if (!success) {
                 revert UnsuccessfulPayment();
             }
@@ -48,10 +53,15 @@ contract ReservoirV6 is Ownable, ReentrancyGuard {
 
     // --- Fill listings ---
 
-    function fillListing(
-        address referrer,
-        uint16 referrerFeeBps,
-        FillListingInfo calldata fillInfo
+    struct FillListingInfo {
+        address market;
+        bytes data;
+        uint256 value;
+    }
+
+    function fillSingle(
+        FillListingInfo calldata fillInfo,
+        FeeInfo calldata feeInfo
     ) external payable nonReentrant refund {
         address market = fillInfo.market;
         if (!markets[market]) {
@@ -67,21 +77,23 @@ contract ReservoirV6 is Ownable, ReentrancyGuard {
 
         uint256 balanceAfter = address(this).balance;
 
-        // Pay referrer
-        uint256 totalPaid = balanceBefore - balanceAfter;
-        if (referrerFeeBps > 0 && totalPaid > 0) {
-            uint256 referrerFee = (totalPaid * referrerFeeBps) / 10000;
-            (success, ) = payable(referrer).call{value: referrerFee}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
+        // Pay fees on top
+        if (feeInfo.bps > 0) {
+            uint256 totalPaid = balanceBefore - balanceAfter;
+            if (totalPaid > 0) {
+                (success, ) = payable(feeInfo.recipient).call{
+                    value: (totalPaid * feeInfo.bps) / 10000
+                }("");
+                if (!success) {
+                    revert UnsuccessfulPayment();
+                }
             }
         }
     }
 
-    function fillListings(
-        address referrer,
-        uint16 referrerFeeBps,
-        FillListingInfo[] calldata fillInfos
+    function fillMultiple(
+        FillListingInfo[] calldata fillInfos,
+        FeeInfo calldata feeInfo
     ) external payable nonReentrant refund {
         address market;
         bool success;
@@ -109,13 +121,16 @@ contract ReservoirV6 is Ownable, ReentrancyGuard {
 
         uint256 balanceAfter = address(this).balance;
 
-        // Pay referrer
-        uint256 totalPaid = balanceBefore - balanceAfter;
-        if (referrerFeeBps > 0 && totalPaid > 0) {
-            uint256 referrerFee = (totalPaid * referrerFeeBps) / 10000;
-            (success, ) = payable(referrer).call{value: referrerFee}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
+        // Pay fees on top
+        if (feeInfo.bps > 0) {
+            uint256 totalPaid = balanceBefore - balanceAfter;
+            if (totalPaid > 0) {
+                (success, ) = payable(feeInfo.recipient).call{
+                    value: (totalPaid * feeInfo.bps) / 10000
+                }("");
+                if (!success) {
+                    revert UnsuccessfulPayment();
+                }
             }
         }
     }
@@ -135,7 +150,7 @@ contract ReservoirV6 is Ownable, ReentrancyGuard {
             revert UnknownMarket();
         }
 
-        address operator = BaseMarket(market).erc721Operator();
+        address operator = BaseMarket(payable(market)).erc721Operator();
         bool isApproved = IERC721(msg.sender).isApprovedForAll(
             address(this),
             operator
@@ -166,7 +181,7 @@ contract ReservoirV6 is Ownable, ReentrancyGuard {
             revert UnknownMarket();
         }
 
-        address operator = BaseMarket(market).erc1155Operator();
+        address operator = BaseMarket(payable(market)).erc1155Operator();
         bool isApproved = IERC1155(msg.sender).isApprovedForAll(
             address(this),
             operator

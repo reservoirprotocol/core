@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-import {BaseMarket} from "../common/BaseMarket.sol";
+import {BaseMarket} from "../BaseMarket.sol";
 import {IZeroExV4} from "../interfaces/IZeroExV4.sol";
 
 contract ZeroExV4Market is BaseMarket {
@@ -32,14 +32,26 @@ contract ZeroExV4Market is BaseMarket {
     function buyERC721(
         IZeroExV4.ERC721Order calldata order,
         IZeroExV4.Signature calldata signature,
-        address receiver
+        address receiver,
+        bool revertIfIncomplete
     ) external payable nonReentrant refund {
-        IZeroExV4(exchange).buyERC721{value: msg.value}(order, signature, "");
-        IERC721(order.erc721Token).safeTransferFrom(
-            address(this),
-            receiver,
-            order.erc721TokenId
-        );
+        try
+            IZeroExV4(exchange).buyERC721{value: msg.value}(
+                order,
+                signature,
+                ""
+            )
+        {
+            IERC721(order.erc721Token).safeTransferFrom(
+                address(this),
+                receiver,
+                order.erc721TokenId
+            );
+        } catch {
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
+        }
     }
 
     function batchBuyERC721s(
@@ -75,21 +87,29 @@ contract ZeroExV4Market is BaseMarket {
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
         uint128 amount,
-        address receiver
+        address receiver,
+        bool revertIfIncomplete
     ) external payable nonReentrant refund {
-        IZeroExV4(exchange).buyERC1155{value: msg.value}(
-            order,
-            signature,
-            amount,
-            ""
-        );
-        IERC1155(order.erc1155Token).safeTransferFrom(
-            address(this),
-            receiver,
-            order.erc1155TokenId,
-            amount,
-            ""
-        );
+        try
+            IZeroExV4(exchange).buyERC1155{value: msg.value}(
+                order,
+                signature,
+                amount,
+                ""
+            )
+        {
+            IERC1155(order.erc1155Token).safeTransferFrom(
+                address(this),
+                receiver,
+                order.erc1155TokenId,
+                amount,
+                ""
+            );
+        } catch {
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
+        }
     }
 
     function buyERC1155s(

@@ -16,19 +16,26 @@ abstract contract BaseMarket is Ownable, ReentrancyGuard {
         _transferOwnership(router);
     }
 
+    // --- Fallback ---
+
+    receive() external payable {}
+
     // --- Modifiers ---
 
     modifier refund() {
         _;
 
-        uint256 balance = address(this).balance;
-        if (balance > 0) {
-            (bool success, ) = payable(msg.sender).call{value: balance}("");
+        // Refund any leftover
+        uint256 leftover = address(this).balance;
+        if (leftover > 0) {
+            (bool success, ) = payable(msg.sender).call{value: leftover}("");
             if (!success) {
                 revert UnsuccessfulPayment();
             }
         }
     }
+
+    // --- Virtual methods ---
 
     function erc721Operator() external view virtual returns (address);
 

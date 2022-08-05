@@ -5,7 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-import {BaseMarket} from "../common/BaseMarket.sol";
+import {BaseMarket} from "../BaseMarket.sol";
 import {ISeaport} from "../interfaces/ISeaport.sol";
 
 contract SeaportMarket is BaseMarket {
@@ -32,22 +32,35 @@ contract SeaportMarket is BaseMarket {
 
     // --- Fill listings ---
 
-    function buySingle(ISeaport.AdvancedOrder calldata order, address receiver)
-        external
-        payable
-        nonReentrant
-        refund
-    {
-        bool fulfilled = ISeaport(exchange).fulfillAdvancedOrder{
-            value: msg.value
-        }(order, new ISeaport.CriteriaResolver[](0), bytes32(0), receiver);
-        if (!fulfilled) {
+    function buySingle(
+        ISeaport.AdvancedOrder calldata order,
+        address receiver,
+        bool revertIfIncomplete
+    ) external payable nonReentrant refund {
+        bool success;
+        try
+            ISeaport(exchange).fulfillAdvancedOrder{value: msg.value}(
+                order,
+                new ISeaport.CriteriaResolver[](0),
+                bytes32(0),
+                receiver
+            )
+        returns (bool fulfilled) {
+            success = fulfilled;
+        } catch {
+            success = false;
+        }
+
+        if (!success && revertIfIncomplete) {
             revert UnsuccessfulFill();
         }
     }
 
     function buyMultiple(
         ISeaport.AdvancedOrder[] calldata orders,
+        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
+        ISeaport.FulfillmentComponent[][] memory offerFulfillments,
+        ISeaport.FulfillmentComponent[][] memory considerationFulfillments,
         address receiver,
         bool revertIfIncomplete
     ) external payable nonReentrant refund {
@@ -55,11 +68,12 @@ contract SeaportMarket is BaseMarket {
             .fulfillAvailableAdvancedOrders{value: msg.value}(
             orders,
             new ISeaport.CriteriaResolver[](0),
-            new ISeaport.FulfillmentComponent[][](0),
-            new ISeaport.FulfillmentComponent[][](0),
+            offerFulfillments,
+            considerationFulfillments,
             bytes32(0),
             receiver,
-            type(uint256).max
+            // Assume at most 255 orders can be filled at once
+            0xff
         );
 
         if (revertIfIncomplete) {
