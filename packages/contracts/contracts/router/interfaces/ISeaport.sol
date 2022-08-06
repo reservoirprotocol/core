@@ -62,6 +62,11 @@ interface ISeaport {
         uint256 totalOriginalConsiderationItems;
     }
 
+    struct Order {
+        OrderParameters parameters;
+        bytes signature;
+    }
+
     struct AdvancedOrder {
         OrderParameters parameters;
         uint120 numerator;
@@ -113,6 +118,11 @@ interface ISeaport {
         external
         payable
         returns (bool[] memory availableOrders, Execution[] memory executions);
+
+    function matchOrders(
+        Order[] calldata orders,
+        Fulfillment[] calldata fulfillments
+    ) external payable returns (Execution[] memory executions);
 
     function matchAdvancedOrders(
         AdvancedOrder[] calldata advancedOrders,
