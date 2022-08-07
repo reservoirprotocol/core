@@ -33,7 +33,6 @@ describe("ReservoirV6_0_0 - fill listings", () => {
   let erc721: Contract;
   let erc1155: Contract;
   let router: Contract;
-  let zeroExV4Market: Contract;
   let seaportMarket: Contract;
   let uniswapV3Market: Contract;
 
@@ -45,9 +44,6 @@ describe("ReservoirV6_0_0 - fill listings", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
-    zeroExV4Market = (await ethers
-      .getContractFactory("ZeroExV4Market", deployer)
-      .then((factory) => factory.deploy(router.address))) as any;
     seaportMarket = (await ethers
       .getContractFactory("SeaportMarket", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
@@ -56,11 +52,122 @@ describe("ReservoirV6_0_0 - fill listings", () => {
       .then((factory) => factory.deploy(router.address))) as any;
 
     await router.registerMarket(seaportMarket.address);
-    await router.registerMarket(zeroExV4Market.address);
     await router.registerMarket(uniswapV3Market.address);
   });
 
   afterEach(reset);
+
+  it("[Seaport] Fill ETH listing with fees", async () => {
+    // Setup
+
+    const listing: SeaportListing = {
+      seller: alice,
+      nft: {
+        kind: "erc721",
+        contract: erc721,
+        id: 9876,
+      },
+      price: parseEther("1.3688"),
+    };
+    await setupSeaportListings([listing]);
+
+    // Prepare executions
+
+    const feesOnTop = [parseEther("0.005"), parseEther("0.00463728")];
+    const executions: ExecutionInfo[] = [
+      // 1. Fill ETH listing with provided ETH
+      {
+        market: seaportMarket.address,
+        data: seaportMarket.interface.encodeFunctionData(
+          "acceptETHListingWithFees",
+          [
+            {
+              parameters: {
+                ...listing.order!.params,
+                totalOriginalConsiderationItems:
+                  listing.order!.params.consideration.length,
+              },
+              numerator: 1,
+              denominator: 1,
+              signature: listing.order!.params.signature,
+              extraData: "0x",
+            },
+            {
+              fillTo: bob.address,
+              refundTo: bob.address,
+              revertIfIncomplete: true,
+              amount: listing.price,
+            },
+            [
+              {
+                recipient: carol.address,
+                amount: feesOnTop[0],
+              },
+              {
+                recipient: david.address,
+                amount: feesOnTop[1],
+              },
+            ],
+          ]
+        ),
+        value: bn(listing.price).add(
+          // Anything on top of the listing payment and fees should be refunded
+          parseEther("0.5")
+        ),
+      },
+    ];
+
+    // Fetch pre-state
+
+    const aliceEthBalanceBefore = await ethers.provider.getBalance(
+      alice.address
+    );
+    const carolEthBalanceBefore = await ethers.provider.getBalance(
+      carol.address
+    );
+    const davidEthBalanceBefore = await ethers.provider.getBalance(
+      david.address
+    );
+
+    // Execute
+
+    await router.connect(bob).execute(executions, {
+      value: executions
+        .map(({ value }) => value)
+        .reduce((a, b) => bn(a).add(b)),
+    });
+
+    // Fetch post-state
+
+    const aliceEthBalanceAfter = await ethers.provider.getBalance(
+      alice.address
+    );
+    const carolEthBalanceAfter = await ethers.provider.getBalance(
+      carol.address
+    );
+    const davidEthBalanceAfter = await ethers.provider.getBalance(
+      david.address
+    );
+
+    // Checks
+
+    // Alice got the ETH
+    expect(aliceEthBalanceAfter.sub(aliceEthBalanceBefore)).to.eq(
+      listing.price
+    );
+
+    // Fee recipients got their ETH
+    expect(carolEthBalanceAfter.sub(carolEthBalanceBefore)).to.eq(feesOnTop[0]);
+    expect(davidEthBalanceAfter.sub(davidEthBalanceBefore)).to.eq(feesOnTop[1]);
+
+    // Bob got the NFT
+    expect(await erc721.ownerOf(listing.nft.id)).to.eq(bob.address);
+
+    // Router is stateless
+    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(seaportMarket.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(uniswapV3Market.address)).to.eq(0);
+  });
 
   it("[Seaport] Fill ERC20 listing with ETH", async () => {
     // Setup
@@ -114,11 +221,12 @@ describe("ReservoirV6_0_0 - fill listings", () => {
             extraData: "0x",
           },
           {
-            receiver: bob.address,
+            fillTo: bob.address,
             refundTo: bob.address,
             revertIfIncomplete: true,
+            token: listing.paymentToken!,
+            amount: listing.price,
           },
-          listing.paymentToken ?? Sdk.Common.Addresses.Eth[chainId],
         ]),
         value: 0,
       },
@@ -161,7 +269,7 @@ describe("ReservoirV6_0_0 - fill listings", () => {
     expect(await erc20.getBalance(uniswapV3Market.address)).to.eq(0);
   });
 
-  it("[Seaport] Fill ERC20 listing directly", async () => {
+  it("[Seaport] Fill ERC20 listing approval-less", async () => {
     // Setup
 
     const listing: SeaportListing = {
@@ -262,11 +370,12 @@ describe("ReservoirV6_0_0 - fill listings", () => {
             extraData: "0x",
           },
           {
-            receiver: bob.address,
+            fillTo: bob.address,
             refundTo: bob.address,
             revertIfIncomplete: true,
+            token: listing.paymentToken!,
+            amount: listing.price,
           },
-          listing.paymentToken!,
         ]),
         value: 0,
       },
