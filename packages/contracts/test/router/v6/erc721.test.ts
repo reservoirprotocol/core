@@ -169,6 +169,142 @@ describe("ReservoirV6_0_0 - fill listings", () => {
     expect(await ethers.provider.getBalance(uniswapV3Market.address)).to.eq(0);
   });
 
+  it("[Seaport] Partially fill ETH listing with fees", async () => {
+    // Setup
+
+    const listing: SeaportListing = {
+      seller: alice,
+      nft: {
+        kind: "erc721",
+        contract: erc721,
+        id: 9876,
+      },
+      price: parseEther("1.3688"),
+      isCancelled: true,
+    };
+    await setupSeaportListings([listing]);
+
+    // Prepare executions
+
+    const feesOnTop = [parseEther("0.005"), parseEther("0.00463728")];
+    const getExecutions = (revertIfIncomplete: boolean): ExecutionInfo[] => [
+      // 1. Fill ETH listing with provided ETH
+      {
+        market: seaportMarket.address,
+        data: seaportMarket.interface.encodeFunctionData(
+          "acceptETHListingWithFees",
+          [
+            {
+              parameters: {
+                ...listing.order!.params,
+                totalOriginalConsiderationItems:
+                  listing.order!.params.consideration.length,
+              },
+              numerator: 1,
+              denominator: 1,
+              signature: listing.order!.params.signature,
+              extraData: "0x",
+            },
+            {
+              fillTo: bob.address,
+              refundTo: bob.address,
+              revertIfIncomplete,
+              amount: listing.price,
+            },
+            [
+              {
+                recipient: carol.address,
+                amount: feesOnTop[0],
+              },
+              {
+                recipient: david.address,
+                amount: feesOnTop[1],
+              },
+            ],
+          ]
+        ),
+        value: bn(listing.price).add(
+          // Anything on top of the listing payment and fees should be refunded
+          parseEther("0.5")
+        ),
+      },
+    ];
+
+    // Execute
+
+    // Fails because we disallow reverts
+    const disallowRevertsExecutions = getExecutions(true);
+    await expect(
+      router.connect(bob).execute(disallowRevertsExecutions, {
+        value: disallowRevertsExecutions
+          .map(({ value }) => value)
+          .reduce((a, b) => bn(a).add(b)),
+      })
+    ).to.be.revertedWith(
+      "reverted with custom error 'UnsuccessfulExecution()'"
+    );
+
+    // Fetch pre-state
+
+    const aliceEthBalanceBefore = await ethers.provider.getBalance(
+      alice.address
+    );
+    const bobEthBalanceBefore = await ethers.provider.getBalance(bob.address);
+    const carolEthBalanceBefore = await ethers.provider.getBalance(
+      carol.address
+    );
+    const davidEthBalanceBefore = await ethers.provider.getBalance(
+      david.address
+    );
+
+    // Execute
+
+    // Succeeds because we allow reverts
+    const allowRevertsExecutions = getExecutions(false);
+    const ethPaidOnGas = await router
+      .connect(bob)
+      .execute(allowRevertsExecutions, {
+        value: allowRevertsExecutions
+          .map(({ value }) => value)
+          .reduce((a, b) => bn(a).add(b)),
+      })
+      .then((tx: any) => tx.wait())
+      .then((tx: any) => tx.cumulativeGasUsed.mul(tx.effectiveGasPrice));
+
+    // Fetch post-state
+
+    const aliceEthBalanceAfter = await ethers.provider.getBalance(
+      alice.address
+    );
+    const bobEthBalanceAfter = await ethers.provider.getBalance(bob.address);
+    const carolEthBalanceAfter = await ethers.provider.getBalance(
+      carol.address
+    );
+    const davidEthBalanceAfter = await ethers.provider.getBalance(
+      david.address
+    );
+
+    // Checks
+
+    // Nobody got paid any ETH
+    expect(aliceEthBalanceAfter.sub(aliceEthBalanceBefore)).to.eq(0);
+    expect(carolEthBalanceAfter.sub(carolEthBalanceBefore)).to.eq(0);
+    expect(davidEthBalanceAfter.sub(davidEthBalanceBefore)).to.eq(0);
+
+    // Alice still has the NFT
+    expect(await erc721.ownerOf(listing.nft.id)).to.eq(alice.address);
+
+    // Bob got refunded all provided ETH
+    expect(bobEthBalanceBefore.sub(bobEthBalanceAfter).sub(ethPaidOnGas)).to.eq(
+      0
+    );
+
+    // Router is stateless
+    expect(await ethers.provider.getBalance(router.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(seaportMarket.address)).to.eq(0);
+    expect(await ethers.provider.getBalance(uniswapV3Market.address)).to.eq(0);
+  });
+
   it("[Seaport] Fill ERC20 listing with ETH", async () => {
     // Setup
 
