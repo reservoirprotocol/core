@@ -71,6 +71,53 @@ export const setupSeaportListings = async (listings: SeaportListing[]) => {
   }
 };
 
+// --- Offers ---
+
+export type SeaportOffer = {
+  buyer: SignerWithAddress;
+  nft: {
+    kind: "erc721" | "erc1155";
+    contract: Contract;
+    id: number;
+    // A single quantity if missing
+    amount?: number;
+  };
+  // All offers are in WETH
+  price: BigNumberish;
+  order?: Sdk.Seaport.Order;
+};
+
+export const setupSeaportOffers = async (offers: SeaportOffer[]) => {
+  const chainId = getChainId();
+
+  for (const offer of offers) {
+    const { buyer, nft, price } = offer;
+
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
+    await weth.deposit(buyer, price);
+    await weth.approve(buyer, Sdk.Seaport.Addresses.Exchange[chainId]);
+
+    // Build and sign the order
+    const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
+    const order = builder.build({
+      side: "buy",
+      tokenKind: nft.kind,
+      offerer: buyer.address,
+      contract: nft.contract.address,
+      tokenId: nft.id,
+      amount: nft.amount ?? 1,
+      paymentToken: weth.contract.address,
+      price,
+      counter: 0,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+    await order.sign(buyer);
+
+    offer.order = order;
+  }
+};
+
 // --- Tips ---
 
 export type SeaportTip = {

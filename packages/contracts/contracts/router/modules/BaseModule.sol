@@ -31,6 +31,12 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
         uint256 amount;
     }
 
+    struct NFTOfferParams {
+        address fillTo;
+        address refundTo;
+        bool revertIfIncomplete;
+    }
+
     struct ERC721Token {
         address token;
         uint256 id;
