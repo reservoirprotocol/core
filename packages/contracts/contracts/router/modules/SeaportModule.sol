@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {BaseModule} from "./BaseModule.sol";
 import {ISeaport} from "../interfaces/ISeaport.sol";
@@ -162,6 +163,39 @@ contract SeaportModule is BaseModule {
         );
     }
 
+    // --- Single ERC721 offer ---
+
+    function acceptERC721Offer(
+        ISeaport.AdvancedOrder calldata order,
+        ISeaport.CriteriaResolver[] memory criteriaResolvers,
+        NFTOfferParams calldata params,
+        ERC721Token calldata nft
+    ) external nonReentrant {
+        IERC721(nft.token).approve(exchange, nft.id);
+
+        bool success;
+        try
+            ISeaport(exchange).fulfillAdvancedOrder(
+                order,
+                criteriaResolvers,
+                bytes32(0),
+                params.fillTo
+            )
+        returns (bool fulfilled) {
+            success = fulfilled;
+        } catch {}
+
+        if (params.revertIfIncomplete && !success) {
+            revert UnsuccessfulFill();
+        } else if (!success) {
+            IERC721(nft.token).safeTransferFrom(
+                address(this),
+                params.refundTo,
+                nft.id
+            );
+        }
+    }
+
     // --- Generic handler (used for Seaport-based approvals) ---
 
     function matchOrders(
@@ -228,5 +262,26 @@ contract SeaportModule is BaseModule {
                 }
             }
         }
+    }
+
+    // --- ERC721 / ERC1155 hooks ---
+
+    function onERC721Received(
+        address, // operator,
+        address, // from
+        uint256, // tokenId,
+        bytes calldata // data
+    ) external pure returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
+    function onERC1155Received(
+        address, // operator
+        address, // from
+        uint256, // tokenId
+        uint256, // amount
+        bytes calldata // data
+    ) external pure returns (bytes4) {
+        return this.onERC1155Received.selector;
     }
 }
