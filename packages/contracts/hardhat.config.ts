@@ -61,7 +61,7 @@ const config: HardhatUserConfig = {
     project: String(process.env.TENDERLY_PROJECT),
   },
   mocha: {
-    timeout: 60000,
+    timeout: 60000 * 10,
   },
 };
 

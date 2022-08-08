@@ -4,10 +4,10 @@ pragma solidity ^0.8.9;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {BaseMarket} from "../BaseMarket.sol";
-import {ISeaport} from "../../interfaces/ISeaport.sol";
+import {BaseModule} from "./BaseModule.sol";
+import {ISeaport} from "../interfaces/ISeaport.sol";
 
-contract SeaportMarket is BaseMarket {
+contract SeaportModule is BaseModule {
     using SafeERC20 for IERC20;
 
     // --- Structs ---
@@ -24,7 +24,7 @@ contract SeaportMarket is BaseMarket {
 
     // --- Constructor ---
 
-    constructor(address router) BaseMarket(router) {}
+    constructor(address router) BaseModule(router) {}
 
     // --- Single ETH listing ---
 
@@ -85,7 +85,7 @@ contract SeaportMarket is BaseMarket {
 
     // --- Multiple ETH listings ---
 
-    function acceptMultipleETHListings(
+    function acceptETHListings(
         ISeaport.AdvancedOrder[] calldata orders,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         SeaportFulfillments memory fulfillments,
@@ -100,7 +100,7 @@ contract SeaportMarket is BaseMarket {
         );
     }
 
-    function acceptMultipleETHListingsWithFees(
+    function acceptETHListingsWithFees(
         ISeaport.AdvancedOrder[] calldata orders,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         SeaportFulfillments memory fulfillments,
@@ -124,7 +124,7 @@ contract SeaportMarket is BaseMarket {
 
     // --- Multiple ERC20 listings ---
 
-    function acceptMultipleERC20Listings(
+    function acceptERC20Listings(
         ISeaport.AdvancedOrder[] calldata orders,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         SeaportFulfillments memory fulfillments,
@@ -140,7 +140,7 @@ contract SeaportMarket is BaseMarket {
         );
     }
 
-    function acceptMultipleERC20ListingsWithFees(
+    function acceptERC20ListingsWithFees(
         ISeaport.AdvancedOrder[] calldata orders,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         SeaportFulfillments memory fulfillments,

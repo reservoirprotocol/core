@@ -6,24 +6,26 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-import {BaseMarket} from "./markets/BaseMarket.sol";
-
 contract ReservoirV6_0_0 is Ownable, ReentrancyGuard {
-    mapping(address => bool) public markets;
+    // --- Fields ---
 
-    error UnknownMarket();
+    mapping(address => bool) public modules;
+
+    // --- Errors ---
+
+    error UnknownModule();
     error UnsuccessfulExecution();
 
     // --- Owner ---
 
-    function registerMarket(address market) external onlyOwner {
-        markets[market] = true;
+    function registerModule(address module) external onlyOwner {
+        modules[module] = true;
     }
 
     // --- Public ---
 
     struct ExecutionInfo {
-        address market;
+        address module;
         bytes data;
         uint256 value;
     }
@@ -33,17 +35,17 @@ contract ReservoirV6_0_0 is Ownable, ReentrancyGuard {
         payable
         nonReentrant
     {
-        address market;
+        address module;
         bool success;
 
         uint256 length = executionInfos.length;
         for (uint256 i = 0; i < length; ) {
-            market = executionInfos[i].market;
-            if (!markets[market]) {
-                revert UnknownMarket();
+            module = executionInfos[i].module;
+            if (!modules[module]) {
+                revert UnknownModule();
             }
 
-            (success, ) = market.call{value: executionInfos[i].value}(
+            (success, ) = module.call{value: executionInfos[i].value}(
                 executionInfos[i].data
             );
             if (!success) {

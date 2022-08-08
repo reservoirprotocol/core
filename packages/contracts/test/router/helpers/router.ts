@@ -1,7 +1,7 @@
 import { BigNumberish } from "@ethersproject/bignumber";
 
 export type ExecutionInfo = {
-  market: string;
+  module: string;
   data: string;
   value: BigNumberish;
 };
