@@ -6,7 +6,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-abstract contract BaseMarket is Ownable, ReentrancyGuard {
+abstract contract BaseModule is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // --- Structs ---
@@ -28,6 +28,17 @@ abstract contract BaseMarket is Ownable, ReentrancyGuard {
         address refundTo;
         bool revertIfIncomplete;
         address token;
+        uint256 amount;
+    }
+
+    struct ERC721Token {
+        address token;
+        uint256 id;
+    }
+
+    struct ERC1155Token {
+        address token;
+        uint256 id;
         uint256 amount;
     }
 
