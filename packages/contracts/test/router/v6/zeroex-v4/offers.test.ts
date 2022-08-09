@@ -8,10 +8,9 @@ import { ethers } from "hardhat";
 import { ExecutionInfo } from "../../helpers/router";
 import {
   SeaportERC721Tip,
-  SeaportOffer,
   setupSeaportERC721Tips,
-  setupSeaportOffers,
 } from "../../helpers/seaport";
+import { ZeroExV4Offer, setupZeroExV4Offers } from "../../helpers/zeroex-v4";
 import {
   bn,
   getChainId,
@@ -22,7 +21,7 @@ import {
   setupNFTs,
 } from "../../../utils";
 
-describe("[ReservoirV6_0_0] Seaport offers", () => {
+describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -35,7 +34,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
   let erc721: Contract;
   let router: Contract;
   let seaportModule: Contract;
-  let uniswapV3Module: Contract;
+  let zeroExV4Module: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
@@ -48,12 +47,12 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
-    uniswapV3Module = (await ethers
-      .getContractFactory("UniswapV3Module", deployer)
+    zeroExV4Module = (await ethers
+      .getContractFactory("ZeroExV4Module", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
 
     await router.registerModule(seaportModule.address);
-    await router.registerModule(uniswapV3Module.address);
+    await router.registerModule(zeroExV4Module.address);
   });
 
   const getBalances = async (token: string) => {
@@ -66,8 +65,8 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
         seaportModule: await ethers.provider.getBalance(seaportModule.address),
-        uniswapV3Module: await ethers.provider.getBalance(
-          uniswapV3Module.address
+        zeroExV4Module: await ethers.provider.getBalance(
+          zeroExV4Module.address
         ),
       };
     } else {
@@ -80,7 +79,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
         emilio: await contract.getBalance(emilio.address),
         router: await contract.getBalance(router.address),
         seaportModule: await contract.getBalance(seaportModule.address),
-        uniswapV3Module: await contract.getBalance(uniswapV3Module.address),
+        zeroExV4Module: await contract.getBalance(zeroExV4Module.address),
       };
     }
   };
@@ -100,7 +99,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
     // Makers: Alice and Bob
     // Taker: Carol
 
-    const offers: SeaportOffer[] = [];
+    const offers: ZeroExV4Offer[] = [];
     for (let i = 0; i < offersCount; i++) {
       offers.push({
         buyer: getRandomBoolean() ? alice : bob,
@@ -113,7 +112,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
         isCancelled: partial && getRandomBoolean(),
       });
     }
-    await setupSeaportOffers(offers);
+    await setupZeroExV4Offers(offers);
 
     // In order to avoid giving NFT approvals to the router (remember,
     // the router is supposed to be stateless), we do create multiple
@@ -126,6 +125,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
     const tips: SeaportERC721Tip[] = offers.map((offer) => ({
       giver: carol,
       filler: seaportModule.address,
+      receiver: zeroExV4Module.address,
       nft: offer.nft,
     }));
     await setupSeaportERC721Tips(tips);
@@ -183,20 +183,10 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
       },
       // 2. Fill offers with the received NFTs
       ...offers.map((offer) => ({
-        module: seaportModule.address,
-        data: seaportModule.interface.encodeFunctionData("acceptERC721Offer", [
-          {
-            parameters: {
-              ...offer.order!.params,
-              totalOriginalConsiderationItems:
-                offer.order!.params.consideration.length,
-            },
-            numerator: 1,
-            denominator: 1,
-            signature: offer.order!.params.signature,
-            extraData: "0x",
-          },
-          [],
+        module: zeroExV4Module.address,
+        data: zeroExV4Module.interface.encodeFunctionData("acceptERC721Offer", [
+          offer.order!.getRaw(),
+          offer.order!.getRaw(),
           {
             fillTo: carol.address,
             refundTo: carol.address,
@@ -274,7 +264,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
     // Router is stateless
     expect(balancesAfter.router).to.eq(0);
     expect(balancesAfter.seaportModule).to.eq(0);
-    expect(balancesAfter.uniswapV3Module).to.eq(0);
+    expect(balancesAfter.zeroExV4Module).to.eq(0);
   };
 
   // Test various combinations for filling offers

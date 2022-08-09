@@ -117,7 +117,7 @@ contract ZeroExV4Module is BaseModule {
 
     // --- [ERC721] Single offer ---
 
-    function acceptOfferERC721(
+    function acceptERC721Offer(
         IZeroExV4.ERC721Order calldata order,
         IZeroExV4.Signature calldata signature,
         OfferParams calldata params,
@@ -161,7 +161,7 @@ contract ZeroExV4Module is BaseModule {
 
     // --- [ERC1155] Single offer ---
 
-    function acceptOfferERC1155(
+    function acceptERC1155Offer(
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
         OfferParams calldata params,

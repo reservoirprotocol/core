@@ -64,3 +64,51 @@ export const setupZeroExV4Listings = async (listings: ZeroExV4Listing[]) => {
     }
   }
 };
+
+// --- Offers ---
+
+export type ZeroExV4Offer = {
+  buyer: SignerWithAddress;
+  nft: {
+    kind: "erc721" | "erc1155";
+    contract: Contract;
+    id: number;
+  };
+  // For the moment, all orders are in WETH
+  price: BigNumberish;
+  // Whether the order is to be cancelled
+  isCancelled?: boolean;
+  order?: Sdk.ZeroExV4.Order;
+};
+
+export const setupZeroExV4Offers = async (offers: ZeroExV4Offer[]) => {
+  const chainId = getChainId();
+
+  for (const offer of offers) {
+    const { buyer, nft, price } = offer;
+
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
+    await weth.deposit(buyer, price);
+    await weth.approve(buyer, Sdk.ZeroExV4.Addresses.Exchange[chainId]);
+
+    // Build and sign the order
+    const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
+    const order = builder.build({
+      direction: "buy",
+      maker: buyer.address,
+      contract: nft.contract.address,
+      tokenId: nft.id,
+      price,
+      expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+    await order.sign(buyer);
+
+    offer.order = order;
+
+    // Cancel the order if requested
+    if (offer.isCancelled) {
+      const exchange = new Sdk.ZeroExV4.Exchange(chainId);
+      await exchange.cancelOrder(buyer, order);
+    }
+  }
+};
