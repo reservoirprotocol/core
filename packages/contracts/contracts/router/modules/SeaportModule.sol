@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import {BaseModule} from "./BaseModule.sol";
 import {ISeaport} from "../interfaces/ISeaport.sol";
@@ -31,18 +32,6 @@ contract SeaportModule is BaseModule {
 
     function acceptETHListing(
         ISeaport.AdvancedOrder calldata order,
-        ETHListingParams calldata params
-    ) external payable nonReentrant refundETHLeftover(params.refundTo) {
-        fillSingleOrder(
-            order,
-            params.fillTo,
-            params.revertIfIncomplete,
-            params.amount
-        );
-    }
-
-    function acceptETHListingWithFees(
-        ISeaport.AdvancedOrder calldata order,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -54,6 +43,7 @@ contract SeaportModule is BaseModule {
     {
         fillSingleOrder(
             order,
+            new ISeaport.CriteriaResolver[](0),
             params.fillTo,
             params.revertIfIncomplete,
             params.amount
@@ -64,14 +54,6 @@ contract SeaportModule is BaseModule {
 
     function acceptERC20Listing(
         ISeaport.AdvancedOrder calldata order,
-        ERC20ListingParams calldata params
-    ) external nonReentrant refundERC20Leftover(params.refundTo, params.token) {
-        IERC20(params.token).safeApprove(exchange, params.amount);
-        fillSingleOrder(order, params.fillTo, params.revertIfIncomplete, 0);
-    }
-
-    function acceptERC20ListingWithFees(
-        ISeaport.AdvancedOrder calldata order,
         ERC20ListingParams calldata params,
         Fee[] calldata fees
     )
@@ -81,27 +63,18 @@ contract SeaportModule is BaseModule {
         chargeERC20Fees(fees, params.token, params.amount)
     {
         IERC20(params.token).safeApprove(exchange, params.amount);
-        fillSingleOrder(order, params.fillTo, params.revertIfIncomplete, 0);
+        fillSingleOrder(
+            order,
+            new ISeaport.CriteriaResolver[](0),
+            params.fillTo,
+            params.revertIfIncomplete,
+            0
+        );
     }
 
     // --- Multiple ETH listings ---
 
     function acceptETHListings(
-        ISeaport.AdvancedOrder[] calldata orders,
-        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
-        SeaportFulfillments memory fulfillments,
-        ETHListingParams calldata params
-    ) external payable nonReentrant refundETHLeftover(params.refundTo) {
-        fillMultipleOrders(
-            orders,
-            fulfillments,
-            params.fillTo,
-            params.revertIfIncomplete,
-            params.amount
-        );
-    }
-
-    function acceptETHListingsWithFees(
         ISeaport.AdvancedOrder[] calldata orders,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         SeaportFulfillments memory fulfillments,
@@ -116,6 +89,7 @@ contract SeaportModule is BaseModule {
     {
         fillMultipleOrders(
             orders,
+            new ISeaport.CriteriaResolver[](0),
             fulfillments,
             params.fillTo,
             params.revertIfIncomplete,
@@ -129,22 +103,6 @@ contract SeaportModule is BaseModule {
         ISeaport.AdvancedOrder[] calldata orders,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         SeaportFulfillments memory fulfillments,
-        ERC20ListingParams calldata params
-    ) external nonReentrant refundERC20Leftover(params.refundTo, params.token) {
-        IERC20(params.token).safeApprove(exchange, params.amount);
-        fillMultipleOrders(
-            orders,
-            fulfillments,
-            params.fillTo,
-            params.revertIfIncomplete,
-            0
-        );
-    }
-
-    function acceptERC20ListingsWithFees(
-        ISeaport.AdvancedOrder[] calldata orders,
-        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
-        SeaportFulfillments memory fulfillments,
         ERC20ListingParams calldata params,
         Fee[] calldata fees
     )
@@ -156,6 +114,7 @@ contract SeaportModule is BaseModule {
         IERC20(params.token).safeApprove(exchange, params.amount);
         fillMultipleOrders(
             orders,
+            new ISeaport.CriteriaResolver[](0),
             fulfillments,
             params.fillTo,
             params.revertIfIncomplete,
@@ -167,32 +126,77 @@ contract SeaportModule is BaseModule {
 
     function acceptERC721Offer(
         ISeaport.AdvancedOrder calldata order,
+        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         ISeaport.CriteriaResolver[] memory criteriaResolvers,
-        NFTOfferParams calldata params,
-        ERC721Token calldata nft
+        OfferParams calldata params,
+        NFT calldata nft
     ) external nonReentrant {
-        IERC721(nft.token).approve(exchange, nft.id);
+        bool isApproved = IERC721(nft.token).isApprovedForAll(
+            address(this),
+            exchange
+        );
+        if (!isApproved) {
+            IERC721(nft.token).setApprovalForAll(exchange, true);
+        }
 
-        bool success;
-        try
-            ISeaport(exchange).fulfillAdvancedOrder(
-                order,
-                criteriaResolvers,
-                bytes32(0),
-                params.fillTo
-            )
-        returns (bool fulfilled) {
-            success = fulfilled;
-        } catch {}
+        fillSingleOrder(
+            order,
+            criteriaResolvers,
+            params.fillTo,
+            params.revertIfIncomplete,
+            0
+        );
 
-        if (params.revertIfIncomplete && !success) {
-            revert UnsuccessfulFill();
-        } else if (!success) {
-            IERC721(nft.token).safeTransferFrom(
+        if (!params.revertIfIncomplete) {
+            if (IERC721(nft.token).ownerOf(nft.id) == address(this)) {
+                IERC721(nft.token).safeTransferFrom(
+                    address(this),
+                    params.refundTo,
+                    nft.id
+                );
+            }
+        }
+    }
+
+    // --- Single ERC1155 offer ---
+
+    function acceptERC1155Offer(
+        ISeaport.AdvancedOrder calldata order,
+        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
+        ISeaport.CriteriaResolver[] memory criteriaResolvers,
+        OfferParams calldata params,
+        NFT calldata nft
+    ) external nonReentrant {
+        bool isApproved = IERC1155(nft.token).isApprovedForAll(
+            address(this),
+            exchange
+        );
+        if (!isApproved) {
+            IERC1155(nft.token).setApprovalForAll(exchange, true);
+        }
+
+        fillSingleOrder(
+            order,
+            criteriaResolvers,
+            params.fillTo,
+            params.revertIfIncomplete,
+            0
+        );
+
+        if (!params.revertIfIncomplete) {
+            uint256 balance = IERC1155(nft.token).balanceOf(
                 address(this),
-                params.refundTo,
                 nft.id
             );
+            if (balance > 0) {
+                IERC1155(nft.token).safeTransferFrom(
+                    address(this),
+                    params.refundTo,
+                    nft.id,
+                    balance,
+                    ""
+                );
+            }
         }
     }
 
@@ -209,6 +213,7 @@ contract SeaportModule is BaseModule {
 
     function fillSingleOrder(
         ISeaport.AdvancedOrder calldata order,
+        ISeaport.CriteriaResolver[] memory criteriaResolvers,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
@@ -217,7 +222,7 @@ contract SeaportModule is BaseModule {
         try
             ISeaport(exchange).fulfillAdvancedOrder{value: value}(
                 order,
-                new ISeaport.CriteriaResolver[](0),
+                criteriaResolvers,
                 bytes32(0),
                 receiver
             )
@@ -233,6 +238,7 @@ contract SeaportModule is BaseModule {
     function fillMultipleOrders(
         ISeaport.AdvancedOrder[] calldata orders,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
+        ISeaport.CriteriaResolver[] memory criteriaResolvers,
         SeaportFulfillments memory fulfillments,
         address receiver,
         bool revertIfIncomplete,
@@ -241,7 +247,7 @@ contract SeaportModule is BaseModule {
         (bool[] memory fulfilled, ) = ISeaport(exchange)
             .fulfillAvailableAdvancedOrders{value: value}(
             orders,
-            new ISeaport.CriteriaResolver[](0),
+            criteriaResolvers,
             fulfillments.offer,
             fulfillments.consideration,
             bytes32(0),
@@ -284,4 +290,6 @@ contract SeaportModule is BaseModule {
     ) external pure returns (bytes4) {
         return this.onERC1155Received.selector;
     }
+
+    // TODO: Add methods for batch selling
 }

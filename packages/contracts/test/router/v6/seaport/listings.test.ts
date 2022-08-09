@@ -6,13 +6,13 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { ExecutionInfo } from "../helpers/router";
+import { ExecutionInfo } from "../../helpers/router";
 import {
+  SeaportERC20Tip,
   SeaportListing,
-  SeaportTip,
+  setupSeaportERC20Tips,
   setupSeaportListings,
-  setupSeaportTips,
-} from "../helpers/seaport";
+} from "../../helpers/seaport";
 import {
   bn,
   getChainId,
@@ -22,9 +22,9 @@ import {
   getRandomInteger,
   reset,
   setupNFTs,
-} from "../../utils";
+} from "../../../utils";
 
-describe("[ReservoirV6_0_0] Seaport", () => {
+describe("[ReservoirV6_0_0] Seaport listings", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -92,8 +92,8 @@ describe("[ReservoirV6_0_0] Seaport", () => {
   const testAcceptListings = async (
     // Whether to fill USDC or ETH listings
     useUsdc: boolean,
-    // Include fees on top
-    withFees: boolean,
+    // Whether to include fees on top
+    chargeFees: boolean,
     // Whether to revert or not in case of any failures
     revertIfIncomplete: boolean,
     // Whether to cancel some orders in order to trigger partial filling
@@ -103,9 +103,15 @@ describe("[ReservoirV6_0_0] Seaport", () => {
   ) => {
     // Setup
 
+    // Makers: Alice and Bob
+    // Taker: Carol
+    // Fee recipient: Emilio
+
     const paymentToken = useUsdc
       ? Sdk.Common.Addresses.Usdc[chainId]
       : Sdk.Common.Addresses.Eth[chainId];
+    const parsePrice = (price: string) =>
+      useUsdc ? parseUnits(price, 6) : parseEther(price);
 
     const listings: SeaportListing[] = [];
     const feesOnTop: BigNumber[] = [];
@@ -118,15 +124,12 @@ describe("[ReservoirV6_0_0] Seaport", () => {
           id: getRandomInteger(1, 10000),
         },
         paymentToken,
-        price: parseUnits(
-          getRandomFloat(0.0001, 2).toFixed(6),
-          useUsdc ? 6 : 18
-        ),
+        price: parsePrice(getRandomFloat(0.0001, 2).toFixed(6)),
         isCancelled: partial && getRandomBoolean(),
       });
-      feesOnTop.push(
-        parseUnits(getRandomFloat(0.0001, 0.1).toFixed(6), useUsdc ? 6 : 18)
-      );
+      if (chargeFees) {
+        feesOnTop.push(parsePrice(getRandomFloat(0.0001, 0.1).toFixed(6)));
+      }
     }
     await setupSeaportListings(listings);
 
@@ -136,7 +139,7 @@ describe("[ReservoirV6_0_0] Seaport", () => {
       listings.map(({ price }) => price).reduce((a, b) => bn(a).add(b), bn(0))
     );
     const executions: ExecutionInfo[] = [
-      // 1. If filling USDC listings, swap ETH to USDC on Uniswap V3 (for testing purposes only)
+      // 1. When filling USDC listings, swap ETH to USDC on Uniswap V3 (for testing purposes only)
       ...(useUsdc
         ? [
             {
@@ -148,20 +151,25 @@ describe("[ReservoirV6_0_0] Seaport", () => {
                     tokenIn: Sdk.Common.Addresses.Weth[chainId],
                     tokenOut: Sdk.Common.Addresses.Usdc[chainId],
                     fee: 500,
+                    // Send USDC to the Seaport module
                     recipient: seaportModule.address,
                     deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
                     amountOut: listings
                       .map(({ price }, i) =>
-                        withFees ? bn(price).add(feesOnTop[i]) : price
+                        bn(price).add(chargeFees ? feesOnTop[i] : 0)
                       )
-                      .reduce((a, b) => bn(a).add(b), bn(0)),
-                    amountInMaximum: parseEther("10"),
+                      .reduce((a, b) => bn(a).add(b), bn(0))
+                      // Anything on top should be refunded
+                      .add(parsePrice("1000")),
+                    amountInMaximum: parseEther("100"),
                     sqrtPriceLimitX96: 0,
                   },
+                  // Refund to Carol
                   carol.address,
                 ]
               ),
-              value: parseEther("10"),
+              // Anything on top should be refunded
+              value: parseEther("100"),
             },
           ]
         : []),
@@ -170,9 +178,7 @@ describe("[ReservoirV6_0_0] Seaport", () => {
         ? {
             module: seaportModule.address,
             data: seaportModule.interface.encodeFunctionData(
-              `accept${useUsdc ? "ERC20" : "ETH"}Listings${
-                withFees ? "WithFees" : ""
-              }`,
+              `accept${useUsdc ? "ERC20" : "ETH"}Listings`,
               [
                 listings.map((listing) => ({
                   parameters: {
@@ -210,17 +216,16 @@ describe("[ReservoirV6_0_0] Seaport", () => {
                   fillTo: carol.address,
                   refundTo: carol.address,
                   revertIfIncomplete,
-                  token: paymentToken,
                   amount: totalPrice,
+                  // Only relevant when filling USDC listings
+                  token: paymentToken,
                 },
-                ...(withFees
-                  ? [
-                      feesOnTop.map((amount) => ({
-                        recipient: emilio.address,
-                        amount,
-                      })),
-                    ]
-                  : []),
+                [
+                  ...feesOnTop.map((amount) => ({
+                    recipient: emilio.address,
+                    amount,
+                  })),
+                ],
               ]
             ),
             value: useUsdc
@@ -235,9 +240,7 @@ describe("[ReservoirV6_0_0] Seaport", () => {
         : {
             module: seaportModule.address,
             data: seaportModule.interface.encodeFunctionData(
-              `accept${useUsdc ? "ERC20" : "ETH"}Listing${
-                withFees ? "WithFees" : ""
-              }`,
+              `accept${useUsdc ? "ERC20" : "ETH"}Listing`,
               [
                 ...listings.map((listing) => ({
                   parameters: {
@@ -254,17 +257,16 @@ describe("[ReservoirV6_0_0] Seaport", () => {
                   fillTo: carol.address,
                   refundTo: carol.address,
                   revertIfIncomplete,
-                  token: paymentToken,
                   amount: totalPrice,
+                  // Only relevant when filling USDC listings
+                  token: paymentToken,
                 },
-                ...(withFees
-                  ? [
-                      feesOnTop.map((amount) => ({
-                        recipient: emilio.address,
-                        amount,
-                      })),
-                    ]
-                  : []),
+                [
+                  ...feesOnTop.map((amount) => ({
+                    recipient: emilio.address,
+                    amount,
+                  })),
+                ],
               ]
             ),
             value: useUsdc
@@ -278,8 +280,11 @@ describe("[ReservoirV6_0_0] Seaport", () => {
           },
     ];
 
-    // Execute
+    // Checks
 
+    // If the `revertIfIncomplete` option is enabled and we have any
+    // orders that are not fillable, the whole transaction should be
+    // reverted
     if (
       partial &&
       revertIfIncomplete &&
@@ -337,8 +342,11 @@ describe("[ReservoirV6_0_0] Seaport", () => {
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
-    // Fee recipient got their payment
-    if (withFees) {
+    // Emilio got the fee payments
+    if (chargeFees) {
+      // Fees are charged per execution, and since we have a single execution
+      // here, we will have a single fee payment at the end adjusted over the
+      // amount that was actually paid (eg. prices of filled orders)
       const actualPaid = listings
         .filter(({ isCancelled }) => !isCancelled)
         .map(({ price }) => price)
@@ -367,21 +375,23 @@ describe("[ReservoirV6_0_0] Seaport", () => {
     expect(balancesAfter.uniswapV3Module).to.eq(0);
   };
 
+  // Test various combinations for filling listings
+
   for (let useUsdc of [false, true]) {
     for (let multiple of [false, true]) {
       for (let partial of [false, true]) {
-        for (let withFees of [false, true]) {
+        for (let chargeFees of [false, true]) {
           for (let revertIfIncomplete of [false, true]) {
             it(
               `${useUsdc ? "[usdc]" : "[eth]"}` +
-                `${multiple ? "[multiple]" : "[single]"}` +
+                `${multiple ? "[multiple-orders]" : "[single-order]"}` +
                 `${partial ? "[partial]" : "[full]"}` +
-                `${withFees ? "[fees]" : "[no-fees]"}` +
-                `${revertIfIncomplete ? "[reverts]" : "[no-reverts]"}`,
+                `${chargeFees ? "[fees]" : "[no-fees]"}` +
+                `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
               async () =>
                 testAcceptListings(
                   useUsdc,
-                  withFees,
+                  chargeFees,
                   revertIfIncomplete,
                   partial,
                   multiple ? getRandomInteger(2, 6) : 1
@@ -396,15 +406,18 @@ describe("[ReservoirV6_0_0] Seaport", () => {
   it("Fill USDC listing with ETH", async () => {
     // Setup
 
+    // Maker: Alice
+    // Taker: Bob
+
     const listing: SeaportListing = {
       seller: alice,
       nft: {
         kind: "erc721",
         contract: erc721,
-        id: 9876,
+        id: getRandomInteger(1, 10000),
       },
       paymentToken: Sdk.Common.Addresses.Usdc[chainId],
-      price: parseUnits("2576", 6),
+      price: parseUnits(getRandomFloat(0.0001, 2).toFixed(6), 6),
     };
     await setupSeaportListings([listing]);
 
@@ -421,13 +434,17 @@ describe("[ReservoirV6_0_0] Seaport", () => {
             fee: 500,
             recipient: seaportModule.address,
             deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
-            amountOut: listing.price,
-            amountInMaximum: parseEther("2"),
+            amountOut: bn(listing.price).add(
+              // Anything on top should be refunded
+              parseUnits("500", 6)
+            ),
+            amountInMaximum: parseEther("10"),
             sqrtPriceLimitX96: 0,
           },
           bob.address,
         ]),
-        value: parseEther("2"),
+        // Anything on top should be refunded
+        value: parseEther("10"),
       },
       // 2. Fill USDC listing with the received funds
       {
@@ -448,9 +465,10 @@ describe("[ReservoirV6_0_0] Seaport", () => {
             fillTo: bob.address,
             refundTo: bob.address,
             revertIfIncomplete: true,
-            token: listing.paymentToken!,
             amount: listing.price,
+            token: listing.paymentToken!,
           },
+          [],
         ]),
         value: 0,
       },
@@ -497,25 +515,35 @@ describe("[ReservoirV6_0_0] Seaport", () => {
   it("Fill USDC listing approval-less", async () => {
     // Setup
 
+    // Maker: Alice
+    // Taker: Bob
+
     const listing: SeaportListing = {
       seller: alice,
       nft: {
         kind: "erc721",
         contract: erc721,
-        id: 9876,
+        id: getRandomInteger(1, 10000),
       },
       paymentToken: Sdk.Common.Addresses.Usdc[chainId],
-      price: parseUnits("2576", 6),
+      price: parseUnits(getRandomFloat(0.0001, 2).toFixed(6), 6),
     };
     await setupSeaportListings([listing]);
 
-    const tip: SeaportTip = {
+    // In order to avoid giving USDC approval to the router (remember,
+    // the router is supposed to be stateless), we do create a Seaport
+    // order which gives the funds to the router (eg. offer = USDC and
+    // consideration = USDC - with the router as a private recipient).
+    // This way, the USDC approval will be made on the Seaport conduit
+    // and the router stays stateless.
+
+    const tip: SeaportERC20Tip = {
       giver: bob,
       receiver: seaportModule.address,
       paymentToken: listing.paymentToken!,
       amount: listing.price,
     };
-    await setupSeaportTips([tip]);
+    await setupSeaportERC20Tips([tip]);
 
     // Prepare executions
 
@@ -530,19 +558,24 @@ describe("[ReservoirV6_0_0] Seaport", () => {
             fee: 500,
             recipient: bob.address,
             deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
-            amountOut: listing.price,
-            amountInMaximum: parseEther("2"),
+            amountOut: bn(listing.price).add(
+              // Anything on top should be refunded
+              parseUnits("100", 6)
+            ),
+            amountInMaximum: parseEther("10"),
             sqrtPriceLimitX96: 0,
           },
           bob.address,
         ]),
-        value: parseEther("2"),
+        // Anything on top should be refunded
+        value: parseEther("10"),
       },
       // 2. Fill tip order, so that we avoid giving approval to the router
       {
         module: seaportModule.address,
         data: seaportModule.interface.encodeFunctionData("matchOrders", [
           [
+            // Regular order
             {
               parameters: {
                 ...tip.orders![0].params,
@@ -551,6 +584,7 @@ describe("[ReservoirV6_0_0] Seaport", () => {
               },
               signature: tip.orders![0].params.signature,
             },
+            // Mirror order
             {
               parameters: {
                 ...tip.orders![1].params,
@@ -560,6 +594,7 @@ describe("[ReservoirV6_0_0] Seaport", () => {
               signature: "0x",
             },
           ],
+          // Match the single offer item to the single consideration item
           [
             {
               offerComponents: [
@@ -598,9 +633,10 @@ describe("[ReservoirV6_0_0] Seaport", () => {
             fillTo: bob.address,
             refundTo: bob.address,
             revertIfIncomplete: true,
-            token: listing.paymentToken!,
             amount: listing.price,
+            token: listing.paymentToken!,
           },
+          [],
         ]),
         value: 0,
       },
@@ -618,7 +654,6 @@ describe("[ReservoirV6_0_0] Seaport", () => {
       value: executions
         .map(({ value }) => value)
         .reduce((a, b) => bn(a).add(b)),
-      gasLimit: 1000000,
     });
 
     // Fetch post-state

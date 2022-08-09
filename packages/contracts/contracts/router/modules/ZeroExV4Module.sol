@@ -26,20 +26,6 @@ contract ZeroExV4Module is BaseModule {
     function acceptETHListingERC721(
         IZeroExV4.ERC721Order calldata order,
         IZeroExV4.Signature calldata signature,
-        ETHListingParams calldata params
-    ) external payable nonReentrant refundETHLeftover(params.refundTo) {
-        buyERC721(
-            order,
-            signature,
-            params.fillTo,
-            params.revertIfIncomplete,
-            params.amount
-        );
-    }
-
-    function acceptETHListingWithFeesERC721(
-        IZeroExV4.ERC721Order calldata order,
-        IZeroExV4.Signature calldata signature,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -61,21 +47,6 @@ contract ZeroExV4Module is BaseModule {
     // --- [ERC721] Single ERC20 listing ---
 
     function acceptERC20ListingERC721(
-        IZeroExV4.ERC721Order calldata order,
-        IZeroExV4.Signature calldata signature,
-        ERC20ListingParams calldata params
-    ) external nonReentrant refundERC20Leftover(params.refundTo, params.token) {
-        IERC20(params.token).safeApprove(exchange, params.amount);
-        buyERC721(
-            order,
-            signature,
-            params.fillTo,
-            params.revertIfIncomplete,
-            params.amount
-        );
-    }
-
-    function acceptERC20ListingWithFeesERC721(
         IZeroExV4.ERC721Order calldata order,
         IZeroExV4.Signature calldata signature,
         ERC20ListingParams calldata params,
@@ -102,20 +73,6 @@ contract ZeroExV4Module is BaseModule {
     function acceptETHListingERC1155(
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
-        ETHListingParams calldata params
-    ) external payable nonReentrant refundETHLeftover(params.refundTo) {
-        buyERC1155(
-            order,
-            signature,
-            params.fillTo,
-            params.revertIfIncomplete,
-            params.amount
-        );
-    }
-
-    function acceptETHListingWithFeesERC1155(
-        IZeroExV4.ERC1155Order calldata order,
-        IZeroExV4.Signature calldata signature,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -137,21 +94,6 @@ contract ZeroExV4Module is BaseModule {
     // --- [ERC1155] Single ERC20 listing ---
 
     function acceptERC20ListingERC1155(
-        IZeroExV4.ERC1155Order calldata order,
-        IZeroExV4.Signature calldata signature,
-        ERC20ListingParams calldata params
-    ) external nonReentrant refundERC20Leftover(params.refundTo, params.token) {
-        IERC20(params.token).safeApprove(exchange, params.amount);
-        buyERC1155(
-            order,
-            signature,
-            params.fillTo,
-            params.revertIfIncomplete,
-            params.amount
-        );
-    }
-
-    function acceptERC20ListingWithFeesERC1155(
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
         ERC20ListingParams calldata params,
