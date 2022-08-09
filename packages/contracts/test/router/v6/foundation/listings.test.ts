@@ -8,9 +8,9 @@ import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
-  ZeroExV4Listing,
-  setupZeroExV4Listings,
-} from "../../helpers/zeroex-v4";
+  FoundationListing,
+  setupFoundationListings,
+} from "../../helpers/foundation";
 import {
   bn,
   getChainId,
@@ -21,7 +21,7 @@ import {
   setupNFTs,
 } from "../../../utils";
 
-describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
+describe("[ReservoirV6_0_0] Foundation listings", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -33,7 +33,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
   let erc721: Contract;
   let router: Contract;
-  let zeroExV4Module: Contract;
+  let foundationModule: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
@@ -43,11 +43,11 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
-    zeroExV4Module = (await ethers
-      .getContractFactory("ZeroExV4Module", deployer)
+    foundationModule = (await ethers
+      .getContractFactory("FoundationModule", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
 
-    await router.registerModule(zeroExV4Module.address);
+    await router.registerModule(foundationModule.address);
   });
 
   const getBalances = async (token: string) => {
@@ -59,8 +59,8 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         david: await ethers.provider.getBalance(david.address),
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
-        zeroExV4Module: await ethers.provider.getBalance(
-          zeroExV4Module.address
+        foundationModule: await ethers.provider.getBalance(
+          foundationModule.address
         ),
       };
     } else {
@@ -72,7 +72,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         david: await contract.getBalance(david.address),
         emilio: await contract.getBalance(emilio.address),
         router: await contract.getBalance(router.address),
-        zeroExV4Module: await contract.getBalance(zeroExV4Module.address),
+        foundationModule: await contract.getBalance(foundationModule.address),
       };
     }
   };
@@ -95,13 +95,12 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
     // Taker: Carol
     // Fee recipient: Emilio
 
-    const listings: ZeroExV4Listing[] = [];
+    const listings: FoundationListing[] = [];
     const feesOnTop: BigNumber[] = [];
     for (let i = 0; i < listingsCount; i++) {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
-          kind: "erc721",
           contract: erc721,
           id: getRandomInteger(1, 10000),
         },
@@ -112,19 +111,21 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         feesOnTop.push(parseEther(getRandomFloat(0.0001, 0.1).toFixed(6)));
       }
     }
-    await setupZeroExV4Listings(listings);
+    await setupFoundationListings(listings);
 
     // Prepare executions
 
     const executions: ExecutionInfo[] = [
       // 1. Fill listings
       ...listings.map((listing, i) => ({
-        module: zeroExV4Module.address,
-        data: zeroExV4Module.interface.encodeFunctionData(
-          `acceptETHListingERC721`,
+        module: foundationModule.address,
+        data: foundationModule.interface.encodeFunctionData(
+          `acceptETHListing`,
           [
-            listing.order!.getRaw(),
-            listing.order!.getRaw(),
+            {
+              token: listing.nft.contract.address,
+              id: listing.nft.id,
+            },
             {
               fillTo: carol.address,
               refundTo: carol.address,
@@ -183,6 +184,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
       value: executions
         .map(({ value }) => value)
         .reduce((a, b) => bn(a).add(b), bn(0)),
+      gasLimit: 1000000,
     });
 
     // Fetch post-state
@@ -198,7 +200,12 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
           ({ seller, isCancelled }) =>
             !isCancelled && seller.address === alice.address
         )
-        .map(({ price }) => price)
+        .map(({ price }) =>
+          bn(price).sub(
+            // Take into consideration the protocol fee
+            bn(price).mul(500).div(10000)
+          )
+        )
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
     // Bob got the payment
@@ -208,7 +215,12 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
           ({ seller, isCancelled }) =>
             !isCancelled && seller.address === bob.address
         )
-        .map(({ price }) => price)
+        .map(({ price }) =>
+          bn(price).sub(
+            // Take into consideration the protocol fee
+            bn(price).mul(500).div(10000)
+          )
+        )
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
@@ -234,7 +246,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
     // Router is stateless
     expect(balancesAfter.router).to.eq(0);
-    expect(balancesAfter.zeroExV4Module).to.eq(0);
+    expect(balancesAfter.foundationModule).to.eq(0);
   };
 
   for (let multiple of [false, true]) {
