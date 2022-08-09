@@ -305,7 +305,6 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
       value: executions
         .map(({ value }) => value)
         .reduce((a, b) => bn(a).add(b), bn(0)),
-      gasLimit: 1000000,
     });
 
     // Checks

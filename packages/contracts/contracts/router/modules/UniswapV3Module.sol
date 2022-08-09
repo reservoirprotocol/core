@@ -17,10 +17,6 @@ contract UniswapV3Module is BaseModule {
     address public immutable swapRouter =
         0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
-    // --- Errors ---
-
-    error WrongParams();
-
     // --- Constructor ---
 
     constructor(address router) BaseModule(router) {}
@@ -47,6 +43,4 @@ contract UniswapV3Module is BaseModule {
         IERC20(params.tokenIn).approve(swapRouter, params.amountInMaximum);
         IUniswapV3Router(swapRouter).exactOutputSingle(params);
     }
-
-    // TODO: Add support for multi-hop swaps
 }

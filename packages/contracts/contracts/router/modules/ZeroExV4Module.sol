@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {BaseModule} from "./BaseModule.sol";
 import {IZeroExV4} from "../interfaces/IZeroExV4.sol";
@@ -64,7 +64,7 @@ contract ZeroExV4Module is BaseModule {
             signature,
             params.fillTo,
             params.revertIfIncomplete,
-            params.amount
+            0
         );
     }
 
@@ -111,8 +111,109 @@ contract ZeroExV4Module is BaseModule {
             signature,
             params.fillTo,
             params.revertIfIncomplete,
-            params.amount
+            0
         );
+    }
+
+    // --- [ERC721] Single offer ---
+
+    function acceptOfferERC721(
+        IZeroExV4.ERC721Order calldata order,
+        IZeroExV4.Signature calldata signature,
+        OfferParams calldata params,
+        NFT calldata nft
+    ) external nonReentrant {
+        bool isApproved = IERC721(order.erc721Token).isApprovedForAll(
+            address(this),
+            exchange
+        );
+        if (!isApproved) {
+            IERC721(order.erc721Token).setApprovalForAll(exchange, true);
+        }
+
+        bool success;
+        try
+            IZeroExV4(exchange).sellERC721(order, signature, nft.id, false, "")
+        {
+            IERC20(order.erc20Token).safeTransfer(
+                params.fillTo,
+                order.erc20TokenAmount
+            );
+
+            success = true;
+        } catch {}
+
+        if (!success) {
+            if (params.revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            } else {
+                // Refund
+                if (IERC721(nft.token).ownerOf(nft.id) == address(this)) {
+                    IERC721(nft.token).safeTransferFrom(
+                        address(this),
+                        params.refundTo,
+                        nft.id
+                    );
+                }
+            }
+        }
+    }
+
+    // --- [ERC1155] Single offer ---
+
+    function acceptOfferERC1155(
+        IZeroExV4.ERC1155Order calldata order,
+        IZeroExV4.Signature calldata signature,
+        OfferParams calldata params,
+        NFT calldata nft
+    ) external nonReentrant {
+        bool isApproved = IERC1155(order.erc1155Token).isApprovedForAll(
+            address(this),
+            exchange
+        );
+        if (!isApproved) {
+            IERC1155(order.erc1155Token).setApprovalForAll(exchange, true);
+        }
+
+        bool success;
+        try
+            IZeroExV4(exchange).sellERC1155(
+                order,
+                signature,
+                nft.id,
+                1,
+                false,
+                ""
+            )
+        {
+            IERC20(order.erc20Token).safeTransfer(
+                params.fillTo,
+                order.erc20TokenAmount
+            );
+
+            success = true;
+        } catch {}
+
+        if (!success) {
+            if (params.revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            } else {
+                // Refund
+                uint256 balance = IERC1155(nft.token).balanceOf(
+                    address(this),
+                    nft.id
+                );
+                if (balance > 0) {
+                    IERC1155(nft.token).safeTransferFrom(
+                        address(this),
+                        params.refundTo,
+                        nft.id,
+                        balance,
+                        ""
+                    );
+                }
+            }
+        }
     }
 
     // --- Internal ---
@@ -126,15 +227,13 @@ contract ZeroExV4Module is BaseModule {
     ) internal {
         bool success;
         try IZeroExV4(exchange).buyERC721{value: value}(order, signature, "") {
-            try
-                IERC721(order.erc721Token).safeTransferFrom(
-                    address(this),
-                    receiver,
-                    order.erc721TokenId
-                )
-            {
-                success = true;
-            } catch {}
+            IERC721(order.erc721Token).safeTransferFrom(
+                address(this),
+                receiver,
+                order.erc721TokenId
+            );
+
+            success = true;
         } catch {}
 
         if (revertIfIncomplete && !success) {
@@ -158,17 +257,15 @@ contract ZeroExV4Module is BaseModule {
                 ""
             )
         {
-            try
-                IERC1155(order.erc1155Token).safeTransferFrom(
-                    address(this),
-                    receiver,
-                    order.erc1155TokenId,
-                    1,
-                    ""
-                )
-            {
-                success = true;
-            } catch {}
+            IERC1155(order.erc1155Token).safeTransferFrom(
+                address(this),
+                receiver,
+                order.erc1155TokenId,
+                1,
+                ""
+            );
+
+            success = true;
         } catch {}
 
         if (revertIfIncomplete && !success) {
@@ -196,7 +293,4 @@ contract ZeroExV4Module is BaseModule {
     ) external pure returns (bytes4) {
         return this.onERC1155Received.selector;
     }
-
-    // TODO: Add support for native batch-filling (via `buyERC721s` and `buyERC1155s`)
-    // TODO: Add support for filling multiple ERC1155 tokens at once
 }

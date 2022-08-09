@@ -1,13 +1,16 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
-import { parseUnits } from "@ethersproject/units";
+import { parseEther } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { ExecutionInfo } from "../helpers/router";
-import { ZeroExV4Listing, setupZeroExV4Listings } from "../helpers/zeroex-v4";
+import { ExecutionInfo } from "../../helpers/router";
+import {
+  ZeroExV4Listing,
+  setupZeroExV4Listings,
+} from "../../helpers/zeroex-v4";
 import {
   bn,
   getChainId,
@@ -16,9 +19,9 @@ import {
   getRandomInteger,
   reset,
   setupNFTs,
-} from "../../utils";
+} from "../../../utils";
 
-describe("[ReservoirV6_0_0] ZeroExV4", () => {
+describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -86,8 +89,8 @@ describe("[ReservoirV6_0_0] ZeroExV4", () => {
   afterEach(reset);
 
   const testAcceptListings = async (
-    // Include fees on top
-    withFees: boolean,
+    // Whether to include fees on top
+    chargeFees: boolean,
     // Whether to revert or not in case of any failures
     revertIfIncomplete: boolean,
     // Whether to cancel some orders in order to trigger partial filling
@@ -96,6 +99,10 @@ describe("[ReservoirV6_0_0] ZeroExV4", () => {
     listingsCount: number
   ) => {
     // Setup
+
+    // Makers: Alice and Bob
+    // Taker: Carol
+    // Fee recipient: Emilio
 
     const listings: ZeroExV4Listing[] = [];
     const feesOnTop: BigNumber[] = [];
@@ -107,24 +114,23 @@ describe("[ReservoirV6_0_0] ZeroExV4", () => {
           contract: erc721,
           id: getRandomInteger(1, 10000),
         },
-        price: parseUnits(getRandomFloat(0.0001, 2).toFixed(6), 18),
+        price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
         isCancelled: partial && getRandomBoolean(),
       });
-      feesOnTop.push(parseUnits(getRandomFloat(0.0001, 0.1).toFixed(6), 18));
+      if (chargeFees) {
+        feesOnTop.push(parseEther(getRandomFloat(0.0001, 0.1).toFixed(6)));
+      }
     }
     await setupZeroExV4Listings(listings);
 
     // Prepare executions
 
-    const totalPrice = bn(
-      listings.map(({ price }) => price).reduce((a, b) => bn(a).add(b), bn(0))
-    );
     const executions: ExecutionInfo[] = [
       // 1. Fill listings
       ...listings.map((listing, i) => ({
         module: zeroExV4Module.address,
         data: zeroExV4Module.interface.encodeFunctionData(
-          `acceptETHListing${withFees ? "WithFees" : ""}ERC721`,
+          `acceptETHListingERC721`,
           [
             listing.order!.getRaw(),
             listing.order!.getRaw(),
@@ -134,24 +140,30 @@ describe("[ReservoirV6_0_0] ZeroExV4", () => {
               revertIfIncomplete,
               amount: listing.price,
             },
-            ...(withFees
+            chargeFees
               ? [
-                  [
-                    {
-                      recipient: emilio.address,
-                      amount: feesOnTop[i],
-                    },
-                  ],
+                  {
+                    recipient: emilio.address,
+                    amount: feesOnTop[i],
+                  },
                 ]
-              : []),
+              : [],
           ]
         ),
-        value: bn(listing.price).add(feesOnTop[i]).add(parseUnits("0.1", 18)),
+        value: bn(listing.price)
+          .add(chargeFees ? feesOnTop[i] : 0)
+          .add(
+            // Anything on top should be refunded
+            parseEther("0.1")
+          ),
       })),
     ];
 
-    // Execute
+    // Checks
 
+    // If the `revertIfIncomplete` option is enabled and we have any
+    // orders that are not fillable, the whole transaction should be
+    // reverted
     if (
       partial &&
       revertIfIncomplete &&
@@ -180,7 +192,6 @@ describe("[ReservoirV6_0_0] ZeroExV4", () => {
       value: executions
         .map(({ value }) => value)
         .reduce((a, b) => bn(a).add(b), bn(0)),
-      gasLimit: 1000000,
     });
 
     // Fetch post-state
@@ -210,8 +221,8 @@ describe("[ReservoirV6_0_0] ZeroExV4", () => {
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
-    // Fee recipient got their payment
-    if (withFees) {
+    // Emilio got the fee payments
+    if (chargeFees) {
       expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
         listings
           .map(({ isCancelled }, i) => (!isCancelled ? feesOnTop[i] : 0))
@@ -238,19 +249,17 @@ describe("[ReservoirV6_0_0] ZeroExV4", () => {
 
   for (let multiple of [false, true]) {
     for (let partial of [false, true]) {
-      for (let withFees of [false, true]) {
+      for (let chargeFees of [false, true]) {
         for (let revertIfIncomplete of [false, true]) {
           it(
             "[eth]" +
-              `${multiple ? "[multiple]" : "[single]"}` +
+              `${multiple ? "[multiple-orders]" : "[single-order]"}` +
               `${partial ? "[partial]" : "[full]"}` +
-              `${withFees ? "[fees]" : "[no-fees]"}` +
-              `${
-                revertIfIncomplete ? "[disallow-reverts]" : "[allow-reverts]"
-              }`,
+              `${chargeFees ? "[fees]" : "[no-fees]"}` +
+              `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
             async () =>
               testAcceptListings(
-                withFees,
+                chargeFees,
                 revertIfIncomplete,
                 partial,
                 multiple ? getRandomInteger(2, 6) : 1
