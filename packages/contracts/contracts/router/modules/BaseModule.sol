@@ -95,11 +95,13 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
             bool success;
             for (uint256 i = 0; i < length; ) {
                 uint256 actualFee = (fees[i].amount * actualPaid) / amount;
-                (success, ) = payable(fees[i].recipient).call{value: actualFee}(
-                    ""
-                );
-                if (!success) {
-                    revert UnsuccessfulPayment();
+                if (actualFee > 0) {
+                    (success, ) = payable(fees[i].recipient).call{
+                        value: actualFee
+                    }("");
+                    if (!success) {
+                        revert UnsuccessfulPayment();
+                    }
                 }
 
                 unchecked {
@@ -127,7 +129,9 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
             bool success;
             for (uint256 i = 0; i < length; ) {
                 uint256 actualFee = (fees[i].amount * actualPaid) / amount;
-                IERC20(token).safeTransfer(fees[i].recipient, actualFee);
+                if (actualFee > 0) {
+                    IERC20(token).safeTransfer(fees[i].recipient, actualFee);
+                }
 
                 unchecked {
                     ++i;
