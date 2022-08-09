@@ -11,11 +11,6 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
 
     // --- Structs ---
 
-    struct Fee {
-        address recipient;
-        uint256 amount;
-    }
-
     struct ETHListingParams {
         address fillTo;
         address refundTo;
@@ -31,20 +26,19 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
         uint256 amount;
     }
 
-    struct NFTOfferParams {
+    struct OfferParams {
         address fillTo;
         address refundTo;
         bool revertIfIncomplete;
     }
 
-    struct ERC721Token {
+    struct NFT {
         address token;
         uint256 id;
     }
 
-    struct ERC1155Token {
-        address token;
-        uint256 id;
+    struct Fee {
+        address recipient;
         uint256 amount;
     }
 
