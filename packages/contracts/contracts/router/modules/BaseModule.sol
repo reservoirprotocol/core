@@ -46,6 +46,7 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
 
     error UnsuccessfulFill();
     error UnsuccessfulPayment();
+    error WrongParams();
 
     // --- Constructor ---
 

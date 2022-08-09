@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity ^0.8.9;
 
 import {ISeaport} from "../interfaces/ISeaport.sol";
 
-// In order to prevent front-running, every tip order should enforce
-// that the offerer matches the transaction's sender (`tx.origin`)
+// One way to stay approval-less is to use one-time Seaport orders
+// that effectively act as a tip. These are prone to front-running
+// though. To prevent this, all tip orders should enforce that the
+// offerer matches the transaction sender (eg. `tx.origin`).
 contract SeaportTipZone {
     // --- Errors ---
 
     error Unauthorized();
 
-    // --- `ZoneInterface` overrides ---
+    // --- Seaport `ZoneInterface` overrides ---
 
     function isValidOrder(
         bytes32,
