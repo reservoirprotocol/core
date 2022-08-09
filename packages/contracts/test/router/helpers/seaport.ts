@@ -216,7 +216,8 @@ export const setupSeaportERC20Tips = async (tips: SeaportERC20Tip[]) => {
 
 export type SeaportERC721Tip = {
   giver: SignerWithAddress;
-  receiver: string;
+  filler: string;
+  receiver?: string;
   nft: {
     kind: "erc721" | "erc1155";
     contract: Contract;
@@ -232,7 +233,7 @@ export const setupSeaportERC721Tips = async (tips: SeaportERC721Tip[]) => {
   const chainId = getChainId();
 
   for (const tip of tips) {
-    const { giver, receiver, nft, zone } = tip;
+    const { giver, filler, receiver, nft, zone } = tip;
 
     // Approve the exchange contract
     if (nft.kind === "erc721") {
@@ -275,7 +276,7 @@ export const setupSeaportERC721Tips = async (tips: SeaportERC721Tip[]) => {
     order.params.consideration = [
       {
         ...order.params.offer[0],
-        recipient: receiver,
+        recipient: receiver ?? filler,
       },
     ];
 
@@ -291,7 +292,7 @@ export const setupSeaportERC721Tips = async (tips: SeaportERC721Tip[]) => {
     const mirrorOrder = builder.build({
       side: "sell",
       tokenKind: "erc721",
-      offerer: receiver,
+      offerer: filler,
       contract: giver.address,
       tokenId: 0,
       paymentToken: giver.address,

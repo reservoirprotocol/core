@@ -227,7 +227,7 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
 
     const tip: SeaportERC721Tip = {
       giver: alice,
-      receiver: seaportModule.address,
+      filler: seaportModule.address,
       nft: {
         kind: "erc721",
         contract: erc721,
