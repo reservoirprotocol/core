@@ -7,6 +7,11 @@ interface IX2Y2 {
         bytes data;
     }
 
+    struct Pair {
+        address token;
+        uint256 tokenId;
+    }
+
     struct Order {
         uint256 salt;
         address user;
