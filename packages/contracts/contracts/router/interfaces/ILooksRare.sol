@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-interface IOrderTypes {
+interface ILooksRare {
     struct MakerOrder {
         bool isOrderAsk;
         address signer;
@@ -29,19 +29,17 @@ interface IOrderTypes {
         uint256 minPercentageToAsk;
         bytes params;
     }
-}
 
-interface ILooksRare {
     function transferSelectorNFT() external view returns (address);
 
     function matchAskWithTakerBidUsingETHAndWETH(
-        IOrderTypes.TakerOrder calldata takerBid,
-        IOrderTypes.MakerOrder calldata makerAsk
+        TakerOrder calldata takerBid,
+        MakerOrder calldata makerAsk
     ) external payable;
 
     function matchBidWithTakerAsk(
-        IOrderTypes.TakerOrder calldata takerAsk,
-        IOrderTypes.MakerOrder calldata makerBid
+        TakerOrder calldata takerAsk,
+        MakerOrder calldata makerBid
     ) external;
 }
 
