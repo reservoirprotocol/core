@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -15,6 +16,12 @@ contract LooksRareModule is BaseModule {
 
     address public immutable exchange =
         0x59728544B08AB483533076417FbBB2fD0B17CE3a;
+
+    address public immutable erc721TransferManager =
+        0xf42aa99F011A1fA7CDA90E5E98b277E306BcA83e;
+
+    address public immutable erc1155TransferManager =
+        0xFED24eC7E22f573c2e08AEF55aA6797Ca2b3A051;
 
     // --- Constructor ---
 
@@ -64,6 +71,102 @@ contract LooksRareModule is BaseModule {
             params.revertIfIncomplete,
             0
         );
+    }
+
+    // --- [ERC721] Single offer ---
+
+    function acceptERC721Offer(
+        ILooksRare.TakerOrder calldata takerBid,
+        ILooksRare.MakerOrder calldata makerAsk,
+        OfferParams calldata params,
+        NFT calldata nft
+    ) external nonReentrant {
+        bool isApproved = IERC721(makerAsk.collection).isApprovedForAll(
+            address(this),
+            exchange
+        );
+        if (!isApproved) {
+            IERC721(makerAsk.collection).setApprovalForAll(
+                erc721TransferManager,
+                true
+            );
+        }
+
+        bool success;
+        try ILooksRare(exchange).matchBidWithTakerAsk(takerBid, makerAsk) {
+            IERC20(makerAsk.currency).safeTransfer(
+                params.fillTo,
+                IERC20(makerAsk.currency).balanceOf(address(this))
+            );
+
+            success = true;
+        } catch {}
+
+        if (!success) {
+            if (params.revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            } else {
+                // Refund
+                if (IERC721(nft.token).ownerOf(nft.id) == address(this)) {
+                    IERC721(nft.token).safeTransferFrom(
+                        address(this),
+                        params.refundTo,
+                        nft.id
+                    );
+                }
+            }
+        }
+    }
+
+    // --- [ERC1155] Single offer ---
+
+    function acceptERC1155Offer(
+        ILooksRare.TakerOrder calldata takerBid,
+        ILooksRare.MakerOrder calldata makerAsk,
+        OfferParams calldata params,
+        NFT calldata nft
+    ) external nonReentrant {
+        bool isApproved = IERC1155(makerAsk.collection).isApprovedForAll(
+            address(this),
+            exchange
+        );
+        if (!isApproved) {
+            IERC1155(makerAsk.collection).setApprovalForAll(
+                erc1155TransferManager,
+                true
+            );
+        }
+
+        bool success;
+        try ILooksRare(exchange).matchBidWithTakerAsk(takerBid, makerAsk) {
+            IERC20(makerAsk.currency).safeTransfer(
+                params.fillTo,
+                IERC20(makerAsk.currency).balanceOf(address(this))
+            );
+
+            success = true;
+        } catch {}
+
+        if (!success) {
+            if (params.revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            } else {
+                // Refund
+                uint256 balance = IERC1155(nft.token).balanceOf(
+                    address(this),
+                    nft.id
+                );
+                if (balance > 0) {
+                    IERC1155(nft.token).safeTransferFrom(
+                        address(this),
+                        params.refundTo,
+                        nft.id,
+                        balance,
+                        ""
+                    );
+                }
+            }
+        }
     }
 
     // --- Internal ---
