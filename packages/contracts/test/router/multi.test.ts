@@ -515,7 +515,7 @@ describe("Router - multi buy", () => {
     const tx = await router.fillListingsTx(sellOrders, buyer.address, {
       referrer: "reservoir.market",
     });
-    await buyer.sendTransaction({ ...tx, gasLimit: 1000000 });
+    await buyer.sendTransaction(tx);
 
     const seller1EthBalanceAfter = await seller1.getBalance();
     const seller2EthBalanceAfter = await seller2.getBalance();

@@ -26,6 +26,7 @@ export type LooksRareListing = {
 
 export const setupLooksRareListings = async (listings: LooksRareListing[]) => {
   const chainId = getChainId();
+  const exchange = new Sdk.LooksRare.Exchange(chainId);
 
   for (const listing of listings) {
     const { seller, nft, price } = listing;
@@ -66,7 +67,6 @@ export const setupLooksRareListings = async (listings: LooksRareListing[]) => {
 
     // Cancel the order if requested
     if (listing.isCancelled) {
-      const exchange = new Sdk.LooksRare.Exchange(chainId);
       await exchange.cancelOrder(seller, order);
     }
   }
@@ -74,7 +74,7 @@ export const setupLooksRareListings = async (listings: LooksRareListing[]) => {
 
 // --- Offers ---
 
-export type ZeroExV4Offer = {
+export type LooksRareOffer = {
   buyer: SignerWithAddress;
   nft: {
     kind: "erc721" | "erc1155";
@@ -85,28 +85,30 @@ export type ZeroExV4Offer = {
   price: BigNumberish;
   // Whether the order is to be cancelled
   isCancelled?: boolean;
-  order?: Sdk.ZeroExV4.Order;
+  order?: Sdk.LooksRare.Order;
 };
 
-export const setupZeroExV4Offers = async (offers: ZeroExV4Offer[]) => {
+export const setupLooksRareOffers = async (offers: LooksRareOffer[]) => {
   const chainId = getChainId();
+  const exchange = new Sdk.LooksRare.Exchange(chainId);
 
   for (const offer of offers) {
     const { buyer, nft, price } = offer;
 
     const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
     await weth.deposit(buyer, price);
-    await weth.approve(buyer, Sdk.ZeroExV4.Addresses.Exchange[chainId]);
+    await weth.approve(buyer, Sdk.LooksRare.Addresses.Exchange[chainId]);
 
     // Build and sign the order
-    const builder = new Sdk.ZeroExV4.Builders.SingleToken(chainId);
+    const builder = new Sdk.LooksRare.Builders.SingleToken(chainId);
     const order = builder.build({
-      direction: "buy",
-      maker: buyer.address,
-      contract: nft.contract.address,
+      isOrderAsk: false,
+      signer: buyer.address,
+      collection: nft.contract.address,
       tokenId: nft.id,
       price,
-      expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
+      startTime: await getCurrentTimestamp(ethers.provider),
+      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
     await order.sign(buyer);
 
@@ -114,7 +116,6 @@ export const setupZeroExV4Offers = async (offers: ZeroExV4Offer[]) => {
 
     // Cancel the order if requested
     if (offer.isCancelled) {
-      const exchange = new Sdk.ZeroExV4.Exchange(chainId);
       await exchange.cancelOrder(buyer, order);
     }
   }

@@ -10,7 +10,7 @@ import {
   SeaportERC721Tip,
   setupSeaportERC721Tips,
 } from "../../helpers/seaport";
-import { ZeroExV4Offer, setupZeroExV4Offers } from "../../helpers/zeroex-v4";
+import { LooksRareOffer, setupLooksRareOffers } from "../../helpers/looks-rare";
 import {
   bn,
   getChainId,
@@ -21,7 +21,7 @@ import {
   setupNFTs,
 } from "../../../utils";
 
-describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
+describe("[ReservoirV6_0_0] LooksRare offers", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -34,7 +34,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
   let erc721: Contract;
   let router: Contract;
   let seaportModule: Contract;
-  let zeroExV4Module: Contract;
+  let looksRareModule: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
@@ -47,12 +47,12 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
-    zeroExV4Module = (await ethers
-      .getContractFactory("ZeroExV4Module", deployer)
+    looksRareModule = (await ethers
+      .getContractFactory("LooksRareModule", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
 
     await router.registerModule(seaportModule.address);
-    await router.registerModule(zeroExV4Module.address);
+    await router.registerModule(looksRareModule.address);
   });
 
   const getBalances = async (token: string) => {
@@ -65,8 +65,8 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
         seaportModule: await ethers.provider.getBalance(seaportModule.address),
-        zeroExV4Module: await ethers.provider.getBalance(
-          zeroExV4Module.address
+        looksRareModule: await ethers.provider.getBalance(
+          looksRareModule.address
         ),
       };
     } else {
@@ -79,7 +79,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
         emilio: await contract.getBalance(emilio.address),
         router: await contract.getBalance(router.address),
         seaportModule: await contract.getBalance(seaportModule.address),
-        zeroExV4Module: await contract.getBalance(zeroExV4Module.address),
+        looksRareModule: await contract.getBalance(looksRareModule.address),
       };
     }
   };
@@ -99,7 +99,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
     // Makers: Alice and Bob
     // Taker: Carol
 
-    const offers: ZeroExV4Offer[] = [];
+    const offers: LooksRareOffer[] = [];
     for (let i = 0; i < offersCount; i++) {
       offers.push({
         buyer: getRandomBoolean() ? alice : bob,
@@ -112,7 +112,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
         isCancelled: partial && getRandomBoolean(),
       });
     }
-    await setupZeroExV4Offers(offers);
+    await setupLooksRareOffers(offers);
 
     // In order to avoid giving NFT approvals to the router (remember,
     // the router is supposed to be stateless), we do create multiple
@@ -125,7 +125,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
     const tips: SeaportERC721Tip[] = offers.map((offer) => ({
       giver: carol,
       filler: seaportModule.address,
-      receiver: zeroExV4Module.address,
+      receiver: looksRareModule.address,
       nft: offer.nft,
     }));
     await setupSeaportERC721Tips(tips);
@@ -183,20 +183,23 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
       },
       // 2. Fill offers with the received NFTs
       ...offers.map((offer) => ({
-        module: zeroExV4Module.address,
-        data: zeroExV4Module.interface.encodeFunctionData("acceptERC721Offer", [
-          offer.order!.getRaw(),
-          offer.order!.getRaw(),
-          {
-            fillTo: carol.address,
-            refundTo: carol.address,
-            revertIfIncomplete,
-          },
-          {
-            token: offer.nft.contract.address,
-            id: offer.nft.id,
-          },
-        ]),
+        module: looksRareModule.address,
+        data: looksRareModule.interface.encodeFunctionData(
+          "acceptERC721Offer",
+          [
+            offer.order!.buildMatching(looksRareModule.address),
+            offer.order!.params,
+            {
+              fillTo: carol.address,
+              refundTo: carol.address,
+              revertIfIncomplete,
+            },
+            {
+              token: offer.nft.contract.address,
+              id: offer.nft.id,
+            },
+          ]
+        ),
         value: 0,
       })),
     ];
@@ -248,7 +251,12 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
     expect(balancesAfter.carol.sub(balancesBefore.carol)).to.eq(
       offers
         .filter(({ isCancelled }) => !isCancelled)
-        .map(({ price }) => price)
+        .map(({ price }) =>
+          bn(price).sub(
+            // Take into consideration the protocol fee
+            bn(price).mul(200).div(10000)
+          )
+        )
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
@@ -264,7 +272,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
     // Router is stateless
     expect(balancesAfter.router).to.eq(0);
     expect(balancesAfter.seaportModule).to.eq(0);
-    expect(balancesAfter.zeroExV4Module).to.eq(0);
+    expect(balancesAfter.looksRareModule).to.eq(0);
   };
 
   // Test various combinations for filling offers
