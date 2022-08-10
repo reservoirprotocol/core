@@ -8,9 +8,9 @@ import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
-  FoundationListing,
-  setupFoundationListings,
-} from "../../helpers/foundation";
+  LooksRareListing,
+  setupLooksRareListings,
+} from "../../helpers/looks-rare";
 import {
   bn,
   getChainId,
@@ -21,7 +21,7 @@ import {
   setupNFTs,
 } from "../../../utils";
 
-describe("[ReservoirV6_0_0] Foundation listings", () => {
+describe("[ReservoirV6_0_0] LooksRare listings", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -33,7 +33,7 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
 
   let erc721: Contract;
   let router: Contract;
-  let foundationModule: Contract;
+  let looksRareModule: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
@@ -43,11 +43,11 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
-    foundationModule = (await ethers
-      .getContractFactory("FoundationModule", deployer)
+    looksRareModule = (await ethers
+      .getContractFactory("LooksRareModule", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
 
-    await router.registerModule(foundationModule.address);
+    await router.registerModule(looksRareModule.address);
   });
 
   const getBalances = async (token: string) => {
@@ -59,8 +59,8 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
         david: await ethers.provider.getBalance(david.address),
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
-        foundationModule: await ethers.provider.getBalance(
-          foundationModule.address
+        looksRareModule: await ethers.provider.getBalance(
+          looksRareModule.address
         ),
       };
     } else {
@@ -72,7 +72,7 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
         david: await contract.getBalance(david.address),
         emilio: await contract.getBalance(emilio.address),
         router: await contract.getBalance(router.address),
-        foundationModule: await contract.getBalance(foundationModule.address),
+        looksRareModule: await contract.getBalance(looksRareModule.address),
       };
     }
   };
@@ -95,12 +95,13 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
     // Taker: Carol
     // Fee recipient: Emilio
 
-    const listings: FoundationListing[] = [];
+    const listings: LooksRareListing[] = [];
     const feesOnTop: BigNumber[] = [];
     for (let i = 0; i < listingsCount; i++) {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
+          kind: "erc721",
           contract: erc721,
           id: getRandomInteger(1, 10000),
         },
@@ -111,21 +112,19 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
         feesOnTop.push(parseEther(getRandomFloat(0.0001, 0.1).toFixed(6)));
       }
     }
-    await setupFoundationListings(listings);
+    await setupLooksRareListings(listings);
 
     // Prepare executions
 
     const executions: ExecutionInfo[] = [
       // 1. Fill listings
       ...listings.map((listing, i) => ({
-        module: foundationModule.address,
-        data: foundationModule.interface.encodeFunctionData(
-          `acceptETHListing`,
+        module: looksRareModule.address,
+        data: looksRareModule.interface.encodeFunctionData(
+          `acceptETHListingERC721`,
           [
-            {
-              token: listing.nft.contract.address,
-              id: listing.nft.id,
-            },
+            listing.order!.buildMatching(looksRareModule.address),
+            listing.order!.params,
             {
               fillTo: carol.address,
               refundTo: carol.address,
@@ -176,7 +175,13 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
 
     // Fetch pre-state
 
-    const balancesBefore = await getBalances(Sdk.Common.Addresses.Eth[chainId]);
+    // LooksRare wraps all ETH
+    const wethBalancesBefore = await getBalances(
+      Sdk.Common.Addresses.Weth[chainId]
+    );
+    const ethBalancesBefore = await getBalances(
+      Sdk.Common.Addresses.Eth[chainId]
+    );
 
     // Execute
 
@@ -188,12 +193,17 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
 
     // Fetch post-state
 
-    const balancesAfter = await getBalances(Sdk.Common.Addresses.Eth[chainId]);
+    const wethBalancesAfter = await getBalances(
+      Sdk.Common.Addresses.Weth[chainId]
+    );
+    const ethBalancesAfter = await getBalances(
+      Sdk.Common.Addresses.Eth[chainId]
+    );
 
     // Checks
 
     // Alice got the payment
-    expect(balancesAfter.alice.sub(balancesBefore.alice)).to.eq(
+    expect(wethBalancesAfter.alice.sub(wethBalancesBefore.alice)).to.eq(
       listings
         .filter(
           ({ seller, isCancelled }) =>
@@ -202,13 +212,13 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
-            bn(price).mul(500).div(10000)
+            bn(price).mul(200).div(10000)
           )
         )
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
     // Bob got the payment
-    expect(balancesAfter.bob.sub(balancesBefore.bob)).to.eq(
+    expect(wethBalancesAfter.bob.sub(wethBalancesBefore.bob)).to.eq(
       listings
         .filter(
           ({ seller, isCancelled }) =>
@@ -217,7 +227,7 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
-            bn(price).mul(500).div(10000)
+            bn(price).mul(200).div(10000)
           )
         )
         .reduce((a, b) => bn(a).add(b), bn(0))
@@ -225,7 +235,7 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
 
     // Emilio got the fee payments
     if (chargeFees) {
-      expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
+      expect(ethBalancesAfter.emilio.sub(ethBalancesBefore.emilio)).to.eq(
         listings
           .map(({ isCancelled }, i) => (!isCancelled ? feesOnTop[i] : 0))
           .reduce((a, b) => bn(a).add(b), bn(0))
@@ -244,8 +254,10 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
     }
 
     // Router is stateless
-    expect(balancesAfter.router).to.eq(0);
-    expect(balancesAfter.foundationModule).to.eq(0);
+    expect(wethBalancesAfter.router).to.eq(0);
+    expect(wethBalancesAfter.looksRareModule).to.eq(0);
+    expect(ethBalancesAfter.router).to.eq(0);
+    expect(ethBalancesAfter.looksRareModule).to.eq(0);
   };
 
   for (let multiple of [false, true]) {
