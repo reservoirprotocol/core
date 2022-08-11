@@ -3,6 +3,7 @@ import * as CryptoPunks from "./cryptopunks";
 import * as Element from "./element";
 import * as Foundation from "./foundation";
 import * as LooksRare from "./looks-rare";
+import * as Nouns from "./nouns";
 import * as OpenDao from "./opendao";
 import * as Quixotic from "./quixotic";
 import * as Rarible from "./rarible";
@@ -22,6 +23,7 @@ export {
   Element,
   Foundation,
   LooksRare,
+  Nouns,
   OpenDao,
   Quixotic,
   Rarible,
