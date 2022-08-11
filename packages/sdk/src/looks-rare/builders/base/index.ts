@@ -9,6 +9,7 @@ export interface BaseBuildParams {
   isOrderAsk: boolean;
   signer: string;
   collection: string;
+  currency: string;
   price: BigNumberish;
   nonce?: BigNumberish;
   startTime?: number;

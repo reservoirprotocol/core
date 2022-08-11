@@ -46,7 +46,7 @@ export class ContractWideBuilder extends BaseBuilder {
       amount: "1",
       strategy:
         Addresses.StrategyAnyItemFromCollectionForFixedPrice[this.chainId],
-      currency: CommonAddresses.Weth[this.chainId],
+      currency: params.currency,
       nonce: s(params.nonce),
       startTime: params.startTime!,
       endTime: params.endTime!,

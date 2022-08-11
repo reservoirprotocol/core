@@ -64,6 +64,7 @@ describe("LooksRare - ContractWide Erc1155", () => {
       isOrderAsk: false,
       signer: buyer.address,
       collection: erc1155.address,
+      currency: Common.Addresses.Weth[chainId],
       price,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,

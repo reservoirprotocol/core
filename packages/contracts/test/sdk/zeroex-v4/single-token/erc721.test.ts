@@ -61,6 +61,7 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
       maker: buyer.address,
       contract: erc721.address,
       tokenId: boughtTokenId,
+      paymentToken: Common.Addresses.Weth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -113,6 +114,7 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
       maker: seller.address,
       contract: erc721.address,
       tokenId: soldTokenId,
+      paymentToken: ZeroexV4.Addresses.Eth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -174,6 +176,7 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
       maker: buyer.address,
       contract: erc721.address,
       tokenId: boughtTokenId,
+      paymentToken: Common.Addresses.Weth[chainId],
       price,
       fees: [
         {
@@ -240,6 +243,7 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
       maker: seller.address,
       contract: erc721.address,
       tokenId: soldTokenId,
+      paymentToken: ZeroexV4.Addresses.Eth[chainId],
       price,
       fees: [
         {

@@ -65,6 +65,7 @@ describe("LooksRare - SingleToken Erc1155", () => {
       signer: buyer.address,
       collection: erc1155.address,
       tokenId: boughtTokenId,
+      currency: Common.Addresses.Weth[chainId],
       price,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
@@ -134,6 +135,8 @@ describe("LooksRare - SingleToken Erc1155", () => {
       signer: seller.address,
       collection: erc1155.address,
       tokenId: soldTokenId,
+      // LooksRare sell orders are in WETH
+      currency: Common.Addresses.Weth[chainId],
       price,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,

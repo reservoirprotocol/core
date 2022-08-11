@@ -43,7 +43,7 @@ export class SingleTokenBuilder extends BaseBuilder {
       tokenId: s(params.tokenId),
       amount: "1",
       strategy: Addresses.StrategyStandardSaleForFixedPrice[this.chainId],
-      currency: CommonAddresses.Weth[this.chainId],
+      currency: params.currency,
       nonce: s(params.nonce),
       startTime: params.startTime!,
       endTime: params.endTime!,

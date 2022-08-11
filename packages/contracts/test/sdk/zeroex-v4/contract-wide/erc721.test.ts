@@ -58,6 +58,7 @@ describe("ZeroEx V4 - ContractWide Erc721", () => {
       direction: "buy",
       maker: buyer.address,
       contract: erc721.address,
+      paymentToken: Common.Addresses.Weth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
