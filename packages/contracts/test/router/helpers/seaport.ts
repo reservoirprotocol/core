@@ -131,7 +131,8 @@ export const setupSeaportOffers = async (offers: SeaportOffer[]) => {
 
 export type SeaportERC20Approval = {
   giver: SignerWithAddress;
-  receiver: string;
+  filler: string;
+  receiver?: string;
   paymentToken: string;
   amount: BigNumberish;
   zone?: string;
@@ -144,13 +145,11 @@ export const setupSeaportERC20Approvals = async (
   const chainId = getChainId();
 
   for (const approval of approvals) {
-    const { giver, receiver, paymentToken, amount, zone } = approval;
+    const { giver, receiver, filler, paymentToken, amount, zone } = approval;
 
     // Approve the exchange contract
     const erc20 = new Sdk.Common.Helpers.Erc20(ethers.provider, paymentToken);
-    await erc20.contract
-      .connect(giver)
-      .approve(Sdk.Seaport.Addresses.Exchange[chainId], amount);
+    await erc20.approve(giver, Sdk.Seaport.Addresses.Exchange[chainId]);
 
     // Build and sign the approval order (in a hacky way)
     const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
@@ -180,7 +179,7 @@ export const setupSeaportERC20Approvals = async (
     order.params.consideration = [
       {
         ...order.params.offer[0],
-        recipient: receiver,
+        recipient: receiver ?? filler,
       },
     ];
 
@@ -196,7 +195,7 @@ export const setupSeaportERC20Approvals = async (
     const mirrorOrder = builder.build({
       side: "sell",
       tokenKind: "erc721",
-      offerer: receiver,
+      offerer: filler,
       contract: giver.address,
       tokenId: 0,
       paymentToken: paymentToken,
