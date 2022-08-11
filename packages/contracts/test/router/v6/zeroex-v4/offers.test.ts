@@ -7,8 +7,8 @@ import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
-  SeaportERC721Tip,
-  setupSeaportERC721Tips,
+  SeaportERC721Approval,
+  setupSeaportERC721Approvals,
 } from "../../helpers/seaport";
 import { ZeroExV4Offer, setupZeroExV4Offers } from "../../helpers/zeroex-v4";
 import {
@@ -122,23 +122,23 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
     // private recipient). This way, the NFT approvals will be made on
     // the Seaport conduit and the router stays stateless.
 
-    const tips: SeaportERC721Tip[] = offers.map((offer) => ({
+    const approvals: SeaportERC721Approval[] = offers.map((offer) => ({
       giver: carol,
       filler: seaportModule.address,
       receiver: zeroExV4Module.address,
       nft: offer.nft,
     }));
-    await setupSeaportERC721Tips(tips);
+    await setupSeaportERC721Approvals(approvals);
 
     // Prepare executions
 
     const executions: ExecutionInfo[] = [
-      // 1. Fill the tip orders, so that we avoid giving approval to the router
+      // 1. Fill the approval orders, so that we avoid giving approval to the router
       {
         module: seaportModule.address,
         data: seaportModule.interface.encodeFunctionData("matchOrders", [
           [
-            ...tips
+            ...approvals
               .map(({ orders }) => [
                 // Regular order
                 {
@@ -163,7 +163,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
           ],
           // For each regular order, match the single offer item to the single consideration item
           [
-            ...tips.map((_, i) => ({
+            ...approvals.map((_, i) => ({
               offerComponents: [
                 {
                   orderIndex: i * 2,
