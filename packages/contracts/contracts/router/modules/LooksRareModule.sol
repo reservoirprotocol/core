@@ -63,7 +63,7 @@ contract LooksRareModule is BaseModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        IERC20(params.token).safeApprove(exchange, params.amount);
+        IERC20(params.token).approve(exchange, params.amount);
         buyERC721(
             takerBid,
             makerAsk,

@@ -539,7 +539,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
 
     const approval: SeaportERC20Approval = {
       giver: bob,
-      receiver: seaportModule.address,
+      filler: seaportModule.address,
       paymentToken: listing.paymentToken!,
       amount: listing.price,
     };

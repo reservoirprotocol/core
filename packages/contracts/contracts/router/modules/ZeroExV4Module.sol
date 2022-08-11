@@ -58,7 +58,7 @@ contract ZeroExV4Module is BaseModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        IERC20(params.token).safeApprove(exchange, params.amount);
+        IERC20(params.token).approve(exchange, params.amount);
         buyERC721(
             order,
             signature,
@@ -105,7 +105,7 @@ contract ZeroExV4Module is BaseModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        IERC20(params.token).safeApprove(exchange, params.amount);
+        IERC20(params.token).approve(exchange, params.amount);
         buyERC1155(
             order,
             signature,

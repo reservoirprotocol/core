@@ -3,10 +3,14 @@ pragma solidity ^0.8.9;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract ReservoirV6_0_0 is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     // --- Fields ---
 
     mapping(address => bool) public modules;
@@ -16,6 +20,10 @@ contract ReservoirV6_0_0 is Ownable, ReentrancyGuard {
     error UnknownModule();
     error UnsuccessfulExecution();
     error UnsuccessfulPayment();
+
+    // --- Fallback ---
+
+    receive() external payable {}
 
     // --- Owner ---
 
@@ -31,7 +39,7 @@ contract ReservoirV6_0_0 is Ownable, ReentrancyGuard {
         uint256 value;
     }
 
-    // Trigger a set of executions atomically.
+    // Trigger a set of executions atomically
     function execute(ExecutionInfo[] calldata executionInfos)
         external
         payable
@@ -47,12 +55,10 @@ contract ReservoirV6_0_0 is Ownable, ReentrancyGuard {
         }
     }
 
-    receive() external payable {}
-
     struct AmountCheckInfo {
         address checkContract;
         bytes checkData;
-        uint256 maxAmount;
+        uint256 amountThreshold;
     }
 
     // Trigger a set of executions with amount checking. As opposed to the regular
@@ -72,12 +78,12 @@ contract ReservoirV6_0_0 is Ownable, ReentrancyGuard {
     ) external payable nonReentrant {
         address checkContract = amountCheckInfo.checkContract;
         bytes calldata checkData = amountCheckInfo.checkData;
-        uint256 maxAmount = amountCheckInfo.maxAmount;
+        uint256 amountThreshold = amountCheckInfo.amountThreshold;
 
         uint256 length = executionInfos.length;
         for (uint256 i = 0; i < length; ) {
             uint256 amount = getAmount(checkContract, checkData);
-            if (amount >= maxAmount) {
+            if (amount >= amountThreshold) {
                 break;
             }
             executeInternal(executionInfos[i]);
