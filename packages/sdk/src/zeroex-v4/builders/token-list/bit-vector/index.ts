@@ -29,6 +29,7 @@ export class BitVectorTokenListBuilder extends BaseBuilder {
           order.params.direction === Types.TradeDirection.SELL ? "sell" : "buy",
         contract: order.params.nft,
         maker: order.params.maker,
+        paymentToken: order.params.erc20Token,
         price: order.params.erc20TokenAmount,
         amount: order.params.nftAmount,
         tokenIds: decomposeBitVector(
@@ -65,10 +66,7 @@ export class BitVectorTokenListBuilder extends BaseBuilder {
       taker: AddressZero,
       expiry: params.expiry!,
       nonce: s(params.nonce)!,
-      erc20Token:
-        params.direction === "sell"
-          ? Addresses.Eth[this.chainId]
-          : CommonAddresses.Weth[this.chainId],
+      erc20Token: params.paymentToken,
       erc20TokenAmount: s(params.price),
       fees: params.fees!.map(({ recipient, amount }) => ({
         recipient: lc(recipient),

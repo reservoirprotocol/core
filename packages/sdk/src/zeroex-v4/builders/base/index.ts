@@ -9,6 +9,7 @@ export interface BaseBuildParams {
   direction: "sell" | "buy";
   contract: string;
   maker: string;
+  paymentToken: string;
   price: BigNumberish;
   fees?: {
     recipient: string;

@@ -62,6 +62,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       contract: erc1155.address,
       tokenId: boughtTokenId,
       amount: 1,
+      paymentToken: Common.Addresses.Weth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -139,6 +140,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       contract: erc1155.address,
       tokenId: boughtTokenId,
       amount: 3,
+      paymentToken: Common.Addresses.Weth[chainId],
       price,
       fees: [
         {
@@ -264,6 +266,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       contract: erc1155.address,
       tokenId: soldTokenId,
       amount: 1,
+      paymentToken: ZeroexV4.Addresses.Eth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -346,6 +349,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
       contract: erc1155.address,
       tokenId: soldTokenId,
       amount: 3,
+      paymentToken: ZeroexV4.Addresses.Eth[chainId],
       price,
       fees: [
         {
@@ -502,6 +506,7 @@ describe("ZeroEx V4 - SingleToken Erc1155", () => {
         contract: erc1155.address,
         tokenId: soldTokenId,
         amount: 2,
+        paymentToken: ZeroexV4.Addresses.Eth[chainId],
         price: parseEther("0.5"),
         fees: [
           {
