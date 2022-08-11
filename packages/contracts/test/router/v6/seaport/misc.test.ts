@@ -7,10 +7,10 @@ import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
-  SeaportERC721Tip,
+  SeaportERC721Approval,
   SeaportListing,
   SeaportOffer,
-  setupSeaportERC721Tips,
+  setupSeaportERC721Approvals,
   setupSeaportListings,
   setupSeaportOffers,
 } from "../../helpers/seaport";
@@ -35,7 +35,7 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
   let erc721: Contract;
   let router: Contract;
   let seaportModule: Contract;
-  let seaportTipZone: Contract;
+  let seaportApprovalOrderZone: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
@@ -48,8 +48,8 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
-    seaportTipZone = (await ethers
-      .getContractFactory("SeaportTipZone", deployer)
+    seaportApprovalOrderZone = (await ethers
+      .getContractFactory("SeaportApprovalOrderZone", deployer)
       .then((factory) => factory.deploy())) as any;
 
     await router.registerModule(seaportModule.address);
@@ -219,13 +219,13 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
     expect(wethBalancesAfter.seaportModule).to.eq(0);
   });
 
-  it("Tip orders via `SeaportTipZone` cannot be front-run", async () => {
+  it("Approval orders via `SeaportApprovalOrderZone` cannot be front-run", async () => {
     // Setup
 
     // Giver: Alice
     // Receiver: Bob
 
-    const tip: SeaportERC721Tip = {
+    const approval: SeaportERC721Approval = {
       giver: alice,
       filler: seaportModule.address,
       nft: {
@@ -233,9 +233,9 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
         contract: erc721,
         id: getRandomInteger(1, 10000),
       },
-      zone: seaportTipZone.address,
+      zone: seaportApprovalOrderZone.address,
     };
-    await setupSeaportERC721Tips([tip]);
+    await setupSeaportERC721Approvals([approval]);
 
     // Prepare executions
 
@@ -247,18 +247,18 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
             // Regular order
             {
               parameters: {
-                ...tip.orders![0].params,
+                ...approval.orders![0].params,
                 totalOriginalConsiderationItems:
-                  tip.orders![0].params.consideration.length,
+                  approval.orders![0].params.consideration.length,
               },
-              signature: tip.orders![0].params.signature,
+              signature: approval.orders![0].params.signature,
             },
             // Mirror order
             {
               parameters: {
-                ...tip.orders![1].params,
+                ...approval.orders![1].params,
                 totalOriginalConsiderationItems:
-                  tip.orders![1].params.consideration.length,
+                  approval.orders![1].params.consideration.length,
               },
               signature: "0x",
             },
@@ -287,8 +287,8 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
 
     // Checks
 
-    // The custom zone will enforce that no one other than the tip's
-    // offerer can be the relayer of the transaction
+    // The custom zone will enforce that no one other than the approval
+    // order's offerer can be the relayer of the transaction
     await expect(
       router.connect(carol).execute(executions, {
         value: executions
@@ -310,7 +310,7 @@ describe("[ReservoirV6_0_0] Seaport misc", () => {
     // Checks
 
     // The Seaport module got the NFT
-    expect(await tip.nft.contract.ownerOf(tip.nft.id)).to.eq(
+    expect(await approval.nft.contract.ownerOf(approval.nft.id)).to.eq(
       seaportModule.address
     );
   });

@@ -4,10 +4,14 @@ pragma solidity ^0.8.9;
 import {ISeaport} from "../interfaces/ISeaport.sol";
 
 // One way to stay approval-less is to use one-time Seaport orders
-// that effectively act as a tip. These are prone to front-running
-// though. To prevent this, all tip orders should enforce that the
-// offerer matches the transaction sender (eg. `tx.origin`).
-contract SeaportTipZone {
+// that effectively act as gifts. These are prone to front-running
+// though. To prevent this, all such approval orders should ensure
+// the offerer matches the transaction's sender (eg. `tx.origin`).
+// Although relying on `tx.origin` is considered bad practice, the
+// validity time of these orders should be in the range of minutes
+// so that the risk of reusing them via a malicious contract which
+// forwards them is low.
+contract SeaportApprovalOrderZone {
     // --- Errors ---
 
     error Unauthorized();

@@ -125,11 +125,11 @@ export const setupSeaportOffers = async (offers: SeaportOffer[]) => {
   }
 };
 
-// TODO: Integrate tips within the SDK
+// TODO: Integrate approval orders within the SDK
 
-// --- ERC20 Tips ---
+// --- ERC20 Approval ---
 
-export type SeaportERC20Tip = {
+export type SeaportERC20Approval = {
   giver: SignerWithAddress;
   receiver: string;
   paymentToken: string;
@@ -138,11 +138,13 @@ export type SeaportERC20Tip = {
   orders?: Sdk.Seaport.Order[];
 };
 
-export const setupSeaportERC20Tips = async (tips: SeaportERC20Tip[]) => {
+export const setupSeaportERC20Approvals = async (
+  approvals: SeaportERC20Approval[]
+) => {
   const chainId = getChainId();
 
-  for (const tip of tips) {
-    const { giver, receiver, paymentToken, amount, zone } = tip;
+  for (const approval of approvals) {
+    const { giver, receiver, paymentToken, amount, zone } = approval;
 
     // Approve the exchange contract
     const erc20 = new Sdk.Common.Helpers.Erc20(ethers.provider, paymentToken);
@@ -150,7 +152,7 @@ export const setupSeaportERC20Tips = async (tips: SeaportERC20Tip[]) => {
       .connect(giver)
       .approve(Sdk.Seaport.Addresses.Exchange[chainId], amount);
 
-    // Build and sign the tip order (in a hacky way)
+    // Build and sign the approval order (in a hacky way)
     const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
     const order = builder.build({
       side: "sell",
@@ -208,13 +210,13 @@ export const setupSeaportERC20Tips = async (tips: SeaportERC20Tip[]) => {
     mirrorOrder.params.offer = [];
     mirrorOrder.params.consideration = [];
 
-    tip.orders = [order, mirrorOrder];
+    approval.orders = [order, mirrorOrder];
   }
 };
 
-// --- ERC721 Tips ---
+// --- ERC721 Approval ---
 
-export type SeaportERC721Tip = {
+export type SeaportERC721Approval = {
   giver: SignerWithAddress;
   filler: string;
   receiver?: string;
@@ -229,11 +231,13 @@ export type SeaportERC721Tip = {
   orders?: Sdk.Seaport.Order[];
 };
 
-export const setupSeaportERC721Tips = async (tips: SeaportERC721Tip[]) => {
+export const setupSeaportERC721Approvals = async (
+  approvals: SeaportERC721Approval[]
+) => {
   const chainId = getChainId();
 
-  for (const tip of tips) {
-    const { giver, filler, receiver, nft, zone } = tip;
+  for (const approval of approvals) {
+    const { giver, filler, receiver, nft, zone } = approval;
 
     // Approve the exchange contract
     if (nft.kind === "erc721") {
@@ -248,7 +252,7 @@ export const setupSeaportERC721Tips = async (tips: SeaportERC721Tip[]) => {
         .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
     }
 
-    // Build and sign the tip order (in a hacky way)
+    // Build and sign the approval order (in a hacky way)
     const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
     const order = builder.build({
       side: "sell",
@@ -306,6 +310,6 @@ export const setupSeaportERC721Tips = async (tips: SeaportERC721Tip[]) => {
     mirrorOrder.params.offer = [];
     mirrorOrder.params.consideration = [];
 
-    tip.orders = [order, mirrorOrder];
+    approval.orders = [order, mirrorOrder];
   }
 };

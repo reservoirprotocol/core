@@ -8,9 +8,9 @@ import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
-  SeaportERC20Tip,
+  SeaportERC20Approval,
   SeaportListing,
-  setupSeaportERC20Tips,
+  setupSeaportERC20Approvals,
   setupSeaportListings,
 } from "../../helpers/seaport";
 import {
@@ -537,13 +537,13 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
     // This way, the USDC approval will be made on the Seaport conduit
     // and the router stays stateless.
 
-    const tip: SeaportERC20Tip = {
+    const approval: SeaportERC20Approval = {
       giver: bob,
       receiver: seaportModule.address,
       paymentToken: listing.paymentToken!,
       amount: listing.price,
     };
-    await setupSeaportERC20Tips([tip]);
+    await setupSeaportERC20Approvals([approval]);
 
     // Prepare executions
 
@@ -570,7 +570,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
         // Anything on top should be refunded
         value: parseEther("10"),
       },
-      // 2. Fill tip order, so that we avoid giving approval to the router
+      // 2. Fill approval order, so that we avoid giving approval to the router
       {
         module: seaportModule.address,
         data: seaportModule.interface.encodeFunctionData("matchOrders", [
@@ -578,18 +578,18 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
             // Regular order
             {
               parameters: {
-                ...tip.orders![0].params,
+                ...approval.orders![0].params,
                 totalOriginalConsiderationItems:
-                  tip.orders![0].params.consideration.length,
+                  approval.orders![0].params.consideration.length,
               },
-              signature: tip.orders![0].params.signature,
+              signature: approval.orders![0].params.signature,
             },
             // Mirror order
             {
               parameters: {
-                ...tip.orders![1].params,
+                ...approval.orders![1].params,
                 totalOriginalConsiderationItems:
-                  tip.orders![1].params.consideration.length,
+                  approval.orders![1].params.consideration.length,
               },
               signature: "0x",
             },
