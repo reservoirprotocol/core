@@ -50,6 +50,7 @@ export const setupZeroExV4Listings = async (listings: ZeroExV4Listing[]) => {
       maker: seller.address,
       contract: nft.contract.address,
       tokenId: nft.id,
+      paymentToken: Sdk.ZeroExV4.Addresses.Eth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -98,6 +99,7 @@ export const setupZeroExV4Offers = async (offers: ZeroExV4Offer[]) => {
       maker: buyer.address,
       contract: nft.contract.address,
       tokenId: nft.id,
+      paymentToken: Sdk.Common.Addresses.Weth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });

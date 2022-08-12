@@ -3,10 +3,11 @@ pragma solidity ^0.8.9;
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import {BaseModule} from "./BaseModule.sol";
-import {IFoundation} from "../interfaces/IFoundation.sol";
+import {BaseExchangeModule} from "./BaseExchangeModule.sol";
+import {BaseModule} from "../BaseModule.sol";
+import {IFoundation} from "../../interfaces/IFoundation.sol";
 
-contract FoundationModule is BaseModule {
+contract FoundationModule is BaseExchangeModule {
     // --- Fields ---
 
     address public immutable exchange =
@@ -14,7 +15,7 @@ contract FoundationModule is BaseModule {
 
     // --- Constructor ---
 
-    constructor(address router) BaseModule(router) {}
+    constructor(address owner) BaseModule(owner) {}
 
     // --- [ERC721] Single ETH listing ---
 

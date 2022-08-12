@@ -123,6 +123,7 @@ describe("Router - multi buy", () => {
         signer: seller2.address,
         collection: erc721.address,
         tokenId: tokenId2,
+        currency: Sdk.Common.Addresses.Weth[chainId],
         price: price2,
         startTime: await getCurrentTimestamp(ethers.provider),
         endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
@@ -174,6 +175,7 @@ describe("Router - multi buy", () => {
             amount: fee3,
           },
         ],
+        paymentToken: Sdk.ZeroExV4.Addresses.Eth[chainId],
         price: price3,
         expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
       });

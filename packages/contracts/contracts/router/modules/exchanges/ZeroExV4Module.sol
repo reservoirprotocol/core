@@ -6,10 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import {BaseModule} from "./BaseModule.sol";
-import {IZeroExV4} from "../interfaces/IZeroExV4.sol";
+import {BaseExchangeModule} from "./BaseExchangeModule.sol";
+import {BaseModule} from "../BaseModule.sol";
+import {IZeroExV4} from "../../interfaces/IZeroExV4.sol";
 
-contract ZeroExV4Module is BaseModule {
+contract ZeroExV4Module is BaseExchangeModule {
     using SafeERC20 for IERC20;
 
     // --- Fields ---
@@ -19,7 +20,7 @@ contract ZeroExV4Module is BaseModule {
 
     // --- Constructor ---
 
-    constructor(address router) BaseModule(router) {}
+    constructor(address owner) BaseModule(owner) {}
 
     // --- [ERC721] Single ETH listing ---
 
@@ -58,7 +59,7 @@ contract ZeroExV4Module is BaseModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        IERC20(params.token).approve(exchange, params.amount);
+        approveERC20IfNeeded(params.token, exchange, params.amount);
         buyERC721(
             order,
             signature,
@@ -105,7 +106,7 @@ contract ZeroExV4Module is BaseModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        IERC20(params.token).approve(exchange, params.amount);
+        approveERC20IfNeeded(params.token, exchange, params.amount);
         buyERC1155(
             order,
             signature,
@@ -123,13 +124,7 @@ contract ZeroExV4Module is BaseModule {
         OfferParams calldata params,
         NFT calldata nft
     ) external nonReentrant {
-        bool isApproved = IERC721(order.erc721Token).isApprovedForAll(
-            address(this),
-            exchange
-        );
-        if (!isApproved) {
-            IERC721(order.erc721Token).setApprovalForAll(exchange, true);
-        }
+        approveERC721IfNeeded(order.erc721Token, exchange);
 
         bool success;
         try
@@ -148,13 +143,7 @@ contract ZeroExV4Module is BaseModule {
                 revert UnsuccessfulFill();
             } else {
                 // Refund
-                if (IERC721(nft.token).ownerOf(nft.id) == address(this)) {
-                    IERC721(nft.token).safeTransferFrom(
-                        address(this),
-                        params.refundTo,
-                        nft.id
-                    );
-                }
+                sendAllERC721(params.refundTo, nft.token, nft.id);
             }
         }
     }
@@ -167,13 +156,7 @@ contract ZeroExV4Module is BaseModule {
         OfferParams calldata params,
         NFT calldata nft
     ) external nonReentrant {
-        bool isApproved = IERC1155(order.erc1155Token).isApprovedForAll(
-            address(this),
-            exchange
-        );
-        if (!isApproved) {
-            IERC1155(order.erc1155Token).setApprovalForAll(exchange, true);
-        }
+        approveERC1155IfNeeded(order.erc1155Token, exchange);
 
         bool success;
         try
@@ -199,19 +182,7 @@ contract ZeroExV4Module is BaseModule {
                 revert UnsuccessfulFill();
             } else {
                 // Refund
-                uint256 balance = IERC1155(nft.token).balanceOf(
-                    address(this),
-                    nft.id
-                );
-                if (balance > 0) {
-                    IERC1155(nft.token).safeTransferFrom(
-                        address(this),
-                        params.refundTo,
-                        nft.id,
-                        balance,
-                        ""
-                    );
-                }
+                sendAllERC1155(params.refundTo, nft.token, nft.id);
             }
         }
     }
@@ -271,26 +242,5 @@ contract ZeroExV4Module is BaseModule {
         if (revertIfIncomplete && !success) {
             revert UnsuccessfulFill();
         }
-    }
-
-    // --- ERC721 / ERC1155 hooks ---
-
-    function onERC721Received(
-        address, // operator,
-        address, // from
-        uint256, // tokenId,
-        bytes calldata // data
-    ) external pure returns (bytes4) {
-        return this.onERC721Received.selector;
-    }
-
-    function onERC1155Received(
-        address, // operator
-        address, // from
-        uint256, // tokenId
-        uint256, // amount
-        bytes calldata // data
-    ) external pure returns (bytes4) {
-        return this.onERC1155Received.selector;
     }
 }
