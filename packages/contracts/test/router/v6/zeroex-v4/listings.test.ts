@@ -1,6 +1,6 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
-import { parseEther } from "@ethersproject/units";
+import { parseEther, parseUnits } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
@@ -8,12 +8,17 @@ import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
+  SeaportERC20Approval,
+  setupSeaportERC20Approvals,
+} from "../../helpers/seaport";
+import {
   ZeroExV4Listing,
   setupZeroExV4Listings,
 } from "../../helpers/zeroex-v4";
 import {
   bn,
   getChainId,
+  getCurrentTimestamp,
   getRandomBoolean,
   getRandomFloat,
   getRandomInteger,
@@ -33,6 +38,8 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
   let erc721: Contract;
   let router: Contract;
+  let seaportModule: Contract;
+  let uniswapV3Module: Contract;
   let zeroExV4Module: Contract;
 
   beforeEach(async () => {
@@ -43,10 +50,18 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
+    seaportModule = (await ethers
+      .getContractFactory("SeaportModule", deployer)
+      .then((factory) => factory.deploy(router.address))) as any;
+    uniswapV3Module = (await ethers
+      .getContractFactory("UniswapV3Module", deployer)
+      .then((factory) => factory.deploy(router.address))) as any;
     zeroExV4Module = (await ethers
       .getContractFactory("ZeroExV4Module", deployer)
       .then((factory) => factory.deploy(router.address))) as any;
 
+    await router.registerModule(seaportModule.address);
+    await router.registerModule(uniswapV3Module.address);
     await router.registerModule(zeroExV4Module.address);
   });
 
@@ -59,6 +74,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         david: await ethers.provider.getBalance(david.address),
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
+        seaportModule: await ethers.provider.getBalance(seaportModule.address),
         zeroExV4Module: await ethers.provider.getBalance(
           zeroExV4Module.address
         ),
@@ -72,6 +88,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         david: await contract.getBalance(david.address),
         emilio: await contract.getBalance(emilio.address),
         router: await contract.getBalance(router.address),
+        seaportModule: await ethers.provider.getBalance(seaportModule.address),
         zeroExV4Module: await contract.getBalance(zeroExV4Module.address),
       };
     }
@@ -80,6 +97,8 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
   afterEach(reset);
 
   const testAcceptListings = async (
+    // Whether to fill USDC or ETH listings
+    useUsdc: boolean,
     // Whether to include fees on top
     chargeFees: boolean,
     // Whether to revert or not in case of any failures
@@ -95,6 +114,12 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
     // Taker: Carol
     // Fee recipient: Emilio
 
+    const paymentToken = useUsdc
+      ? Sdk.Common.Addresses.Usdc[chainId]
+      : Sdk.Common.Addresses.Eth[chainId];
+    const parsePrice = (price: string) =>
+      useUsdc ? parseUnits(price, 6) : parseEther(price);
+
     const listings: ZeroExV4Listing[] = [];
     const feesOnTop: BigNumber[] = [];
     for (let i = 0; i < listingsCount; i++) {
@@ -105,49 +130,181 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
           contract: erc721,
           id: getRandomInteger(1, 10000),
         },
-        price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
+        paymentToken: useUsdc
+          ? Sdk.Common.Addresses.Usdc[chainId]
+          : Sdk.ZeroExV4.Addresses.Eth[chainId],
+        price: parsePrice(getRandomFloat(0.0001, 2).toFixed(6)),
         isCancelled: partial && getRandomBoolean(),
       });
       if (chargeFees) {
-        feesOnTop.push(parseEther(getRandomFloat(0.0001, 0.1).toFixed(6)));
+        feesOnTop.push(parsePrice(getRandomFloat(0.0001, 0.1).toFixed(6)));
       }
     }
     await setupZeroExV4Listings(listings);
 
+    const totalPrice = bn(
+      listings.map(({ price }) => price).reduce((a, b) => bn(a).add(b), bn(0))
+    );
+
+    const approval: SeaportERC20Approval = {
+      giver: carol,
+      filler: seaportModule.address,
+      receiver: zeroExV4Module.address,
+      paymentToken,
+      amount: totalPrice.add(
+        // Anything on top should be refunded
+        feesOnTop.reduce((a, b) => bn(a).add(b), bn(0)).add(parsePrice("0.1"))
+      ),
+    };
+    await setupSeaportERC20Approvals([approval]);
+
     // Prepare executions
 
     const executions: ExecutionInfo[] = [
-      // 1. Fill listings
-      ...listings.map((listing, i) => ({
-        module: zeroExV4Module.address,
-        data: zeroExV4Module.interface.encodeFunctionData(
-          `acceptETHListingERC721`,
-          [
-            listing.order!.getRaw(),
-            listing.order!.getRaw(),
+      ...(useUsdc
+        ? [
+            // 1. When filling USDC listings, swap ETH to USDC on Uniswap V3 (for testing purposes only)
             {
-              fillTo: carol.address,
-              refundTo: carol.address,
-              revertIfIncomplete,
-              amount: listing.price,
-            },
-            chargeFees
-              ? [
+              module: uniswapV3Module.address,
+              data: uniswapV3Module.interface.encodeFunctionData(
+                "ethToExactOutput",
+                [
                   {
-                    recipient: emilio.address,
-                    amount: feesOnTop[i],
+                    tokenIn: Sdk.Common.Addresses.Weth[chainId],
+                    tokenOut: Sdk.Common.Addresses.Usdc[chainId],
+                    fee: 500,
+                    // Send USDC to the Carol
+                    recipient: carol.address,
+                    deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
+                    amountOut: listings
+                      .map(({ price }, i) =>
+                        bn(price).add(chargeFees ? feesOnTop[i] : 0)
+                      )
+                      .reduce((a, b) => bn(a).add(b), bn(0))
+                      // Anything on top should be refunded
+                      .add(parsePrice("1000")),
+                    amountInMaximum: parseEther("100"),
+                    sqrtPriceLimitX96: 0,
                   },
+                  // Refund to Carol
+                  carol.address,
                 ]
-              : [],
+              ),
+              // Anything on top should be refunded
+              value: parseEther("100"),
+            },
+            // 2. Fill approval order, so that we avoid giving approval to the router
+            {
+              module: seaportModule.address,
+              data: seaportModule.interface.encodeFunctionData("matchOrders", [
+                [
+                  // Regular order
+                  {
+                    parameters: {
+                      ...approval.orders![0].params,
+                      totalOriginalConsiderationItems:
+                        approval.orders![0].params.consideration.length,
+                    },
+                    signature: approval.orders![0].params.signature,
+                  },
+                  // Mirror order
+                  {
+                    parameters: {
+                      ...approval.orders![1].params,
+                      totalOriginalConsiderationItems:
+                        approval.orders![1].params.consideration.length,
+                    },
+                    signature: "0x",
+                  },
+                ],
+                // Match the single offer item to the single consideration item
+                [
+                  {
+                    offerComponents: [
+                      {
+                        orderIndex: 0,
+                        itemIndex: 0,
+                      },
+                    ],
+                    considerationComponents: [
+                      {
+                        orderIndex: 0,
+                        itemIndex: 0,
+                      },
+                    ],
+                  },
+                ],
+              ]),
+              value: 0,
+            },
           ]
-        ),
-        value: bn(listing.price)
-          .add(chargeFees ? feesOnTop[i] : 0)
-          .add(
-            // Anything on top should be refunded
-            parseEther("0.1")
-          ),
-      })),
+        : []),
+      // 3. Fill listings
+      listingsCount > 1
+        ? {
+            module: zeroExV4Module.address,
+            data: zeroExV4Module.interface.encodeFunctionData(
+              `accept${useUsdc ? "ERC20" : "ETH"}ListingsERC721`,
+              [
+                listings.map((listing) => listing.order!.getRaw()),
+                listings.map((listing) => listing.order!.getRaw()),
+                {
+                  fillTo: carol.address,
+                  refundTo: carol.address,
+                  revertIfIncomplete,
+                  amount: totalPrice,
+                  // Only relevant when filling USDC listings
+                  token: paymentToken,
+                },
+                [
+                  ...feesOnTop.map((amount) => ({
+                    recipient: emilio.address,
+                    amount,
+                  })),
+                ],
+              ]
+            ),
+            value: useUsdc
+              ? 0
+              : totalPrice.add(
+                  // Anything on top should be refunded
+                  feesOnTop
+                    .reduce((a, b) => bn(a).add(b), bn(0))
+                    .add(parsePrice("0.1"))
+                ),
+          }
+        : {
+            module: zeroExV4Module.address,
+            data: zeroExV4Module.interface.encodeFunctionData(
+              `accept${useUsdc ? "ERC20" : "ETH"}ListingERC721`,
+              [
+                listings[0].order!.getRaw(),
+                listings[0].order!.getRaw(),
+                {
+                  fillTo: carol.address,
+                  refundTo: carol.address,
+                  revertIfIncomplete,
+                  amount: totalPrice,
+                  // Only relevant when filling USDC listings
+                  token: paymentToken,
+                },
+                chargeFees
+                  ? feesOnTop.map((amount) => ({
+                      recipient: emilio.address,
+                      amount,
+                    }))
+                  : [],
+              ]
+            ),
+            value: useUsdc
+              ? 0
+              : totalPrice.add(
+                  // Anything on top should be refunded
+                  feesOnTop
+                    .reduce((a, b) => bn(a).add(b), bn(0))
+                    .add(parsePrice("0.1"))
+                ),
+          },
     ];
 
     // Checks
@@ -175,7 +332,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
     // Fetch pre-state
 
-    const balancesBefore = await getBalances(Sdk.Common.Addresses.Eth[chainId]);
+    const balancesBefore = await getBalances(paymentToken);
 
     // Execute
 
@@ -187,7 +344,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
     // Fetch post-state
 
-    const balancesAfter = await getBalances(Sdk.Common.Addresses.Eth[chainId]);
+    const balancesAfter = await getBalances(paymentToken);
 
     // Checks
 
@@ -214,9 +371,16 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
     // Emilio got the fee payments
     if (chargeFees) {
+      // Fees are charged per execution, and since we have a single execution
+      // here, we will have a single fee payment at the end adjusted over the
+      // amount that was actually paid (eg. prices of filled orders)
+      const actualPaid = listings
+        .filter(({ isCancelled }) => !isCancelled)
+        .map(({ price }) => price)
+        .reduce((a, b) => bn(a).add(b), bn(0));
       expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
         listings
-          .map(({ isCancelled }, i) => (!isCancelled ? feesOnTop[i] : 0))
+          .map((_, i) => feesOnTop[i].mul(actualPaid).div(totalPrice))
           .reduce((a, b) => bn(a).add(b), bn(0))
       );
     }
@@ -237,24 +401,27 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
     expect(balancesAfter.zeroExV4Module).to.eq(0);
   };
 
-  for (let multiple of [false, true]) {
-    for (let partial of [false, true]) {
-      for (let chargeFees of [false, true]) {
-        for (let revertIfIncomplete of [false, true]) {
-          it(
-            "[eth]" +
-              `${multiple ? "[multiple-orders]" : "[single-order]"}` +
-              `${partial ? "[partial]" : "[full]"}` +
-              `${chargeFees ? "[fees]" : "[no-fees]"}` +
-              `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
-            async () =>
-              testAcceptListings(
-                chargeFees,
-                revertIfIncomplete,
-                partial,
-                multiple ? getRandomInteger(2, 6) : 1
-              )
-          );
+  for (let useUsdc of [false, true]) {
+    for (let multiple of [false, true]) {
+      for (let partial of [false, true]) {
+        for (let chargeFees of [false, true]) {
+          for (let revertIfIncomplete of [false, true]) {
+            it(
+              `${useUsdc ? "[usdc]" : "[eth]"}` +
+                `${multiple ? "[multiple-orders]" : "[single-order]"}` +
+                `${partial ? "[partial]" : "[full]"}` +
+                `${chargeFees ? "[fees]" : "[no-fees]"}` +
+                `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
+              async () =>
+                testAcceptListings(
+                  useUsdc,
+                  chargeFees,
+                  revertIfIncomplete,
+                  partial,
+                  multiple ? getRandomInteger(2, 6) : 1
+                )
+            );
+          }
         }
       }
     }

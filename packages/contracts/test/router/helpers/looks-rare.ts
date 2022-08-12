@@ -17,7 +17,8 @@ export type LooksRareListing = {
     // A single quantity if missing
     amount?: number;
   };
-  // For the moment, all orders are in ETH
+  // ETH if missing
+  currency?: string;
   price: BigNumberish;
   // Whether the order is to be cancelled
   isCancelled?: boolean;
@@ -29,7 +30,7 @@ export const setupLooksRareListings = async (listings: LooksRareListing[]) => {
   const exchange = new Sdk.LooksRare.Exchange(chainId);
 
   for (const listing of listings) {
-    const { seller, nft, price } = listing;
+    const { seller, nft, currency, price } = listing;
 
     // Approve the exchange contract
     if (nft.kind === "erc721") {
@@ -57,7 +58,7 @@ export const setupLooksRareListings = async (listings: LooksRareListing[]) => {
       signer: seller.address,
       collection: nft.contract.address,
       tokenId: nft.id,
-      currency: Sdk.Common.Addresses.Weth[chainId],
+      currency: currency ?? Sdk.Common.Addresses.Weth[chainId],
       price,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,

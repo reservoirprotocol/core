@@ -5,6 +5,7 @@ import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
@@ -15,22 +16,25 @@ contract LooksRareModule is BaseExchangeModule {
 
     // --- Fields ---
 
-    address public immutable exchange =
+    address public constant exchange =
         0x59728544B08AB483533076417FbBB2fD0B17CE3a;
 
-    address public immutable erc721TransferManager =
+    address public constant erc721TransferManager =
         0xf42aa99F011A1fA7CDA90E5E98b277E306BcA83e;
 
-    address public immutable erc1155TransferManager =
+    address public constant erc1155TransferManager =
         0xFED24eC7E22f573c2e08AEF55aA6797Ca2b3A051;
+
+    bytes4 public constant erc721Interface = 0x80ac58cd;
+    bytes4 public constant erc1155Interface = 0xd9b67a26;
 
     // --- Constructor ---
 
     constructor(address owner) BaseModule(owner) {}
 
-    // --- [ERC721] Single ETH listing ---
+    // --- Single ETH listing ---
 
-    function acceptETHListingERC721(
+    function acceptETHListing(
         ILooksRare.TakerOrder calldata takerBid,
         ILooksRare.MakerOrder calldata makerAsk,
         ETHListingParams calldata params,
@@ -42,7 +46,7 @@ contract LooksRareModule is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        buyERC721(
+        buy(
             takerBid,
             makerAsk,
             params.fillTo,
@@ -51,9 +55,9 @@ contract LooksRareModule is BaseExchangeModule {
         );
     }
 
-    // --- [ERC721] Single ERC20 listing ---
+    // --- Single ERC20 listing ---
 
-    function acceptERC20ListingERC721(
+    function acceptERC20Listing(
         ILooksRare.TakerOrder calldata takerBid,
         ILooksRare.MakerOrder calldata makerAsk,
         ERC20ListingParams calldata params,
@@ -65,13 +69,69 @@ contract LooksRareModule is BaseExchangeModule {
         chargeERC20Fees(fees, params.token, params.amount)
     {
         approveERC20IfNeeded(params.token, exchange, params.amount);
-        buyERC721(
-            takerBid,
-            makerAsk,
-            params.fillTo,
-            params.revertIfIncomplete,
-            0
-        );
+        buy(takerBid, makerAsk, params.fillTo, params.revertIfIncomplete, 0);
+    }
+
+    // --- Multiple ETH listings ---
+
+    function acceptETHListings(
+        ILooksRare.TakerOrder[] calldata takerBids,
+        ILooksRare.MakerOrder[] calldata makerAsks,
+        ETHListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundETHLeftover(params.refundTo)
+        chargeETHFees(fees, params.amount)
+    {
+        for (uint256 i = 0; i < takerBids.length; ) {
+            // Use `memory` to avoid `Stack too deep` errors
+            ILooksRare.TakerOrder memory takerBid = takerBids[i];
+
+            buy(
+                takerBids[i],
+                makerAsks[i],
+                params.fillTo,
+                params.revertIfIncomplete,
+                takerBid.price
+            );
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    // --- Multiple ERC20 listings ---
+
+    function acceptERC20Listings(
+        ILooksRare.TakerOrder[] calldata takerBids,
+        ILooksRare.MakerOrder[] calldata makerAsks,
+        ERC20ListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        nonReentrant
+        refundERC20Leftover(params.refundTo, params.token)
+        chargeERC20Fees(fees, params.token, params.amount)
+    {
+        approveERC20IfNeeded(params.token, exchange, params.amount);
+
+        for (uint256 i = 0; i < takerBids.length; ) {
+            buy(
+                takerBids[i],
+                makerAsks[i],
+                params.fillTo,
+                params.revertIfIncomplete,
+                0
+            );
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     // --- [ERC721] Single offer ---
@@ -136,24 +196,38 @@ contract LooksRareModule is BaseExchangeModule {
 
     // --- Internal ---
 
-    function buyERC721(
+    function buy(
         ILooksRare.TakerOrder calldata takerBid,
         ILooksRare.MakerOrder calldata makerAsk,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
     ) internal {
+        function(ILooksRare.TakerOrder memory, ILooksRare.MakerOrder memory)
+            external
+            payable localBuy = value > 0
+                ? ILooksRare(exchange).matchAskWithTakerBidUsingETHAndWETH
+                : ILooksRare(exchange).matchAskWithTakerBid;
+
         bool success;
-        try
-            ILooksRare(exchange).matchAskWithTakerBidUsingETHAndWETH{
-                value: value
-            }(takerBid, makerAsk)
-        {
-            IERC721(makerAsk.collection).safeTransferFrom(
-                address(this),
-                receiver,
-                takerBid.tokenId
-            );
+        try localBuy{value: value}(takerBid, makerAsk) {
+            if (
+                IERC165(makerAsk.collection).supportsInterface(erc721Interface)
+            ) {
+                IERC721(makerAsk.collection).safeTransferFrom(
+                    address(this),
+                    receiver,
+                    takerBid.tokenId
+                );
+            } else {
+                IERC1155(makerAsk.collection).safeTransferFrom(
+                    address(this),
+                    receiver,
+                    takerBid.tokenId,
+                    makerAsk.amount,
+                    ""
+                );
+            }
 
             success = true;
         } catch {}
