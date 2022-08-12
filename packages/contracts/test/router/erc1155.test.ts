@@ -163,6 +163,7 @@ describe("Router - filling ERC1155", () => {
       signer: seller.address,
       collection: erc1155.address,
       tokenId: soldTokenId,
+      currency: Sdk.Common.Addresses.Weth[chainId],
       price,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
@@ -264,6 +265,7 @@ describe("Router - filling ERC1155", () => {
       signer: buyer.address,
       collection: erc1155.address,
       tokenId: boughtTokenId,
+      currency: Sdk.Common.Addresses.Weth[chainId],
       price,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
@@ -342,6 +344,7 @@ describe("Router - filling ERC1155", () => {
       contract: erc1155.address,
       tokenId: soldTokenId,
       amount: 1,
+      paymentToken: Sdk.ZeroExV4.Addresses.Eth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -429,6 +432,7 @@ describe("Router - filling ERC1155", () => {
         contract: erc1155.address,
         tokenId: soldTokenId,
         amount: 1,
+        paymentToken: Sdk.ZeroExV4.Addresses.Eth[chainId],
         price,
         expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
       });
@@ -523,6 +527,7 @@ describe("Router - filling ERC1155", () => {
       contract: erc1155.address,
       tokenId: boughtTokenId,
       amount: 1,
+      paymentToken: Sdk.Common.Addresses.Weth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });

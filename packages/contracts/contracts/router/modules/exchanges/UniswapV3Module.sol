@@ -4,10 +4,11 @@ pragma solidity ^0.8.9;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {BaseModule} from "./BaseModule.sol";
-import {IUniswapV3Router} from "../interfaces/IUniswapV3Router.sol";
+import {BaseExchangeModule} from "./BaseExchangeModule.sol";
+import {BaseModule} from "../BaseModule.sol";
+import {IUniswapV3Router} from "../../interfaces/IUniswapV3Router.sol";
 
-contract UniswapV3Module is BaseModule {
+contract UniswapV3Module is BaseExchangeModule {
     using SafeERC20 for IERC20;
 
     // --- Fields ---
@@ -19,7 +20,7 @@ contract UniswapV3Module is BaseModule {
 
     // --- Constructor ---
 
-    constructor(address router) BaseModule(router) {}
+    constructor(address owner) BaseModule(owner) {}
 
     // --- Swaps ---
 
@@ -40,7 +41,11 @@ contract UniswapV3Module is BaseModule {
         IUniswapV3Router.ExactOutputSingleParams calldata params,
         address refundTo
     ) external refundERC20Leftover(refundTo, params.tokenIn) {
-        IERC20(params.tokenIn).approve(swapRouter, params.amountInMaximum);
+        approveERC20IfNeeded(
+            params.tokenIn,
+            swapRouter,
+            params.amountInMaximum
+        );
         IUniswapV3Router(swapRouter).exactOutputSingle(params);
     }
 }

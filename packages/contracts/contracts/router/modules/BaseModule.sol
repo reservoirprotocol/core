@@ -3,140 +3,63 @@ pragma solidity ^0.8.9;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+// Base module contract which includes common methods good to have in all modules.
 abstract contract BaseModule is Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
-
-    // --- Structs ---
-
-    struct ETHListingParams {
-        address fillTo;
-        address refundTo;
-        bool revertIfIncomplete;
-        uint256 amount;
-    }
-
-    struct ERC20ListingParams {
-        address fillTo;
-        address refundTo;
-        bool revertIfIncomplete;
-        address token;
-        uint256 amount;
-    }
-
-    struct OfferParams {
-        address fillTo;
-        address refundTo;
-        bool revertIfIncomplete;
-    }
-
-    struct NFT {
-        address token;
-        uint256 id;
-    }
-
-    struct Fee {
-        address recipient;
-        uint256 amount;
-    }
-
     // --- Errors ---
 
-    error UnsuccessfulFill();
+    error UnsuccessfulCall();
     error UnsuccessfulPayment();
     error WrongParams();
 
     // --- Constructor ---
 
-    constructor(address router) {
-        _transferOwnership(router);
+    constructor(address owner) {
+        _transferOwnership(owner);
     }
 
     // --- Fallback ---
 
     receive() external payable {}
 
-    // --- Modifiers ---
+    // --- Owner ---
 
-    modifier refundETHLeftover(address refundTo) {
-        _;
+    // To be able to recover anything that gets stucked by mistake in the module,
+    // we allow the owner to perform any arbitrary call. Since the goal is to be
+    // stateless, this should only happen in case of mistakes. In addition, this
+    // method is also useful for withdrawing any earned trading rewards.
+    function makeCalls(
+        address[] calldata targets,
+        bytes[] calldata data,
+        uint256[] calldata values
+    ) external payable onlyOwner nonReentrant {
+        uint256 length = targets.length;
+        for (uint256 i = 0; i < length; ) {
+            makeCall(targets[i], data[i], values[i]);
 
-        uint256 leftover = address(this).balance;
-        if (leftover > 0) {
-            (bool success, ) = payable(refundTo).call{value: leftover}("");
-            if (!success) {
-                revert UnsuccessfulPayment();
+            unchecked {
+                ++i;
             }
         }
     }
 
-    modifier refundERC20Leftover(address refundTo, address token) {
-        _;
+    // --- Helpers ---
 
-        uint256 leftover = IERC20(token).balanceOf(address(this));
-        if (leftover > 0) {
-            IERC20(token).safeTransfer(refundTo, leftover);
+    function sendETH(address to, uint256 amount) internal {
+        (bool success, ) = payable(to).call{value: amount}("");
+        if (!success) {
+            revert UnsuccessfulPayment();
         }
     }
 
-    modifier chargeETHFees(Fee[] calldata fees, uint256 amount) {
-        uint256 balanceBefore = address(this).balance;
-
-        _;
-
-        uint256 balanceAfter = address(this).balance;
-
-        uint256 length = fees.length;
-        if (length > 0) {
-            uint256 actualPaid = balanceBefore - balanceAfter;
-
-            bool success;
-            for (uint256 i = 0; i < length; ) {
-                uint256 actualFee = (fees[i].amount * actualPaid) / amount;
-                if (actualFee > 0) {
-                    (success, ) = payable(fees[i].recipient).call{
-                        value: actualFee
-                    }("");
-                    if (!success) {
-                        revert UnsuccessfulPayment();
-                    }
-                }
-
-                unchecked {
-                    ++i;
-                }
-            }
-        }
-    }
-
-    modifier chargeERC20Fees(
-        Fee[] calldata fees,
-        address token,
-        uint256 amount
-    ) {
-        uint256 balanceBefore = IERC20(token).balanceOf(address(this));
-
-        _;
-
-        uint256 balanceAfter = IERC20(token).balanceOf(address(this));
-
-        uint256 length = fees.length;
-        if (length > 0) {
-            uint256 actualPaid = balanceBefore - balanceAfter;
-
-            bool success;
-            for (uint256 i = 0; i < length; ) {
-                uint256 actualFee = (fees[i].amount * actualPaid) / amount;
-                if (actualFee > 0) {
-                    IERC20(token).safeTransfer(fees[i].recipient, actualFee);
-                }
-
-                unchecked {
-                    ++i;
-                }
-            }
+    function makeCall(
+        address target,
+        bytes memory data,
+        uint256 value
+    ) internal {
+        (bool success, ) = payable(target).call{value: value}(data);
+        if (!success) {
+            revert UnsuccessfulCall();
         }
     }
 }

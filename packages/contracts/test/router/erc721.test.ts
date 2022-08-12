@@ -302,6 +302,7 @@ describe("Router - filling ERC721", () => {
       signer: seller.address,
       collection: erc721.address,
       tokenId: soldTokenId,
+      currency: Sdk.Common.Addresses.Weth[chainId],
       price,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
@@ -387,6 +388,7 @@ describe("Router - filling ERC721", () => {
       signer: buyer.address,
       collection: erc721.address,
       tokenId: boughtTokenId,
+      currency: Sdk.Common.Addresses.Weth[chainId],
       price,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
@@ -445,6 +447,7 @@ describe("Router - filling ERC721", () => {
       maker: seller.address,
       contract: erc721.address,
       tokenId: soldTokenId,
+      paymentToken: Sdk.ZeroExV4.Addresses.Eth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
@@ -519,6 +522,7 @@ describe("Router - filling ERC721", () => {
       maker: buyer.address,
       contract: erc721.address,
       tokenId: boughtTokenId,
+      paymentToken: Sdk.Common.Addresses.Weth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
