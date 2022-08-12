@@ -17,7 +17,8 @@ export type ZeroExV4Listing = {
     // A single quantity if missing
     amount?: number;
   };
-  // For the moment, all orders are in ETH
+  // ETH if missing
+  paymentToken?: string;
   price: BigNumberish;
   // Whether the order is to be cancelled
   isCancelled?: boolean;
@@ -28,7 +29,7 @@ export const setupZeroExV4Listings = async (listings: ZeroExV4Listing[]) => {
   const chainId = getChainId();
 
   for (const listing of listings) {
-    const { seller, nft, price } = listing;
+    const { seller, nft, paymentToken, price } = listing;
 
     // Approve the exchange contract
     if (nft.kind === "erc721") {
@@ -50,7 +51,7 @@ export const setupZeroExV4Listings = async (listings: ZeroExV4Listing[]) => {
       maker: seller.address,
       contract: nft.contract.address,
       tokenId: nft.id,
-      paymentToken: Sdk.ZeroExV4.Addresses.Eth[chainId],
+      paymentToken: paymentToken ?? Sdk.ZeroExV4.Addresses.Eth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });

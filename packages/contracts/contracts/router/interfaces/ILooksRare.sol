@@ -37,6 +37,11 @@ interface ILooksRare {
         MakerOrder calldata makerAsk
     ) external payable;
 
+    function matchAskWithTakerBid(
+        TakerOrder calldata takerBid,
+        MakerOrder calldata makerAsk
+    ) external payable;
+
     function matchBidWithTakerAsk(
         TakerOrder calldata takerAsk,
         MakerOrder calldata makerBid

@@ -69,6 +69,53 @@ contract ZeroExV4Module is BaseExchangeModule {
         );
     }
 
+    // --- [ERC721] Multiple ETH listings ---
+
+    function acceptETHListingsERC721(
+        IZeroExV4.ERC721Order[] calldata orders,
+        IZeroExV4.Signature[] calldata signatures,
+        ETHListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundETHLeftover(params.refundTo)
+        chargeETHFees(fees, params.amount)
+    {
+        buyERC721s(
+            orders,
+            signatures,
+            params.fillTo,
+            params.revertIfIncomplete,
+            params.amount
+        );
+    }
+
+    // --- [ERC721] Multiple ERC20 listings ---
+
+    function acceptERC20ListingsERC721(
+        IZeroExV4.ERC721Order[] calldata orders,
+        IZeroExV4.Signature[] calldata signatures,
+        ERC20ListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundERC20Leftover(params.refundTo, params.token)
+        chargeERC20Fees(fees, params.token, params.amount)
+    {
+        approveERC20IfNeeded(params.token, exchange, params.amount);
+        buyERC721s(
+            orders,
+            signatures,
+            params.fillTo,
+            params.revertIfIncomplete,
+            0
+        );
+    }
+
     // --- [ERC1155] Single ETH listing ---
 
     function acceptETHListingERC1155(
@@ -110,6 +157,53 @@ contract ZeroExV4Module is BaseExchangeModule {
         buyERC1155(
             order,
             signature,
+            params.fillTo,
+            params.revertIfIncomplete,
+            0
+        );
+    }
+
+    // --- [ERC1155] Multiple ETH listings ---
+
+    function acceptETHListingsERC1155(
+        IZeroExV4.ERC1155Order[] calldata orders,
+        IZeroExV4.Signature[] calldata signatures,
+        ETHListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundETHLeftover(params.refundTo)
+        chargeETHFees(fees, params.amount)
+    {
+        buyERC1155s(
+            orders,
+            signatures,
+            params.fillTo,
+            params.revertIfIncomplete,
+            params.amount
+        );
+    }
+
+    // --- [ERC1155] Multiple ERC20 listings ---
+
+    function acceptERC20ListingERC1155(
+        IZeroExV4.ERC1155Order[] calldata orders,
+        IZeroExV4.Signature[] calldata signatures,
+        ERC20ListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundERC20Leftover(params.refundTo, params.token)
+        chargeERC20Fees(fees, params.token, params.amount)
+    {
+        approveERC20IfNeeded(params.token, exchange, params.amount);
+        buyERC1155s(
+            orders,
+            signatures,
             params.fillTo,
             params.revertIfIncomplete,
             0
@@ -235,6 +329,98 @@ contract ZeroExV4Module is BaseExchangeModule {
                 1,
                 ""
             );
+
+            success = true;
+        } catch {}
+
+        if (revertIfIncomplete && !success) {
+            revert UnsuccessfulFill();
+        }
+    }
+
+    function buyERC721s(
+        IZeroExV4.ERC721Order[] calldata orders,
+        IZeroExV4.Signature[] calldata signatures,
+        address receiver,
+        bool revertIfIncomplete,
+        uint256 value
+    ) internal {
+        uint256 length = orders.length;
+
+        bool success;
+        try
+            IZeroExV4(exchange).batchBuyERC721s{value: value}(
+                orders,
+                signatures,
+                new bytes[](length),
+                revertIfIncomplete
+            )
+        returns (bool[] memory fulfilled) {
+            for (uint256 i = 0; i < length; ) {
+                if (fulfilled[i]) {
+                    IERC721(orders[i].erc721Token).safeTransferFrom(
+                        address(this),
+                        receiver,
+                        orders[i].erc721TokenId
+                    );
+                }
+
+                unchecked {
+                    ++i;
+                }
+            }
+
+            success = true;
+        } catch {}
+
+        if (revertIfIncomplete && !success) {
+            revert UnsuccessfulFill();
+        }
+    }
+
+    function buyERC1155s(
+        IZeroExV4.ERC1155Order[] calldata orders,
+        IZeroExV4.Signature[] calldata signatures,
+        address receiver,
+        bool revertIfIncomplete,
+        uint256 value
+    ) internal {
+        uint256 length = orders.length;
+
+        uint128[] memory fillAmounts = new uint128[](length);
+        for (uint256 i = 0; i < length; ) {
+            fillAmounts[i] = 1;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        bool success;
+        try
+            IZeroExV4(exchange).batchBuyERC1155s{value: value}(
+                orders,
+                signatures,
+                fillAmounts,
+                new bytes[](length),
+                revertIfIncomplete
+            )
+        returns (bool[] memory fulfilled) {
+            for (uint256 i = 0; i < length; ) {
+                if (fulfilled[i]) {
+                    IERC1155(orders[i].erc1155Token).safeTransferFrom(
+                        address(this),
+                        receiver,
+                        orders[i].erc1155TokenId,
+                        1,
+                        ""
+                    );
+                }
+
+                unchecked {
+                    ++i;
+                }
+            }
 
             success = true;
         } catch {}
