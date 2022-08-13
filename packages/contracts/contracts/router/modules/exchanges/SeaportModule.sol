@@ -3,8 +3,8 @@ pragma solidity ^0.8.9;
 
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
@@ -22,7 +22,7 @@ contract SeaportModule is BaseExchangeModule {
 
     // --- Fields ---
 
-    address public immutable exchange =
+    address public constant exchange =
         0x00000000006c3852cbEf3e08E8dF289169EdE581;
 
     // --- Constructor ---

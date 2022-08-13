@@ -151,34 +151,64 @@ describe("[ReservoirV6_0_0] X2Y2 listings", () => {
       }
     }
 
+    // Prepare executions
+
+    const totalPrice = bn(
+      listings
+        .map(({ params }) => params.price)
+        .reduce((a, b) => bn(a).add(b), bn(0))
+    );
     const executions: ExecutionInfo[] = [
       // 1. Fill listings
-      ...listings.map((listing, i) => ({
-        module: x2y2Module.address,
-        data: x2y2Module.interface.encodeFunctionData(`acceptETHListing`, [
-          inputs[i],
-          {
-            fillTo: carol.address,
-            refundTo: carol.address,
-            revertIfIncomplete: true,
-            amount: listing.params.price,
-          },
-          chargeFees
-            ? [
-                {
+      listingsCount > 1
+        ? {
+            module: x2y2Module.address,
+            data: x2y2Module.interface.encodeFunctionData("acceptETHListings", [
+              inputs,
+              {
+                fillTo: carol.address,
+                refundTo: carol.address,
+                revertIfIncomplete: true,
+                amount: totalPrice,
+              },
+              [
+                ...feesOnTop.map((amount) => ({
                   recipient: emilio.address,
-                  amount: feesOnTop[i],
-                },
-              ]
-            : [],
-        ]),
-        value: bn(listing.params.price)
-          .add(chargeFees ? feesOnTop[i] : 0)
-          .add(
-            // Anything on top should be refunded
-            parseEther("0.1")
-          ),
-      })),
+                  amount,
+                })),
+              ],
+            ]),
+            value: totalPrice.add(
+              // Anything on top should be refunded
+              feesOnTop
+                .reduce((a, b) => bn(a).add(b), bn(0))
+                .add(parseEther("0.1"))
+            ),
+          }
+        : {
+            module: x2y2Module.address,
+            data: x2y2Module.interface.encodeFunctionData("acceptETHListing", [
+              inputs[0],
+              {
+                fillTo: carol.address,
+                refundTo: carol.address,
+                revertIfIncomplete: true,
+                amount: totalPrice,
+              },
+              [
+                ...feesOnTop.map((amount) => ({
+                  recipient: emilio.address,
+                  amount,
+                })),
+              ],
+            ]),
+            value: totalPrice.add(
+              // Anything on top should be refunded
+              feesOnTop
+                .reduce((a, b) => bn(a).add(b), bn(0))
+                .add(parseEther("0.1"))
+            ),
+          },
     ];
 
     // Execute

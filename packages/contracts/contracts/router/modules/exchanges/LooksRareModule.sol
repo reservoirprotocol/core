@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
@@ -55,23 +55,6 @@ contract LooksRareModule is BaseExchangeModule {
         );
     }
 
-    // --- Single ERC20 listing ---
-
-    function acceptERC20Listing(
-        ILooksRare.TakerOrder calldata takerBid,
-        ILooksRare.MakerOrder calldata makerAsk,
-        ERC20ListingParams calldata params,
-        Fee[] calldata fees
-    )
-        external
-        nonReentrant
-        refundERC20Leftover(params.refundTo, params.token)
-        chargeERC20Fees(fees, params.token, params.amount)
-    {
-        approveERC20IfNeeded(params.token, exchange, params.amount);
-        buy(takerBid, makerAsk, params.fillTo, params.revertIfIncomplete, 0);
-    }
-
     // --- Multiple ETH listings ---
 
     function acceptETHListings(
@@ -96,36 +79,6 @@ contract LooksRareModule is BaseExchangeModule {
                 params.fillTo,
                 params.revertIfIncomplete,
                 takerBid.price
-            );
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    // --- Multiple ERC20 listings ---
-
-    function acceptERC20Listings(
-        ILooksRare.TakerOrder[] calldata takerBids,
-        ILooksRare.MakerOrder[] calldata makerAsks,
-        ERC20ListingParams calldata params,
-        Fee[] calldata fees
-    )
-        external
-        nonReentrant
-        refundERC20Leftover(params.refundTo, params.token)
-        chargeERC20Fees(fees, params.token, params.amount)
-    {
-        approveERC20IfNeeded(params.token, exchange, params.amount);
-
-        for (uint256 i = 0; i < takerBids.length; ) {
-            buy(
-                takerBids[i],
-                makerAsks[i],
-                params.fillTo,
-                params.revertIfIncomplete,
-                0
             );
 
             unchecked {
@@ -203,14 +156,12 @@ contract LooksRareModule is BaseExchangeModule {
         bool revertIfIncomplete,
         uint256 value
     ) internal {
-        function(ILooksRare.TakerOrder memory, ILooksRare.MakerOrder memory)
-            external
-            payable localBuy = value > 0
-                ? ILooksRare(exchange).matchAskWithTakerBidUsingETHAndWETH
-                : ILooksRare(exchange).matchAskWithTakerBid;
-
         bool success;
-        try localBuy{value: value}(takerBid, makerAsk) {
+        try
+            ILooksRare(exchange).matchAskWithTakerBidUsingETHAndWETH{
+                value: value
+            }(takerBid, makerAsk)
+        {
             if (
                 IERC165(makerAsk.collection).supportsInterface(erc721Interface)
             ) {

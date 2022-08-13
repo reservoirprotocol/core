@@ -42,7 +42,7 @@ export const setupLooksRareListings = async (listings: LooksRareListing[]) => {
           true
         );
     } else {
-      await nft.contract.connect(seller).mint(nft.id, nft.amount ?? 1);
+      await nft.contract.connect(seller).mint(nft.id);
       await nft.contract
         .connect(seller)
         .setApprovalForAll(

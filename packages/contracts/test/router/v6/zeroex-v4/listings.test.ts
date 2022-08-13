@@ -36,6 +36,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
   let david: SignerWithAddress;
   let emilio: SignerWithAddress;
 
+  let erc1155: Contract;
   let erc721: Contract;
   let router: Contract;
   let seaportModule: Contract;
@@ -45,7 +46,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
 
-    ({ erc721 } = await setupNFTs(deployer));
+    ({ erc721, erc1155 } = await setupNFTs(deployer));
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
@@ -119,6 +120,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
       : Sdk.Common.Addresses.Eth[chainId];
     const parsePrice = (price: string) =>
       useUsdc ? parseUnits(price, 6) : parseEther(price);
+    const useERC1155 = getRandomBoolean();
 
     const listings: ZeroExV4Listing[] = [];
     const feesOnTop: BigNumber[] = [];
@@ -126,8 +128,9 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
-          kind: "erc721",
-          contract: erc721,
+          ...(useERC1155
+            ? { kind: "erc721", contract: erc721 }
+            : { kind: "erc1155", contract: erc1155 }),
           id: getRandomInteger(1, 10000),
         },
         paymentToken: useUsdc
@@ -244,7 +247,9 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         ? {
             module: zeroExV4Module.address,
             data: zeroExV4Module.interface.encodeFunctionData(
-              `accept${useUsdc ? "ERC20" : "ETH"}ListingsERC721`,
+              `accept${
+                useUsdc ? "ERC20" : "ETH"
+              }Listings${listings[0].nft.kind.toUpperCase()}`,
               [
                 listings.map((listing) => listing.order!.getRaw()),
                 listings.map((listing) => listing.order!.getRaw()),
@@ -276,7 +281,9 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         : {
             module: zeroExV4Module.address,
             data: zeroExV4Module.interface.encodeFunctionData(
-              `accept${useUsdc ? "ERC20" : "ETH"}ListingERC721`,
+              `accept${
+                useUsdc ? "ERC20" : "ETH"
+              }Listing${listings[0].nft.kind.toUpperCase()}`,
               [
                 listings[0].order!.getRaw(),
                 listings[0].order!.getRaw(),
@@ -387,12 +394,23 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
     // Carol got the NFTs from all filled orders
     for (let i = 0; i < listings.length; i++) {
+      const nft = listings[i].nft;
       if (!listings[i].isCancelled) {
-        expect(await erc721.ownerOf(listings[i].nft.id)).to.eq(carol.address);
+        if (nft.kind === "erc721") {
+          expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
+        } else {
+          expect(await nft.contract.balanceOf(carol.address, nft.id)).to.eq(1);
+        }
       } else {
-        expect(await erc721.ownerOf(listings[i].nft.id)).to.eq(
-          listings[i].seller.address
-        );
+        if (nft.kind === "erc721") {
+          expect(await nft.contract.ownerOf(nft.id)).to.eq(
+            listings[i].seller.address
+          );
+        } else {
+          expect(
+            await nft.contract.balanceOf(listings[i].seller.address, nft.id)
+          ).to.eq(1);
+        }
       }
     }
 

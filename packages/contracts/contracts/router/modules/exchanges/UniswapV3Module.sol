@@ -13,9 +13,9 @@ contract UniswapV3Module is BaseExchangeModule {
 
     // --- Fields ---
 
-    address public immutable weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    address public immutable swapRouter =
+    address public constant swapRouter =
         0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
     // --- Constructor ---

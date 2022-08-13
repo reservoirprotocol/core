@@ -3,8 +3,8 @@ pragma solidity ^0.8.9;
 
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
@@ -15,7 +15,7 @@ contract ZeroExV4Module is BaseExchangeModule {
 
     // --- Fields ---
 
-    address public immutable exchange =
+    address public constant exchange =
         0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
 
     // --- Constructor ---
@@ -188,7 +188,7 @@ contract ZeroExV4Module is BaseExchangeModule {
 
     // --- [ERC1155] Multiple ERC20 listings ---
 
-    function acceptERC20ListingERC1155(
+    function acceptERC20ListingsERC1155(
         IZeroExV4.ERC1155Order[] calldata orders,
         IZeroExV4.Signature[] calldata signatures,
         ERC20ListingParams calldata params,

@@ -34,6 +34,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
   let david: SignerWithAddress;
   let emilio: SignerWithAddress;
 
+  let erc1155: Contract;
   let erc721: Contract;
   let router: Contract;
   let seaportModule: Contract;
@@ -42,7 +43,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
 
-    ({ erc721 } = await setupNFTs(deployer));
+    ({ erc721, erc1155 } = await setupNFTs(deployer));
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
@@ -119,8 +120,9 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
-          kind: "erc721",
-          contract: erc721,
+          ...(getRandomBoolean()
+            ? { kind: "erc721", contract: erc721 }
+            : { kind: "erc1155", contract: erc1155 }),
           id: getRandomInteger(1, 10000),
         },
         paymentToken,
@@ -360,12 +362,23 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
 
     // Carol got the NFTs from all filled orders
     for (let i = 0; i < listings.length; i++) {
+      const nft = listings[i].nft;
       if (!listings[i].isCancelled) {
-        expect(await erc721.ownerOf(listings[i].nft.id)).to.eq(carol.address);
+        if (nft.kind === "erc721") {
+          expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
+        } else {
+          expect(await nft.contract.balanceOf(carol.address, nft.id)).to.eq(1);
+        }
       } else {
-        expect(await erc721.ownerOf(listings[i].nft.id)).to.eq(
-          listings[i].seller.address
-        );
+        if (nft.kind === "erc721") {
+          expect(await nft.contract.ownerOf(nft.id)).to.eq(
+            listings[i].seller.address
+          );
+        } else {
+          expect(
+            await nft.contract.balanceOf(listings[i].seller.address, nft.id)
+          ).to.eq(1);
+        }
       }
     }
 
