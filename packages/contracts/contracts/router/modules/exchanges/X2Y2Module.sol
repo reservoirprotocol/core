@@ -2,8 +2,8 @@
 pragma solidity ^0.8.9;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
@@ -14,14 +14,14 @@ contract X2Y2Module is BaseExchangeModule {
 
     // --- Fields ---
 
-    address public immutable exchange =
+    address public constant exchange =
         0x74312363e45DCaBA76c59ec49a7Aa8A65a67EeD3;
 
     // --- Constructor ---
 
     constructor(address owner) BaseModule(owner) {}
 
-    // --- [ERC721] Single ETH listing ---
+    // --- Single ETH listing ---
 
     function acceptETHListing(
         IX2Y2.RunInput calldata input,
@@ -34,33 +34,40 @@ contract X2Y2Module is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        buyERC721(
-            input,
-            params.fillTo,
-            params.revertIfIncomplete,
-            params.amount
-        );
+        buy(input, params.fillTo, params.revertIfIncomplete, params.amount);
     }
 
-    // --- [ERC721] Single ERC20 listing ---
+    // --- Multiple ETH listings ---
 
-    function acceptERC20Listing(
-        IX2Y2.RunInput calldata input,
-        ERC20ListingParams calldata params,
+    function acceptETHListings(
+        IX2Y2.RunInput[] calldata inputs,
+        ETHListingParams calldata params,
         Fee[] calldata fees
     )
         external
+        payable
         nonReentrant
-        refundERC20Leftover(params.refundTo, params.token)
-        chargeERC20Fees(fees, params.token, params.amount)
+        refundETHLeftover(params.refundTo)
+        chargeETHFees(fees, params.amount)
     {
-        approveERC20IfNeeded(params.token, exchange, params.amount);
-        buyERC721(input, params.fillTo, params.revertIfIncomplete, 0);
+        uint256 length = inputs.length;
+        for (uint256 i = 0; i < length; ) {
+            buy(
+                inputs[i],
+                params.fillTo,
+                params.revertIfIncomplete,
+                inputs[i].details[0].price
+            );
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     // --- Internal ---
 
-    function buyERC721(
+    function buy(
         IX2Y2.RunInput calldata input,
         address receiver,
         bool revertIfIncomplete,

@@ -38,7 +38,7 @@ export const setupZeroExV4Listings = async (listings: ZeroExV4Listing[]) => {
         .connect(seller)
         .setApprovalForAll(Sdk.ZeroExV4.Addresses.Exchange[chainId], true);
     } else {
-      await nft.contract.connect(seller).mint(nft.id, nft.amount ?? 1);
+      await nft.contract.connect(seller).mint(nft.id);
       await nft.contract
         .connect(seller)
         .setApprovalForAll(Sdk.ZeroExV4.Addresses.Exchange[chainId], true);
@@ -51,6 +51,7 @@ export const setupZeroExV4Listings = async (listings: ZeroExV4Listing[]) => {
       maker: seller.address,
       contract: nft.contract.address,
       tokenId: nft.id,
+      amount: nft.kind === "erc1155" ? 1 : 0,
       paymentToken: paymentToken ?? Sdk.ZeroExV4.Addresses.Eth[chainId],
       price,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,

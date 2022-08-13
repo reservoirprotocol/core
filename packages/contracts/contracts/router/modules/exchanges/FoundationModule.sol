@@ -10,7 +10,7 @@ import {IFoundation} from "../../interfaces/IFoundation.sol";
 contract FoundationModule is BaseExchangeModule {
     // --- Fields ---
 
-    address public immutable exchange =
+    address public constant exchange =
         0xcDA72070E455bb31C7690a170224Ce43623d0B6f;
 
     // --- Constructor ---
