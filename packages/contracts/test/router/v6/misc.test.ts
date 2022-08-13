@@ -544,7 +544,7 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
     expect(wethBalancesAfter.unwrapWethModule).to.eq(0);
   });
 
-  it.only("Fill with balance assert", async () => {
+  it("Fill with balance assert", async () => {
     // Setup
 
     // Listing maker: Alice

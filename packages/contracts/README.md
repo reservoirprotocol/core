@@ -1,10 +1,38 @@
-### Deployed contracts
+### Reservoir Router
 
-`ReservoirV2`:
+Cross-exchange NFT sweeping.
 
-- Rinkeby: [0x060ef49d2f5d7038cc7397936641feb7c5ae3679](https://rinkeby.etherscan.io/address/0x060ef49d2f5d7038cc7397936641feb7c5ae3679)
-- Mainnet: [0x5aa9ca240174a54af6d9bfc69214b2ed948de86d](https://etherscan.io/address/0x5aa9ca240174a54af6d9bfc69214b2ed948de86d)
+#### Setup and test
 
-`ReservoirV3`:
+Some tests (the X2Y2 ones) depend on an API key which can be provied via the `X2Y2_API_KEY` env variable.
 
-- Mainnet: [0x7c9733b19e14f37aca367fbd78922c098c55c874](https://etherscan.io/address/0x7c9733b19e14f37aca367fbd78922c098c55c874)
+```bash
+# Install dependencies
+yarn install
+
+# Run tests
+yarn test ./test/router/v6/**/*.test.ts
+```
+
+#### Structure
+
+The [Reservoir router](../contracts/contracts/router/ReservoirV6_0_0.sol) is a singular immutable smart contract which acts as an execution layer on top of multiple [pluggable module contracts](../contracts/contracts/router/modules/). A module contract acts as a wrapper for a specific piece of funtionality (eg. filling Seaport/LooksRare/X2Y2 orders, unwrapping WETH, swapping tokens on Uniswap V3). Modules can be registered by the owner of the router contract and once added they can never be revoked (thus ensuring there is no way to break backwards-compatibility).
+
+The following modules are available at the moment:
+
+- [`FoundationModule`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): fill Foundation orders
+- [`LooksRareModule`](../contracts/contracts/router/modules/exchanges/LooksRareModule.sol): fill LooksRare orders
+- [`SeaportModule`](../contracts/contracts/router/modules/exchanges/SeaportModule.sol): fill Seaport orders
+- [`UniswapV3Module`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): swap tokens on UniswapV3
+- [`X2Y2Module`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): fill X2Y2 orders
+- [`ZeroExV4Module`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): fill ZeroExV4 orders
+- [`BalanceAssertModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): assert ownership/balance
+- [`UnwrapWETHModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): unwrap WETH
+
+One of the main goals of the router is to be completely stateless, holding no funds and requiring no approvals. This means that the risk is limited to a per-transaction basis (eg. making sure no funds get lost as part of filling through the router) rather than globally (eg. funds that can be stolen from the router).
+
+Since the router is stateless, filling orders that require anything other than ETH can be tricky (since ERC20/ERC721/ERC1155 all require approvals to be able to transfer on someone's behalf). We overcome this via two methods:
+
+- When executing anything that requires the approval of a single ERC721/ERC1155 token id, we use the `onERC721Received` and `onERC1155Received` hooks to transfer the NFT to the corresponding module contract and then make any other needed calls.
+
+- In all other cases, we use Seaport approval orders. A Seaport approval order is a short-lived order (in the range of minutes) which can send any tokens to a particular recipient free of charge. This still requires an approval, but on the Seaport contract (or a specific Seaport conduit) rather than on the router. One issue though is that without any further mechanism for protection, these orders can be front-run (eg. someone could listen for these orders in the mempool and then create an execution which first fills the Seaport approval order and then transfers any received funds to them). To overcome this limitation, we require all such orders be associated to the [`SeaportApprovalOrderZone`](../contracts/contracts/router/misc/SeaportApprovalOrderZone.sol) zone, which verifies that no one other than the original transaction sender (eg. `tx.origin`) can fill the order.
