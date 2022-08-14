@@ -11,6 +11,10 @@ import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {ILooksRare} from "../../interfaces/ILooksRare.sol";
 
+// Notes on the LooksRare module:
+// - supports filling listings (both ERC721/ERC1155 but only ETH-denominated)
+// - supports filling offers (both ERC721/ERC1155)
+
 contract LooksRareModule is BaseExchangeModule {
     using SafeERC20 for IERC20;
 

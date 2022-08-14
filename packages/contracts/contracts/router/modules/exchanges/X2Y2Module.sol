@@ -9,6 +9,9 @@ import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {IX2Y2} from "../../interfaces/IX2Y2.sol";
 
+// Notes on the X2Y2 module:
+// - supports filling listings (only ERC721 and ETH-denominated)
+
 contract X2Y2Module is BaseExchangeModule {
     using SafeERC20 for IERC20;
 

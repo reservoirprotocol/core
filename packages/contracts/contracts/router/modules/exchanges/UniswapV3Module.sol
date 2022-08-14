@@ -8,6 +8,9 @@ import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {IUniswapV3Router} from "../../interfaces/IUniswapV3Router.sol";
 
+// Notes on the UniswapV3 module:
+// - supports swapping tokens via direct paths
+
 contract UniswapV3Module is BaseExchangeModule {
     using SafeERC20 for IERC20;
 

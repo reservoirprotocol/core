@@ -10,6 +10,10 @@ import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {ISeaport} from "../../interfaces/ISeaport.sol";
 
+// Notes on the Seaport module:
+// - supports filling listings (both ERC721/ERC1155)
+// - supports filling offers (both ERC721/ERC1155)
+
 contract SeaportModule is BaseExchangeModule {
     using SafeERC20 for IERC20;
 

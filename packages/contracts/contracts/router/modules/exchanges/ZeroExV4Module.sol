@@ -10,6 +10,10 @@ import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {IZeroExV4} from "../../interfaces/IZeroExV4.sol";
 
+// Notes on the ZeroExV4 module:
+// - supports filling listings (both ERC721/ERC1155)
+// - supports filling offers (both ERC721/ERC1155)
+
 contract ZeroExV4Module is BaseExchangeModule {
     using SafeERC20 for IERC20;
 

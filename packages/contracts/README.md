@@ -14,9 +14,9 @@ yarn install
 yarn test ./test/router/v6/**/*.test.ts
 ```
 
-#### Structure
+#### Modules
 
-The [Reservoir router](../contracts/contracts/router/ReservoirV6_0_0.sol) is a singular immutable smart contract which acts as an execution layer on top of multiple [pluggable module contracts](../contracts/contracts/router/modules/). A module contract acts as a wrapper for a specific piece of funtionality (eg. filling Seaport/LooksRare/X2Y2 orders, unwrapping WETH, swapping tokens on Uniswap V3). Modules can be registered by the owner of the router contract and once added they can never be revoked (thus ensuring there is no way to break backwards-compatibility).
+The [Reservoir router](../contracts/contracts/router/ReservoirV6_0_0.sol) is a singular immutable smart contract which acts as an execution layer on top of multiple [pluggable module contracts](../contracts/contracts/router/modules/). A module contract acts as a wrapper for a specific piece of funtionality (eg. filling Seaport/LooksRare/X2Y2 orders, swapping tokens on Uniswap V3). Modules can be registered by the owner of the router contract and once added they can never be revoked (thus ensuring there is no way to break backwards-compatibility).
 
 The following modules are available at the moment:
 
@@ -29,10 +29,10 @@ The following modules are available at the moment:
 - [`BalanceAssertModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): assert ownership/balance
 - [`UnwrapWETHModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): unwrap WETH
 
-One of the main goals of the router is to be completely stateless, holding no funds and requiring no approvals. This means that the risk is limited to a per-transaction basis (eg. making sure no funds get lost as part of filling through the router) rather than globally (eg. funds that can be stolen from the router).
+##### Stateless
 
-Since the router is stateless, filling orders that require anything other than ETH can be tricky (since ERC20/ERC721/ERC1155 all require approvals to be able to transfer on someone's behalf). We overcome this via two methods:
+One of the main goals of the router is to be completely stateless, holding no funds and requiring no approvals on the router/module contracts (in order to reduce the risk surface and allow easy upgradeability). This means that the risk is limited to a per-transaction basis (eg. making sure no funds get lost as part of filling through the router) rather than globally (eg. funds that can be stolen from the router). Due to this, filling orders that require anything other than ETH can be tricky (since ERC20/ERC721/ERC1155 all require approvals to be able to transfer on someone's behalf). We overcome this via two methods:
 
 - When executing anything that requires the approval of a single ERC721/ERC1155 token id, we use the `onERC721Received` and `onERC1155Received` hooks to transfer the NFT to the corresponding module contract and then make any other needed calls.
 
-- In all other cases, we use Seaport approval orders. A Seaport approval order is a short-lived order (in the range of minutes) which can send any tokens to a particular recipient free of charge. This still requires an approval, but on the Seaport contract (or a specific Seaport conduit) rather than on the router. One issue though is that without any further mechanism for protection, these orders can be front-run (eg. someone could listen for these orders in the mempool and then create an execution which first fills the Seaport approval order and then transfers any received funds to them). To overcome this limitation, we require all such orders be associated to the [`SeaportApprovalOrderZone`](../contracts/contracts/router/misc/SeaportApprovalOrderZone.sol) zone, which verifies that no one other than the original transaction sender (eg. `tx.origin`) can fill the order.
+- In all other cases, we use Seaport approval orders. A Seaport approval order is a short-lived order (in the range of minutes) which can send any tokens to a particular recipient free of charge. This still requires an approval, but on the Seaport contract (or a specific Seaport conduit) rather than on the router. One issue though is that without any further mechanism for protection, these orders can be front-run (eg. someone could listen for these orders in the mempool and then create an execution which first fills the Seaport approval order and then transfers any received funds to them). To overcome this limitation, all such orders should be associated to the [`SeaportApprovalOrderZone`](../contracts/contracts/router/misc/SeaportApprovalOrderZone.sol) zone, which verifies that no one other than the original transaction sender (eg. `tx.origin`) can trigger the filling of the approval order.

@@ -115,40 +115,73 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
 
     // Prepare executions
 
+    const totalPrice = bn(
+      listings.map(({ price }) => price).reduce((a, b) => bn(a).add(b), bn(0))
+    );
     const executions: ExecutionInfo[] = [
       // 1. Fill listings
-      ...listings.map((listing, i) => ({
-        module: foundationModule.address,
-        data: foundationModule.interface.encodeFunctionData(
-          `acceptETHListing`,
-          [
-            {
-              token: listing.nft.contract.address,
-              id: listing.nft.id,
-            },
-            {
-              fillTo: carol.address,
-              refundTo: carol.address,
-              revertIfIncomplete,
-              amount: listing.price,
-            },
-            chargeFees
-              ? [
-                  {
+      listingsCount > 1
+        ? {
+            module: foundationModule.address,
+            data: foundationModule.interface.encodeFunctionData(
+              "acceptETHListings",
+              [
+                listings.map((listing) => ({
+                  token: listing.nft.contract.address,
+                  id: listing.nft.id,
+                })),
+                listings.map((listing) => listing.price),
+                {
+                  fillTo: carol.address,
+                  refundTo: carol.address,
+                  revertIfIncomplete,
+                  amount: totalPrice,
+                },
+                [
+                  ...feesOnTop.map((amount) => ({
                     recipient: emilio.address,
-                    amount: feesOnTop[i],
-                  },
-                ]
-              : [],
-          ]
-        ),
-        value: bn(listing.price)
-          .add(chargeFees ? feesOnTop[i] : 0)
-          .add(
-            // Anything on top should be refunded
-            parseEther("0.1")
-          ),
-      })),
+                    amount,
+                  })),
+                ],
+              ]
+            ),
+            value: totalPrice.add(
+              // Anything on top should be refunded
+              feesOnTop
+                .reduce((a, b) => bn(a).add(b), bn(0))
+                .add(parseEther("0.1"))
+            ),
+          }
+        : {
+            module: foundationModule.address,
+            data: foundationModule.interface.encodeFunctionData(
+              "acceptETHListing",
+              [
+                {
+                  token: listings[0].nft.contract.address,
+                  id: listings[0].nft.id,
+                },
+                {
+                  fillTo: carol.address,
+                  refundTo: carol.address,
+                  revertIfIncomplete,
+                  amount: totalPrice,
+                },
+                [
+                  ...feesOnTop.map((amount) => ({
+                    recipient: emilio.address,
+                    amount,
+                  })),
+                ],
+              ]
+            ),
+            value: totalPrice.add(
+              // Anything on top should be refunded
+              feesOnTop
+                .reduce((a, b) => bn(a).add(b), bn(0))
+                .add(parseEther("0.1"))
+            ),
+          },
     ];
 
     // Checks
@@ -225,9 +258,16 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
 
     // Emilio got the fee payments
     if (chargeFees) {
+      // Fees are charged per execution, and since we have a single execution
+      // here, we will have a single fee payment at the end adjusted over the
+      // amount that was actually paid (eg. prices of filled orders)
+      const actualPaid = listings
+        .filter(({ isCancelled }) => !isCancelled)
+        .map(({ price }) => price)
+        .reduce((a, b) => bn(a).add(b), bn(0));
       expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
         listings
-          .map(({ isCancelled }, i) => (!isCancelled ? feesOnTop[i] : 0))
+          .map((_, i) => feesOnTop[i].mul(actualPaid).div(totalPrice))
           .reduce((a, b) => bn(a).add(b), bn(0))
       );
     }

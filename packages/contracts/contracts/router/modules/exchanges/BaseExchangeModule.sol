@@ -17,8 +17,6 @@ abstract contract BaseExchangeModule is BaseModule {
 
     // --- Structs ---
 
-    // Listings
-
     struct ETHListingParams {
         address fillTo;
         address refundTo;
@@ -34,15 +32,11 @@ abstract contract BaseExchangeModule is BaseModule {
         uint256 amount;
     }
 
-    // Offers
-
     struct OfferParams {
         address fillTo;
         address refundTo;
         bool revertIfIncomplete;
     }
-
-    // Misc
 
     struct NFT {
         address token;
@@ -204,7 +198,7 @@ abstract contract BaseExchangeModule is BaseModule {
     // `safeTransferFrom(
     //      0xWALLET,
     //      0xMODULE,
-    //      0xTOKEN_ID,
+    //      TOKEN_ID,
     //      0xABI_ENCODED_ROUTER_EXECUTION_CALLDATA_FOR_OFFER_ACCEPTANCE
     // )`
 
