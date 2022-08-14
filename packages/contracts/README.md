@@ -9,7 +9,7 @@ For running the tests, make sure to have an `.env` file containing the following
 ```bash
 ALCHEMY_KEY=
 
-# Block to run mainnet forking tests on (should be a recent block for up-to-date results)
+# Block to run mainnet forking tests on (should be a recent block for up-to-date results, eg. 15321679)
 BLOCK_NUMBER=
 
 # Optional for running the X2Y2 module tests
