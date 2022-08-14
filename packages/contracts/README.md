@@ -29,7 +29,7 @@ The following modules are available at the moment:
 - [`BalanceAssertModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): assert ownership/balance
 - [`UnwrapWETHModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): unwrap WETH
 
-##### Stateless
+#### No state
 
 One of the main goals of the router is to be completely stateless, holding no funds and requiring no approvals on the router/module contracts (in order to reduce the risk surface and allow easy upgradeability). This means that the risk is limited to a per-transaction basis (eg. making sure no funds get lost as part of filling through the router) rather than globally (eg. funds that can be stolen from the router). Due to this, filling orders that require anything other than ETH can be tricky (since ERC20/ERC721/ERC1155 all require approvals to be able to transfer on someone's behalf). We overcome this via two methods:
 
