@@ -4,7 +4,19 @@ Cross-exchange NFT sweeping.
 
 #### Setup and test
 
-Some tests (the X2Y2 ones) depend on an API key which can be provied via the `X2Y2_API_KEY` env variable.
+For running the tests, make sure to have an `.env` file containing the following envs:
+
+```bash
+ALCHEMY_KEY=
+
+# Block to run mainnet forking tests on (should be a recent block for up-to-date results)
+BLOCK_NUMBER=
+
+# Optional for running the X2Y2 module tests
+X2Y2_API_KEY=
+```
+
+To install any dependencies and run all tests (tests can also be run individually):
 
 ```bash
 # Install dependencies
@@ -12,6 +24,9 @@ yarn install
 
 # Run tests
 yarn test ./test/router/v6/**/*.test.ts
+
+# Run an individual test
+yarn test ./test/router/v6/seaport/listings.test.ts
 ```
 
 #### Modules
