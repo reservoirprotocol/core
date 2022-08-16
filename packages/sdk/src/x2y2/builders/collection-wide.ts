@@ -1,22 +1,17 @@
 import { defaultAbiCoder } from "@ethersproject/abi";
-import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 
+import { BaseBuildParams } from "./base";
 import * as Types from "../types";
 import { getRandomBytes } from "../../utils";
 
-type BuildParams = {
-  user: string;
-  network: number;
-  deadline: number;
-  currency: string;
-  price: BigNumberish;
-  nft: {
-    contract: string;
-  };
-};
+interface BuildParams extends BaseBuildParams {}
 
 export const buildOrder = async (params: BuildParams) => {
+  if (params.side !== "buy") {
+    throw new Error("Unsupported side");
+  }
+
   return {
     salt: getRandomBytes(32).toHexString(),
     user: params.user,
@@ -45,7 +40,7 @@ export const buildOrder = async (params: BuildParams) => {
           [
             [
               {
-                token: params.nft.contract,
+                token: params.nftContract,
                 tokenId: 0,
               },
             ],

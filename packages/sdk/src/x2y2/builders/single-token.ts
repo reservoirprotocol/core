@@ -1,21 +1,13 @@
 import { defaultAbiCoder } from "@ethersproject/abi";
 import { BigNumberish } from "@ethersproject/bignumber";
 
+import { BaseBuildParams } from "./base";
 import * as Types from "../types";
 import { getRandomBytes } from "../../utils";
 
-type BuildParams = {
-  user: string;
-  network: number;
-  side: "sell" | "buy";
-  deadline: number;
-  currency: string;
-  price: BigNumberish;
-  nft: {
-    contract: string;
-    id: BigNumberish;
-  };
-};
+interface BuildParams extends BaseBuildParams {
+  nftId: BigNumberish;
+}
 
 export const buildOrder = async (params: BuildParams) => {
   return {
@@ -36,8 +28,8 @@ export const buildOrder = async (params: BuildParams) => {
           [
             [
               {
-                token: params.nft.contract,
-                tokenId: params.nft.id,
+                token: params.nftContract,
+                tokenId: params.nftId,
               },
             ],
           ]
