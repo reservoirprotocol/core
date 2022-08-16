@@ -11,7 +11,7 @@ interface BuildParams extends BaseBuildParams {
 
 export const buildOrder = async (params: BuildParams) => {
   return {
-    salt: getRandomBytes(32).toHexString(),
+    salt: params.salt ?? getRandomBytes(32).toHexString(),
     user: params.user,
     network: params.network,
     intent: params.side === "sell" ? Types.Intent.SELL : Types.Intent.BUY,

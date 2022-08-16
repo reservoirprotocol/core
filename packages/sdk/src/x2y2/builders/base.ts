@@ -8,4 +8,5 @@ export type BaseBuildParams = {
   currency: string;
   price: BigNumberish;
   contract: string;
+  salt?: BigNumberish;
 };
