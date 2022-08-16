@@ -6,7 +6,7 @@ import * as Types from "../types";
 import { getRandomBytes } from "../../utils";
 
 interface BuildParams extends BaseBuildParams {
-  nftId: BigNumberish;
+  tokenId: BigNumberish;
 }
 
 export const buildOrder = async (params: BuildParams) => {
@@ -28,8 +28,8 @@ export const buildOrder = async (params: BuildParams) => {
           [
             [
               {
-                token: params.nftContract,
-                tokenId: params.nftId,
+                token: params.contract,
+                tokenId: params.tokenId,
               },
             ],
           ]

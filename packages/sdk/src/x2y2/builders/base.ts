@@ -7,5 +7,5 @@ export type BaseBuildParams = {
   deadline: number;
   currency: string;
   price: BigNumberish;
-  nftContract: string;
+  contract: string;
 };

@@ -40,7 +40,7 @@ export const buildOrder = async (params: BuildParams) => {
           [
             [
               {
-                token: params.nftContract,
+                token: params.contract,
                 tokenId: 0,
               },
             ],
