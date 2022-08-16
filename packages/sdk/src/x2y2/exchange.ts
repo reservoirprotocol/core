@@ -1,12 +1,13 @@
 import { defaultAbiCoder } from "@ethersproject/abi";
 import { Signer } from "@ethersproject/abstract-signer";
-import { arrayify } from "@ethersproject/bytes";
+import { arrayify, splitSignature } from "@ethersproject/bytes";
 import { Contract } from "@ethersproject/contracts";
 import { keccak256 } from "@ethersproject/keccak256";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
+import * as Types from "./types";
 import { TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
@@ -20,6 +21,96 @@ export class Exchange {
     this.chainId = chainId;
     this.contract = new Contract(Addresses.Exchange[this.chainId], ExchangeAbi);
     this.apiKey = apiKey;
+  }
+
+  // --- Sign order ---
+
+  private hash(order: Types.LocalOrder): string {
+    return keccak256(
+      defaultAbiCoder.encode(
+        [
+          `uint256`,
+          `address`,
+          `uint256`,
+          `uint256`,
+          `uint256`,
+          `uint256`,
+          `address`,
+          `bytes`,
+          `uint256`,
+          `(uint256 price, bytes data)[]`,
+        ],
+        [
+          order.salt,
+          order.user,
+          order.network,
+          order.intent,
+          order.delegateType,
+          order.deadline,
+          order.currency,
+          order.dataMask,
+          order.items.length,
+          order.items,
+        ]
+      )
+    );
+  }
+
+  public async signOrder(signer: Signer, order: Types.LocalOrder) {
+    const signature = splitSignature(
+      await signer.signMessage(arrayify(this.hash(order)))
+    );
+
+    order.v = signature.v;
+    order.r = signature.r;
+    order.s = signature.s;
+  }
+
+  public getOrderSignatureData(order: Types.LocalOrder) {
+    return {
+      signatureKind: "eip191",
+      message: this.hash(order),
+    };
+  }
+
+  // --- Post order ---
+
+  public async postOrder(order: Types.LocalOrder, orderId?: number) {
+    const orderPayload = {
+      order: defaultAbiCoder.encode(
+        [
+          `(
+            uint256 salt,
+            address user,
+            uint256 network,
+            uint256 intent,
+            uint256 delegateType,
+            uint256 deadline,
+            address currency,
+            bytes dataMask,
+            (uint256 price, bytes data)[] items,
+            bytes32 r,
+            bytes32 s,
+            uint8 v,
+            uint8 signVersion
+          )`,
+        ],
+        [order]
+      ),
+      isBundle: false,
+      bundleName: "",
+      bundleDesc: "",
+      orderIds: orderId ? [orderId] : [],
+      changePrice: Boolean(orderId),
+      isCollection: order.dataMask !== "0x",
+    };
+
+    return axios.post("https://api.x2y2.org/api/orders/add", orderPayload, {
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Api-Key": this.apiKey,
+      },
+    });
   }
 
   // --- Fill order ---
