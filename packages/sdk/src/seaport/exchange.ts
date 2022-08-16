@@ -108,14 +108,15 @@ export class Exchange {
                   offerIdentifier: info.tokenId,
                   offerAmount: info.amount,
                   basicOrderType:
-                    info.tokenKind === "erc721"
+                    (info.tokenKind === "erc721"
                       ? info.paymentToken === CommonAddresses.Eth[this.chainId]
                         ? Types.BasicOrderType.ETH_TO_ERC721_FULL_OPEN
                         : Types.BasicOrderType.ERC20_TO_ERC721_FULL_OPEN
-                      : (info.paymentToken === CommonAddresses.Eth[this.chainId]
-                          ? Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN
-                          : Types.BasicOrderType.ERC20_TO_ERC1155_FULL_OPEN) +
-                        order.params.orderType,
+                      : info.paymentToken === CommonAddresses.Eth[this.chainId]
+                      ? Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN
+                      : Types.BasicOrderType.ERC20_TO_ERC1155_FULL_OPEN) +
+                    order.params.orderType +
+                    (order.params.zoneHash !== HashZero ? 2 : 0),
                   startTime: order.params.startTime,
                   endTime: order.params.endTime,
                   zoneHash: order.params.zoneHash,
@@ -202,7 +203,8 @@ export class Exchange {
                     (info.tokenKind === "erc721"
                       ? Types.BasicOrderType.ERC721_TO_ERC20_FULL_OPEN
                       : Types.BasicOrderType.ERC1155_TO_ERC20_FULL_OPEN) +
-                    order.params.orderType,
+                    order.params.orderType +
+                    (order.params.zone !== HashZero ? 2 : 0),
                   startTime: order.params.startTime,
                   endTime: order.params.endTime,
                   zoneHash: order.params.zoneHash,
