@@ -7,13 +7,13 @@ import { getRandomBytes } from "../../utils";
 
 interface BuildParams extends BaseBuildParams {}
 
-export const buildOrder = async (params: BuildParams) => {
+export const buildOrder = (params: BuildParams): Types.LocalOrder => {
   if (params.side !== "buy") {
     throw new Error("Unsupported side");
   }
 
   return {
-    salt: params.salt ?? getRandomBytes(32).toHexString(),
+    salt: params.salt?.toString() ?? getRandomBytes(32).toHexString(),
     user: params.user,
     network: params.network,
     intent: Types.Intent.BUY,

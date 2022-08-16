@@ -9,9 +9,9 @@ interface BuildParams extends BaseBuildParams {
   tokenId: BigNumberish;
 }
 
-export const buildOrder = async (params: BuildParams) => {
+export const buildOrder = (params: BuildParams): Types.LocalOrder => {
   return {
-    salt: params.salt ?? getRandomBytes(32).toHexString(),
+    salt: params.salt?.toString() ?? getRandomBytes(32).toHexString(),
     user: params.user,
     network: params.network,
     intent: params.side === "sell" ? Types.Intent.SELL : Types.Intent.BUY,
