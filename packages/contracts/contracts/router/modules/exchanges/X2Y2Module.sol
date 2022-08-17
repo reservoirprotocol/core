@@ -22,7 +22,10 @@ contract X2Y2Module is BaseExchangeModule {
 
     // --- Constructor ---
 
-    constructor(address owner) BaseModule(owner) {}
+    constructor(address owner, address router)
+        BaseModule(owner)
+        BaseExchangeModule(router)
+    {}
 
     // --- Single ETH listing ---
 

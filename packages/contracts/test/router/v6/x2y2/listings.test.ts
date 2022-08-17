@@ -38,7 +38,9 @@ describe("[ReservoirV6_0_0] X2Y2 listings", () => {
       .then((factory) => factory.deploy())) as any;
     x2y2Module = (await ethers
       .getContractFactory("X2Y2Module", deployer)
-      .then((factory) => factory.deploy(router.address))) as any;
+      .then((factory) =>
+        factory.deploy(router.address, router.address)
+      )) as any;
 
     await router.registerModule(x2y2Module.address);
   });

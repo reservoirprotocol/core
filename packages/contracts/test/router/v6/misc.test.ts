@@ -58,7 +58,9 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
       .then((factory) => factory.deploy(deployer.address))) as any;
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
-      .then((factory) => factory.deploy(deployer.address))) as any;
+      .then((factory) =>
+        factory.deploy(router.address, router.address)
+      )) as any;
     seaportApprovalOrderZone = (await ethers
       .getContractFactory("SeaportApprovalOrderZone", deployer)
       .then((factory) => factory.deploy())) as any;
@@ -402,13 +404,7 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
         bob.address,
         seaportModule.address,
         offer.nft.id,
-        defaultAbiCoder.encode(
-          ["address", "bytes"],
-          [
-            router.address,
-            router.interface.encodeFunctionData("execute", [executions]),
-          ]
-        )
+        router.interface.encodeFunctionData("execute", [executions])
       );
 
     // Fetch post-state
@@ -504,13 +500,7 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
         bob.address,
         seaportModule.address,
         offer.nft.id,
-        defaultAbiCoder.encode(
-          ["address", "bytes"],
-          [
-            router.address,
-            router.interface.encodeFunctionData("execute", [executions]),
-          ]
-        )
+        router.interface.encodeFunctionData("execute", [executions])
       )
       .then((tx: TransactionResponse) => tx.wait())
       .then((tx: TransactionReceipt) => tx.effectiveGasPrice.mul(tx.gasUsed));

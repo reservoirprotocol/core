@@ -24,7 +24,10 @@ contract ZeroExV4Module is BaseExchangeModule {
 
     // --- Constructor ---
 
-    constructor(address owner) BaseModule(owner) {}
+    constructor(address owner, address router)
+        BaseModule(owner)
+        BaseExchangeModule(router)
+    {}
 
     // --- [ERC721] Single ETH listing ---
 

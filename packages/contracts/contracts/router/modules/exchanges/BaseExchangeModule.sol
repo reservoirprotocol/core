@@ -48,9 +48,19 @@ abstract contract BaseExchangeModule is BaseModule {
         uint256 amount;
     }
 
+    // --- Fields ---
+
+    address public immutable router;
+
     // --- Errors ---
 
     error UnsuccessfulFill();
+
+    // --- Constructor ---
+
+    constructor(address routerAddress) {
+        router = routerAddress;
+    }
 
     // --- Modifiers ---
 
@@ -209,11 +219,7 @@ abstract contract BaseExchangeModule is BaseModule {
         bytes calldata data
     ) external returns (bytes4) {
         if (data.length > 0) {
-            (address target, bytes memory callData) = abi.decode(
-                data,
-                (address, bytes)
-            );
-            makeCall(target, callData, 0);
+            makeCall(router, data, 0);
         }
 
         return this.onERC721Received.selector;
@@ -227,11 +233,7 @@ abstract contract BaseExchangeModule is BaseModule {
         bytes calldata data
     ) external returns (bytes4) {
         if (data.length > 0) {
-            (address target, bytes memory callData) = abi.decode(
-                data,
-                (address, bytes)
-            );
-            makeCall(target, callData, 0);
+            makeCall(router, data, 0);
         }
 
         return this.onERC1155Received.selector;

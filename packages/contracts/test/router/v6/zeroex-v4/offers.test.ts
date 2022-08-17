@@ -46,10 +46,14 @@ describe("[ReservoirV6_0_0] ZeroExV4 offers", () => {
       .then((factory) => factory.deploy())) as any;
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
-      .then((factory) => factory.deploy(router.address))) as any;
+      .then((factory) =>
+        factory.deploy(router.address, router.address)
+      )) as any;
     zeroExV4Module = (await ethers
       .getContractFactory("ZeroExV4Module", deployer)
-      .then((factory) => factory.deploy(router.address))) as any;
+      .then((factory) =>
+        factory.deploy(router.address, router.address)
+      )) as any;
 
     await router.registerModule(seaportModule.address);
     await router.registerModule(zeroExV4Module.address);

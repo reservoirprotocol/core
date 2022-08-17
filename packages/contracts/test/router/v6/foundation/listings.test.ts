@@ -45,7 +45,9 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
       .then((factory) => factory.deploy())) as any;
     foundationModule = (await ethers
       .getContractFactory("FoundationModule", deployer)
-      .then((factory) => factory.deploy(router.address))) as any;
+      .then((factory) =>
+        factory.deploy(router.address, router.address)
+      )) as any;
 
     await router.registerModule(foundationModule.address);
   });
