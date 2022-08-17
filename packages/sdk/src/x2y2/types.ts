@@ -1,4 +1,4 @@
-export type OrderKind = "single-token";
+export type OrderKind = "single-token" | "collection-wide";
 
 export enum Intent {
   SELL = 1,
@@ -25,7 +25,7 @@ export type Order = {
   itemHash: string;
   nft: {
     token: string;
-    tokenId: string;
+    tokenId?: string;
   };
 };
 

@@ -70,7 +70,8 @@ const normalize = (order: Types.Order): Types.Order => {
     itemHash: lc(order.itemHash),
     nft: {
       token: lc(order.nft.token),
-      tokenId: order.nft.tokenId !== null ? s(order.nft.tokenId) : null,
+      tokenId:
+        order.nft.tokenId !== undefined ? s(order.nft.tokenId) : undefined,
     },
   };
 };
