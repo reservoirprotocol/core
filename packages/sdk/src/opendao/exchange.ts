@@ -181,7 +181,7 @@ export class Exchange {
     const fillAmounts: string[] = [];
     const callbackData: string[] = [];
 
-    const tokenKind = orders[0].params.kind?.split("-").at(-1);
+    const tokenKind = orders[0].params.kind?.split("-")[0];
     if (!tokenKind) {
       throw new Error("Could not detect token kind");
     }
@@ -191,7 +191,7 @@ export class Exchange {
       if (orders[i].params.direction !== Types.TradeDirection.SELL) {
         throw new Error("Invalid side");
       }
-      if (orders[i].params.kind?.split("-").at(-1) !== tokenKind) {
+      if (orders[i].params.kind?.split("-")[0] !== tokenKind) {
         throw new Error("Invalid kind");
       }
 
