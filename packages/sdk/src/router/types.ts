@@ -43,6 +43,7 @@ export type ListingFillDetails = {
   contractKind: "erc721" | "erc1155";
   contract: string;
   tokenId: string;
+  currency: string;
   // Relevant for partially-fillable orders
   amount?: number | string;
 };

@@ -88,6 +88,15 @@ export class Router {
       }
     }
 
+    // Ensure all listings are in ETH
+    if (
+      !details.every(
+        (d) => d.currency === Sdk.Common.Addresses.Eth[this.chainId]
+      )
+    ) {
+      throw new Error("Only ETH listings are fillable through the router");
+    }
+
     // Keep track of batch-fillable orders
     const opendaoErc721Details: ListingDetails[] = [];
     const opendaoErc1155Details: ListingDetails[] = [];

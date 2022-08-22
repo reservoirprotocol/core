@@ -94,6 +94,7 @@ describe("Router - multi buy", () => {
         contract: erc721.address,
         tokenId: tokenId1.toString(),
         order: sellOrder,
+        currency: Sdk.Common.Addresses.Eth[chainId],
       });
     }
 
@@ -139,6 +140,7 @@ describe("Router - multi buy", () => {
         contract: erc721.address,
         tokenId: tokenId2.toString(),
         order: sellOrder,
+        currency: Sdk.Common.Addresses.Eth[chainId],
       });
     }
 
@@ -190,6 +192,7 @@ describe("Router - multi buy", () => {
         tokenId: tokenId3.toString(),
         amount: amount3,
         order: sellOrder,
+        currency: Sdk.Common.Addresses.Eth[chainId],
       });
     }
 
@@ -302,6 +305,7 @@ describe("Router - multi buy", () => {
         contract: erc721.address,
         tokenId: tokenId1.toString(),
         order: sellOrder,
+        currency: Sdk.Common.Addresses.Eth[chainId],
       });
 
       sellOrders.push({
@@ -310,6 +314,7 @@ describe("Router - multi buy", () => {
         contract: erc721.address,
         tokenId: tokenId1.toString(),
         order: sellOrder,
+        currency: Sdk.Common.Addresses.Eth[chainId],
       });
     }
 
@@ -404,6 +409,7 @@ describe("Router - multi buy", () => {
         contract: erc721.address,
         tokenId: tokenId1.toString(),
         order: sellOrder,
+        currency: Sdk.Common.Addresses.Eth[chainId],
       });
     }
 
@@ -451,6 +457,7 @@ describe("Router - multi buy", () => {
         contract: erc721.address,
         tokenId: tokenId2.toString(),
         order: sellOrder,
+        currency: Sdk.Common.Addresses.Eth[chainId],
       });
     }
 
@@ -498,6 +505,7 @@ describe("Router - multi buy", () => {
         contract: erc721.address,
         tokenId: tokenId3.toString(),
         order: sellOrder,
+        currency: Sdk.Common.Addresses.Eth[chainId],
       });
     }
 
