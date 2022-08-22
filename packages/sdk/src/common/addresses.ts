@@ -43,6 +43,8 @@ export const Usdc: ChainIdToAddress = {
 
 export const Routers: ChainIdToAddressMap = {
   [Network.Ethereum]: {
+    // Blur
+    "0x39da41747a83aee658334415666f3ef92dd0d541": "blur.io",
     // Element
     "0x69cf8871f61fb03f540bc519dd1f1d4682ea0bf6": "element.market",
     // Gem
@@ -60,8 +62,13 @@ export const Routers: ChainIdToAddressMap = {
     "0xf97e9727d8e7db7aa8f006d1742d107cf9411412": "genie.xyz",
     // NFTInit
     "0x7f6cdf5869bd780ea351df4d841f68d73cbcc16b": "nftinit.com",
+    // OKX
+    "0x92701d42e1504ef9fce6d66a2054218b048dda43": "okx.com",
     // Rarible
     "0x2a7251d1e7d708c507b1b0d3ff328007beecce5d": "rarible.com",
+    // Rarity Garden
+    "0x603d022611bfe6a101dcdab207d96c527f1d4d8e": "rarity.garden",
+    "0x39b6862c4783db2651d64bc160349dc9a15f1fb7": "rarity.garden",
     // Reservoir
     "0xc52b521b284792498c1036d4c2ed4b73387b3859": "reservoir.tools",
     "0x5aa9ca240174a54af6d9bfc69214b2ed948de86d": "reservoir.tools",
