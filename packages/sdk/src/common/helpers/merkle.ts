@@ -16,7 +16,7 @@ export const generateMerkleTree = (tokenIds: BigNumberish[]) => {
   }
 
   const leaves = tokenIds.map(hashFn);
-  return new MerkleTree(leaves, hashFn, { sort: true });
+  return new MerkleTree(leaves, keccak256, { sort: true });
 };
 
 export const generateMerkleProof = (
