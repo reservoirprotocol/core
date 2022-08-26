@@ -21,6 +21,16 @@ contract TwoStepOwnable {
     error InvalidParams();
     error Unauthorized();
 
+    // --- Modifiers ---
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) {
+            revert Unauthorized();
+        }
+
+        _;
+    }
+
     // --- Constructor ---
 
     constructor(address initialOwner) {
@@ -43,13 +53,5 @@ contract TwoStepOwnable {
         owner = _pendingOwner;
         pendingOwner = address(0);
         emit OwnershipTransferred(owner, _pendingOwner);
-    }
-
-    modifier onlyOwner() {
-        if (msg.sender != owner) {
-            revert Unauthorized();
-        }
-
-        _;
     }
 }

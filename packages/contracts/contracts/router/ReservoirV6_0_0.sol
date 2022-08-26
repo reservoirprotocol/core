@@ -4,8 +4,6 @@ pragma solidity ^0.8.9;
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
-import {TwoStepOwnable} from "../misc/TwoStepOwnable.sol";
-
 contract ReservoirV6_0_0 is ReentrancyGuard {
     using Address for address;
 

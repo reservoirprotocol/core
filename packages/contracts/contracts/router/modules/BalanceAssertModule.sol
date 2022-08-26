@@ -10,14 +10,10 @@ import {BaseModule} from "./BaseModule.sol";
 // gets included right before. To optimize the amount of gas that is lost, this
 // module performs a balance/owner check so that we revert as early as possible
 // and spend as few gas as possible.
-contract BalanceAssertModule is BaseModule {
+contract BalanceAssertModule {
     // --- Errors ---
 
     error AssertFailed();
-
-    // --- Constructor ---
-
-    constructor(address owner) BaseModule(owner) {}
 
     // --- [ERC721] Single assert ---
 
@@ -25,7 +21,7 @@ contract BalanceAssertModule is BaseModule {
         IERC721 token,
         uint256 tokenId,
         address owner
-    ) external nonReentrant {
+    ) external view {
         address actualOwner = token.ownerOf(tokenId);
         if (owner != actualOwner) {
             revert AssertFailed();
@@ -39,7 +35,7 @@ contract BalanceAssertModule is BaseModule {
         uint256 tokenId,
         address owner,
         uint256 balance
-    ) external nonReentrant {
+    ) external view {
         uint256 actualBalance = token.balanceOf(owner, tokenId);
         if (balance < actualBalance) {
             revert AssertFailed();
