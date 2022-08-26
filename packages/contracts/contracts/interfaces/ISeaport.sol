@@ -48,6 +48,20 @@ interface ISeaport {
         address recipient;
     }
 
+    struct OrderComponents {
+        address offerer;
+        address zone;
+        OfferItem[] offer;
+        ConsiderationItem[] consideration;
+        OrderType orderType;
+        uint256 startTime;
+        uint256 endTime;
+        bytes32 zoneHash;
+        uint256 salt;
+        bytes32 conduitKey;
+        uint256 counter;
+    }
+
     struct OrderParameters {
         address offerer;
         address zone;
@@ -98,6 +112,26 @@ interface ISeaport {
         address offerer;
         bytes32 conduitKey;
     }
+
+    function getOrderHash(OrderComponents calldata order)
+        external
+        view
+        returns (bytes32 orderHash);
+
+    function getOrderStatus(bytes32 orderHash)
+        external
+        view
+        returns (
+            bool isValidated,
+            bool isCancelled,
+            uint256 totalFilled,
+            uint256 totalSize
+        );
+
+    function getCounter(address offerer)
+        external
+        view
+        returns (uint256 counter);
 
     function fulfillAdvancedOrder(
         AdvancedOrder calldata advancedOrder,

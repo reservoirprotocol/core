@@ -23,8 +23,8 @@ contract PunksProxy {
 
     // --- Fields ---
 
-    address public constant exchange =
-        0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB;
+    ICryptoPunksMarket public constant EXCHANGE =
+        ICryptoPunksMarket(0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB);
 
     mapping(uint256 => address) private tokenApprovals;
     mapping(address => mapping(address => bool)) private operatorApprovals;
@@ -57,11 +57,11 @@ contract PunksProxy {
     // --- ERC721 standard methods ---
 
     function balanceOf(address owner) external view returns (uint256 balance) {
-        balance = ICryptoPunksMarket(exchange).balanceOf(owner);
+        balance = EXCHANGE.balanceOf(owner);
     }
 
     function ownerOf(uint256 tokenId) public view returns (address owner) {
-        owner = ICryptoPunksMarket(exchange).punkIndexToAddress(tokenId);
+        owner = EXCHANGE.punkIndexToAddress(tokenId);
     }
 
     function getApproved(uint256 tokenId)
@@ -140,8 +140,8 @@ contract PunksProxy {
             revert Unauthorized();
         }
 
-        ICryptoPunksMarket(exchange).buyPunk(tokenId);
-        ICryptoPunksMarket(exchange).transferPunk(to, tokenId);
+        EXCHANGE.buyPunk(tokenId);
+        EXCHANGE.transferPunk(to, tokenId);
         emit Transfer(from, to, tokenId);
     }
 

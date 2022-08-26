@@ -204,7 +204,7 @@ export class Exchange {
                       ? Types.BasicOrderType.ERC721_TO_ERC20_FULL_OPEN
                       : Types.BasicOrderType.ERC1155_TO_ERC20_FULL_OPEN) +
                     order.params.orderType +
-                    (order.params.zone !== HashZero ? 2 : 0),
+                    (order.params.zoneHash !== HashZero ? 2 : 0),
                   startTime: order.params.startTime,
                   endTime: order.params.endTime,
                   zoneHash: order.params.zoneHash,

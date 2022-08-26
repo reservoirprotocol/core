@@ -61,10 +61,6 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
-
-    await router.registerModule(looksRareModule.address);
-    await router.registerModule(seaportModule.address);
-    await router.registerModule(uniswapV3Module.address);
   });
 
   const getBalances = async (token: string) => {

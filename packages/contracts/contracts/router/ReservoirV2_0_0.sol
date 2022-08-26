@@ -6,10 +6,10 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {ExchangeKind} from "./interfaces/IExchangeKind.sol";
-import {IWETH} from "./interfaces/IWETH.sol";
-import {ILooksRare, ILooksRareTransferSelectorNFT} from "./interfaces/ILooksRare.sol";
-import {IWyvernV23, IWyvernV23ProxyRegistry} from "./interfaces/IWyvernV23.sol";
+import {ExchangeKind} from "../interfaces/IExchangeKind.sol";
+import {IWETH} from "../interfaces/IWETH.sol";
+import {ILooksRare, ILooksRareTransferSelectorNFT} from "../interfaces/ILooksRare.sol";
+import {IWyvernV23, IWyvernV23ProxyRegistry} from "../interfaces/IWyvernV23.sol";
 
 contract ReservoirV2_0_0 is Ownable {
     address public weth;

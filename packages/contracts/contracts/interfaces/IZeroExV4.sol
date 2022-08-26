@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 interface IZeroExV4 {
     struct Property {
         address propertyValidator;
@@ -19,10 +23,10 @@ interface IZeroExV4 {
         address taker;
         uint256 expiry;
         uint256 nonce;
-        address erc20Token;
+        IERC20 erc20Token;
         uint256 erc20TokenAmount;
         Fee[] fees;
-        address erc721Token;
+        IERC721 erc721Token;
         uint256 erc721TokenId;
         Property[] erc721TokenProperties;
     }
@@ -33,10 +37,10 @@ interface IZeroExV4 {
         address taker;
         uint256 expiry;
         uint256 nonce;
-        address erc20Token;
+        IERC20 erc20Token;
         uint256 erc20TokenAmount;
         Fee[] fees;
-        address erc1155Token;
+        IERC1155 erc1155Token;
         uint256 erc1155TokenId;
         Property[] erc1155TokenProperties;
         uint128 erc1155TokenAmount;

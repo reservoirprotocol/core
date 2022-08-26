@@ -33,6 +33,7 @@ describe("[ReservoirV6_0_0] LooksRare offers", () => {
 
   let erc721: Contract;
   let router: Contract;
+  let seaportApprovalOrderZone: Contract;
   let seaportModule: Contract;
   let looksRareModule: Contract;
 
@@ -44,6 +45,9 @@ describe("[ReservoirV6_0_0] LooksRare offers", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
+    seaportApprovalOrderZone = (await ethers
+      .getContractFactory("SeaportApprovalOrderZone", deployer)
+      .then((factory) => factory.deploy())) as any;
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
       .then((factory) =>
@@ -54,9 +58,6 @@ describe("[ReservoirV6_0_0] LooksRare offers", () => {
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
-
-    await router.registerModule(seaportModule.address);
-    await router.registerModule(looksRareModule.address);
   });
 
   const getBalances = async (token: string) => {
@@ -131,6 +132,7 @@ describe("[ReservoirV6_0_0] LooksRare offers", () => {
       filler: seaportModule.address,
       receiver: looksRareModule.address,
       nft: offer.nft,
+      zone: seaportApprovalOrderZone.address,
     }));
     await setupSeaportERC721Approvals(approvals);
 
@@ -197,10 +199,6 @@ describe("[ReservoirV6_0_0] LooksRare offers", () => {
               fillTo: carol.address,
               refundTo: carol.address,
               revertIfIncomplete,
-            },
-            {
-              token: offer.nft.contract.address,
-              id: offer.nft.id,
             },
           ]
         ),

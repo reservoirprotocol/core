@@ -34,6 +34,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
 
   let erc721: Contract;
   let router: Contract;
+  let seaportApprovalOrderZone: Contract;
   let seaportModule: Contract;
   let uniswapV3Module: Contract;
 
@@ -45,6 +46,9 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
+    seaportApprovalOrderZone = (await ethers
+      .getContractFactory("SeaportApprovalOrderZone", deployer)
+      .then((factory) => factory.deploy())) as any;
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
       .then((factory) =>
@@ -55,9 +59,6 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
-
-    await router.registerModule(seaportModule.address);
-    await router.registerModule(uniswapV3Module.address);
   });
 
   const getBalances = async (token: string) => {
@@ -131,6 +132,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
       giver: carol,
       filler: seaportModule.address,
       nft: offer.nft,
+      zone: seaportApprovalOrderZone.address,
     }));
     await setupSeaportERC721Approvals(approvals);
 
@@ -205,10 +207,6 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
             fillTo: carol.address,
             refundTo: carol.address,
             revertIfIncomplete,
-          },
-          {
-            token: offer.nft.contract.address,
-            id: offer.nft.id,
           },
         ]),
         value: 0,

@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
-import {IX2Y2} from "../../interfaces/IX2Y2.sol";
+import {IX2Y2} from "../../../interfaces/IX2Y2.sol";
 
 // Notes on the X2Y2 module:
 // - supports filling listings (only ERC721 and ETH-denominated)
+// - TODO: support ERC1155 listings
+// - TODO: support bids
 
 contract X2Y2Module is BaseExchangeModule {
-    using SafeERC20 for IERC20;
-
     // --- Fields ---
 
-    address public constant exchange =
-        0x74312363e45DCaBA76c59ec49a7Aa8A65a67EeD3;
+    IX2Y2 public constant EXCHANGE =
+        IX2Y2(0x74312363e45DCaBA76c59ec49a7Aa8A65a67EeD3);
 
     // --- Constructor ---
 
@@ -26,6 +24,10 @@ contract X2Y2Module is BaseExchangeModule {
         BaseModule(owner)
         BaseExchangeModule(router)
     {}
+
+    // --- Fallback ---
+
+    receive() external payable {}
 
     // --- Single ETH listing ---
 
@@ -40,7 +42,8 @@ contract X2Y2Module is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        buy(input, params.fillTo, params.revertIfIncomplete, params.amount);
+        // Execute fill
+        _buy(input, params.fillTo, params.revertIfIncomplete, params.amount);
     }
 
     // --- Multiple ETH listings ---
@@ -56,9 +59,11 @@ contract X2Y2Module is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
+        // X2Y2 does not support batch filling so we fill orders one by one
         uint256 length = inputs.length;
         for (uint256 i = 0; i < length; ) {
-            buy(
+            // Execute fill
+            _buy(
                 inputs[i],
                 params.fillTo,
                 params.revertIfIncomplete,
@@ -71,9 +76,48 @@ contract X2Y2Module is BaseExchangeModule {
         }
     }
 
+    // --- ERC721 / ERC1155 hooks ---
+
+    // Single token offer acceptance can be done approval-less by using the
+    // standard `safeTransferFrom` method together with specifying data for
+    // further contract calls. An example:
+    // `safeTransferFrom(
+    //      0xWALLET,
+    //      0xMODULE,
+    //      TOKEN_ID,
+    //      0xABI_ENCODED_ROUTER_EXECUTION_CALLDATA_FOR_OFFER_ACCEPTANCE
+    // )`
+
+    function onERC721Received(
+        address, // operator,
+        address, // from
+        uint256, // tokenId,
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
+        }
+
+        return this.onERC721Received.selector;
+    }
+
+    function onERC1155Received(
+        address, // operator
+        address, // from
+        uint256, // tokenId
+        uint256, // amount
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
+        }
+
+        return this.onERC1155Received.selector;
+    }
+
     // --- Internal ---
 
-    function buy(
+    function _buy(
         IX2Y2.RunInput calldata input,
         address receiver,
         bool revertIfIncomplete,
@@ -83,6 +127,7 @@ contract X2Y2Module is BaseExchangeModule {
             revert WrongParams();
         }
 
+        // Extract the order's corresponding token
         IX2Y2.SettleDetail calldata detail = input.details[0];
         IX2Y2.OrderItem calldata orderItem = input
             .orders[detail.orderIdx]
@@ -92,19 +137,18 @@ contract X2Y2Module is BaseExchangeModule {
             revert WrongParams();
         }
 
-        bool success;
-        try IX2Y2(exchange).run{value: value}(input) {
+        // Execute fill
+        try EXCHANGE.run{value: value}(input) {
             IERC721(pairs[0].token).safeTransferFrom(
                 address(this),
                 receiver,
                 pairs[0].tokenId
             );
-
-            success = true;
-        } catch {}
-
-        if (revertIfIncomplete && !success) {
-            revert UnsuccessfulFill();
+        } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
         }
     }
 }

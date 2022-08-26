@@ -67,10 +67,6 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
     unwrapWethModule = (await ethers
       .getContractFactory("UnwrapWETHModule", deployer)
       .then((factory) => factory.deploy(deployer.address))) as any;
-
-    await router.registerModule(balanceAssertModule.address);
-    await router.registerModule(seaportModule.address);
-    await router.registerModule(unwrapWethModule.address);
   });
 
   const getBalances = async (token: string) => {
@@ -185,10 +181,6 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
             refundTo: carol.address,
             // Execute atomically
             revertIfIncomplete: true,
-          },
-          {
-            token: erc721.address,
-            id: offer.nft.id,
           },
         ]),
         value: 0,
@@ -381,10 +373,6 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
             refundTo: bob.address,
             revertIfIncomplete: true,
           },
-          {
-            token: offer.nft.contract.address,
-            id: offer.nft.id,
-          },
         ]),
         value: 0,
       },
@@ -466,10 +454,6 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
             fillTo: unwrapWethModule.address,
             refundTo: bob.address,
             revertIfIncomplete: true,
-          },
-          {
-            token: offer.nft.contract.address,
-            id: offer.nft.id,
           },
         ]),
         value: 0,

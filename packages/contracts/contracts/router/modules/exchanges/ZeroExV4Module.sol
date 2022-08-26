@@ -1,26 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
-import {IZeroExV4} from "../../interfaces/IZeroExV4.sol";
+import {IZeroExV4} from "../../../interfaces/IZeroExV4.sol";
 
-// Notes on the ZeroExV4 module:
+// Notes:
 // - supports filling listings (both ERC721/ERC1155)
 // - supports filling offers (both ERC721/ERC1155)
+// - TODO: support filling multiple quantites of ERC1155
 
 contract ZeroExV4Module is BaseExchangeModule {
     using SafeERC20 for IERC20;
 
     // --- Fields ---
 
-    address public constant exchange =
-        0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
+    IZeroExV4 public constant EXCHANGE =
+        IZeroExV4(0xDef1C0ded9bec7F1a1670819833240f027b25EfF);
 
     // --- Constructor ---
 
@@ -28,6 +27,10 @@ contract ZeroExV4Module is BaseExchangeModule {
         BaseModule(owner)
         BaseExchangeModule(router)
     {}
+
+    // --- Fallback ---
+
+    receive() external payable {}
 
     // --- [ERC721] Single ETH listing ---
 
@@ -43,7 +46,8 @@ contract ZeroExV4Module is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        buyERC721(
+        // Execute fill
+        _buyERC721(
             order,
             signature,
             params.fillTo,
@@ -66,8 +70,11 @@ contract ZeroExV4Module is BaseExchangeModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        approveERC20IfNeeded(params.token, exchange, params.amount);
-        buyERC721(
+        // Approve the exchange if needed
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
+
+        // Execute fill
+        _buyERC721(
             order,
             signature,
             params.fillTo,
@@ -90,7 +97,8 @@ contract ZeroExV4Module is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        buyERC721s(
+        // Execute fill
+        _buyERC721s(
             orders,
             signatures,
             params.fillTo,
@@ -113,8 +121,11 @@ contract ZeroExV4Module is BaseExchangeModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        approveERC20IfNeeded(params.token, exchange, params.amount);
-        buyERC721s(
+        // Approve the exchange if needed
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
+
+        // Execute fill
+        _buyERC721s(
             orders,
             signatures,
             params.fillTo,
@@ -137,7 +148,8 @@ contract ZeroExV4Module is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        buyERC1155(
+        // Execute fill
+        _buyERC1155(
             order,
             signature,
             params.fillTo,
@@ -160,8 +172,11 @@ contract ZeroExV4Module is BaseExchangeModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        approveERC20IfNeeded(params.token, exchange, params.amount);
-        buyERC1155(
+        // Approve the exchange if needed
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
+
+        // Execute fill
+        _buyERC1155(
             order,
             signature,
             params.fillTo,
@@ -184,7 +199,8 @@ contract ZeroExV4Module is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        buyERC1155s(
+        // Execute fill
+        _buyERC1155s(
             orders,
             signatures,
             params.fillTo,
@@ -207,8 +223,11 @@ contract ZeroExV4Module is BaseExchangeModule {
         refundERC20Leftover(params.refundTo, params.token)
         chargeERC20Fees(fees, params.token, params.amount)
     {
-        approveERC20IfNeeded(params.token, exchange, params.amount);
-        buyERC1155s(
+        // Approve the exchange if needed
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
+
+        // Execute fill
+        _buyERC1155s(
             orders,
             signatures,
             params.fillTo,
@@ -223,30 +242,26 @@ contract ZeroExV4Module is BaseExchangeModule {
         IZeroExV4.ERC721Order calldata order,
         IZeroExV4.Signature calldata signature,
         OfferParams calldata params,
-        NFT calldata nft
+        uint256 tokenId
     ) external nonReentrant {
-        approveERC721IfNeeded(order.erc721Token, exchange);
+        // Approve the exchange if needed
+        _approveERC721IfNeeded(order.erc721Token, address(EXCHANGE));
 
-        bool success;
-        try
-            IZeroExV4(exchange).sellERC721(order, signature, nft.id, false, "")
-        {
-            IERC20(order.erc20Token).safeTransfer(
+        // Execute fill
+        try EXCHANGE.sellERC721(order, signature, tokenId, false, "") {
+            order.erc20Token.safeTransfer(
                 params.fillTo,
                 order.erc20TokenAmount
             );
-
-            success = true;
-        } catch {}
-
-        if (!success) {
+        } catch {
+            // Revert if specified
             if (params.revertIfIncomplete) {
                 revert UnsuccessfulFill();
-            } else {
-                // Refund
-                sendAllERC721(params.refundTo, nft.token, nft.id);
             }
         }
+
+        // Refund any ERC721 leftover
+        _sendAllERC721(params.refundTo, order.erc721Token, tokenId);
     }
 
     // --- [ERC1155] Single offer ---
@@ -255,97 +270,115 @@ contract ZeroExV4Module is BaseExchangeModule {
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
         OfferParams calldata params,
-        NFT calldata nft
+        uint256 tokenId
     ) external nonReentrant {
-        approveERC1155IfNeeded(order.erc1155Token, exchange);
+        // Approve the exchange if needed
+        _approveERC1155IfNeeded(order.erc1155Token, address(EXCHANGE));
 
-        bool success;
-        try
-            IZeroExV4(exchange).sellERC1155(
-                order,
-                signature,
-                nft.id,
-                1,
-                false,
-                ""
-            )
-        {
-            IERC20(order.erc20Token).safeTransfer(
+        // Execute fill
+        try EXCHANGE.sellERC1155(order, signature, tokenId, 1, false, "") {
+            order.erc20Token.safeTransfer(
                 params.fillTo,
                 order.erc20TokenAmount
             );
-
-            success = true;
-        } catch {}
-
-        if (!success) {
+        } catch {
+            // Revert if specified
             if (params.revertIfIncomplete) {
                 revert UnsuccessfulFill();
-            } else {
-                // Refund
-                sendAllERC1155(params.refundTo, nft.token, nft.id);
             }
         }
+
+        // Refund any ERC1155 leftover
+        _sendAllERC1155(params.refundTo, order.erc1155Token, tokenId);
+    }
+
+    // --- ERC721 / ERC1155 hooks ---
+
+    // Single token offer acceptance can be done approval-less by using the
+    // standard `safeTransferFrom` method together with specifying data for
+    // further contract calls. An example:
+    // `safeTransferFrom(
+    //      0xWALLET,
+    //      0xMODULE,
+    //      TOKEN_ID,
+    //      0xABI_ENCODED_ROUTER_EXECUTION_CALLDATA_FOR_OFFER_ACCEPTANCE
+    // )`
+
+    function onERC721Received(
+        address, // operator,
+        address, // from
+        uint256, // tokenId,
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
+        }
+
+        return this.onERC721Received.selector;
+    }
+
+    function onERC1155Received(
+        address, // operator
+        address, // from
+        uint256, // tokenId
+        uint256, // amount
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
+        }
+
+        return this.onERC1155Received.selector;
     }
 
     // --- Internal ---
 
-    function buyERC721(
+    function _buyERC721(
         IZeroExV4.ERC721Order calldata order,
         IZeroExV4.Signature calldata signature,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
     ) internal {
-        bool success;
-        try IZeroExV4(exchange).buyERC721{value: value}(order, signature, "") {
-            IERC721(order.erc721Token).safeTransferFrom(
+        // Execute fill
+        try EXCHANGE.buyERC721{value: value}(order, signature, "") {
+            order.erc721Token.safeTransferFrom(
                 address(this),
                 receiver,
                 order.erc721TokenId
             );
-
-            success = true;
-        } catch {}
-
-        if (revertIfIncomplete && !success) {
-            revert UnsuccessfulFill();
+        } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
         }
     }
 
-    function buyERC1155(
+    function _buyERC1155(
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
     ) internal {
-        bool success;
-        try
-            IZeroExV4(exchange).buyERC1155{value: value}(
-                order,
-                signature,
-                1,
-                ""
-            )
-        {
-            IERC1155(order.erc1155Token).safeTransferFrom(
+        try EXCHANGE.buyERC1155{value: value}(order, signature, 1, "") {
+            order.erc1155Token.safeTransferFrom(
                 address(this),
                 receiver,
                 order.erc1155TokenId,
                 1,
                 ""
             );
-
-            success = true;
-        } catch {}
-
-        if (revertIfIncomplete && !success) {
-            revert UnsuccessfulFill();
+        } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
         }
     }
 
-    function buyERC721s(
+    function _buyERC721s(
         IZeroExV4.ERC721Order[] calldata orders,
         IZeroExV4.Signature[] calldata signatures,
         address receiver,
@@ -354,9 +387,9 @@ contract ZeroExV4Module is BaseExchangeModule {
     ) internal {
         uint256 length = orders.length;
 
-        bool success;
+        // Execute fill
         try
-            IZeroExV4(exchange).batchBuyERC721s{value: value}(
+            EXCHANGE.batchBuyERC721s{value: value}(
                 orders,
                 signatures,
                 new bytes[](length),
@@ -365,7 +398,7 @@ contract ZeroExV4Module is BaseExchangeModule {
         returns (bool[] memory fulfilled) {
             for (uint256 i = 0; i < length; ) {
                 if (fulfilled[i]) {
-                    IERC721(orders[i].erc721Token).safeTransferFrom(
+                    orders[i].erc721Token.safeTransferFrom(
                         address(this),
                         receiver,
                         orders[i].erc721TokenId
@@ -376,16 +409,15 @@ contract ZeroExV4Module is BaseExchangeModule {
                     ++i;
                 }
             }
-
-            success = true;
-        } catch {}
-
-        if (revertIfIncomplete && !success) {
-            revert UnsuccessfulFill();
+        } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
         }
     }
 
-    function buyERC1155s(
+    function _buyERC1155s(
         IZeroExV4.ERC1155Order[] calldata orders,
         IZeroExV4.Signature[] calldata signatures,
         address receiver,
@@ -403,9 +435,9 @@ contract ZeroExV4Module is BaseExchangeModule {
             }
         }
 
-        bool success;
+        // Execute fill
         try
-            IZeroExV4(exchange).batchBuyERC1155s{value: value}(
+            EXCHANGE.batchBuyERC1155s{value: value}(
                 orders,
                 signatures,
                 fillAmounts,
@@ -415,7 +447,7 @@ contract ZeroExV4Module is BaseExchangeModule {
         returns (bool[] memory fulfilled) {
             for (uint256 i = 0; i < length; ) {
                 if (fulfilled[i]) {
-                    IERC1155(orders[i].erc1155Token).safeTransferFrom(
+                    orders[i].erc1155Token.safeTransferFrom(
                         address(this),
                         receiver,
                         orders[i].erc1155TokenId,
@@ -428,12 +460,11 @@ contract ZeroExV4Module is BaseExchangeModule {
                     ++i;
                 }
             }
-
-            success = true;
-        } catch {}
-
-        if (revertIfIncomplete && !success) {
-            revert UnsuccessfulFill();
+        } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
         }
     }
 }

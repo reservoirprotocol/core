@@ -14,20 +14,17 @@ describe("PunksProxy", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let carol: SignerWithAddress;
-  let david: SignerWithAddress;
-  let emilio: SignerWithAddress;
 
   let punks: Contract;
   let punksProxy: Contract;
 
   beforeEach(async () => {
-    [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
+    [deployer, alice, bob] = await ethers.getSigners();
 
     punks = new Contract(
       "0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb",
       new Interface(
-        require("../../../artifacts/contracts/router/interfaces/ICryptoPunksMarket.sol/ICryptoPunksMarket.json").abi
+        require("../../../artifacts/contracts/interfaces/ICryptoPunksMarket.sol/ICryptoPunksMarket.json").abi
       ),
       ethers.provider
     );

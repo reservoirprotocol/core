@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import {BaseModule} from "./BaseModule.sol";
-import {IWETH} from "../interfaces/IWETH.sol";
+import {IWETH} from "../../interfaces/IWETH.sol";
 
 // The way we deal with unwrapping WETH as part of accepting an offer is
 // via a custom module. Funds earned from offer acceptance should all be
@@ -13,17 +11,22 @@ import {IWETH} from "../interfaces/IWETH.sol";
 contract UnwrapWETHModule is BaseModule {
     // --- Fields ---
 
-    address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    IWETH public constant WETH =
+        IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     // --- Constructor ---
 
     constructor(address owner) BaseModule(owner) {}
 
+    // --- Fallback ---
+
+    receive() external payable {}
+
     // --- Unwrap ---
 
     function unwrapWETH(address receiver) external nonReentrant {
-        uint256 balance = IERC20(weth).balanceOf(address(this));
-        IWETH(weth).withdraw(balance);
-        sendETH(receiver, balance);
+        uint256 balance = WETH.balanceOf(address(this));
+        WETH.withdraw(balance);
+        _sendETH(receiver, balance);
     }
 }
