@@ -10,6 +10,17 @@ export enum DelegationType {
   ERC1155 = 2,
 }
 
+export enum Op {
+  INVALID,
+  COMPLETE_SELL_OFFER,
+  COMPLETE_BUY_OFFER,
+  CANCEL_OFFER,
+  BID,
+  COMPLETE_AUCTION,
+  REFUND_AUCTION,
+  REFUND_AUCTION_STUCK_ITEM,
+}
+
 // Since X2Y2 is fully centralized, we depend on their APIs
 // for everything (eg. filling/cancelling). Also, they only
 // make available part of the order information.

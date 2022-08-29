@@ -403,7 +403,19 @@ export class Router {
   ) {
     // Assume the bid details are consistent with the underlying order object
 
-    const { tx, exchangeKind } = await this.generateNativeBidFillTx(detail);
+    const { tx, exchangeKind } = await this.generateNativeBidFillTx(
+      detail,
+      taker
+    );
+
+    // The V5 router does not support filling X2Y2 bids, so we fill directly
+    if (exchangeKind === ExchangeKind.X2Y2) {
+      return {
+        from: taker,
+        to: Sdk.X2Y2.Addresses.Exchange[this.chainId],
+        data: tx.data + generateReferrerBytes(options?.referrer),
+      };
+    }
 
     // Wrap the exchange-specific fill transaction via the router
     // (use the `onReceived` hooks for single token filling)
@@ -507,32 +519,13 @@ export class Router {
         exchangeKind: ExchangeKind.ZEROEX_V4,
         maker: order.params.maker,
       };
-    } else if (kind === "wyvern-v2.3") {
-      order = order as Sdk.WyvernV23.Order;
-
-      const matchParams = order.buildMatching(this.contract.address, {
-        order,
-        nonce: 0,
-        // Wyvern v2.3 supports specifying a recipient other than the taker
-        recipient: taker,
-      });
-      // Set the listing time in the past so that on-chain validation passes
-      matchParams.params.listingTime = await this.provider
-        .getBlock("latest")
-        .then((b) => b.timestamp - 2 * 60);
-
-      const exchange = new Sdk.WyvernV23.Exchange(this.chainId);
-      return {
-        tx: exchange.fillOrderTx(this.contract.address, matchParams, order),
-        exchangeKind: ExchangeKind.WYVERN_V23,
-        maker: order.params.maker,
-      };
     } else if (kind === "x2y2") {
       order = order as Sdk.X2Y2.Order;
 
       // X2Y2 requires an API key to fill
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
+        // TODO: The SDK should not rely on environment variables
         String(process.env.X2Y2_API_KEY)
       );
       return {
@@ -571,12 +564,10 @@ export class Router {
     throw new Error("Unreachable");
   }
 
-  private async generateNativeBidFillTx({
-    kind,
-    order,
-    tokenId,
-    extraArgs,
-  }: BidDetails): Promise<{ tx: TxData; exchangeKind: ExchangeKind }> {
+  private async generateNativeBidFillTx(
+    { kind, order, tokenId, extraArgs }: BidDetails,
+    taker: string
+  ): Promise<{ tx: TxData; exchangeKind: ExchangeKind }> {
     // When filling through the router, in all below cases we set
     // the router contract as the taker since forwarding received
     // tokens to the actual taker of the order will be taken care
@@ -614,25 +605,6 @@ export class Router {
           noDirectTransfer: true,
         }),
         exchangeKind: ExchangeKind.ZEROEX_V4,
-      };
-    } else if (kind === "wyvern-v2.3") {
-      order = order as Sdk.WyvernV23.Order;
-
-      const matchParams = order.buildMatching(filler, {
-        tokenId,
-        nonce: 0,
-        ...(extraArgs || {}),
-      });
-
-      // Set the listing time in the past so that on-chain validation passes
-      matchParams.params.listingTime = await this.provider
-        .getBlock("latest")
-        .then((b) => b.timestamp - 2 * 60);
-
-      const exchange = new Sdk.WyvernV23.Exchange(this.chainId);
-      return {
-        tx: exchange.fillOrderTx(filler, order, matchParams),
-        exchangeKind: ExchangeKind.WYVERN_V23,
       };
     } else if (kind === "zeroex-v4") {
       order = order as Sdk.ZeroExV4.Order;
@@ -673,6 +645,18 @@ export class Router {
           }
         ),
         exchangeKind: ExchangeKind.SEAPORT,
+      };
+    } else if (kind === "x2y2") {
+      order = order as Sdk.X2Y2.Order;
+
+      const exchange = new Sdk.X2Y2.Exchange(
+        this.chainId,
+        // TODO: The SDK should not rely on environment variables
+        String(process.env.X2Y2_API_KEY)
+      );
+      return {
+        tx: await exchange.fillOrderTx(taker, order, { tokenId }),
+        exchangeKind: ExchangeKind.X2Y2,
       };
     }
 

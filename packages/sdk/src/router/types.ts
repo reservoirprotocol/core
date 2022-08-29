@@ -23,10 +23,6 @@ export type GenericOrder =
       order: Sdk.OpenDao.Order;
     }
   | {
-      kind: "wyvern-v2.3";
-      order: Sdk.WyvernV23.Order;
-    }
-  | {
       kind: "x2y2";
       order: Sdk.X2Y2.Order;
     }

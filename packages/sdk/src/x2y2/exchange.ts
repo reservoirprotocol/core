@@ -127,14 +127,21 @@ export class Exchange {
   public async fillOrderTx(
     taker: string,
     order: Order,
-    options?: { referrer?: string }
+    options?: { referrer?: string; tokenId?: string }
   ): Promise<TxData> {
+    if (order.params.type === "buy" && !options?.tokenId) {
+      throw new Error("When filling buy orders, `tokenId` must be specified");
+    }
+
     const response = await axios.post(
       "https://api.x2y2.org/api/orders/sign",
       {
         caller: taker,
         // COMPLETE_SELL_OFFER
-        op: 1,
+        op:
+          order.params.type === "sell"
+            ? Types.Op.COMPLETE_SELL_OFFER
+            : Types.Op.COMPLETE_BUY_OFFER,
         amountToEth: "0",
         amountToWeth: "0",
         items: [
@@ -142,6 +149,7 @@ export class Exchange {
             orderId: order.params.id,
             currency: order.params.currency,
             price: order.params.price,
+            tokenId: order.params.type === "buy" ? options?.tokenId : undefined,
           },
         ],
       },
