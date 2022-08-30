@@ -14,6 +14,7 @@ import * as WyvernV23 from "./wyvern-v2.3";
 import * as X2Y2 from "./x2y2";
 import * as ZeroExV4 from "./zeroex-v4";
 import * as Zora from "./zora";
+import * as Universe from "./universe";
 
 import * as Router from "./router";
 
@@ -34,5 +35,6 @@ export {
   X2Y2,
   ZeroExV4,
   Zora,
+  Universe,
   Router,
 };
