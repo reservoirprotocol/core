@@ -35,6 +35,7 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
 
   let erc721: Contract;
   let router: Contract;
+  let seaportApprovalOrderZone: Contract;
   let seaportModule: Contract;
   let uniswapV3Module: Contract;
 
@@ -46,6 +47,9 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
+    seaportApprovalOrderZone = (await ethers
+      .getContractFactory("SeaportApprovalOrderZone", deployer)
+      .then((factory) => factory.deploy())) as any;
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
       .then((factory) =>
@@ -56,9 +60,6 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
-
-    await router.registerModule(seaportModule.address);
-    await router.registerModule(uniswapV3Module.address);
   });
 
   const getBalances = async (token: string) => {
@@ -157,12 +158,10 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
       executions,
       {
         // Check Carol's total ERC721 balance
-        checkContract: erc721.address,
-        checkData: erc721.interface.encodeFunctionData("balanceOf", [
-          carol.address,
-        ]),
+        target: erc721.address,
+        data: erc721.interface.encodeFunctionData("balanceOf", [carol.address]),
         // We want to buy two tokens
-        amountThreshold: 2,
+        threshold: 2,
       },
       {
         // Since we only want to get two tokens out of four, it's enough
@@ -209,6 +208,7 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
     expect(balancesAfter.seaportModule).to.eq(0);
   });
 
+  // TODO: Look into test flakiness
   it("Fill ERC20 listings with slippage", async () => {
     // Setup
 
@@ -217,7 +217,7 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
 
     // Create four listings (with two out of four being unfillable)
     const listings: SeaportListing[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 4; i++) {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
@@ -237,6 +237,7 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
       filler: seaportModule.address,
       paymentToken: listing.paymentToken!,
       amount: listing.price,
+      zone: seaportApprovalOrderZone.address,
     }));
     await setupSeaportERC20Approvals(approvals);
 
@@ -311,7 +312,7 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
           {
             module: seaportModule.address,
             data: seaportModule.interface.encodeFunctionData(
-              `acceptERC20Listing`,
+              "acceptERC20Listing",
               [
                 {
                   parameters: {
@@ -353,12 +354,10 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
       executions,
       {
         // Check Carol's total ERC721 balance
-        checkContract: erc721.address,
-        checkData: erc721.interface.encodeFunctionData("balanceOf", [
-          carol.address,
-        ]),
+        target: erc721.address,
+        data: erc721.interface.encodeFunctionData("balanceOf", [carol.address]),
         // We want to buy two tokens
-        amountThreshold: 2,
+        threshold: 2,
       },
       {
         value: executions

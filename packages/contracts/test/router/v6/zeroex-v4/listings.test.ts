@@ -39,6 +39,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
   let erc1155: Contract;
   let erc721: Contract;
   let router: Contract;
+  let seaportApprovalOrderZone: Contract;
   let seaportModule: Contract;
   let uniswapV3Module: Contract;
   let zeroExV4Module: Contract;
@@ -50,6 +51,9 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
+      .then((factory) => factory.deploy())) as any;
+    seaportApprovalOrderZone = (await ethers
+      .getContractFactory("SeaportApprovalOrderZone", deployer)
       .then((factory) => factory.deploy())) as any;
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
@@ -66,10 +70,6 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
-
-    await router.registerModule(seaportModule.address);
-    await router.registerModule(uniswapV3Module.address);
-    await router.registerModule(zeroExV4Module.address);
   });
 
   const getBalances = async (token: string) => {
@@ -164,6 +164,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         // Anything on top should be refunded
         feesOnTop.reduce((a, b) => bn(a).add(b), bn(0)).add(parsePrice("0.1"))
       ),
+      zone: seaportApprovalOrderZone.address,
     };
     await setupSeaportERC20Approvals([approval]);
 

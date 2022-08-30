@@ -48,8 +48,6 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
-
-    await router.registerModule(foundationModule.address);
   });
 
   const getBalances = async (token: string) => {
@@ -130,9 +128,9 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
               [
                 listings.map((listing) => ({
                   token: listing.nft.contract.address,
-                  id: listing.nft.id,
+                  tokenId: listing.nft.id,
+                  price: listing.price,
                 })),
-                listings.map((listing) => listing.price),
                 {
                   fillTo: carol.address,
                   refundTo: carol.address,
@@ -161,7 +159,8 @@ describe("[ReservoirV6_0_0] Foundation listings", () => {
               [
                 {
                   token: listings[0].nft.contract.address,
-                  id: listings[0].nft.id,
+                  tokenId: listings[0].nft.id,
+                  price: listings[0].price,
                 },
                 {
                   fillTo: carol.address,

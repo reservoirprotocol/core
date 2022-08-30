@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
 interface ILooksRare {
     struct MakerOrder {
         bool isOrderAsk;
         address signer;
-        address collection;
+        IERC165 collection;
         uint256 price;
         uint256 tokenId;
         uint256 amount;
         address strategy;
-        address currency;
+        IERC20 currency;
         uint256 nonce;
         uint256 startTime;
         uint256 endTime;

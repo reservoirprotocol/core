@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-// Base module contract which includes common methods good to have in all modules.
-abstract contract BaseModule is Ownable, ReentrancyGuard {
+import {TwoStepOwnable} from "../../misc/TwoStepOwnable.sol";
+
+// Notes:
+// - includes common helpers useful for all modules
+
+abstract contract BaseModule is TwoStepOwnable, ReentrancyGuard {
+    // --- Events ---
+
+    event CallExecuted(address target, bytes data, uint256 value);
+
     // --- Errors ---
 
     error UnsuccessfulCall();
@@ -14,13 +21,7 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
 
     // --- Constructor ---
 
-    constructor(address owner) {
-        _transferOwnership(owner);
-    }
-
-    // --- Fallback ---
-
-    receive() external payable {}
+    constructor(address owner) TwoStepOwnable(owner) {}
 
     // --- Owner ---
 
@@ -35,7 +36,8 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
     ) external payable onlyOwner nonReentrant {
         uint256 length = targets.length;
         for (uint256 i = 0; i < length; ) {
-            makeCall(targets[i], data[i], values[i]);
+            _makeCall(targets[i], data[i], values[i]);
+            emit CallExecuted(targets[i], data[i], values[i]);
 
             unchecked {
                 ++i;
@@ -45,14 +47,14 @@ abstract contract BaseModule is Ownable, ReentrancyGuard {
 
     // --- Helpers ---
 
-    function sendETH(address to, uint256 amount) internal {
+    function _sendETH(address to, uint256 amount) internal {
         (bool success, ) = payable(to).call{value: amount}("");
         if (!success) {
             revert UnsuccessfulPayment();
         }
     }
 
-    function makeCall(
+    function _makeCall(
         address target,
         bytes memory data,
         uint256 value

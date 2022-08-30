@@ -2,16 +2,16 @@
 pragma solidity ^0.8.9;
 
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
-import {ILooksRare} from "../../interfaces/ILooksRare.sol";
+import {ILooksRare} from "../../../interfaces/ILooksRare.sol";
 
-// Notes on the LooksRare module:
+// Notes:
 // - supports filling listings (both ERC721/ERC1155 but only ETH-denominated)
 // - supports filling offers (both ERC721/ERC1155)
 
@@ -20,17 +20,16 @@ contract LooksRareModule is BaseExchangeModule {
 
     // --- Fields ---
 
-    address public constant exchange =
-        0x59728544B08AB483533076417FbBB2fD0B17CE3a;
+    ILooksRare public constant EXCHANGE =
+        ILooksRare(0x59728544B08AB483533076417FbBB2fD0B17CE3a);
 
-    address public constant erc721TransferManager =
+    address public constant ERC721_TRANSFER_MANAGER =
         0xf42aa99F011A1fA7CDA90E5E98b277E306BcA83e;
-
-    address public constant erc1155TransferManager =
+    address public constant ERC1155_TRANSFER_MANAGER =
         0xFED24eC7E22f573c2e08AEF55aA6797Ca2b3A051;
 
-    bytes4 public constant erc721Interface = 0x80ac58cd;
-    bytes4 public constant erc1155Interface = 0xd9b67a26;
+    bytes4 public constant ERC721_INTERFACE = 0x80ac58cd;
+    bytes4 public constant ERC1155_INTERFACE = 0xd9b67a26;
 
     // --- Constructor ---
 
@@ -53,7 +52,8 @@ contract LooksRareModule is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        buy(
+        // Execute fill
+        _buy(
             takerBid,
             makerAsk,
             params.fillTo,
@@ -76,11 +76,13 @@ contract LooksRareModule is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
+        // LooksRare does not support batch filling so we fill orders one by one
         for (uint256 i = 0; i < takerBids.length; ) {
             // Use `memory` to avoid `Stack too deep` errors
             ILooksRare.TakerOrder memory takerBid = takerBids[i];
 
-            buy(
+            // Execute fill
+            _buy(
                 takerBids[i],
                 makerAsks[i],
                 params.fillTo,
@@ -97,101 +99,144 @@ contract LooksRareModule is BaseExchangeModule {
     // --- [ERC721] Single offer ---
 
     function acceptERC721Offer(
-        ILooksRare.TakerOrder calldata takerBid,
-        ILooksRare.MakerOrder calldata makerAsk,
-        OfferParams calldata params,
-        NFT calldata nft
+        ILooksRare.TakerOrder calldata takerAsk,
+        ILooksRare.MakerOrder calldata makerBid,
+        OfferParams calldata params
     ) external nonReentrant {
-        approveERC721IfNeeded(makerAsk.collection, erc721TransferManager);
+        IERC721 collection = IERC721(address(makerBid.collection));
 
-        bool success;
-        try ILooksRare(exchange).matchBidWithTakerAsk(takerBid, makerAsk) {
-            IERC20(makerAsk.currency).safeTransfer(
-                params.fillTo,
-                IERC20(makerAsk.currency).balanceOf(address(this))
-            );
+        // Approve the transfer manager if needed
+        _approveERC721IfNeeded(collection, ERC721_TRANSFER_MANAGER);
 
-            success = true;
-        } catch {}
+        // Execute the fill
+        _sell(takerAsk, makerBid, params.fillTo, params.revertIfIncomplete);
 
-        if (!success) {
-            if (params.revertIfIncomplete) {
-                revert UnsuccessfulFill();
-            } else {
-                // Refund
-                sendAllERC721(params.refundTo, nft.token, nft.id);
-            }
-        }
+        // Refund any ERC721 leftover
+        _sendAllERC721(params.refundTo, collection, takerAsk.tokenId);
     }
 
     // --- [ERC1155] Single offer ---
 
     function acceptERC1155Offer(
-        ILooksRare.TakerOrder calldata takerBid,
-        ILooksRare.MakerOrder calldata makerAsk,
-        OfferParams calldata params,
-        NFT calldata nft
+        ILooksRare.TakerOrder calldata takerAsk,
+        ILooksRare.MakerOrder calldata makerBid,
+        OfferParams calldata params
     ) external nonReentrant {
-        approveERC1155IfNeeded(makerAsk.collection, erc1155TransferManager);
+        IERC1155 collection = IERC1155(address(makerBid.collection));
 
-        bool success;
-        try ILooksRare(exchange).matchBidWithTakerAsk(takerBid, makerAsk) {
-            IERC20(makerAsk.currency).safeTransfer(
-                params.fillTo,
-                IERC20(makerAsk.currency).balanceOf(address(this))
-            );
+        // Approve the transfer manager if needed
+        _approveERC1155IfNeeded(collection, ERC1155_TRANSFER_MANAGER);
 
-            success = true;
-        } catch {}
+        // Execute the fill
+        _sell(takerAsk, makerBid, params.fillTo, params.revertIfIncomplete);
 
-        if (!success) {
-            if (params.revertIfIncomplete) {
-                revert UnsuccessfulFill();
-            } else {
-                // Refund
-                sendAllERC1155(params.refundTo, nft.token, nft.id);
-            }
+        // Refund any ERC1155 leftover
+        _sendAllERC1155(params.refundTo, collection, takerAsk.tokenId);
+    }
+
+    // --- ERC721 / ERC1155 hooks ---
+
+    // Single token offer acceptance can be done approval-less by using the
+    // standard `safeTransferFrom` method together with specifying data for
+    // further contract calls. An example:
+    // `safeTransferFrom(
+    //      0xWALLET,
+    //      0xMODULE,
+    //      TOKEN_ID,
+    //      0xABI_ENCODED_ROUTER_EXECUTION_CALLDATA_FOR_OFFER_ACCEPTANCE
+    // )`
+
+    function onERC721Received(
+        address, // operator,
+        address, // from
+        uint256, // tokenId,
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
         }
+
+        return this.onERC721Received.selector;
+    }
+
+    function onERC1155Received(
+        address, // operator
+        address, // from
+        uint256, // tokenId
+        uint256, // amount
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
+        }
+
+        return this.onERC1155Received.selector;
     }
 
     // --- Internal ---
 
-    function buy(
+    function _buy(
         ILooksRare.TakerOrder calldata takerBid,
         ILooksRare.MakerOrder calldata makerAsk,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
     ) internal {
-        bool success;
+        // Execute the fill
         try
-            ILooksRare(exchange).matchAskWithTakerBidUsingETHAndWETH{
-                value: value
-            }(takerBid, makerAsk)
+            EXCHANGE.matchAskWithTakerBidUsingETHAndWETH{value: value}(
+                takerBid,
+                makerAsk
+            )
         {
-            if (
-                IERC165(makerAsk.collection).supportsInterface(erc721Interface)
-            ) {
-                IERC721(makerAsk.collection).safeTransferFrom(
+            IERC165 collection = makerAsk.collection;
+
+            // Forward any token to the specified receiver
+            bool isERC721 = collection.supportsInterface(ERC721_INTERFACE);
+            if (isERC721) {
+                IERC721(address(collection)).safeTransferFrom(
                     address(this),
                     receiver,
                     takerBid.tokenId
                 );
             } else {
-                IERC1155(makerAsk.collection).safeTransferFrom(
-                    address(this),
-                    receiver,
-                    takerBid.tokenId,
-                    makerAsk.amount,
-                    ""
+                bool isERC1155 = collection.supportsInterface(
+                    ERC1155_INTERFACE
                 );
+                if (isERC1155) {
+                    IERC1155(address(collection)).safeTransferFrom(
+                        address(this),
+                        receiver,
+                        takerBid.tokenId,
+                        makerAsk.amount,
+                        ""
+                    );
+                }
             }
+        } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
+        }
+    }
 
-            success = true;
-        } catch {}
-
-        if (revertIfIncomplete && !success) {
-            revert UnsuccessfulFill();
+    function _sell(
+        ILooksRare.TakerOrder calldata takerAsk,
+        ILooksRare.MakerOrder calldata makerBid,
+        address receiver,
+        bool revertIfIncomplete
+    ) internal {
+        // Execute the fill
+        try EXCHANGE.matchBidWithTakerAsk(takerAsk, makerBid) {
+            // Forward any payment to the specified receiver
+            IERC20 currency = makerBid.currency;
+            currency.safeTransfer(receiver, currency.balanceOf(address(this)));
+        } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
         }
     }
 }

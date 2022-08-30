@@ -41,8 +41,6 @@ describe("[ReservoirV6_0_0] X2Y2 listings", () => {
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
-
-    await router.registerModule(x2y2Module.address);
   });
 
   const getBalances = async (token: string) => {
@@ -84,7 +82,7 @@ describe("[ReservoirV6_0_0] X2Y2 listings", () => {
     // Fee recipient: Emilio
 
     const x2y2Interface = new Interface(
-      require("../../../../artifacts/contracts/router/interfaces/IX2Y2.sol/IX2Y2.json").abi
+      require("../../../../artifacts/contracts/interfaces/IX2Y2.sol/IX2Y2.json").abi
     );
 
     const orders = await axios.get(
