@@ -1,22 +1,14 @@
-import { BigNumberish } from "@ethersproject/bignumber";
-import { HashZero } from "@ethersproject/constants";
 import { Order } from "../../order";
 import { TakerOrderParams } from "../../types";
-import { getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
 export interface BaseBuildParams {
-  isOrderAsk: boolean;
-  signer: string;
-  collection: string;
-  currency: string;
-  price: BigNumberish;
-  nonce?: BigNumberish;
-  startTime?: number;
-  endTime?: number;
-  minPercentageToAsk?: number;
-  v?: number;
-  r?: string;
-  s?: string;
+  // https://github.com/ourzora/v3/blob/main/contracts/modules/Asks/V1.1/AsksV1_1.sol#L117-L131
+  _tokenContract: string; // address
+  _tokenId: number; // uint256
+  _askPrice: string; // uint256
+  _askCurrency: string; // address
+  _sellerFundsRecipient: string; // address
+  _findersFeeBps: number; // uint16
 }
 
 export abstract class BaseBuilder {
@@ -24,18 +16,6 @@ export abstract class BaseBuilder {
 
   constructor(chainId: number) {
     this.chainId = chainId;
-  }
-
-  protected defaultInitialize(params: BaseBuildParams) {
-    // Default listing time is 5 minutes in the past to allow for any
-    // time discrepancies when checking the order's validity on-chain
-    params.startTime = params.startTime ?? getCurrentTimestamp(-5 * 60);
-    params.endTime = params.endTime ?? getCurrentTimestamp(365 * 24 * 60 * 60);
-    params.minPercentageToAsk = params.minPercentageToAsk ?? 8500;
-    params.nonce = params.nonce ?? getRandomBytes(10);
-    params.v = params.v ?? 0;
-    params.r = params.r ?? HashZero;
-    params.s = params.s ?? HashZero;
   }
 
   public abstract isValid(order: Order): boolean;

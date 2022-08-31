@@ -1,11 +1,6 @@
-import { BigNumberish } from "@ethersproject/bignumber";
 import { BaseBuildParams, BaseBuilder } from "../base";
 import { Order } from "../../order";
-import { BytesEmpty, s } from "../../../utils";
-
-interface BuildParams extends BaseBuildParams {
-  tokenId: BigNumberish;
-}
+import { n, s } from "../../../utils";
 
 export class SingleTokenBuilder extends BaseBuilder {
   public isValid(order: Order): boolean {
@@ -28,38 +23,24 @@ export class SingleTokenBuilder extends BaseBuilder {
     return true;
   }
 
-  public build(params: BuildParams) {
-    this.defaultInitialize(params);
-
+  public build(params: BaseBuildParams) {
     return new Order(this.chainId, {
-      kind: "single-token",
-      isOrderAsk: params.isOrderAsk,
-      signer: params.signer,
-      collection: params.collection,
-      price: s(params.price),
-      tokenId: s(params.tokenId),
-      amount: "1",
-      // strategy: Addresses.StrategyStandardSaleForFixedPrice[this.chainId],
-      currency: params.currency,
-      nonce: s(params.nonce),
-      startTime: params.startTime!,
-      endTime: params.endTime!,
-      minPercentageToAsk: params.minPercentageToAsk!,
-      params: BytesEmpty,
-      v: params.v,
-      r: params.r,
-      s: params.s,
+      _tokenContract: params._tokenContract,
+      _tokenId: s(params._tokenId),
+      _askPrice: s(params._askPrice),
+      _askCurrency: params._askCurrency,
+      _sellerFundsRecipient: params._sellerFundsRecipient,
+      _findersFeeBps: n(params._findersFeeBps),
     });
   }
 
-  public buildMatching(order: Order, taker: string) {
+  public buildMatching(order: Order, finder: string) {
     return {
-      isOrderAsk: !order.params.isOrderAsk,
-      taker,
-      price: order.params.price,
-      tokenId: order.params.tokenId,
-      minPercentageToAsk: 8500,
-      params: BytesEmpty,
+      _tokenContract: order.params._tokenContract,
+      _tokenId: order.params._tokenId,
+      _fillCurrency: order.params._askCurrency,
+      _fillAmount: order.params._askPrice,
+      _finder: finder,
     };
   }
 }

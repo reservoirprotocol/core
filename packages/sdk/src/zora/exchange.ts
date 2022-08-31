@@ -24,7 +24,6 @@ export class Exchange {
 
   public async fillOrder(
     taker: Signer,
-    makerOrder: Order,
     takerOrderParams: Types.TakerOrderParams,
     options?: {
       referrer?: string;
@@ -32,7 +31,6 @@ export class Exchange {
   ): Promise<ContractTransaction> {
     const tx = this.fillOrderTx(
       await taker.getAddress(),
-      makerOrder,
       takerOrderParams,
       options
     );
@@ -41,7 +39,6 @@ export class Exchange {
 
   public fillOrderTx(
     taker: string,
-    makerOrder: Order,
     takerOrderParams: Types.TakerOrderParams,
     options?: {
       referrer?: string;
@@ -52,9 +49,8 @@ export class Exchange {
 
     data = this.contract.interface.encodeFunctionData("fillAsk", [
       takerOrderParams,
-      makerOrder.params,
     ]);
-    value = makerOrder.params.price;
+    value = takerOrderParams._fillAmount;
 
     return {
       from: taker,
@@ -79,7 +75,8 @@ export class Exchange {
       from: maker,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("cancelAsk", [
-        [order.params.nonce],
+        order.params._tokenContract,
+        order.params._tokenId,
       ]),
     };
   }
