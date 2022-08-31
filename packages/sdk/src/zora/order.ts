@@ -25,13 +25,6 @@ export class Order {
     } catch {
       throw new Error("Invalid params");
     }
-
-    // Perform light validations
-
-    // Validate listing and expiration times
-    if (this.params.startTime >= this.params.endTime) {
-      throw new Error("Invalid listing and/or expiration time");
-    }
   }
 
   public hash() {
@@ -72,12 +65,8 @@ export class Order {
     const signer = verifyTypedData(
       EIP712_DOMAIN(this.chainId),
       EIP712_TYPES,
-      toRawOrder(this),
-      {
-        v: this.params.v,
-        r: this.params.r ?? "",
-        s: this.params.s ?? "",
-      }
+      this.params,
+      this.params.signature!
     );
 
     if (lc(this.params.signer) !== lc(signer)) {
@@ -109,43 +98,24 @@ export class Order {
       throw new Error("executed-or-cancelled");
     }
 
-    if (this.params.isOrderAsk) {
-      const erc721 = new Common.Helpers.Erc721(
-        provider,
-        this.params.collection
-      );
+    const erc721 = new Common.Helpers.Erc721(
+      provider,
+      this.params._tokenContract
+    );
 
-      // Check ownership
-      const owner = await erc721.getOwner(this.params.tokenId);
-      if (lc(owner) !== lc(this.params.signer)) {
-        throw new Error("no-balance");
-      }
+    // Check ownership
+    const owner = await erc721.getOwner(this.params._tokenId);
+    if (lc(owner) !== lc(this.params.signer)) {
+      throw new Error("no-balance");
+    }
 
-      // Check approval
-      const isApproved = await erc721.isApproved(
-        this.params.signer,
-        Addresses.Erc721TransferHelper[this.chainId]
-      );
-      if (!isApproved) {
-        throw new Error("no-approval");
-      }
-    } else {
-      // Check that maker has enough balance to cover the payment
-      // and the approval to the token transfer proxy is set
-      const erc20 = new Common.Helpers.Erc20(provider, this.params.currency);
-      const balance = await erc20.getBalance(this.params.signer);
-      if (bn(balance).lt(this.params.price)) {
-        throw new Error("no-balance");
-      }
-
-      // Check allowance
-      const allowance = await erc20.getAllowance(
-        this.params.signer,
-        Addresses.Exchange[chainId]
-      );
-      if (bn(allowance).lt(this.params.price)) {
-        throw new Error("no-approval");
-      }
+    // Check approval
+    const isApproved = await erc721.isApproved(
+      this.params.signer,
+      Addresses.Erc721TransferHelper[this.chainId]
+    );
+    if (!isApproved) {
+      throw new Error("no-approval");
     }
   }
 
@@ -167,19 +137,13 @@ const EIP712_DOMAIN = (chainId: number) => ({
 
 const EIP712_TYPES = {
   MakerOrder: [
-    { name: "isOrderAsk", type: "bool" },
-    { name: "signer", type: "address" },
-    { name: "collection", type: "address" },
-    { name: "price", type: "uint256" },
-    { name: "tokenId", type: "uint256" },
-    { name: "amount", type: "uint256" },
-    // { name: "strategy", type: "address" },
-    { name: "currency", type: "address" },
-    { name: "nonce", type: "uint256" },
-    { name: "startTime", type: "uint256" },
-    { name: "endTime", type: "uint256" },
-    { name: "minPercentageToAsk", type: "uint256" },
-    { name: "params", type: "bytes" },
+    // https://github.com/ourzora/v3/blob/main/contracts/modules/Asks/V1.1/AsksV1_1.sol#L117-L131
+    { name: "_tokenContract", type: "address" },
+    { name: "_tokenId", type: "uint256" },
+    { name: "_askPrice", type: "uint256" },
+    { name: "_askCurrency", type: "address" },
+    { name: "_sellerFundsRecipient", type: "address" },
+    { name: "_findersFeeBps", type: "uint16" },
   ],
 };
 
@@ -194,22 +158,11 @@ const normalize = (order: Types.MakerOrderParams): Types.MakerOrderParams => {
   // - lowercase all strings
 
   return {
-    kind: order.kind,
-    isOrderAsk: order.isOrderAsk,
-    signer: lc(order.signer),
-    collection: lc(order.collection),
-    price: s(order.price),
-    tokenId: s(order.tokenId),
-    amount: s(order.amount),
-    // strategy: lc(order.strategy),
-    currency: lc(order.currency),
-    nonce: s(order.nonce),
-    startTime: n(order.startTime),
-    endTime: n(order.endTime),
-    minPercentageToAsk: n(order.minPercentageToAsk),
-    params: lc(order.params),
-    v: order.v ?? 0,
-    r: order.r ?? HashZero,
-    s: order.s ?? HashZero,
+    _askCurrency: order._askCurrency,
+    _askPrice: order._askPrice,
+    _findersFeeBps: order._findersFeeBps,
+    _sellerFundsRecipient: order._sellerFundsRecipient,
+    _tokenContract: order._tokenContract,
+    _tokenId: order._tokenId,
   };
 };
