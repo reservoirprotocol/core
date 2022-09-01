@@ -38,12 +38,16 @@ describe("Zora - SingleToken Erc721", () => {
     const exchange = new Zora.Exchange(chainId);
     const moduleManager = new Zora.ModuleManager(chainId);
 
-    await moduleManager.setApprovalForModule(seller, true);
+    await moduleManager.setApprovalForModule(
+      seller,
+      Zora.Addresses.Exchange[chainId],
+      true
+    );
 
     // Approve the exchange for escrowing.
     await erc721
       .connect(seller)
-      .setApprovalForAll(exchange.contract.address, true);
+      .setApprovalForAll(Zora.Addresses.Erc721TransferHelper[chainId], true);
 
     expect(await erc721.ownerOf(tokenId), seller.address);
 
@@ -62,19 +66,15 @@ describe("Zora - SingleToken Erc721", () => {
     // expect(await erc721.ownerOf(tokenId), exchange.contract.address);
 
     const sellerEthBalanceBefore = await seller.getBalance();
-    const referrerEthBalanceBefore = await referrer.getBalance();
+    const buyerEthBalanceBefore = await buyer.getBalance();
 
     // Fill sell order.
     await exchange.fillOrder(buyer, order);
 
     const sellerEthBalanceAfter = await seller.getBalance();
-    const referrerEthBalanceAfter = await referrer.getBalance();
+    const buyerEthBalanceAfter = await buyer.getBalance();
 
-    console.log({
-      sellerEthBalanceBefore,
-      referrerEthBalanceBefore,
-      sellerEthBalanceAfter,
-      referrerEthBalanceAfter,
-    });
+    expect(sellerEthBalanceAfter).to.gt(sellerEthBalanceBefore);
+    expect(buyerEthBalanceAfter).to.lt(buyerEthBalanceBefore);
   });
 });

@@ -19,19 +19,28 @@ export class ModuleManager {
   // --- Set approval for module ---
 
   public async setApprovalForModule(
-    maker: Signer,
+    signer: Signer,
+    module: string,
     approved: boolean
   ): Promise<ContractTransaction> {
-    const tx = this.setApprovalForModuleTx(await maker.getAddress(), approved);
-    return maker.sendTransaction(tx);
+    const tx = this.setApprovalForModuleTx(
+      await signer.getAddress(),
+      module,
+      approved
+    );
+    return signer.sendTransaction(tx);
   }
 
-  public setApprovalForModuleTx(maker: string, approved: boolean): TxData {
+  public setApprovalForModuleTx(
+    signer: string,
+    module: string,
+    approved: boolean
+  ): TxData {
     return {
-      from: maker,
+      from: signer,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("setApprovalForModule", [
-        maker,
+        module,
         approved,
       ]),
     };
