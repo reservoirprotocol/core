@@ -13,12 +13,11 @@ describe("Zora - SingleToken Erc721", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let carol: SignerWithAddress;
 
   let erc721: Contract;
 
   beforeEach(async () => {
-    [deployer, alice, bob, carol] = await ethers.getSigners();
+    [deployer, alice, bob] = await ethers.getSigners();
 
     ({ erc721 } = await setupNFTs(deployer));
   });
@@ -28,7 +27,6 @@ describe("Zora - SingleToken Erc721", () => {
   it("Fill sell order", async () => {
     const seller = alice;
     const buyer = bob;
-    const referrer = carol;
     const tokenId = 99;
     const price = parseEther("1");
 
