@@ -1,10 +1,9 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish } from "ethers";
+import { BigNumberish, ethers } from "ethers";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
-import * as Types from "./types";
 import { TxData, bn, generateReferrerBytes } from "../utils";
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -20,43 +19,63 @@ export class Exchange {
     );
   }
 
+  // --- Create order ---
+
+  public async createOrder(
+    maker: Signer,
+    order: Order
+  ): Promise<ContractTransaction> {
+    const tx = this.createOrderTx(await maker.getAddress(), order);
+    return maker.sendTransaction(tx);
+  }
+
+  public createOrderTx(maker: string, order: Order): TxData {
+    return {
+      from: maker,
+      to: this.contract.address,
+      data: this.contract.interface.encodeFunctionData("createAsk", [
+        order.params.tokenContract,
+        order.params.tokenId,
+        order.params.askPrice,
+        order.params.askCurrency,
+        order.params.sellerFundsRecipient,
+        order.params.findersFeeBps,
+      ]),
+    };
+  }
+
   // --- Fill order ---
 
   public async fillOrder(
     taker: Signer,
-    takerOrderParams: Types.TakerOrderParams,
+    order: Order,
     options?: {
-      referrer?: string;
+      finder?: string;
     }
   ): Promise<ContractTransaction> {
-    const tx = this.fillOrderTx(
-      await taker.getAddress(),
-      takerOrderParams,
-      options
-    );
+    const tx = this.fillOrderTx(await taker.getAddress(), order, options);
     return taker.sendTransaction(tx);
   }
 
   public fillOrderTx(
     taker: string,
-    takerOrderParams: Types.TakerOrderParams,
+    order: Order,
     options?: {
-      referrer?: string;
+      finder?: string;
     }
   ): TxData {
-    let data: string;
-    let value: string | undefined;
-
-    data = this.contract.interface.encodeFunctionData("fillAsk", [
-      takerOrderParams,
-    ]);
-    value = takerOrderParams._fillAmount;
-
     return {
       from: taker,
       to: this.contract.address,
-      data: data + generateReferrerBytes(options?.referrer),
-      value: value && bn(value).toHexString(),
+      data:
+        this.contract.interface.encodeFunctionData("fillAsk", [
+          order.params.tokenContract,
+          order.params.tokenId,
+          order.params.askCurrency,
+          order.params.askPrice,
+          options?.finder || ethers.constants.AddressZero,
+        ]) + generateReferrerBytes(options?.finder),
+      value: bn(order.params.askPrice).toHexString(),
     };
   }
 
@@ -75,8 +94,8 @@ export class Exchange {
       from: maker,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("cancelAsk", [
-        order.params._tokenContract,
-        order.params._tokenId,
+        order.params.tokenContract,
+        order.params.tokenId,
       ]),
     };
   }

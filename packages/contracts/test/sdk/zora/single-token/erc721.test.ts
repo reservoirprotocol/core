@@ -1,17 +1,11 @@
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
-import * as Common from "@reservoir0x/sdk/src/common";
 import * as Zora from "@reservoir0x/sdk/src/zora";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import {
-  getChainId,
-  getCurrentTimestamp,
-  reset,
-  setupNFTs,
-} from "../../../utils";
+import { getChainId, reset, setupNFTs } from "../../../utils";
 
 describe("Zora - SingleToken Erc721", () => {
   const chainId = getChainId();
@@ -19,144 +13,68 @@ describe("Zora - SingleToken Erc721", () => {
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
+  let carol: SignerWithAddress;
 
   let erc721: Contract;
 
   beforeEach(async () => {
-    [deployer, alice, bob] = await ethers.getSigners();
+    [deployer, alice, bob, carol] = await ethers.getSigners();
 
     ({ erc721 } = await setupNFTs(deployer));
   });
 
   afterEach(reset);
 
-  it("Build and fill buy order", async () => {
-    const buyer = alice;
-    const seller = bob;
+  it("Fill sell order", async () => {
+    const seller = alice;
+    const buyer = bob;
+    const referrer = carol;
+    const tokenId = 99;
     const price = parseEther("1");
-    const boughtTokenId = 0;
 
-    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
-
-    // Mint weth to buyer
-    await weth.deposit(buyer, price);
-
-    // Approve the exchange contract for the buyer
-    await weth.approve(buyer, Zora.Addresses.Exchange[chainId]);
-
-    // Mint erc721 to seller
-    await erc721.connect(seller).mint(boughtTokenId);
-
-    const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
-
-    // Approve the transfer manager
-    await nft.approve(seller, Zora.Addresses.Erc721TransferHelper[chainId]);
+    // Mint erc721 to the seller.
+    await erc721.connect(seller).mint(tokenId);
 
     const exchange = new Zora.Exchange(chainId);
+    const moduleManager = new Zora.ModuleManager(chainId);
 
-    const builder = new Zora.Builders.SingleToken(chainId);
+    await moduleManager.setApprovalForModule(seller, true);
 
-    // Build buy order
-    const buyOrder = builder.build({
-      isOrderAsk: false,
-      signer: buyer.address,
-      collection: erc721.address,
-      tokenId: boughtTokenId,
-      currency: Common.Addresses.Weth[chainId],
-      price,
-      startTime: await getCurrentTimestamp(ethers.provider),
-      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
-      nonce: await exchange.getNonce(ethers.provider, buyer.address),
+    // Approve the exchange for escrowing.
+    await erc721
+      .connect(seller)
+      .setApprovalForAll(exchange.contract.address, true);
+
+    expect(await erc721.ownerOf(tokenId), seller.address);
+
+    // Create sell order.
+    const order = new Zora.Order(chainId, {
+      tokenContract: erc721.address,
+      tokenId,
+      askPrice: price.toString(),
+      askCurrency: ethers.constants.AddressZero,
+      sellerFundsRecipient: seller.address,
+      findersFeeBps: 0,
     });
+    await exchange.createOrder(seller, order);
 
-    // Sign the order
-    await buyOrder.sign(buyer);
+    // Foundation escrows the NFT when creating sell orders.
+    // expect(await erc721.ownerOf(tokenId), exchange.contract.address);
 
-    // Create matching sell order
-    const sellOrder = buyOrder.buildMatching(seller.address);
+    const sellerEthBalanceBefore = await seller.getBalance();
+    const referrerEthBalanceBefore = await referrer.getBalance();
 
-    await buyOrder.checkFillability(ethers.provider);
+    // Fill sell order.
+    await exchange.fillOrder(buyer, order);
 
-    const buyerBalanceBefore = await weth.getBalance(buyer.address);
-    const sellerBalanceBefore = await weth.getBalance(seller.address);
-    const ownerBefore = await nft.getOwner(boughtTokenId);
+    const sellerEthBalanceAfter = await seller.getBalance();
+    const referrerEthBalanceAfter = await referrer.getBalance();
 
-    expect(buyerBalanceBefore).to.eq(price);
-    expect(sellerBalanceBefore).to.eq(0);
-    expect(ownerBefore).to.eq(seller.address);
-
-    // Match orders
-    await exchange.fillOrder(seller, buyOrder, sellOrder);
-
-    const buyerBalanceAfter = await weth.getBalance(buyer.address);
-    const sellerBalanceAfter = await weth.getBalance(seller.address);
-    const ownerAfter = await nft.getOwner(boughtTokenId);
-
-    expect(buyerBalanceAfter).to.eq(0);
-    expect(sellerBalanceAfter).to.eq(price.sub(price.mul(200).div(10000)));
-    expect(ownerAfter).to.eq(buyer.address);
-  });
-
-  it("Build and fill sell order", async () => {
-    const buyer = alice;
-    const seller = bob;
-    const price = parseEther("1");
-    const soldTokenId = 0;
-
-    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
-
-    // Mint erc721 to seller
-    await erc721.connect(seller).mint(soldTokenId);
-
-    const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
-
-    // Approve the transfer manager
-    await nft.approve(seller, Zora.Addresses.Erc721TransferHelper[chainId]);
-
-    const exchange = new Zora.Exchange(chainId);
-
-    const builder = new Zora.Builders.SingleToken(chainId);
-
-    // Build sell order
-    const sellOrder = builder.build({
-      isOrderAsk: true,
-      signer: seller.address,
-      collection: erc721.address,
-      tokenId: soldTokenId,
-      // LooksRare sell orders are in WETH
-      currency: Common.Addresses.Weth[chainId],
-      price,
-      startTime: await getCurrentTimestamp(ethers.provider),
-      endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
-      nonce: await exchange.getNonce(ethers.provider, seller.address),
+    console.log({
+      sellerEthBalanceBefore,
+      referrerEthBalanceBefore,
+      sellerEthBalanceAfter,
+      referrerEthBalanceAfter,
     });
-
-    // Sign the order
-    await sellOrder.sign(seller);
-
-    // Create matching buy order
-    const buyOrder = sellOrder.buildMatching(buyer.address);
-
-    await sellOrder.checkFillability(ethers.provider);
-
-    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
-    const sellerBalanceBefore = await weth.getBalance(seller.address);
-    const ownerBefore = await nft.getOwner(soldTokenId);
-
-    expect(sellerBalanceBefore).to.eq(0);
-    expect(ownerBefore).to.eq(seller.address);
-
-    // Match orders
-    await exchange.fillOrder(buyer, sellOrder, buyOrder, {
-      referrer: "reservoir.market",
-    });
-
-    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
-    const sellerBalanceAfter = await weth.getBalance(seller.address);
-    const ownerAfter = await nft.getOwner(soldTokenId);
-
-    expect(buyerBalanceAfter).to.be.lt(buyerBalanceBefore.sub(price));
-    expect(sellerBalanceAfter).to.eq(price.sub(price.mul(200).div(10000)));
-    expect(ownerAfter).to.eq(buyer.address);
   });
 });
