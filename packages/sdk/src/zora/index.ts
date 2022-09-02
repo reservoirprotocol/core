@@ -1,6 +1,6 @@
 import * as Addresses from "./addresses";
 import { Exchange } from "./exchange";
-import { ModuleManager } from "./moduleManager";
+import { ModuleManager } from "./module-manager";
 import { Order } from "./order";
 import * as Types from "./types";
 

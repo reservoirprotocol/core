@@ -1,6 +1,5 @@
-import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish, ethers } from "ethers";
+import { ethers } from "ethers";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
@@ -98,16 +97,5 @@ export class Exchange {
         order.params.tokenId,
       ]),
     };
-  }
-
-  // --- Get nonce ---
-
-  public async getNonce(
-    provider: Provider,
-    user: string
-  ): Promise<BigNumberish> {
-    return new Contract(Addresses.Exchange[this.chainId], ExchangeAbi as any)
-      .connect(provider)
-      .userMinOrderNonce(user);
   }
 }

@@ -60,9 +60,6 @@ describe("Zora - SingleToken Erc721", () => {
     });
     await exchange.createOrder(seller, order);
 
-    // Foundation escrows the NFT when creating sell orders.
-    // expect(await erc721.ownerOf(tokenId), exchange.contract.address);
-
     const sellerEthBalanceBefore = await seller.getBalance();
     const buyerEthBalanceBefore = await buyer.getBalance();
 
