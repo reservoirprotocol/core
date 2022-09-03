@@ -394,7 +394,11 @@ export class Exchange {
               info.paymentToken === CommonAddresses.Eth[this.chainId]
             );
           })
-          .map((order) => order.getMatchingPrice())
+          .map((order, i) =>
+            bn(order.getMatchingPrice())
+              .mul(matchParams[i].amount || "1")
+              .div(order.getInfo()!.amount)
+          )
           .reduce((a, b) => bn(a).add(b), bn(0))
       ).toHexString(),
     };
