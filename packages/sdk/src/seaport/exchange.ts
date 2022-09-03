@@ -86,8 +86,11 @@ export class Exchange {
 
       if (info.side === "sell") {
         if (
+          // Order is not private
           recipient === AddressZero &&
-          (!matchParams.amount || bn(matchParams.amount).eq(1)) &&
+          // Order is single quantity
+          info.amount === "1" &&
+          // Order has no criteria
           !matchParams.criteriaResolvers
         ) {
           info = info as BaseOrderInfo;
@@ -181,8 +184,11 @@ export class Exchange {
         }
       } else {
         if (
+          // Order is not private
           recipient === AddressZero &&
-          (!matchParams.amount || bn(matchParams.amount).eq(1)) &&
+          // Order is single quantity
+          info.amount === "1" &&
+          // Order has no criteria
           !matchParams.criteriaResolvers
         ) {
           info = info as BaseOrderInfo;
