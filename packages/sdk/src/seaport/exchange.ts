@@ -139,7 +139,10 @@ export class Exchange {
               ]) + generateReferrerBytes(options?.referrer),
             value:
               info.paymentToken === CommonAddresses.Eth[this.chainId]
-                ? bn(order.getMatchingPrice()).toHexString()
+                ? bn(order.getMatchingPrice())
+                    .mul(matchParams.amount || "1")
+                    .div(info.amount)
+                    .toHexString()
                 : undefined,
           };
         } else {
