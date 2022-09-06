@@ -51,18 +51,11 @@ export class Exchange {
   ): TxData {
     let data: string;
     let value: string | undefined;
-    if (makerOrder.params.isOrderAsk) {
-      data = this.contract.interface.encodeFunctionData(
-        "matchAskWithTakerBidUsingETHAndWETH",
-        [takerOrderParams, makerOrder.params]
-      );
-      value = makerOrder.params.price;
-    } else {
-      data = this.contract.interface.encodeFunctionData(
-        "matchBidWithTakerAsk",
-        [takerOrderParams, makerOrder.params]
-      );
-    }
+    data = this.contract.interface.encodeFunctionData("matchOrders", [
+      takerOrderParams,
+      makerOrder.params,
+    ]);
+    value = makerOrder.params.price;
 
     return {
       from: taker,
@@ -86,10 +79,9 @@ export class Exchange {
     return {
       from: maker,
       to: this.contract.address,
-      data: this.contract.interface.encodeFunctionData(
-        "cancelMultipleMakerOrders",
-        [[order.params.nonce]]
-      ),
+      data: this.contract.interface.encodeFunctionData("cancel", [
+        [order.params.nonce],
+      ]),
     };
   }
 
