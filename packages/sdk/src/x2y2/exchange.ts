@@ -137,7 +137,6 @@ export class Exchange {
       "https://api.x2y2.org/api/orders/sign",
       {
         caller: taker,
-        // COMPLETE_SELL_OFFER
         op:
           order.params.type === "sell"
             ? Types.Op.COMPLETE_SELL_OFFER

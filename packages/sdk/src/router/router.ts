@@ -39,6 +39,7 @@ export class Router {
       skipPrecheck?: boolean;
       forceRouter?: boolean;
       partial?: boolean;
+      directFillingData?: any;
     }
   ): Promise<TxData> {
     // Assume the listing details are consistent with the underlying order object
@@ -73,7 +74,10 @@ export class Router {
           taker,
           order,
           order.buildMatching({ amount: details[0].amount }),
-          options
+          {
+            ...options,
+            ...options?.directFillingData,
+          }
         );
       } else {
         const orders = details.map((d) => d.order as Sdk.Seaport.Order);
@@ -83,7 +87,10 @@ export class Router {
           orders.map((order, i) =>
             order.buildMatching({ amount: details[i].amount })
           ),
-          options
+          {
+            ...options,
+            ...options?.directFillingData,
+          }
         );
       }
     }
