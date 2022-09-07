@@ -1,7 +1,9 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
+
 import * as Addresses from "./addresses";
 import { TxData } from "../utils";
+
 import ModuleManagerAbi from "./abis/ModuleManager.json";
 
 export class ModuleManager {

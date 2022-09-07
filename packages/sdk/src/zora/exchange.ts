@@ -1,10 +1,16 @@
 import { Signer } from "@ethersproject/abstract-signer";
-import { ethers } from "ethers";
+import { AddressZero } from "@ethersproject/constants";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
+
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import { TxData, bn, generateReferrerBytes } from "../utils";
+
 import ExchangeAbi from "./abis/Exchange.json";
+
+// Zora:
+// - escrowed orderbook
+// - fully on-chain
 
 export class Exchange {
   public chainId: number;
@@ -72,7 +78,7 @@ export class Exchange {
           order.params.tokenId,
           order.params.askCurrency,
           order.params.askPrice,
-          options?.finder || ethers.constants.AddressZero,
+          options?.finder ?? AddressZero,
         ]) + generateReferrerBytes(options?.finder),
       value: bn(order.params.askPrice).toHexString(),
     };

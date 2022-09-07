@@ -8,9 +8,9 @@ import { TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
-// Foundation is slightly different from the other exchanges that
-// we support since it's fully on-chain and all actions including
-// order creation are done via pure on-chain transactions.
+// Foundation:
+// - escrowed orderbook
+// - fully on-chain
 
 export class Exchange {
   public chainId: number;
