@@ -17,9 +17,9 @@ import ExchangeAbi from "./abis/Exchange.json";
 
 export class Order {
   public chainId: number;
-  public params: Types.MakerOrderParams;
+  public params: Types.Order;
 
-  constructor(chainId: number, params: Types.MakerOrderParams) {
+  constructor(chainId: number, params: Types.Order) {
     this.chainId = chainId;
 
     try {
@@ -27,42 +27,22 @@ export class Order {
     } catch {
       throw new Error("Invalid params");
     }
-
-    // Detect kind
-    if (!params.kind) {
-      this.params.kind = this.detectKind();
-    }
-
-    // Perform light validations
-
-    // Validate listing and expiration times
-    if (this.params.startTime >= this.params.endTime) {
-      throw new Error("Invalid listing and/or expiration time");
-    }
   }
 
   public hash() {
-    return _TypedDataEncoder.hashStruct(
-      "MakerOrder",
-      EIP712_TYPES,
-      this.params
-    );
+    return _TypedDataEncoder.hashStruct("Order", EIP712_TYPES, this.params);
   }
 
   public async sign(signer: TypedDataSigner) {
-    const { v, r, s } = splitSignature(
-      await signer._signTypedData(
-        EIP712_DOMAIN(this.chainId),
-        EIP712_TYPES,
-        this.params
-      )
+    const signature = await signer._signTypedData(
+      EIP712_DOMAIN(this.chainId),
+      EIP712_TYPES,
+      this.params
     );
 
     this.params = {
       ...this.params,
-      v,
-      r,
-      s,
+      signature,
     };
   }
 
@@ -80,14 +60,10 @@ export class Order {
       EIP712_DOMAIN(this.chainId),
       EIP712_TYPES,
       toRawOrder(this),
-      {
-        v: this.params.v,
-        r: this.params.r ?? "",
-        s: this.params.s ?? "",
-      }
+      this.params.signature!
     );
 
-    if (lc(this.params.signer) !== lc(signer)) {
+    if (lc(this.params.maker) !== lc(signer)) {
       throw new Error("Invalid signature");
     }
   }
@@ -98,101 +74,101 @@ export class Order {
     }
   }
 
-  public async checkFillability(provider: Provider) {
-    const chainId = await provider.getNetwork().then((n) => n.chainId);
+  // public async checkFillability(provider: Provider) {
+  //   const chainId = await provider.getNetwork().then((n) => n.chainId);
 
-    const exchange = new Contract(
-      Addresses.Exchange[this.chainId],
-      ExchangeAbi as any,
-      provider
-    );
+  //   const exchange = new Contract(
+  //     Addresses.Exchange[this.chainId],
+  //     ExchangeAbi as any,
+  //     provider
+  //   );
 
-    const executedOrCancelled =
-      await exchange.isUserOrderNonceExecutedOrCancelled(
-        this.params.signer,
-        this.params.nonce
-      );
-    if (executedOrCancelled) {
-      throw new Error("executed-or-cancelled");
-    }
+  //   const executedOrCancelled =
+  //     await exchange.isUserOrderNonceExecutedOrCancelled(
+  //       this.params.signer,
+  //       this.params.nonce
+  //     );
+  //   if (executedOrCancelled) {
+  //     throw new Error("executed-or-cancelled");
+  //   }
 
-    if (this.params.isOrderAsk) {
-      // Detect the collection kind (erc721 or erc1155)
-      let kind: string | undefined;
-      if (!kind) {
-        const erc721 = new Common.Helpers.Erc721(
-          provider,
-          this.params.collection
-        );
-        if (await erc721.isValid()) {
-          kind = "erc721";
+  //   if (this.params.isOrderAsk) {
+  //     // Detect the collection kind (erc721 or erc1155)
+  //     let kind: string | undefined;
+  //     if (!kind) {
+  //       const erc721 = new Common.Helpers.Erc721(
+  //         provider,
+  //         this.params.collection
+  //       );
+  //       if (await erc721.isValid()) {
+  //         kind = "erc721";
 
-          // Check ownership
-          const owner = await erc721.getOwner(this.params.tokenId);
-          if (lc(owner) !== lc(this.params.signer)) {
-            throw new Error("no-balance");
-          }
+  //         // Check ownership
+  //         const owner = await erc721.getOwner(this.params.tokenId);
+  //         if (lc(owner) !== lc(this.params.signer)) {
+  //           throw new Error("no-balance");
+  //         }
 
-          // Check approval
-          const isApproved = await erc721.isApproved(
-            this.params.signer,
-            Addresses.Exchange[this.chainId]
-          );
-          if (!isApproved) {
-            throw new Error("no-approval");
-          }
-        }
-      }
-      if (!kind) {
-        const erc1155 = new Common.Helpers.Erc1155(
-          provider,
-          this.params.collection
-        );
-        if (await erc1155.isValid()) {
-          kind = "erc1155";
+  //         // Check approval
+  //         const isApproved = await erc721.isApproved(
+  //           this.params.signer,
+  //           Addresses.Exchange[this.chainId]
+  //         );
+  //         if (!isApproved) {
+  //           throw new Error("no-approval");
+  //         }
+  //       }
+  //     }
+  //     if (!kind) {
+  //       const erc1155 = new Common.Helpers.Erc1155(
+  //         provider,
+  //         this.params.collection
+  //       );
+  //       if (await erc1155.isValid()) {
+  //         kind = "erc1155";
 
-          // Check balance
-          const balance = await erc1155.getBalance(
-            this.params.signer,
-            this.params.tokenId
-          );
-          if (bn(balance).lt(1)) {
-            throw new Error("no-balance");
-          }
+  //         // Check balance
+  //         const balance = await erc1155.getBalance(
+  //           this.params.signer,
+  //           this.params.tokenId
+  //         );
+  //         if (bn(balance).lt(1)) {
+  //           throw new Error("no-balance");
+  //         }
 
-          // Check approval
-          const isApproved = await erc1155.isApproved(
-            this.params.signer,
-            Addresses.Exchange[this.chainId]
-          );
-          if (!isApproved) {
-            throw new Error("no-approval");
-          }
-        }
-      }
+  //         // Check approval
+  //         const isApproved = await erc1155.isApproved(
+  //           this.params.signer,
+  //           Addresses.Exchange[this.chainId]
+  //         );
+  //         if (!isApproved) {
+  //           throw new Error("no-approval");
+  //         }
+  //       }
+  //     }
 
-      if (!kind) {
-        throw new Error("invalid");
-      }
-    } else {
-      // Check that maker has enough balance to cover the payment
-      // and the approval to the token transfer proxy is set
-      const erc20 = new Common.Helpers.Erc20(provider, this.params.currency);
-      const balance = await erc20.getBalance(this.params.signer);
-      if (bn(balance).lt(this.params.price)) {
-        throw new Error("no-balance");
-      }
+  //     if (!kind) {
+  //       throw new Error("invalid");
+  //     }
+  //   } else {
+  //     // Check that maker has enough balance to cover the payment
+  //     // and the approval to the token transfer proxy is set
+  //     const erc20 = new Common.Helpers.Erc20(provider, this.params.currency);
+  //     const balance = await erc20.getBalance(this.params.signer);
+  //     if (bn(balance).lt(this.params.price)) {
+  //       throw new Error("no-balance");
+  //     }
 
-      // Check allowance
-      const allowance = await erc20.getAllowance(
-        this.params.signer,
-        Addresses.Exchange[chainId]
-      );
-      if (bn(allowance).lt(this.params.price)) {
-        throw new Error("no-approval");
-      }
-    }
-  }
+  //     // Check allowance
+  //     const allowance = await erc20.getAllowance(
+  //       this.params.signer,
+  //       Addresses.Exchange[chainId]
+  //     );
+  //     if (bn(allowance).lt(this.params.price)) {
+  //       throw new Error("no-approval");
+  //     }
+  //   }
+  // }
 
   public buildMatching(taker: string, data?: any) {
     return this.getBuilder().buildMatching(this, taker, data);
@@ -210,7 +186,7 @@ export class Order {
     }
   }
 
-  private detectKind(): Types.OrderKind {
+  private detectKind(): Types.Order["kind"] {
     // single-token
     {
       const builder = new Builders.SingleToken(this.chainId);
@@ -233,18 +209,24 @@ const EIP712_DOMAIN = (chainId: number) => ({
 });
 
 const EIP712_TYPES = {
-  MakerOrder: [
-    { name: "signer", type: "address" },
-    { name: "collection", type: "address" },
-    { name: "price", type: "uint256" },
-    { name: "tokenId", type: "uint256" },
-    { name: "amount", type: "uint256" },
-    { name: "currency", type: "address" },
-    { name: "nonce", type: "uint256" },
-    { name: "startTime", type: "uint256" },
-    { name: "endTime", type: "uint256" },
-    { name: "minPercentageToAsk", type: "uint256" },
-    { name: "params", type: "bytes" },
+  Order: [
+    { name: "maker", type: "address" },
+    { name: "makeAsset", type: "Asset[]" },
+    { name: "taker", type: "address" },
+    { name: "takeAsset", type: "Asset[]" },
+    { name: "salt", type: "uint256" },
+    { name: "start", type: "uint256" },
+    { name: "end", type: "uint256" },
+    { name: "dataType", type: "bytes4" },
+    { name: "data", type: "bytes" },
+  ],
+  Asset: [
+    { name: "assetType", type: "AssetType[]" },
+    { name: "value", type: "uint256" },
+  ],
+  AssetType: [
+    { name: "assetClass", type: "bytes4" },
+    { name: "data", type: "bytes" },
   ],
 };
 
@@ -252,7 +234,7 @@ const toRawOrder = (order: Order): any => ({
   ...order.params,
 });
 
-const normalize = (order: Types.MakerOrderParams): Types.MakerOrderParams => {
+const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:
   // - convert bignumbers to strings where needed
   // - convert strings to numbers where needed
@@ -260,20 +242,27 @@ const normalize = (order: Types.MakerOrderParams): Types.MakerOrderParams => {
 
   return {
     kind: order.kind,
-    isOrderAsk: order.isOrderAsk,
-    signer: lc(order.signer),
-    collection: lc(order.collection),
-    price: s(order.price),
-    tokenId: s(order.tokenId),
-    amount: s(order.amount),
-    currency: lc(order.currency),
-    nonce: s(order.nonce),
-    startTime: n(order.startTime),
-    endTime: n(order.endTime),
-    minPercentageToAsk: n(order.minPercentageToAsk),
-    params: lc(order.params),
-    v: order.v ?? 0,
-    r: order.r ?? HashZero,
-    s: order.s ?? HashZero,
+    maker: lc(order.maker),
+    makeAsset: {
+      assetType: {
+        assetClass: s(order.makeAsset.assetType.assetClass),
+        data: s(order.makeAsset.assetType.data),
+      },
+      value: s(order.makeAsset.value),
+    },
+    taker: lc(order.taker),
+    takeAsset: {
+      assetType: {
+        assetClass: s(order.makeAsset.assetType.assetClass),
+        data: s(order.makeAsset.assetType.data),
+      },
+      value: s(order.makeAsset.value),
+    },
+    salt: n(order.salt),
+    start: n(order.start),
+    end: n(order.end),
+    dataType: s(order.dataType),
+    data: s(order.data),
+    signature: order.signature,
   };
 };

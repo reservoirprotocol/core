@@ -1,5 +1,3 @@
-export type OrderKind = "single-token" | "contract-wide";
-
 // struct AssetType {
 //     bytes4 assetClass;
 //     bytes data;
@@ -31,30 +29,28 @@ export type OrderKind = "single-token" | "contract-wide";
 
 // function cancel(LibOrder.Order memory order)
 
-export type MakerOrderParams = {
-  kind?: OrderKind;
-  isOrderAsk: boolean;
-  signer: string;
-  collection: string;
-  price: string;
-  tokenId: string;
-  amount: string;
-  currency: string;
-  nonce: string;
-  startTime: number;
-  endTime: number;
-  minPercentageToAsk: number;
-  params: string;
-  v?: number;
-  r?: string;
-  s?: string;
+type AssetType = {
+  assetClass: string;
+  data: string;
 };
 
-export type TakerOrderParams = {
-  isOrderAsk: boolean;
+type Asset = {
+  assetType: AssetType;
+  value: string;
+};
+
+type OrderKind = "single-token";
+
+export type Order = {
+  kind?: OrderKind;
+  maker: string;
+  makeAsset: Asset;
   taker: string;
-  price: string;
-  tokenId: string;
-  minPercentageToAsk: number;
-  params: string;
+  takeAsset: Asset;
+  salt: string;
+  start: string;
+  end: string;
+  dataType: string;
+  data: string;
+  signature?: string;
 };

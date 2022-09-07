@@ -27,7 +27,7 @@ export class Exchange {
   public async fillOrder(
     taker: Signer,
     makerOrder: Order,
-    takerOrderParams: Types.TakerOrderParams,
+    takerOrderParams: Types.Order,
     options?: {
       referrer?: string;
     }
@@ -44,7 +44,7 @@ export class Exchange {
   public fillOrderTx(
     taker: string,
     makerOrder: Order,
-    takerOrderParams: Types.TakerOrderParams,
+    takerOrderParams: Types.Order,
     options?: {
       referrer?: string;
     }
@@ -55,7 +55,6 @@ export class Exchange {
       takerOrderParams,
       makerOrder.params,
     ]);
-    value = makerOrder.params.price;
 
     return {
       from: taker,

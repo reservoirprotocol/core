@@ -1,14 +1,7 @@
-import { BigNumberish } from "@ethersproject/bignumber";
-
-import { BaseBuildParams, BaseBuilder } from "../base";
-import * as Addresses from "../../addresses";
+import { BaseBuilder } from "../base";
 import { Order } from "../../order";
-import * as CommonAddresses from "../../../common/addresses";
+import * as Types from "../../types";
 import { BytesEmpty, s } from "../../../utils";
-
-interface BuildParams extends BaseBuildParams {
-  tokenId: BigNumberish;
-}
 
 export class SingleTokenBuilder extends BaseBuilder {
   public isValid(order: Order): boolean {
@@ -31,37 +24,25 @@ export class SingleTokenBuilder extends BaseBuilder {
     return true;
   }
 
-  public build(params: BuildParams) {
+  public build(params: Types.Order) {
     this.defaultInitialize(params);
 
     return new Order(this.chainId, {
       kind: "single-token",
-      isOrderAsk: params.isOrderAsk,
-      signer: params.signer,
-      collection: params.collection,
-      price: s(params.price),
-      tokenId: s(params.tokenId),
-      amount: "1",
-      currency: params.currency,
-      nonce: s(params.nonce),
-      startTime: params.startTime!,
-      endTime: params.endTime!,
-      minPercentageToAsk: params.minPercentageToAsk!,
-      params: BytesEmpty,
-      v: params.v,
-      r: params.r,
-      s: params.s,
+      maker: s(params.maker),
+      makeAsset: params.makeAsset,
+      taker: s(params.taker),
+      takeAsset: params.takeAsset,
+      salt: params.salt,
+      start: params.start!,
+      end: params.end!,
+      dataType: params.dataType,
+      data: params.data,
+      signature: params?.signature,
     });
   }
 
-  public buildMatching(order: Order, taker: string) {
-    return {
-      isOrderAsk: !order.params.isOrderAsk,
-      taker,
-      price: order.params.price,
-      tokenId: order.params.tokenId,
-      minPercentageToAsk: 8500,
-      params: BytesEmpty,
-    };
+  public buildMatching(order: Types.Order, taker: string) {
+    return order;
   }
 }
