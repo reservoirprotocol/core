@@ -2,11 +2,21 @@
 //     bytes4 assetClass;
 //     bytes data;
 // }
+type AssetType = {
+  assetClass: string;
+  data: string;
+};
 
 // struct Asset {
 //     AssetType assetType;
 //     uint value;
 // }
+type Asset = {
+  assetType: AssetType;
+  value: string;
+};
+
+type OrderKind = "single-token";
 
 // struct Order {
 //     address maker;
@@ -26,21 +36,6 @@
 //     LibOrder.Order memory orderRight,
 //     bytes memory signatureRight
 // )
-
-// function cancel(LibOrder.Order memory order)
-
-type AssetType = {
-  assetClass: string;
-  data: string;
-};
-
-type Asset = {
-  assetType: AssetType;
-  value: string;
-};
-
-type OrderKind = "single-token";
-
 export type Order = {
   kind?: OrderKind;
   maker: string;
