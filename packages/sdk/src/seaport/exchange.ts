@@ -118,8 +118,7 @@ export class Exchange {
                       : info.paymentToken === CommonAddresses.Eth[this.chainId]
                       ? Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN
                       : Types.BasicOrderType.ERC20_TO_ERC1155_FULL_OPEN) +
-                    order.params.orderType +
-                    (order.params.zoneHash !== HashZero ? 2 : 0),
+                    order.params.orderType,
                   startTime: order.params.startTime,
                   endTime: order.params.endTime,
                   zoneHash: order.params.zoneHash,
@@ -212,8 +211,7 @@ export class Exchange {
                     (info.tokenKind === "erc721"
                       ? Types.BasicOrderType.ERC721_TO_ERC20_FULL_OPEN
                       : Types.BasicOrderType.ERC1155_TO_ERC20_FULL_OPEN) +
-                    order.params.orderType +
-                    (order.params.zoneHash !== HashZero ? 2 : 0),
+                    order.params.orderType,
                   startTime: order.params.startTime,
                   endTime: order.params.endTime,
                   zoneHash: order.params.zoneHash,
