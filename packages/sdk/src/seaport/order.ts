@@ -33,6 +33,9 @@ export class Order {
     if (!params.kind) {
       this.params.kind = this.detectKind();
     }
+
+    // Fix signature
+    this.fixSignature();
   }
 
   public hash() {
@@ -277,6 +280,23 @@ export class Order {
     throw new Error(
       "Could not detect order kind (order might have unsupported params/calldata)"
     );
+  }
+
+  private fixSignature() {
+    // Ensure `v` is always 27 or 28 (Seaport will revert otherwise)
+    if (this.params.signature?.length === 132) {
+      let lastByte = parseInt(this.params.signature.slice(-2), 16);
+      if (lastByte < 27) {
+        if (lastByte === 0 || lastByte === 1) {
+          lastByte += 27;
+        } else {
+          throw new Error("Invalid `v` byte");
+        }
+
+        this.params.signature =
+          this.params.signature.slice(0, -2) + lastByte.toString(16);
+      }
+    }
   }
 }
 
