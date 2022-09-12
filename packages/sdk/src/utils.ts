@@ -31,12 +31,20 @@ export const s = (x: any) => (x ? String(x) : x);
 // Use the ASCII US (unit separator) character (code = 31) as a delimiter
 const SEPARATOR = "1f";
 
-export const generateReferrerBytes = (referrer?: string) =>
-  referrer
+// Only allow printable ASCII characters
+const isPrintableASCII = (value: string) => /^[\x20-\x7F]*$/.test(value);
+
+export const generateReferrerBytes = (referrer?: string) => {
+  if (referrer && !isPrintableASCII(referrer)) {
+    throw new Error("Not a printable ASCII string");
+  }
+
+  return referrer
     ? `${SEPARATOR}${Buffer.from(toUtf8Bytes(referrer)).toString(
         "hex"
       )}${SEPARATOR}`
     : "";
+};
 
 export const getReferrer = (calldata: string) => {
   try {
@@ -47,7 +55,12 @@ export const getReferrer = (calldata: string) => {
       if (index === -1 || calldata.length - index - 5 > 64) {
         return undefined;
       } else {
-        return toUtf8String("0x" + calldata.slice(index + 2, -2));
+        const result = toUtf8String("0x" + calldata.slice(index + 2, -2));
+        if (isPrintableASCII(result)) {
+          return result;
+        } else {
+          return undefined;
+        }
       }
     }
   } catch {
