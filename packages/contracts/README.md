@@ -38,9 +38,9 @@ The following modules are available at the moment:
 - [`FoundationModule`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): fill Foundation orders
 - [`LooksRareModule`](../contracts/contracts/router/modules/exchanges/LooksRareModule.sol): fill LooksRare orders
 - [`SeaportModule`](../contracts/contracts/router/modules/exchanges/SeaportModule.sol): fill Seaport orders
-- [`UniswapV3Module`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): swap tokens on UniswapV3
-- [`X2Y2Module`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): fill X2Y2 orders
-- [`ZeroExV4Module`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): fill ZeroExV4 orders
+- [`UniswapV3Module`](../contracts/contracts/router/modules/exchanges/UniswapV3Module.sol): swap tokens on UniswapV3
+- [`X2Y2Module`](../contracts/contracts/router/modules/exchanges/X2Y2Module.sol): fill X2Y2 orders
+- [`ZeroExV4Module`](../contracts/contracts/router/modules/exchanges/ZeroExV4Module.sol): fill ZeroExV4 orders
 - [`BalanceAssertModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): assert ownership/balance
 - [`UnwrapWETHModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): unwrap WETH
 
