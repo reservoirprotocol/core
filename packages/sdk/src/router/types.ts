@@ -33,6 +33,10 @@ export type GenericOrder =
   | {
       kind: "seaport";
       order: Sdk.Seaport.Order;
+    }
+  | {
+      kind: "cryptopunks";
+      order: Sdk.CryptoPunks.Order;
     };
 
 export type ListingFillDetails = {

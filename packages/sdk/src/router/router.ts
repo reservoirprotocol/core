@@ -95,6 +95,12 @@ export class Router {
       }
     }
 
+    // TODO: Refactor with the new modular router
+    if (details.length === 1 && details[0].kind === "cryptopunks") {
+      const exchange = new Sdk.CryptoPunks.Exchange(this.chainId);
+      return exchange.fillListingTx(taker, details[0].order, options);
+    }
+
     // Ensure all listings are in ETH
     if (
       !details.every(
