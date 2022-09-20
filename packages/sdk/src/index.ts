@@ -5,7 +5,6 @@ import * as Foundation from "./foundation";
 import * as LooksRare from "./looks-rare";
 import * as Nftx from "./nftx";
 import * as Nouns from "./nouns";
-import * as OpenDao from "./opendao";
 import * as Quixotic from "./quixotic";
 import * as Rarible from "./rarible";
 import * as Seaport from "./seaport";
@@ -28,7 +27,6 @@ export {
   LooksRare,
   Nftx,
   Nouns,
-  OpenDao,
   Quixotic,
   Rarible,
   Seaport,

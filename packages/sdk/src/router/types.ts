@@ -19,10 +19,6 @@ export type GenericOrder =
       order: Sdk.LooksRare.Order;
     }
   | {
-      kind: "opendao";
-      order: Sdk.OpenDao.Order;
-    }
-  | {
       kind: "x2y2";
       order: Sdk.X2Y2.Order;
     }

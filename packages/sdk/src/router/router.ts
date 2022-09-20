@@ -111,21 +111,11 @@ export class Router {
     }
 
     // Keep track of batch-fillable orders
-    const opendaoErc721Details: ListingDetails[] = [];
-    const opendaoErc1155Details: ListingDetails[] = [];
     const zeroexV4Erc721Details: ListingDetails[] = [];
     const zeroexV4Erc1155Details: ListingDetails[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind } = details[i];
       switch (kind) {
-        case "opendao": {
-          (contractKind === "erc721"
-            ? opendaoErc721Details
-            : opendaoErc1155Details
-          ).push(details[i]);
-          break;
-        }
-
         case "zeroex-v4": {
           (contractKind === "erc721"
             ? zeroexV4Erc721Details
@@ -140,85 +130,6 @@ export class Router {
 
     // Keep track of all listings to be filled through the router
     const routerTxs: TxData[] = [];
-
-    // Only batch-fill if there are multiple orders
-    if (opendaoErc721Details.length > 1) {
-      const exchange = new Sdk.OpenDao.Exchange(this.chainId);
-      const tx = exchange.batchBuyTx(
-        taker,
-        opendaoErc721Details.map((detail) => detail.order as Sdk.OpenDao.Order),
-        opendaoErc721Details.map((detail) =>
-          (detail.order as Sdk.OpenDao.Order).buildMatching({
-            amount: detail.amount ?? 1,
-          })
-        )
-      );
-
-      routerTxs.push({
-        from: taker,
-        to: this.contract.address,
-        data: this.contract.interface.encodeFunctionData(
-          "batchERC721ListingFill",
-          [
-            tx.data,
-            opendaoErc721Details.map((detail) => detail.contract),
-            opendaoErc721Details.map((detail) => detail.tokenId),
-            taker,
-            fee.recipient,
-            fee.bps,
-          ]
-        ),
-        value: bn(tx.value!)
-          .add(bn(tx.value!).mul(fee.bps).div(10000))
-          .toHexString(),
-      });
-
-      // Delete any batch-filled orders
-      details = details.filter(
-        ({ kind, contractKind }) =>
-          kind !== "opendao" && contractKind !== "erc721"
-      );
-    }
-    if (opendaoErc1155Details.length > 1) {
-      const exchange = new Sdk.OpenDao.Exchange(this.chainId);
-      const tx = exchange.batchBuyTx(
-        taker,
-        opendaoErc1155Details.map(
-          (detail) => detail.order as Sdk.OpenDao.Order
-        ),
-        opendaoErc1155Details.map((detail) =>
-          (detail.order as Sdk.OpenDao.Order).buildMatching({
-            amount: detail.amount ?? 1,
-          })
-        )
-      );
-
-      routerTxs.push({
-        from: taker,
-        to: this.contract.address,
-        data: this.contract.interface.encodeFunctionData(
-          "batchERC1155ListingFill",
-          [
-            tx.data,
-            opendaoErc1155Details.map((detail) => detail.contract),
-            opendaoErc1155Details.map((detail) => detail.tokenId),
-            opendaoErc1155Details.map((detail) => detail.amount ?? 1),
-            taker,
-            fee.recipient,
-            fee.bps,
-          ]
-        ),
-        value: bn(tx.value!)
-          .add(bn(tx.value!).mul(fee.bps).div(10000))
-          .toHexString(),
-      });
-
-      // Delete any batch-filled orders
-      details = details.filter(
-        ({ kind, contractKind }) =>
-          kind !== "opendao" && contractKind !== "erc1155"
-      );
-    }
 
     if (zeroexV4Erc721Details.length > 1) {
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
@@ -521,17 +432,6 @@ export class Router {
         exchangeKind: ExchangeKind.LOOKS_RARE,
         maker: order.params.signer,
       };
-    } else if (kind === "opendao") {
-      order = order as Sdk.OpenDao.Order;
-
-      const matchParams = order.buildMatching();
-
-      const exchange = new Sdk.OpenDao.Exchange(this.chainId);
-      return {
-        tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
-        exchangeKind: ExchangeKind.ZEROEX_V4,
-        maker: order.params.maker,
-      };
     } else if (kind === "x2y2") {
       order = order as Sdk.X2Y2.Order;
 
@@ -600,24 +500,6 @@ export class Router {
       return {
         tx: exchange.fillOrderTx(filler, order, matchParams),
         exchangeKind: ExchangeKind.LOOKS_RARE,
-      };
-    } else if (kind === "opendao") {
-      order = order as Sdk.OpenDao.Order;
-
-      const matchParams = order.buildMatching({
-        tokenId,
-        amount: 1,
-        // Do not unwrap in order to be compatible with the router
-        unwrapNativeToken: false,
-      });
-
-      const exchange = new Sdk.OpenDao.Exchange(this.chainId);
-      return {
-        tx: exchange.fillOrderTx(filler, order, matchParams, {
-          // Do not use the `onReceived` hook filling to be compatible with the router
-          noDirectTransfer: true,
-        }),
-        exchangeKind: ExchangeKind.ZEROEX_V4,
       };
     } else if (kind === "zeroex-v4") {
       order = order as Sdk.ZeroExV4.Order;
