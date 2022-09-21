@@ -1,7 +1,7 @@
 import { utils } from "ethers";
 import { Types } from "..";
 import { lc } from "../../utils";
-import { Asset, AssetType, IPart, LocalAssetType } from "../types";
+import { Asset, IPart, LocalAssetType } from "../types";
 
 export const encodeAsset = (token?: string, tokenId?: string) => {
   if (tokenId) {
@@ -51,7 +51,7 @@ export const encodeOrderData = (payments: IPart[]) => {
   );
 };
 
-export const hashAssetType = (assetType: AssetType) => {
+export const hashAssetType = (assetType: LocalAssetType) => {
   const assetTypeData = encodeAssetData(assetType);
   const encodedAssetType = utils.defaultAbiCoder.encode(
     ["bytes32", "bytes4", "bytes32"],
@@ -82,30 +82,33 @@ export const hashAsset = (asset: Asset) => {
   return utils.keccak256(encodedAsset);
 };
 
-
-  // Encode Order and ready to sign
-  export const encode = (order: Types.TakerOrderParams | Types.Order) => {
-    return {
-      maker: lc(order.maker),
-      makeAsset: {
-        assetType: {
-          assetClass: encodeAssetClass(order.make.assetType.assetClass),
-          data: encodeAssetData(order.make.assetType),
-        },
-        value: order.make.value,
+/**
+ * Encode Order object for contract calls
+ * @param order
+ * @returns encoded order which is ready to be signed
+ */
+export const encode = (order: Types.TakerOrderParams | Types.Order) => {
+  return {
+    maker: lc(order.maker),
+    makeAsset: {
+      assetType: {
+        assetClass: encodeAssetClass(order.make.assetType.assetClass),
+        data: encodeAssetData(order.make.assetType),
       },
-      taker: order.taker,
-      takeAsset: {
-        assetType: {
-          assetClass: encodeAssetClass(order.take.assetType.assetClass),
-          data: encodeAssetData(order.take.assetType),
-        },
-        value: order.take.value,
+      value: order.make.value,
+    },
+    taker: order.taker,
+    takeAsset: {
+      assetType: {
+        assetClass: encodeAssetClass(order.take.assetType.assetClass),
+        data: encodeAssetData(order.take.assetType),
       },
-      salt: order.salt,
-      start: order.start,
-      end: order.end,
-      dataType: encodeAssetClass(order.data?.dataType!),
-      data: encodeOrderData(order.data?.revenueSplits || []),
-    };
-  }
+      value: order.take.value,
+    },
+    salt: order.salt,
+    start: order.start,
+    end: order.end,
+    dataType: encodeAssetClass(order.data?.dataType!),
+    data: encodeOrderData(order.data?.revenueSplits || []),
+  };
+};

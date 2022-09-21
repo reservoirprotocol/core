@@ -17,7 +17,7 @@ export class SingleTokenBuilder extends BaseBuilder {
         return false;
       }
 
-      if (copyOrder.hash() !== order.hash()) {
+      if (copyOrder.hashOrderKey() !== order.hashOrderKey()) {
         return false;
       }
     } catch {
@@ -117,7 +117,7 @@ export class SingleTokenBuilder extends BaseBuilder {
 
       rightOrder.make.value = Math.floor(Number(data.amount)).toString();
       rightOrder.take.value = BigNumber.from(rightOrder.take.value).div(
-        oldValue - rightOrder.make.value
+        oldValue - rightOrder.make.value || "1"
       );
     }
 

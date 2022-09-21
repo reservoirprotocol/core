@@ -7,7 +7,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { getChainId, reset, setupNFTs } from "../../../utils";
-import { OrderSide } from "@reservoir0x/sdk/src/universe/types";
+import { AssetClass, OrderSide } from "@reservoir0x/sdk/src/universe/types";
 import { BigNumber, constants } from "ethers";
 
 describe("Universe - SingleToken Erc1155", () => {
@@ -34,6 +34,7 @@ describe("Universe - SingleToken Erc1155", () => {
     const buyer = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
+    const mintTokensAmount = 4;
 
     const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
@@ -47,7 +48,7 @@ describe("Universe - SingleToken Erc1155", () => {
     const sellerBalanceBefore = await weth.getBalance(buyer.address);
 
     // Mint erc1155 to seller
-    await erc1155.connect(seller).mint(soldTokenId);
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
 
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
@@ -66,7 +67,7 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: buyer.address,
       make: {
         assetType: {
-          assetClass: "ERC20",
+          assetClass: AssetClass.ERC20,
           contract: Common.Addresses.Weth[chainId],
         },
         value: price.toString(),
@@ -74,11 +75,11 @@ describe("Universe - SingleToken Erc1155", () => {
       taker: constants.AddressZero,
       take: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
-        value: "1",
+        value: mintTokensAmount.toString(),
       },
       salt: "1",
       start: "0",
@@ -89,14 +90,16 @@ describe("Universe - SingleToken Erc1155", () => {
       },
       signature: "",
       makeBalance: price.toString(),
-      makeStock: "1",
+      makeStock: mintTokensAmount.toString(),
     });
 
     // Sign the order
     await buyOrder.sign(buyer);
 
     // Create matching buy order (right order)
-    const sellOrder = buyOrder.buildMatching(seller.address);
+    const sellOrder = buyOrder.buildMatching(seller.address, {
+      amount: mintTokensAmount.toString(),
+    });
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
       seller.address,
@@ -110,7 +113,7 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(sellerBalanceBefore).to.eq(price);
     expect(buyerBalanceBefore).to.eq(0);
     expect(buyerNftBalanceBefore).to.eq(0);
-    expect(sellerNftBalanceBefore).to.eq(1);
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
 
     // Match orders
     await exchange.fillOrder(seller, buyOrder, sellOrder, {
@@ -130,7 +133,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     expect(sellerBalanceAfter).to.be.eq(0);
     expect(buyerBalanceAfter).to.eq(price.sub(price.mul(daoFee).div(10000)));
-    expect(buyerNftBalanceAfter).to.eq(1);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
     expect(sellerNftBalanceAfter).to.eq(0);
   });
 
@@ -173,7 +176,7 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: buyer.address,
       make: {
         assetType: {
-          assetClass: "ERC20",
+          assetClass: AssetClass.ERC20,
           contract: Common.Addresses.Weth[chainId],
         },
         value: price.toString(),
@@ -181,7 +184,7 @@ describe("Universe - SingleToken Erc1155", () => {
       taker: constants.AddressZero,
       take: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
@@ -222,11 +225,6 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerNftBalanceBefore).to.eq(0);
     expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
 
-    console.log("LEFT ORDER: ");
-    console.log(buyOrder.params);
-
-    console.log("RIGHT ORDER: ");
-    console.log(sellOrder);
     // Match orders
     await exchange.fillOrder(seller, buyOrder, sellOrder, {
       referrer: "reservoir.market",
@@ -257,6 +255,7 @@ describe("Universe - SingleToken Erc1155", () => {
     const buyer = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
+    const mintTokensAmount = 4;
 
     const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
@@ -270,7 +269,7 @@ describe("Universe - SingleToken Erc1155", () => {
     const sellerBalanceBefore = await weth.getBalance(buyer.address);
 
     // Mint erc1155 to seller
-    await erc1155.connect(seller).mint(soldTokenId);
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
 
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
@@ -291,7 +290,7 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: buyer.address,
       make: {
         assetType: {
-          assetClass: "ERC20",
+          assetClass: AssetClass.ERC20,
           contract: Common.Addresses.Weth[chainId],
         },
         value: price.toString(),
@@ -299,11 +298,11 @@ describe("Universe - SingleToken Erc1155", () => {
       taker: constants.AddressZero,
       take: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
-        value: "1",
+        value: mintTokensAmount.toString(),
       },
       salt: "1",
       start: "0",
@@ -323,14 +322,16 @@ describe("Universe - SingleToken Erc1155", () => {
       },
       signature: "",
       makeBalance: price.toString(),
-      makeStock: "1",
+      makeStock: mintTokensAmount.toString(),
     });
 
     // Sign the order
     await buyOrder.sign(buyer);
 
     // Create matching buy order (right order)
-    const sellOrder = buyOrder.buildMatching(seller.address);
+    const sellOrder = buyOrder.buildMatching(seller.address, {
+      amount: mintTokensAmount.toString(),
+    });
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
       seller.address,
@@ -344,7 +345,7 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(sellerBalanceBefore).to.eq(price);
     expect(buyerBalanceBefore).to.eq(0);
     expect(buyerNftBalanceBefore).to.eq(0);
-    expect(sellerNftBalanceBefore).to.eq(1);
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
 
     // Match orders
     await exchange.fillOrder(seller, buyOrder, sellOrder, {
@@ -370,9 +371,9 @@ describe("Universe - SingleToken Erc1155", () => {
     );
     priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
-    expect(sellerBalanceAfter).to.be.eq(0);
+    expect(sellerBalanceAfter).to.eq(0);
     expect(buyerBalanceAfter).to.eq(priceAfterFees);
-    expect(buyerNftBalanceAfter).to.eq(1);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
     expect(sellerNftBalanceAfter).to.eq(0);
   });
 
@@ -381,6 +382,7 @@ describe("Universe - SingleToken Erc1155", () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
+    const mintTokensAmount = 4;
 
     const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
@@ -393,7 +395,7 @@ describe("Universe - SingleToken Erc1155", () => {
     const buyerBalanceBefore = await weth.getBalance(buyer.address);
     const sellerBalanceBefore = await weth.getBalance(seller.address);
     // Mint erc1155 to seller
-    await erc1155.connect(seller).mint(soldTokenId);
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
 
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
@@ -412,16 +414,16 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: seller.address,
       make: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
-        value: "1",
+        value: mintTokensAmount.toString(),
       },
       taker: constants.AddressZero,
       take: {
         assetType: {
-          assetClass: "ERC20",
+          assetClass: AssetClass.ERC20,
           contract: Common.Addresses.Weth[chainId],
         },
         value: price.toString(),
@@ -435,14 +437,16 @@ describe("Universe - SingleToken Erc1155", () => {
       },
       signature: "",
       makeBalance: price.toString(),
-      makeStock: "1",
+      makeStock: mintTokensAmount.toString(),
     });
 
     // Sign the order
     await sellOrder.sign(seller);
 
     // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address);
+    const buyOrder = sellOrder.buildMatching(buyer.address, {
+      amount: mintTokensAmount.toString(),
+    });
     await sellOrder.checkFillability(ethers.provider);
 
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -456,7 +460,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     expect(sellerBalanceBefore).to.eq(0);
     expect(buyerBalanceBefore).to.eq(price);
-    expect(sellerNftBalanceBefore).to.eq(1);
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
     expect(buyerNftBalanceBefore).to.eq(0);
 
     // Match orders
@@ -478,7 +482,7 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerBalanceAfter).to.be.eq(0);
     expect(sellerBalanceAfter).to.eq(price.sub(price.mul(daoFee).div(10000)));
     expect(sellerNftBalanceAfter).to.eq(0);
-    expect(buyerNftBalanceAfter).to.eq(1);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
   });
 
   it("Build and partial fill ERC1155 WETH sell order no revenue splits", async () => {
@@ -519,7 +523,7 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: seller.address,
       make: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
@@ -528,7 +532,7 @@ describe("Universe - SingleToken Erc1155", () => {
       taker: constants.AddressZero,
       take: {
         assetType: {
-          assetClass: "ERC20",
+          assetClass: AssetClass.ERC20,
           contract: Common.Addresses.Weth[chainId],
         },
         value: price.toString(),
@@ -602,6 +606,7 @@ describe("Universe - SingleToken Erc1155", () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
+    const mintTokensAmount = 4;
 
     const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
@@ -614,7 +619,7 @@ describe("Universe - SingleToken Erc1155", () => {
     const buyerBalanceBefore = await weth.getBalance(buyer.address);
     const sellerBalanceBefore = await weth.getBalance(seller.address);
     // Mint erc1155 to seller
-    await erc1155.connect(seller).mint(soldTokenId);
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
 
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
@@ -635,16 +640,16 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: seller.address,
       make: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
-        value: "1",
+        value: mintTokensAmount.toString(),
       },
       taker: constants.AddressZero,
       take: {
         assetType: {
-          assetClass: "ERC20",
+          assetClass: AssetClass.ERC20,
           contract: Common.Addresses.Weth[chainId],
         },
         value: price.toString(),
@@ -667,14 +672,16 @@ describe("Universe - SingleToken Erc1155", () => {
       },
       signature: "",
       makeBalance: price.toString(),
-      makeStock: "1",
+      makeStock: mintTokensAmount.toString(),
     });
 
     // Sign the order
     await sellOrder.sign(seller);
 
     // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address);
+    const buyOrder = sellOrder.buildMatching(buyer.address, {
+      amount: mintTokensAmount.toString(),
+    });
     await sellOrder.checkFillability(ethers.provider);
 
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -688,7 +695,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     expect(sellerBalanceBefore).to.eq(0);
     expect(buyerBalanceBefore).to.eq(price);
-    expect(sellerNftBalanceBefore).to.eq(1);
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
     expect(buyerNftBalanceBefore).to.eq(0);
 
     // Match orders
@@ -718,7 +725,7 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerBalanceAfter).to.be.eq(0);
     expect(sellerBalanceAfter).to.eq(priceAfterFees);
     expect(sellerNftBalanceAfter).to.eq(0);
-    expect(buyerNftBalanceAfter).to.eq(1);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
   });
 
   it("Build and fill ERC1155 ETH sell order no revenue splits", async () => {
@@ -726,9 +733,9 @@ describe("Universe - SingleToken Erc1155", () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
-
+    const mintTokensAmount = 4;
     // Mint erc1155 to seller
-    await erc1155.connect(seller).mint(soldTokenId);
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
 
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
@@ -748,11 +755,11 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: seller.address,
       make: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
-        value: "1",
+        value: mintTokensAmount.toString(),
       },
       taker: constants.AddressZero,
       take: {
@@ -770,13 +777,15 @@ describe("Universe - SingleToken Erc1155", () => {
       },
       signature: "",
       makeBalance: price.toString(),
-      makeStock: "1",
+      makeStock: mintTokensAmount.toString(),
     });
     // Sign the order
     await sellOrder.sign(seller);
 
     // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address);
+    const buyOrder = sellOrder.buildMatching(buyer.address, {
+      amount: mintTokensAmount.toString(),
+    });
     await sellOrder.checkFillability(ethers.provider);
 
     const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
@@ -792,7 +801,7 @@ describe("Universe - SingleToken Erc1155", () => {
       soldTokenId
     );
 
-    expect(sellerNftBalanceBefore).eq(1);
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
     expect(buyerNftBalanceBefore).eq(0);
 
     // Match orders
@@ -821,7 +830,7 @@ describe("Universe - SingleToken Erc1155", () => {
       sellerBalanceBefore.add(price.sub(price.mul(daoFee).div(10000)))
     );
     expect(sellerNftBalanceAfter).eq(0);
-    expect(buyerNftBalanceAfter).eq(1);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
   });
 
   it("Build and partial fill ERC1155 ETH sell order no revenue splits", async () => {
@@ -853,7 +862,7 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: seller.address,
       make: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
@@ -940,9 +949,9 @@ describe("Universe - SingleToken Erc1155", () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
-
+    const mintTokensAmount = 4;
     // Mint erc1155 to seller
-    await erc1155.connect(seller).mint(soldTokenId);
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
 
     const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
 
@@ -964,11 +973,11 @@ describe("Universe - SingleToken Erc1155", () => {
       maker: seller.address,
       make: {
         assetType: {
-          assetClass: "ERC1155",
+          assetClass: AssetClass.ERC1155,
           contract: erc1155.address,
           tokenId: soldTokenId.toString(),
         },
-        value: "1",
+        value: mintTokensAmount.toString(),
       },
       taker: constants.AddressZero,
       take: {
@@ -995,13 +1004,15 @@ describe("Universe - SingleToken Erc1155", () => {
       },
       signature: "",
       makeBalance: price.toString(),
-      makeStock: "1",
+      makeStock: mintTokensAmount.toString(),
     });
     // Sign the order
     await sellOrder.sign(seller);
 
     // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address);
+    const buyOrder = sellOrder.buildMatching(buyer.address, {
+      amount: mintTokensAmount.toString(),
+    });
     await sellOrder.checkFillability(ethers.provider);
 
     const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
@@ -1017,7 +1028,7 @@ describe("Universe - SingleToken Erc1155", () => {
       soldTokenId
     );
 
-    expect(sellerNftBalanceBefore).eq(1);
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount);
     expect(buyerNftBalanceBefore).eq(0);
 
     // Match orders
@@ -1052,6 +1063,160 @@ describe("Universe - SingleToken Erc1155", () => {
     );
     expect(sellerBalanceAfter).to.eq(sellerBalanceBefore.add(priceAfterFees));
     expect(sellerNftBalanceAfter).eq(0);
-    expect(buyerNftBalanceAfter).eq(1);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount);
+  });
+
+  it("Build and cancel ERC1155 ETH sell order", async () => {
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+
+    const exchange = new Universe.Exchange(chainId);
+
+    const builder = new Universe.Builders.SingleToken(chainId);
+
+    // Build sell order
+    const sellOrder = builder.build({
+      hash: "",
+      type: "UNIVERSE_V1",
+      side: OrderSide.SELL,
+      maker: seller.address,
+      make: {
+        assetType: {
+          assetClass: AssetClass.ERC1155,
+          contract: erc1155.address,
+          tokenId: soldTokenId.toString(),
+        },
+        value: "1",
+      },
+      taker: constants.AddressZero,
+      take: {
+        assetType: {
+          assetClass: "ETH",
+        },
+        value: price.toString(),
+      },
+      salt: "1",
+      start: "0",
+      end: "0",
+      data: {
+        dataType: "",
+        revenueSplits: [],
+      },
+      signature: "",
+      makeBalance: price.toString(),
+      makeStock: "1",
+    });
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    // Cancel orders
+    await exchange.cancelOrder(seller, sellOrder);
+
+    const orderFill = await exchange.getOrderFill(seller.provider!, sellOrder);
+    expect(orderFill).to.eq(constants.MaxUint256);
+  });
+
+  it("Build and cancel ERC1155 WETH sell order", async () => {
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+
+    const exchange = new Universe.Exchange(chainId);
+
+    const builder = new Universe.Builders.SingleToken(chainId);
+
+    // Build sell order
+    const sellOrder = builder.build({
+      hash: "",
+      type: "UNIVERSE_V1",
+      side: OrderSide.SELL,
+      maker: seller.address,
+      make: {
+        assetType: {
+          assetClass: AssetClass.ERC1155,
+          contract: erc1155.address,
+          tokenId: soldTokenId.toString(),
+        },
+        value: "1",
+      },
+      taker: constants.AddressZero,
+      take: {
+        assetType: {
+          assetClass: AssetClass.ERC20,
+          contract: Common.Addresses.Weth[chainId],
+        },
+        value: price.toString(),
+      },
+      salt: "1",
+      start: "0",
+      end: "0",
+      data: {
+        dataType: "",
+        revenueSplits: [],
+      },
+      signature: "",
+      makeBalance: price.toString(),
+      makeStock: "1",
+    });
+
+    await sellOrder.checkFillability(ethers.provider);
+
+    // Cancel orders
+    await exchange.cancelOrder(seller, sellOrder);
+
+    const orderFill = await exchange.getOrderFill(seller.provider!, sellOrder);
+    expect(orderFill).to.eq(constants.MaxUint256);
+  });
+
+  it("Build and cancel ERC1155 WETH buy order", async () => {
+    const buyer = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+
+    const exchange = new Universe.Exchange(chainId);
+
+    const builder = new Universe.Builders.SingleToken(chainId);
+
+    const buyOrder = builder.build({
+      hash: "",
+      type: "UNIVERSE_V1",
+      side: OrderSide.SELL,
+      maker: buyer.address,
+      make: {
+        assetType: {
+          assetClass: AssetClass.ERC20,
+          contract: Common.Addresses.Weth[chainId],
+        },
+        value: price.toString(),
+      },
+      taker: constants.AddressZero,
+      take: {
+        assetType: {
+          assetClass: AssetClass.ERC1155,
+          contract: erc1155.address,
+          tokenId: soldTokenId.toString(),
+        },
+        value: "1",
+      },
+      salt: "1",
+      start: "0",
+      end: "0",
+      data: {
+        dataType: "",
+        revenueSplits: [],
+      },
+      signature: "",
+      makeBalance: price.toString(),
+      makeStock: "1",
+    });
+
+    await buyOrder.checkFillability(ethers.provider);
+
+    // Cancel orders
+    await exchange.cancelOrder(buyer, buyOrder);
+
+    const orderFill = await exchange.getOrderFill(buyer.provider!, buyOrder);
+    expect(orderFill).to.eq(constants.MaxUint256);
   });
 });

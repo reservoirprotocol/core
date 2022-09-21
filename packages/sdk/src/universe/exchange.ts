@@ -50,7 +50,7 @@ export class Exchange {
     let value = BigNumber.from(0);
     // "ETH" can only be TAKE'a asset class in case it is a direct buy from a listing.
     // In this case transaction value is the ETH value from order.take.amount.
-    // There can't situations when ETH is a MAKE's asset class
+    // There can't be situations when ETH is a MAKE's asset class
     if (takeClass === "ETH") {
       value = BigNumber.from(takeAmount);
     }
@@ -101,33 +101,29 @@ export class Exchange {
     maker: Signer,
     order: Order
   ): Promise<ContractTransaction> {
-    const tx = this.cancelOrderTx(await maker.getAddress(), order);
+    const tx = await this.contract.populateTransaction.cancel(
+      encode(order.params)
+    );
     return maker.sendTransaction(tx);
   }
 
-  public cancelOrderTx(maker: string, order: Order): TxData {
-    return {
-      from: maker,
-      to: this.contract.address,
-      data: this.contract.interface.encodeFunctionData(
-        "cancelMultipleMakerOrders",
-        [[0]]
-      ),
-    };
-  }
-
-  // --- Get nonce ---
-
-  public async getNonce(
-    provider: Provider,
-    user: string
-  ): Promise<BigNumberish> {
-    return new Contract(Addresses.Exchange[this.chainId], ExchangeAbi as any)
-      .connect(provider)
-      .userMinOrderNonce(user);
-  }
-
+  /**
+   * Get the DAO fee from the marketplace contract
+   * @returns uint DAO fee
+   */
   public async getDaoFee(provider: Provider): Promise<BigNumberish> {
     return this.contract.connect(provider).daoFee();
+  }
+
+  /**
+   * Get the fill amount of a specifc order
+   * @returns uint256 order fill
+   */
+  public async getOrderFill(
+    provider: Provider,
+    order: Order
+  ): Promise<BigNumberish> {
+    const hash = order.hashOrderKey();
+    return this.contract.connect(provider).fills(hash);
   }
 }

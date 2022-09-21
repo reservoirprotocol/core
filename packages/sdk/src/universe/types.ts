@@ -1,6 +1,12 @@
 export enum AssetClass {
+  ERC20 = "ERC20",
   ERC721 = "ERC721",
   ERC1155 = "ERC1155",
+}
+
+export enum OrderSide {
+  BUY,
+  SELL,
 }
 
 export type AssetType = {
@@ -25,20 +31,6 @@ export type LocalAsset = {
 };
 
 export type OrderKind = "single-token";
-
-// export type Order = {
-//   kind?: OrderKind;
-//   maker: string;
-//   makeAsset: Asset;
-//   taker: string;
-//   takeAsset: Asset;
-//   salt: string;
-//   start: string;
-//   end: string;
-//   dataType: string;
-//   data: string;
-//   signature?: string;
-// };
 
 export type Order = {
   kind?: OrderKind;
@@ -68,30 +60,6 @@ export interface IOrderData {
   dataType?: string;
   revenueSplits?: IPart[];
 }
-
-export enum OrderSide {
-  BUY,
-  SELL,
-}
-
-export type LocalOrder = {
-  kind?: OrderKind;
-  hash: string;
-  type: string;
-  side: OrderSide;
-  maker: string;
-  make: Asset;
-  taker: string;
-  take: Asset;
-  salt: string;
-  start: string;
-  end: string;
-  data: IOrderData;
-  signature: string;
-  fill?: string;
-  makeStock: string;
-  makeBalance: string;
-};
 
 export type TakerOrderParams = {
   type: string;

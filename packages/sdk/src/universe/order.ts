@@ -18,7 +18,7 @@ import { ethers, utils } from "ethers/lib";
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
-import { encode } from "./utils";
+import { encode, hashAssetType } from "./utils";
 
 export class Order {
   public chainId: number;
@@ -52,10 +52,24 @@ export class Order {
     ) {
       throw new Error("Invalid side");
     }
+
+    if (this.params.start > this.params.end) {
+      throw new Error("Invalid listing and/or expiration time");
+    }
   }
 
-  public hash() {
-    return _TypedDataEncoder.hashStruct("Order", EIP712_TYPES, this.params);
+  public hashOrderKey() {
+    const encodedOrder = utils.defaultAbiCoder.encode(
+      ["address", "bytes32", "bytes32", "uint256"],
+      [
+        lc(this.params.maker),
+        hashAssetType(this.params.make.assetType),
+        hashAssetType(this.params.take.assetType),
+        Number(this.params.salt),
+      ]
+    );
+
+    return utils.keccak256(encodedOrder);
   }
 
   public async sign(signer: TypedDataSigner) {
@@ -358,7 +372,7 @@ const normalize = (order: Types.Order): Types.Order => {
           tokenId: order.make.assetType.tokenId,
         }),
         ...(order.make.assetType.contract && {
-          contract: order.make.assetType.contract,
+          contract: lc(order.make.assetType.contract),
         }),
       },
       value: s(order.make.value),
@@ -371,7 +385,7 @@ const normalize = (order: Types.Order): Types.Order => {
           tokenId: order.take.assetType.tokenId,
         }),
         ...(order.take.assetType.contract && {
-          contract: order.take.assetType.contract,
+          contract: lc(order.take.assetType.contract),
         }),
       },
       value: s(order.take.value),
