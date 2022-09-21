@@ -260,7 +260,7 @@ describe("Universe - SingleToken Erc1155", () => {
       startTime: 0,
       endTime: 0,
       signature: "",
-      revenueSplits: [
+      fees: [
         {
           account: charlie.address,
           value: revenueSplitBpsA,
@@ -558,7 +558,7 @@ describe("Universe - SingleToken Erc1155", () => {
       startTime: 0,
       endTime: 0,
       signature: "",
-      revenueSplits: [
+      fees: [
         {
           account: charlie.address,
           value: revenueSplitBpsA,
@@ -842,7 +842,7 @@ describe("Universe - SingleToken Erc1155", () => {
       startTime: 0,
       endTime: 0,
       signature: "",
-      revenueSplits: [
+      fees: [
         {
           account: charlie.address,
           value: revenueSplitBpsA,

@@ -36,7 +36,6 @@ export type OrderKind = "single-token";
 export type Order = {
   kind?: OrderKind;
   type: string;
-  side: OrderSide;
   maker: string;
   make: LocalAsset;
   taker: string;
@@ -45,8 +44,7 @@ export type Order = {
   start: number;
   end: number;
   data: IOrderData;
-  signature: string;
-  fill?: string;
+  signature?: string;
 };
 
 export interface IPart {
@@ -80,12 +78,12 @@ export interface BaseBuildParams {
   tokenAmount?: number;
   price: string;
   paymentToken: string;
-  revenueSplits?: {
+  fees?: {
     account: string;
     value: string;
   }[];
   salt: number;
   startTime: number;
   endTime: number;
-  signature: string;
+  signature?: string;
 }

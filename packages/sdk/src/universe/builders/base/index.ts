@@ -1,6 +1,10 @@
 import { Order } from "../../order";
 import * as Types from "../../types";
 
+export interface BaseOrderInfo {
+  side: "buy" | "sell";
+}
+
 export abstract class BaseBuilder {
   public chainId: number;
 
@@ -16,6 +20,7 @@ export abstract class BaseBuilder {
     // params.signature = params.signature ?? "0x";
   }
 
+  public abstract getInfo(order: Order): BaseOrderInfo | undefined;
   public abstract isValid(order: Order): boolean;
   public abstract build(params: Types.BaseBuildParams): Order;
   public abstract buildMatching(

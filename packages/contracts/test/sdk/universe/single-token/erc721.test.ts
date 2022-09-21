@@ -1,14 +1,13 @@
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
 import * as Common from "@reservoir0x/sdk/src/common";
-import * as Universe from "@reservoir0x/sdk/src/Universe";
+import * as Universe from "@reservoir0x/sdk/src/universe";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { getChainId, reset, setupNFTs } from "../../../utils";
-import { AssetClass, OrderSide } from "@reservoir0x/sdk/src/universe/types";
-import { BigNumber, constants, utils } from "ethers";
+import { BigNumber, constants } from "ethers";
 
 describe("Universe - SingleToken Erc721", () => {
   const chainId = getChainId();
@@ -144,7 +143,7 @@ describe("Universe - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       signature: "",
-      revenueSplits: [
+      fees: [
         {
           account: charlie.address,
           value: revenueSplitBpsA,
@@ -303,7 +302,7 @@ describe("Universe - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       signature: "",
-      revenueSplits: [
+      fees: [
         {
           account: charlie.address,
           value: revenueSplitBpsA,
@@ -450,7 +449,7 @@ describe("Universe - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       signature: "",
-      revenueSplits: [
+      fees: [
         {
           account: charlie.address,
           value: revenueSplitBpsA,

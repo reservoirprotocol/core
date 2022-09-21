@@ -4,7 +4,7 @@ import { _TypedDataEncoder } from "@ethersproject/hash";
 
 import * as Addresses from "./addresses";
 import { Builders } from "./builders";
-import { BaseBuilder } from "./builders/base";
+import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import { lc, n, s } from "../utils";
 
@@ -36,14 +36,6 @@ export class Order {
       ) > 10000
     ) {
       throw new Error("Invalid royalties");
-    }
-
-    // Validate side
-    if (
-      this.params.side !== Types.OrderSide.BUY &&
-      this.params.side !== Types.OrderSide.SELL
-    ) {
-      throw new Error("Invalid side");
     }
 
     if (this.params.start > this.params.end) {
@@ -104,6 +96,10 @@ export class Order {
     if (!this.getBuilder().isValid(this)) {
       throw new Error("Invalid order");
     }
+  }
+
+  public getInfo(): BaseOrderInfo | undefined {
+    return this.getBuilder().getInfo(this);
   }
 
   public async checkFillability(provider: Provider) {
@@ -355,7 +351,6 @@ const normalize = (order: Types.Order): Types.Order => {
   return {
     kind: order.kind,
     type: order.type,
-    side: n(order.side),
     maker: lc(order.maker),
     make: {
       assetType: {

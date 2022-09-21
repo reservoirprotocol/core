@@ -1,4 +1,4 @@
-import { BaseBuilder } from "../base";
+import { BaseBuilder, BaseOrderInfo } from "../base";
 import { Order } from "../../order";
 import * as Types from "../../types";
 import { lc, n, s } from "../../../utils";
@@ -7,17 +7,42 @@ import { AssetClass } from "../../types";
 import { Constants } from "../..";
 
 export class SingleTokenBuilder extends BaseBuilder {
+  public getInfo(order: Order): BaseOrderInfo {
+    let side: "sell" | "buy";
+    const makeAssetClass = order.params.make.assetType.assetClass;
+    const takeAssetClass = order.params.make.assetType.assetClass;
+    if (
+      (makeAssetClass === Types.AssetClass.ERC721 ||
+        makeAssetClass === Types.AssetClass.ERC1155) &&
+      (takeAssetClass === Types.AssetClass.ERC20 ||
+        takeAssetClass === Types.AssetClass.ETH)
+    ) {
+      side = "sell";
+    } else if (
+      makeAssetClass === Types.AssetClass.ERC20 &&
+      (takeAssetClass === Types.AssetClass.ERC721 ||
+        takeAssetClass === Types.AssetClass.ERC1155)
+    ) {
+      side = "buy";
+    } else {
+      throw new Error("Invalid asset class");
+    }
+    return {
+      side,
+    };
+  }
+
   public isValid(order: Order): boolean {
     //TODO: Add more validations (used by indexer)
+    const { side } = this.getInfo(order);
     try {
-      const nftInfo =
-        order.params.side === 0 ? order.params.take : order.params.make;
+      const nftInfo = side === "buy" ? order.params.take : order.params.make;
       const paymentInfo =
-        order.params.side === 0 ? order.params.make : order.params.take;
+        side === "buy" ? order.params.make : order.params.take;
 
       const copyOrder = this.build({
         maker: order.params.maker,
-        side: order.params.side === 0 ? "buy" : "sell",
+        side,
         tokenKind:
           nftInfo.assetType.assetClass === AssetClass.ERC721
             ? "erc721"
@@ -34,7 +59,7 @@ export class SingleTokenBuilder extends BaseBuilder {
         endTime: order.params.end,
         signature: order.params.signature,
         tokenAmount: n(nftInfo.value),
-        revenueSplits: order.params.data.revenueSplits || [],
+        fees: order.params.data.revenueSplits || [],
       });
 
       if (!copyOrder) {
@@ -75,11 +100,10 @@ export class SingleTokenBuilder extends BaseBuilder {
       },
       value: params.price,
     };
+
     return new Order(this.chainId, {
       kind: "single-token",
-      //TODO: Extract this to a constant
-      type: "UNIVERSE_V1",
-      side: params.side === "buy" ? 0 : 1,
+      type: Constants.UNIVERSE_TYPE,
       maker: params.maker,
       make: params.side === "buy" ? paymentInfo : nftInfo,
       taker: constants.AddressZero,
@@ -88,10 +112,10 @@ export class SingleTokenBuilder extends BaseBuilder {
       start: params.startTime,
       end: params.endTime!,
       data: {
-        dataType: params.revenueSplits?.length
+        dataType: params.fees?.length
           ? Constants.ORDER_DATA
           : Constants.DATA_TYPE_0X,
-        revenueSplits: params.revenueSplits || [],
+        revenueSplits: params.fees || [],
       },
       signature: params?.signature,
     });
@@ -121,25 +145,10 @@ export class SingleTokenBuilder extends BaseBuilder {
 
     // for erc1155 we need to take the value from request (the amount parameter)
     if (AssetClass.ERC1155 == order.make.assetType.assetClass) {
-      const availableAmount = Number(order.make.value) - Number(order.fill);
-      if (
-        Math.floor(Number(data.amount)) < 1 ||
-        Math.floor(Number(data.amount)) > availableAmount
-      ) {
-        throw new Error("invalid-fill-amount");
-      }
-
       rightOrder.take.value = Math.floor(Number(data.amount)).toString();
     }
 
     if (AssetClass.ERC1155 == order.take.assetType.assetClass) {
-      const availableAmount = Number(order.take.value) - Number(order.fill);
-      if (
-        Math.floor(Number(data.amount)) < 1 ||
-        Math.floor(Number(data.amount)) > availableAmount
-      ) {
-        throw new Error("invalid-fill-amount");
-      }
       const oldValue = rightOrder.make.value;
 
       rightOrder.make.value = Math.floor(Number(data.amount)).toString();
