@@ -58,43 +58,25 @@ describe("Universe - SingleToken Erc721", () => {
     const daoFee = await exchange.getDaoFee(seller.provider!);
 
     const builder = new Universe.Builders.SingleToken(chainId);
-    // Build sell order
+    // Build buy order
     const buyOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: buyer.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC20,
-          contract: Common.Addresses.Weth[chainId],
-        },
-        value: price.toString(),
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "",
-        revenueSplits: [],
-      },
+      side: "buy",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: Common.Addresses.Weth[chainId],
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
     });
 
     // Sign the order
     await buyOrder.sign(buyer);
-
+    await buyOrder.checkSignature();
     // Create matching buy order (right order)
     const sellOrder = buyOrder.buildMatching(seller.address);
     await buyOrder.checkFillability(ethers.provider);
@@ -148,52 +130,35 @@ describe("Universe - SingleToken Erc721", () => {
     const revenueSplitBpsB = "1500";
 
     const builder = new Universe.Builders.SingleToken(chainId);
-    // Build sell order
+    // Build buy order
     const buyOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: buyer.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC20,
-          contract: Common.Addresses.Weth[chainId],
-        },
-        value: price.toString(),
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "ORDER_DATA",
-        revenueSplits: [
-          {
-            account: charlie.address,
-            value: revenueSplitBpsA,
-          },
-          {
-            account: dan.address,
-            value: revenueSplitBpsB,
-          },
-        ],
-      },
+      side: "buy",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: Common.Addresses.Weth[chainId],
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
+      revenueSplits: [
+        {
+          account: charlie.address,
+          value: revenueSplitBpsA,
+        },
+        {
+          account: dan.address,
+          value: revenueSplitBpsB,
+        },
+      ],
     });
 
     // Sign the order
     await buyOrder.sign(buyer);
-
+    await buyOrder.checkSignature();
     // Create matching buy order (right order)
     const sellOrder = buyOrder.buildMatching(seller.address);
     await buyOrder.checkFillability(ethers.provider);
@@ -253,42 +218,25 @@ describe("Universe - SingleToken Erc721", () => {
 
     const builder = new Universe.Builders.SingleToken(chainId);
     // Build sell order
+
     const sellOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: seller.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: AssetClass.ERC20,
-          contract: Common.Addresses.Weth[chainId],
-        },
-        value: price.toString(),
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "",
-        revenueSplits: [],
-      },
+      side: "sell",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: Common.Addresses.Weth[chainId],
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
     });
 
     // Sign the order
     await sellOrder.sign(seller);
-
+    await sellOrder.checkSignature();
     // Create matching buy order (right order)
     const buyOrder = sellOrder.buildMatching(buyer.address);
     await sellOrder.checkFillability(ethers.provider);
@@ -343,50 +291,33 @@ describe("Universe - SingleToken Erc721", () => {
     const builder = new Universe.Builders.SingleToken(chainId);
     // Build sell order
     const sellOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: seller.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: AssetClass.ERC20,
-          contract: Common.Addresses.Weth[chainId],
-        },
-        value: price.toString(),
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "ORDER_DATA",
-        revenueSplits: [
-          {
-            account: charlie.address,
-            value: revenueSplitBpsA,
-          },
-          {
-            account: dan.address,
-            value: revenueSplitBpsB,
-          },
-        ],
-      },
+      side: "sell",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: Common.Addresses.Weth[chainId],
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
+      revenueSplits: [
+        {
+          account: charlie.address,
+          value: revenueSplitBpsA,
+        },
+        {
+          account: dan.address,
+          value: revenueSplitBpsB,
+        },
+      ],
     });
 
     // Sign the order
     await sellOrder.sign(seller);
-
+    await sellOrder.checkSignature();
     // Create matching buy order (right order)
     const buyOrder = sellOrder.buildMatching(buyer.address);
     await sellOrder.checkFillability(ethers.provider);
@@ -437,39 +368,21 @@ describe("Universe - SingleToken Erc721", () => {
     const builder = new Universe.Builders.SingleToken(chainId);
     // Build sell order
     const sellOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: seller.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: "ETH",
-        },
-        value: price.toString(),
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "",
-        revenueSplits: [],
-      },
+      side: "sell",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: constants.AddressZero,
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
-    });
-    // Sign the order
+    }); // Sign the order
     await sellOrder.sign(seller);
-
+    await sellOrder.checkSignature();
     // Create matching buy order (right order)
     const buyOrder = sellOrder.buildMatching(buyer.address);
     await sellOrder.checkFillability(ethers.provider);
@@ -525,49 +438,33 @@ describe("Universe - SingleToken Erc721", () => {
     const builder = new Universe.Builders.SingleToken(chainId);
     // Build sell order
     const sellOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: seller.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: "ETH",
-        },
-        value: price.toString(),
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "ORDER_DATA",
-        revenueSplits: [
-          {
-            account: charlie.address,
-            value: revenueSplitBpsA,
-          },
-          {
-            account: dan.address,
-            value: revenueSplitBpsB,
-          },
-        ],
-      },
+      side: "sell",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: constants.AddressZero,
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
+      revenueSplits: [
+        {
+          account: charlie.address,
+          value: revenueSplitBpsA,
+        },
+        {
+          account: dan.address,
+          value: revenueSplitBpsB,
+        },
+      ],
     });
 
     // Sign the order
     await sellOrder.sign(seller);
-
+    await sellOrder.checkSignature();
     // Create matching buy order (right order)
     const buyOrder = sellOrder.buildMatching(buyer.address);
     await sellOrder.checkFillability(ethers.provider);
@@ -618,35 +515,18 @@ describe("Universe - SingleToken Erc721", () => {
 
     // Build sell order
     const sellOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: seller.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: "ETH",
-        },
-        value: price.toString(),
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "",
-        revenueSplits: [],
-      },
+      side: "sell",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: constants.AddressZero,
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
     });
 
     await sellOrder.checkFillability(ethers.provider);
@@ -669,36 +549,18 @@ describe("Universe - SingleToken Erc721", () => {
 
     // Build sell order
     const sellOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: seller.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: AssetClass.ERC20,
-          contract: Common.Addresses.Weth[chainId],
-        },
-        value: price.toString(),
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "",
-        revenueSplits: [],
-      },
+      side: "sell",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: Common.Addresses.Weth[chainId],
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
     });
 
     await sellOrder.checkFillability(ethers.provider);
@@ -720,36 +582,18 @@ describe("Universe - SingleToken Erc721", () => {
     const builder = new Universe.Builders.SingleToken(chainId);
 
     const buyOrder = builder.build({
-      hash: "",
-      type: "UNIVERSE_V1",
-      side: OrderSide.SELL,
       maker: buyer.address,
-      make: {
-        assetType: {
-          assetClass: AssetClass.ERC20,
-          contract: Common.Addresses.Weth[chainId],
-        },
-        value: price.toString(),
-      },
-      taker: constants.AddressZero,
-      take: {
-        assetType: {
-          assetClass: AssetClass.ERC721,
-          contract: erc721.address,
-          tokenId: soldTokenId.toString(),
-        },
-        value: "1",
-      },
-      salt: "1",
-      start: "0",
-      end: "0",
-      data: {
-        dataType: "",
-        revenueSplits: [],
-      },
+      side: "buy",
+      tokenKind: "erc721",
+      contract: erc721.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: 1,
+      paymentToken: Common.Addresses.Weth[chainId],
+      salt: 1,
+      startTime: 0,
+      endTime: 0,
       signature: "",
-      makeBalance: price.toString(),
-      makeStock: "1",
     });
 
     await buyOrder.checkFillability(ethers.provider);

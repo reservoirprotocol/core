@@ -116,6 +116,14 @@ export class Exchange {
   }
 
   /**
+   * Get the fee receiver the marketplace contract (will always be the DAO unless voted otherwise)
+   * @returns string DAO address
+   */
+  public async getFeeReceiver(provider: Provider): Promise<string> {
+    return this.contract.connect(provider).defaultFeeReceiver();
+  }
+
+  /**
    * Get the fill amount of a specifc order
    * @returns uint256 order fill
    */

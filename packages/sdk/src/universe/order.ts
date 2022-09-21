@@ -1,19 +1,13 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
-import { splitSignature } from "@ethersproject/bytes";
-import { HashZero } from "@ethersproject/constants";
-import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
-import { verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
 import { Builders } from "./builders";
 import { BaseBuilder } from "./builders/base";
 import * as Types from "./types";
-import * as Common from "../common";
-import { bn, lc, n, s } from "../utils";
+import { lc, n, s } from "../utils";
 
-import ExchangeAbi from "./abis/Exchange.json";
 import { ethers, utils } from "ethers/lib";
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
@@ -32,7 +26,6 @@ export class Order {
     } catch {
       throw new Error("Invalid params");
     }
-
     // Validate fees
     if (
       this.params.data.revenueSplits &&
@@ -95,10 +88,10 @@ export class Order {
   }
 
   public checkSignature() {
-    const signer = verifyTypedData(
+    const signer = utils.verifyTypedData(
       EIP712_DOMAIN(this.chainId),
       EIP712_TYPES,
-      toRawOrder(this),
+      encode(toRawOrder(this)),
       this.params.signature!
     );
 
@@ -361,7 +354,6 @@ const normalize = (order: Types.Order): Types.Order => {
 
   return {
     kind: order.kind,
-    hash: order.hash,
     type: order.type,
     side: n(order.side),
     maker: lc(order.maker),
@@ -393,9 +385,16 @@ const normalize = (order: Types.Order): Types.Order => {
     salt: n(order.salt),
     start: n(order.start),
     end: n(order.end),
-    data: order.data,
+    data: {
+      dataType: order.data.dataType,
+      revenueSplits:
+        !order.data.revenueSplits || !order.data.revenueSplits.length
+          ? []
+          : order.data.revenueSplits.map((split) => ({
+              account: lc(split.account),
+              value: n(split.value),
+            })),
+    },
     signature: order.signature,
-    makeBalance: n(order.makeBalance),
-    makeStock: order.makeStock,
   };
 };
