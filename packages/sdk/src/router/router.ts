@@ -341,6 +341,15 @@ export class Router {
       };
     }
 
+    // The V5 router does not support filling Sudoswap bids, so we fill directly
+    if (exchangeKind === ExchangeKind.SUDOSWAP) {
+      return {
+        from: taker,
+        to: Sdk.Sudoswap.Addresses.Router[this.chainId],
+        data: tx.data + generateReferrerBytes(options?.referrer),
+      };
+    }
+
     // Wrap the exchange-specific fill transaction via the router
     // (use the `onReceived` hooks for single token filling)
     if (detail.contractKind === "erc721") {
@@ -552,6 +561,14 @@ export class Router {
       return {
         tx: await exchange.fillOrderTx(taker, order, { tokenId }),
         exchangeKind: ExchangeKind.X2Y2,
+      };
+    } else if (kind === "sudoswap") {
+      order = order as Sdk.Sudoswap.Order;
+
+      const router = new Sdk.Sudoswap.Router(this.chainId);
+      return {
+        tx: router.fillBuyOrderTx(taker, order, tokenId),
+        exchangeKind: ExchangeKind.SUDOSWAP,
       };
     }
 
