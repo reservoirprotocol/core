@@ -91,3 +91,9 @@ export const Routers: ChainIdToAddressMap = {
     "0xf44caa746d184e6fba3071e8adbf9c041620fe44": "reservoir.tools",
   },
 };
+
+export const RoyaltyRegistry: ChainIdToAddress = {
+  [Network.Ethereum]: "0xad2184fb5dbcfc05d8f056542fb25b04fa32a95d",
+  [Network.EthereumGoerli]: "0x644611f32769aaecceadec6462c9495b23b40520",
+  [Network.Polygon]: "0xe7c9cb6d966f76f3b5142167088927bf34966a1f",
+};
