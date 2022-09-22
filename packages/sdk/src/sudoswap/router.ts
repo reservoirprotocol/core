@@ -17,7 +17,10 @@ export class Router {
 
   constructor(chainId: number) {
     this.chainId = chainId;
-    this.contract = new Contract(Addresses.Router[this.chainId], RouterAbi);
+    this.contract = new Contract(
+      Addresses.RouterWithRoyalties[this.chainId],
+      RouterAbi
+    );
   }
 
   // --- Fill buy order ---

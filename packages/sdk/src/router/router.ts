@@ -345,7 +345,7 @@ export class Router {
     if (exchangeKind === ExchangeKind.SUDOSWAP) {
       return {
         from: taker,
-        to: Sdk.Sudoswap.Addresses.Router[this.chainId],
+        to: Sdk.Sudoswap.Addresses.RouterWithRoyalties[this.chainId],
         data: tx.data + generateReferrerBytes(options?.referrer),
       };
     }
