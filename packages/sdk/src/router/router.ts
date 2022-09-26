@@ -54,6 +54,16 @@ export class Router {
     // - X2Y2 (not supported yet)
     // - ZeroExV4
 
+    if (details.some(({ kind }) => kind === "zora")) {
+      if (details.length > 1) {
+        throw new Error("Zora sweeping is not supported");
+      } else {
+        const order = details[0].order as Sdk.Zora.Order;
+        const exchange = new Sdk.Zora.Exchange(this.chainId);
+        return exchange.fillOrderTx(taker, order);
+      }
+    }
+
     // If all orders are Seaport, then we fill on Seaport directly
     // TODO: Once the modular router is implemented, a refactoring
     // might be needed - to use the router-generated order instead
