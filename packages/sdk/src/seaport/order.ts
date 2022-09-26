@@ -119,6 +119,10 @@ export class Order {
                 .div(bn(this.params.endTime).sub(this.params.startTime))
             )
           );
+          // Ensure we don't return any negative prices
+          if (price.lt(c.endAmount)) {
+            price = bn(c.endAmount);
+          }
         }
         return price;
       }
