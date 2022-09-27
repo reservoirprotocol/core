@@ -101,10 +101,20 @@ export class Exchange {
     maker: Signer,
     order: Order
   ): Promise<ContractTransaction> {
-    const tx = await this.contract.populateTransaction.cancel(
-      encode(order.params)
-    );
+    const tx = await this.cancelOrderTx(order.params);
     return maker.sendTransaction(tx);
+  }
+
+  public async cancelOrderTx(orderParams: Types.Order): Promise<TxData> {
+    const { from, to, data, value } =
+      await this.contract.populateTransaction.cancel(encode(orderParams));
+
+    return {
+      from: from!,
+      to: to!,
+      data: data!,
+      value: value && value.toHexString(),
+    };
   }
 
   /**

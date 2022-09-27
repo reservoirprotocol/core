@@ -43,6 +43,10 @@ export type GenericOrder =
   | {
       kind: "zora";
       order: Sdk.Zora.Order;
+    }
+  | {
+      kind: "universe";
+      order: Sdk.Universe.Order;
     };
 
 export type ListingFillDetails = {
