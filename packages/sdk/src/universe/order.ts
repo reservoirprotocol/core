@@ -83,7 +83,7 @@ export class Order {
     const signer = utils.verifyTypedData(
       EIP712_DOMAIN(this.chainId),
       EIP712_TYPES,
-      encode(toRawOrder(this)),
+      toRawOrder(this),
       this.params.signature!
     );
 
@@ -338,9 +338,9 @@ const EIP712_TYPES = {
   ],
 };
 
-const toRawOrder = (order: Order): any => ({
+const toRawOrder = (order: Order): any => (encode({
   ...order.params,
-});
+}));
 
 const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:
