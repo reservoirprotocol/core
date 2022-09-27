@@ -491,6 +491,17 @@ export class Router {
         exchangeKind: ExchangeKind.SEAPORT,
         maker: order.params.offerer,
       };
+    } else if (kind === "universe") {
+      order = order as Sdk.Universe.Order;
+
+      const matchOrder = order.buildMatching(taker, { amount });
+
+      const exchange = new Sdk.Universe.Exchange(this.chainId);
+      return {
+        tx: await exchange.fillOrderTx(taker, order, matchOrder),
+        exchangeKind: ExchangeKind.UNIVERSE,
+        maker: order.params.maker,
+      };
     }
 
     throw new Error("Unreachable");
@@ -579,6 +590,15 @@ export class Router {
       return {
         tx: router.fillBuyOrderTx(taker, order, tokenId),
         exchangeKind: ExchangeKind.SUDOSWAP,
+      };
+    } else if (kind === "universe") {
+      order = order as Sdk.Universe.Order;
+
+      const exchange = new Sdk.Universe.Exchange(this.chainId);
+      const matchOrder = order.buildMatching(taker, ...(extraArgs || {}));
+      return {
+        tx: await exchange.fillOrderTx(taker, order, matchOrder),
+        exchangeKind: ExchangeKind.UNIVERSE,
       };
     }
 

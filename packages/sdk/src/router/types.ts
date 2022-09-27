@@ -9,6 +9,7 @@ export enum ExchangeKind {
   SEAPORT,
   SUDOSWAP,
   ZORA,
+  UNIVERSE,
 }
 
 export type GenericOrder =
@@ -62,7 +63,7 @@ export type BidFillDetails = {
   contractKind: "erc721" | "erc1155";
   contract: string;
   tokenId: string;
-  // Relevant for merkle orders
+  // Relevant for merkle orders and partially-fillable orders
   extraArgs?: any;
 };
 
