@@ -50,7 +50,7 @@ export class Order {
         lc(this.params.maker),
         hashAssetType(this.params.make.assetType),
         hashAssetType(this.params.take.assetType),
-        Number(this.params.salt),
+        this.params.salt,
       ]
     );
 
@@ -338,9 +338,10 @@ const EIP712_TYPES = {
   ],
 };
 
-const toRawOrder = (order: Order): any => (encode({
-  ...order.params,
-}));
+const toRawOrder = (order: Order): any =>
+  encode({
+    ...order.params,
+  });
 
 const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:
@@ -377,7 +378,7 @@ const normalize = (order: Types.Order): Types.Order => {
       },
       value: s(order.take.value),
     },
-    salt: n(order.salt),
+    salt: s(order.salt),
     start: n(order.start),
     end: n(order.end),
     data: {
