@@ -54,10 +54,9 @@ export class SingleTokenBuilder extends BaseBuilder {
           paymentInfo.assetType.assetClass === AssetClass.ETH
             ? constants.AddressZero
             : lc(paymentInfo.assetType.contract!),
-        salt: n(order.params.salt),
+        salt: order.params.salt,
         startTime: order.params.start,
         endTime: order.params.end,
-        signature: order.params.signature,
         tokenAmount: n(nftInfo.value),
         fees: order.params.data.revenueSplits || [],
       });
@@ -117,7 +116,6 @@ export class SingleTokenBuilder extends BaseBuilder {
           : Constants.DATA_TYPE_0X,
         revenueSplits: params.fees || [],
       },
-      signature: params?.signature,
     });
   }
 

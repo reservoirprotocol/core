@@ -1,3 +1,4 @@
+import { getRandomBytes } from "../../../utils";
 import { Order } from "../../order";
 import * as Types from "../../types";
 
@@ -13,11 +14,7 @@ export abstract class BaseBuilder {
   }
 
   protected defaultInitialize(params: Types.BaseBuildParams) {
-    // Default listing time is 5 minutes in the past to allow for any
-    // time discrepancies when checking the order's validity on-chain
-    // params.start = params.start ?? getCurrentTimestamp(-5 * 60);
-    // params.end = params.end ?? getCurrentTimestamp(365 * 24 * 60 * 60);
-    // params.signature = params.signature ?? "0x";
+    params.salt = params.salt ?? getRandomBytes();
   }
 
   public abstract getInfo(order: Order): BaseOrderInfo | undefined;

@@ -1,3 +1,5 @@
+import { BigNumberish } from "ethers";
+
 export enum AssetClass {
   ERC20 = "ERC20",
   ETH = "ETH",
@@ -82,8 +84,7 @@ export interface BaseBuildParams {
     account: string;
     value: string;
   }[];
-  salt: number;
+  salt?: BigNumberish;
   startTime: number;
   endTime: number;
-  signature?: string;
 }

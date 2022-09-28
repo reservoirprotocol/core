@@ -69,10 +69,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: Common.Addresses.Weth[chainId],
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
 
     // Sign the order
@@ -156,10 +154,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: Common.Addresses.Weth[chainId],
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
 
     // Sign the order
@@ -248,10 +244,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: Common.Addresses.Weth[chainId],
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
       fees: [
         {
           account: charlie.address,
@@ -351,10 +345,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: Common.Addresses.Weth[chainId],
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
 
     // Sign the order
@@ -439,10 +431,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: Common.Addresses.Weth[chainId],
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
 
     // Sign the order
@@ -534,10 +524,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: Common.Addresses.Weth[chainId],
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
       fees: [
         {
           account: charlie.address,
@@ -629,10 +617,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: constants.AddressZero,
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
     // Sign the order
     await sellOrder.sign(seller);
@@ -716,10 +702,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: constants.AddressZero,
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
     // Sign the order
     await sellOrder.sign(seller);
@@ -807,10 +791,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: constants.AddressZero,
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
       fees: [
         {
           account: charlie.address,
@@ -898,10 +880,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: 1,
       paymentToken: constants.AddressZero,
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
 
     await sellOrder.checkFillability(ethers.provider);
@@ -931,10 +911,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: 1,
       paymentToken: Common.Addresses.Weth[chainId],
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
 
     await sellOrder.checkFillability(ethers.provider);
@@ -963,10 +941,8 @@ describe("Universe - SingleToken Erc1155", () => {
       price: price.toString(),
       tokenAmount: 1,
       paymentToken: Common.Addresses.Weth[chainId],
-      salt: 1,
       startTime: 0,
       endTime: 0,
-      signature: "",
     });
 
     await buyOrder.checkFillability(ethers.provider);

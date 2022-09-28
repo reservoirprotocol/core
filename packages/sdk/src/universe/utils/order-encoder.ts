@@ -89,7 +89,7 @@ export const hashAsset = (asset: Asset) => {
  */
 export const encode = (order: Types.TakerOrderParams | Types.Order) => {
   return {
-    maker: lc(order.maker),
+    maker: order.maker,
     makeAsset: {
       assetType: {
         assetClass: encodeAssetClass(order.make.assetType.assetClass),
