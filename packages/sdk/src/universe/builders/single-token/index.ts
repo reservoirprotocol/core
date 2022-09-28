@@ -10,7 +10,7 @@ export class SingleTokenBuilder extends BaseBuilder {
   public getInfo(order: Order): BaseOrderInfo {
     let side: "sell" | "buy";
     const makeAssetClass = order.params.make.assetType.assetClass;
-    const takeAssetClass = order.params.make.assetType.assetClass;
+    const takeAssetClass = order.params.take.assetType.assetClass;
     if (
       (makeAssetClass === Types.AssetClass.ERC721 ||
         makeAssetClass === Types.AssetClass.ERC1155) &&
