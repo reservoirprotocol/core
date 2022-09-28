@@ -7,7 +7,6 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { getChainId, reset, setupNFTs } from "../../../utils";
-import { AssetClass, OrderSide } from "@reservoir0x/sdk/src/universe/types";
 import { BigNumber, constants } from "ethers";
 
 //TODO: Add check signature check
@@ -78,11 +77,6 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Sign the order
     await buyOrder.sign(buyer);
-
-    // Create matching buy order (right order)
-    const sellOrder = buyOrder.buildMatching(seller.address, {
-      amount: mintTokensAmount.toString(),
-    });
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
       seller.address,
@@ -99,8 +93,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
 
     // Match orders
-    await exchange.fillOrder(seller, buyOrder, sellOrder, {
+    await exchange.fillOrder(seller, buyOrder, {
       referrer: "reservoir.market",
+      amount: mintTokensAmount,
     });
 
     const buyerBalanceAfter = await weth.getBalance(seller.address);
@@ -170,10 +165,6 @@ describe("Universe - SingleToken Erc1155", () => {
     // Sign the order
     await buyOrder.sign(buyer);
 
-    // Create matching buy order (right order)
-    const sellOrder = buyOrder.buildMatching(seller.address, {
-      amount: fillAmount,
-    });
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
       seller.address,
@@ -190,8 +181,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
 
     // Match orders
-    await exchange.fillOrder(seller, buyOrder, sellOrder, {
+    await exchange.fillOrder(seller, buyOrder, {
       referrer: "reservoir.market",
+      amount: fillAmount,
     });
 
     const buyerBalanceAfter = await weth.getBalance(seller.address);
@@ -274,11 +266,6 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Sign the order
     await buyOrder.sign(buyer);
-
-    // Create matching buy order (right order)
-    const sellOrder = buyOrder.buildMatching(seller.address, {
-      amount: mintTokensAmount.toString(),
-    });
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
       seller.address,
@@ -295,8 +282,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
 
     // Match orders
-    await exchange.fillOrder(seller, buyOrder, sellOrder, {
+    await exchange.fillOrder(seller, buyOrder, {
       referrer: "reservoir.market",
+      amount: mintTokensAmount,
     });
 
     const buyerBalanceAfter = await weth.getBalance(seller.address);
@@ -372,10 +360,6 @@ describe("Universe - SingleToken Erc1155", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address, {
-      amount: mintTokensAmount.toString(),
-    });
     await sellOrder.checkFillability(ethers.provider);
 
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -393,8 +377,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerNftBalanceBefore).to.eq(0);
 
     // Match orders
-    await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
+      amount: mintTokensAmount,
     });
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
@@ -463,12 +448,6 @@ describe("Universe - SingleToken Erc1155", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address, {
-      amount: fillAmount,
-    });
-
     await sellOrder.checkFillability(ethers.provider);
 
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -486,8 +465,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerNftBalanceBefore).to.eq(0);
 
     // Match orders
-    await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
+      amount: fillAmount,
     });
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
@@ -573,11 +553,6 @@ describe("Universe - SingleToken Erc1155", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address, {
-      amount: mintTokensAmount.toString(),
-    });
     await sellOrder.checkFillability(ethers.provider);
 
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -595,8 +570,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerNftBalanceBefore).to.eq(0);
 
     // Match orders
-    await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
+      amount: mintTokensAmount,
     });
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
@@ -661,11 +637,6 @@ describe("Universe - SingleToken Erc1155", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address, {
-      amount: mintTokensAmount.toString(),
-    });
     await sellOrder.checkFillability(ethers.provider);
 
     const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
@@ -685,8 +656,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerNftBalanceBefore).eq(0);
 
     // Match orders
-    const tx = await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
+      amount: mintTokensAmount,
     });
 
     const txReceipt = await tx.wait();
@@ -752,10 +724,6 @@ describe("Universe - SingleToken Erc1155", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address, {
-      amount: fillAmount,
-    });
     await sellOrder.checkFillability(ethers.provider);
 
     const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
@@ -775,8 +743,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerNftBalanceBefore).eq(0);
 
     // Match orders
-    const tx = await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
+      amount: fillAmount,
     });
 
     const txReceipt = await tx.wait();
@@ -856,10 +825,6 @@ describe("Universe - SingleToken Erc1155", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address, {
-      amount: mintTokensAmount.toString(),
-    });
     await sellOrder.checkFillability(ethers.provider);
 
     const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
@@ -879,8 +844,9 @@ describe("Universe - SingleToken Erc1155", () => {
     expect(buyerNftBalanceBefore).eq(0);
 
     // Match orders
-    const tx = await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
+      amount: mintTokensAmount,
     });
 
     const txReceipt = await tx.wait();

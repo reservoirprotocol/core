@@ -76,8 +76,6 @@ describe("Universe - SingleToken Erc721", () => {
     // Sign the order
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
-    // Create matching buy order (right order)
-    const sellOrder = buyOrder.buildMatching(seller.address);
     await buyOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
 
@@ -85,7 +83,7 @@ describe("Universe - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.fillOrder(seller, buyOrder, sellOrder, {
+    await exchange.fillOrder(seller, buyOrder, {
       referrer: "reservoir.market",
     });
 
@@ -158,8 +156,6 @@ describe("Universe - SingleToken Erc721", () => {
     // Sign the order
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
-    // Create matching buy order (right order)
-    const sellOrder = buyOrder.buildMatching(seller.address);
     await buyOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
 
@@ -167,7 +163,7 @@ describe("Universe - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.fillOrder(seller, buyOrder, sellOrder, {
+    await exchange.fillOrder(seller, buyOrder, {
       referrer: "reservoir.market",
     });
 
@@ -236,8 +232,6 @@ describe("Universe - SingleToken Erc721", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address);
     await sellOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
 
@@ -245,7 +239,7 @@ describe("Universe - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
     });
 
@@ -317,8 +311,6 @@ describe("Universe - SingleToken Erc721", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address);
     await sellOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
 
@@ -326,7 +318,7 @@ describe("Universe - SingleToken Erc721", () => {
     expect(ownerBefore).to.eq(seller.address);
 
     // Match orders
-    await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
     });
 
@@ -382,8 +374,6 @@ describe("Universe - SingleToken Erc721", () => {
     }); // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address);
     await sellOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
@@ -394,7 +384,7 @@ describe("Universe - SingleToken Erc721", () => {
     );
 
     // Match orders
-    const tx = await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
     });
 
@@ -464,8 +454,6 @@ describe("Universe - SingleToken Erc721", () => {
     // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
-    // Create matching buy order (right order)
-    const buyOrder = sellOrder.buildMatching(buyer.address);
     await sellOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
@@ -476,7 +464,7 @@ describe("Universe - SingleToken Erc721", () => {
     );
 
     // Match orders
-    const tx = await exchange.fillOrder(buyer, sellOrder, buyOrder, {
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
       referrer: "reservoir.market",
     });
 

@@ -29,15 +29,14 @@ export class Exchange {
   public async fillOrder(
     taker: Signer,
     makerOrder: Order,
-    takerOrderParams: Types.TakerOrderParams,
     options?: {
       referrer?: string;
+      amount?: number;
     }
   ): Promise<ContractTransaction> {
     const tx = await this.fillOrderTx(
       await taker.getAddress(),
       makerOrder,
-      takerOrderParams,
       options
     );
     return taker.sendTransaction(tx);
@@ -61,11 +60,13 @@ export class Exchange {
   public async fillOrderTx(
     taker: string,
     makerOrder: Order,
-    takerOrderParams: Types.TakerOrderParams,
     options?: {
       referrer?: string;
+      amount?: number;
     }
   ): Promise<TxData> {
+    const takerOrderParams = makerOrder.buildMatching(taker, options);
+
     // 3. generate the match tx
     const value = this.calculateTxValue(
       makerOrder.params.take.assetType.assetClass,
