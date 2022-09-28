@@ -64,6 +64,16 @@ export class Router {
       }
     }
 
+    if (details.some(({ kind }) => kind === "universe")) {
+      if (details.length > 1) {
+        throw new Error("Universe sweeping is not supported");
+      } else {
+        const order = details[0].order as Sdk.Universe.Order;
+        const exchange = new Sdk.Universe.Exchange(this.chainId);
+        return exchange.fillOrderTx(taker, order);
+      }
+    }
+
     // If all orders are Seaport, then we fill on Seaport directly
     // TODO: Once the modular router is implemented, a refactoring
     // might be needed - to use the router-generated order instead
@@ -494,11 +504,11 @@ export class Router {
     } else if (kind === "universe") {
       order = order as Sdk.Universe.Order;
 
-      const matchOrder = order.buildMatching(taker, { amount });
-
       const exchange = new Sdk.Universe.Exchange(this.chainId);
       return {
-        tx: await exchange.fillOrderTx(taker, order, matchOrder),
+        tx: await exchange.fillOrderTx(taker, order, {
+          amount: Number(amount) ?? 1,
+        }),
         exchangeKind: ExchangeKind.UNIVERSE,
         maker: order.params.maker,
       };
@@ -593,11 +603,9 @@ export class Router {
       };
     } else if (kind === "universe") {
       order = order as Sdk.Universe.Order;
-
       const exchange = new Sdk.Universe.Exchange(this.chainId);
-      const matchOrder = order.buildMatching(taker, ...(extraArgs || {}));
       return {
-        tx: await exchange.fillOrderTx(taker, order, matchOrder),
+        tx: await exchange.fillOrderTx(taker, order, ...(extraArgs || {})),
         exchangeKind: ExchangeKind.UNIVERSE,
       };
     }
