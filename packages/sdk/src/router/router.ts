@@ -39,6 +39,7 @@ export class Router {
       skipPrecheck?: boolean;
       forceRouter?: boolean;
       skipErrors?: boolean;
+      skippedIndexes?: number[];
       partial?: boolean;
       directFillingData?: any;
     }
@@ -233,7 +234,8 @@ export class Router {
     }
 
     // Rest of orders are individually filled
-    for (const detail of details) {
+    for (let i = 0; i < details.length; i++) {
+      const detail = details[i];
       try {
         const { tx, exchangeKind, maker, isEscrowed } =
           await this.generateNativeListingFillTx(detail, taker);
@@ -316,6 +318,8 @@ export class Router {
       } catch (error) {
         if (!options?.skipErrors) {
           throw error;
+        } else if (options?.skippedIndexes) {
+          options.skippedIndexes.push(i);
         }
       }
     }
@@ -358,7 +362,7 @@ export class Router {
       const order = detail.order as Sdk.Universe.Order;
       const exchange = new Sdk.Universe.Exchange(this.chainId);
       return exchange.fillOrderTx(taker, order);
-  }
+    }
 
     const { tx, exchangeKind } = await this.generateNativeBidFillTx(
       detail,
