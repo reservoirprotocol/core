@@ -97,3 +97,9 @@ export const RoyaltyRegistry: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x644611f32769aaecceadec6462c9495b23b40520",
   [Network.Polygon]: "0xe7c9cb6d966f76f3b5142167088927bf34966a1f",
 };
+
+export const RoyaltyEngine: ChainIdToAddress = {
+  [Network.Ethereum]: "0x0385603ab55642cb4dd5de3ae9e306809991804f",
+  [Network.EthereumGoerli]: "0xe7c9cb6d966f76f3b5142167088927bf34966a1f",
+  [Network.Polygon]: "0x28edfcf0be7e86b07493466e7631a213bde8eef2",
+};
