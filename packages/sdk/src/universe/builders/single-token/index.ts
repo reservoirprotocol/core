@@ -58,7 +58,10 @@ export class SingleTokenBuilder extends BaseBuilder {
         startTime: order.params.start,
         endTime: order.params.end,
         tokenAmount: n(nftInfo.value),
-        fees: order.params.data.revenueSplits || [],
+        fees:
+          order.params.data.revenueSplits?.map(
+            ({ account, value }) => `${account}:${value}`
+          ) || [],
       });
 
       if (!copyOrder) {
@@ -114,7 +117,14 @@ export class SingleTokenBuilder extends BaseBuilder {
         dataType: params.fees?.length
           ? Constants.ORDER_DATA
           : Constants.DATA_TYPE_0X,
-        revenueSplits: params.fees || [],
+        revenueSplits:
+          params.fees?.map((fee) => {
+            const [account, value] = fee.split(":");
+            return {
+              account,
+              value,
+            };
+          }) || [],
       },
     });
   }

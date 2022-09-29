@@ -354,6 +354,12 @@ export class Router {
   ) {
     // Assume the bid details are consistent with the underlying order object
 
+    if (detail.kind === "universe") {
+      const order = detail.order as Sdk.Universe.Order;
+      const exchange = new Sdk.Universe.Exchange(this.chainId);
+      return exchange.fillOrderTx(taker, order);
+  }
+
     const { tx, exchangeKind } = await this.generateNativeBidFillTx(
       detail,
       taker
@@ -607,13 +613,6 @@ export class Router {
       return {
         tx: router.fillBuyOrderTx(taker, order, tokenId),
         exchangeKind: ExchangeKind.SUDOSWAP,
-      };
-    } else if (kind === "universe") {
-      order = order as Sdk.Universe.Order;
-      const exchange = new Sdk.Universe.Exchange(this.chainId);
-      return {
-        tx: await exchange.fillOrderTx(taker, order, ...(extraArgs || {})),
-        exchangeKind: ExchangeKind.UNIVERSE,
       };
     }
 
