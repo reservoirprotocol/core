@@ -57,7 +57,7 @@ describe("X2Y2 - SingleToken Erc721", () => {
     const sellerBalanceBefore = await ethers.provider.getBalance(
       order.params.maker
     );
-    const ownerBefore = await nft.getOwner(order.params.nft.tokenId);
+    const ownerBefore = await nft.getOwner(order.params.nft.tokenId!);
 
     expect(lc(ownerBefore)).to.eq(lc(order.params.maker));
 
@@ -71,7 +71,7 @@ describe("X2Y2 - SingleToken Erc721", () => {
     const sellerBalanceAfter = await ethers.provider.getBalance(
       order.params.maker
     );
-    const ownerAfter = await nft.getOwner(order.params.nft.tokenId);
+    const ownerAfter = await nft.getOwner(order.params.nft.tokenId!);
 
     expect(buyerBalanceAfter).to.be.lt(
       buyerBalanceBefore.sub(order.params.price)

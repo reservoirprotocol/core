@@ -156,6 +156,11 @@ export class Exchange {
         headers: {
           "Content-Type": "application/json",
           "X-Api-Key": this.apiKey,
+          ...(options?.referrer
+            ? {
+                "X-Api-Used-By": options?.referrer,
+              }
+            : {}),
         },
       }
     );
