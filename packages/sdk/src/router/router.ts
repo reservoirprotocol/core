@@ -238,7 +238,7 @@ export class Router {
       const detail = details[i];
       try {
         const { tx, exchangeKind, maker, isEscrowed } =
-          await this.generateNativeListingFillTx(detail, taker);
+          await this.generateNativeListingFillTx(detail, taker, options);
 
         if (detail.contractKind === "erc721") {
           routerTxs.push({
@@ -366,7 +366,8 @@ export class Router {
 
     const { tx, exchangeKind } = await this.generateNativeBidFillTx(
       detail,
-      taker
+      taker,
+      options
     );
 
     // The V5 router does not support filling X2Y2 bids, so we fill directly
@@ -442,7 +443,10 @@ export class Router {
 
   private async generateNativeListingFillTx(
     { kind, order, tokenId, amount }: ListingDetails,
-    taker: string
+    taker: string,
+    options?: {
+      referrer?: string;
+    }
   ): Promise<{
     tx: TxData;
     exchangeKind: ExchangeKind;
@@ -488,7 +492,7 @@ export class Router {
         String(process.env.X2Y2_API_KEY)
       );
       return {
-        tx: await exchange.fillOrderTx(this.contract.address, order),
+        tx: await exchange.fillOrderTx(this.contract.address, order, options),
         exchangeKind: ExchangeKind.X2Y2,
         maker: order.params.maker,
       };
@@ -536,7 +540,10 @@ export class Router {
 
   private async generateNativeBidFillTx(
     { kind, order, tokenId, extraArgs }: BidDetails,
-    taker: string
+    taker: string,
+    options?: {
+      referrer?: string;
+    }
   ): Promise<{ tx: TxData; exchangeKind: ExchangeKind }> {
     // When filling through the router, in all below cases we set
     // the router contract as the taker since forwarding received
@@ -607,7 +614,10 @@ export class Router {
         String(process.env.X2Y2_API_KEY)
       );
       return {
-        tx: await exchange.fillOrderTx(taker, order, { tokenId }),
+        tx: await exchange.fillOrderTx(taker, order, {
+          tokenId,
+          referrer: options?.referrer,
+        }),
         exchangeKind: ExchangeKind.X2Y2,
       };
     } else if (kind === "sudoswap") {
