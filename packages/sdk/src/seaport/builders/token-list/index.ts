@@ -12,6 +12,7 @@ import { bn, lc, s } from "../../../utils";
 
 interface BuildParams extends BaseBuildParams {
   tokenIds: BigNumberish[];
+  merkleRoot?: BigNumberish;
   amount?: BigNumberish;
 }
 
@@ -121,7 +122,9 @@ export class TokenListBuilder extends BaseBuilder {
     this.defaultInitialize(params);
 
     if (params.side === "buy") {
-      const merkleTree = generateMerkleTree(params.tokenIds);
+      const merkleRoot =
+        params.merkleRoot ?? generateMerkleTree(params.tokenIds).getHexRoot();
+
       return new Order(this.chainId, {
         kind: "token-list",
         offerer: params.offerer,
@@ -143,7 +146,7 @@ export class TokenListBuilder extends BaseBuilder {
                 ? Types.ItemType.ERC721
                 : Types.ItemType.ERC1155),
             token: params.contract,
-            identifierOrCriteria: lc(merkleTree.getHexRoot()),
+            identifierOrCriteria: lc(merkleRoot.toString()),
             startAmount: s(
               params.tokenKind === "erc1155" ? params.amount ?? 1 : 1
             ),
