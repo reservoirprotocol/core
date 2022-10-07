@@ -1,4 +1,3 @@
-import { defaultAbiCoder } from "@ethersproject/abi";
 import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
@@ -9,8 +8,6 @@ import * as Types from "./types";
 import { BytesEmpty, TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
-import Erc721Abi from "../common/abis/Erc721.json";
-import Erc1155Abi from "../common/abis/Erc1155.json";
 
 export class Exchange {
   public chainId: number;
@@ -57,7 +54,6 @@ export class Exchange {
     let value: BigNumber | undefined;
 
     if (order.params.kind?.startsWith("erc721")) {
-      const erc721 = new Contract(order.params.nft, Erc721Abi);
       if (order.params.direction === Types.TradeDirection.BUY) {
           data = this.contract.interface.encodeFunctionData("sellERC721", [
             order.getRaw(),
@@ -74,7 +70,6 @@ export class Exchange {
         value = bn(order.params.erc20TokenAmount).add(feeAmount);
       }
     } else {
-      const erc1155 = new Contract(order.params.nft, Erc1155Abi);
       if (order.params.direction === Types.TradeDirection.BUY) {
         data = this.contract.interface.encodeFunctionData("sellERC1155", [
           order.getRaw(),
@@ -226,39 +221,3 @@ export class Exchange {
     };
   }
 }
-
-const Erc721OrderAbiType = `(
-  uint8 direction,
-  address maker,
-  address taker,
-  uint256 expiry,
-  uint256 nonce,
-  address erc20Token,
-  uint256 erc20TokenAmount,
-  (address recipient, uint256 amount, bytes feeData)[] fees,
-  address erc721Token,
-  uint256 erc721TokenId,
-  (address propertyValidator, bytes propertyData)[] erc721TokenProperties
-)`;
-
-const Erc1155OrderAbiType = `(
-  uint8 direction,
-  address maker,
-  address taker,
-  uint256 expiry,
-  uint256 nonce,
-  address erc20Token,
-  uint256 erc20TokenAmount,
-  (address recipient, uint256 amount, bytes feeData)[] fees,
-  address erc1155Token,
-  uint256 erc1155TokenId,
-  (address propertyValidator, bytes propertyData)[] erc1155TokenProperties,
-  uint128 erc1155TokenAmount
-)`;
-
-const SignatureAbiType = `(
-  uint8 signatureType,
-  uint8 v,
-  bytes32 r,
-  bytes32 s
-)`;
