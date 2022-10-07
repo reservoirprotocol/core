@@ -533,6 +533,18 @@ export class Router {
         exchangeKind: ExchangeKind.UNIVERSE,
         maker: order.params.maker,
       };
+    } else if (kind === "element") {
+      order = order as Sdk.Element.Order;
+
+      // Support passing an amount for partially fillable erc1155 orders
+      const matchParams = order.buildMatching({ amount });
+
+      const exchange = new Sdk.Element.Exchange(this.chainId);
+      return {
+        tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
+        exchangeKind: ExchangeKind.ELEMENT,
+        maker: order.params.maker,
+      };
     }
 
     throw new Error("Unreachable");
@@ -627,6 +639,24 @@ export class Router {
       return {
         tx: router.fillBuyOrderTx(taker, order, tokenId),
         exchangeKind: ExchangeKind.SUDOSWAP,
+      };
+    } else if (kind === "element") {
+      order = order as Sdk.Element.Order;
+
+      const matchParams = order.buildMatching({
+        tokenId,
+        amount: 1,
+        // Do not unwrap in order to be compatible with the router
+        unwrapNativeToken: false,
+      });
+
+      const exchange = new Sdk.Element.Exchange(this.chainId);
+      return {
+        tx: exchange.fillOrderTx(filler, order, matchParams, {
+          // Do not use the `onReceived` hook filling to be compatible with the router
+          noDirectTransfer: true,
+        }),
+        exchangeKind: ExchangeKind.ELEMENT,
       };
     }
 
