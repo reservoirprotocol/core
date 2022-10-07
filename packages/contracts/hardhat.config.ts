@@ -26,9 +26,11 @@ const config: HardhatUserConfig = {
   networks: {
     // Development
     hardhat: {
-      chainId: 1,
+      chainId: process.env.GOERLI ? 5 : 1,
       forking: {
-        url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
+        url: `https://eth-${
+          process.env.GOERLI ? "goerli" : "mainnet"
+        }.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
         blockNumber: Number(process.env.BLOCK_NUMBER),
       },
       accounts: {
