@@ -72,7 +72,9 @@ export class Router {
       } else {
         const order = details[0].order as Sdk.Universe.Order;
         const exchange = new Sdk.Universe.Exchange(this.chainId);
-        return exchange.fillOrderTx(taker, order);
+        return exchange.fillOrderTx(taker, order, {
+          amount: Number(details[0].amount),
+        });
       }
     }
 
@@ -361,7 +363,9 @@ export class Router {
     if (detail.kind === "universe") {
       const order = detail.order as Sdk.Universe.Order;
       const exchange = new Sdk.Universe.Exchange(this.chainId);
-      return exchange.fillOrderTx(taker, order);
+      return exchange.fillOrderTx(taker, order, {
+        amount: Number(detail.extraArgs.amount),
+      });
     }
 
     const { tx, exchangeKind } = await this.generateNativeBidFillTx(
