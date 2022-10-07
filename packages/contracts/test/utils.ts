@@ -45,7 +45,7 @@ export const reset = async () => {
 
 // Retrieve the forked network's chain id
 export const getChainId = () =>
-  (network.config as any).forking?.url.includes("rinkeby") ? 4 : 1;
+  (network.config as any).forking?.url.includes("goerli") ? 5 : 1;
 
 // --- CONTRACT UTILS ---
 
