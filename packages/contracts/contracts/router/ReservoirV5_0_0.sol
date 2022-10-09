@@ -36,6 +36,8 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
 
     address public immutable seaport;
 
+    address public immutable sudoswap;
+
     error UnexpectedOwnerOrBalance();
     error UnexpectedSelector();
     error UnsuccessfulCall();
@@ -51,7 +53,8 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
         address foundationAddress,
         address x2y2Address,
         address x2y2ERC721DelegateAddress,
-        address seaportAddress
+        address seaportAddress,
+        address sudoswapAddress
     ) {
         weth = wethAddress;
 
@@ -102,6 +105,10 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
         // --- Seaport setup ---
 
         seaport = seaportAddress;
+
+        // --- Sudoswap setup ---
+
+        sudoswap = sudoswapAddress;
 
         // Approve the exchange
         IERC20(weth).approve(seaport, type(uint256).max);
