@@ -16,6 +16,7 @@ import {ISeaport} from "../interfaces/ISeaport.sol";
 import {IWyvernV23, IWyvernV23ProxyRegistry} from "../interfaces/IWyvernV23.sol";
 import {IX2Y2} from "../interfaces/IX2Y2.sol";
 import {IZeroExV4} from "../interfaces/IZeroExV4.sol";
+import {ISudoswap} from "../interfaces/ISudoswap.sol";
 
 contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
     address public immutable weth;
@@ -189,6 +190,11 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
         } else if (exchangeKind == ExchangeKind.FOUNDATION) {
             target = foundation;
             if (selector != IFoundation.buyV2.selector) {
+                revert UnexpectedSelector();
+            }
+        } else if (exchangeKind == ExchangeKind.SUDOSWAP) {
+            target = sudoswap;
+            if (selector != ISudoswap.swapETHForSpecificNFTs.selector) {
                 revert UnexpectedSelector();
             }
         } else {
