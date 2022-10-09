@@ -7,5 +7,6 @@ enum ExchangeKind {
     ZEROEX_V4,
     FOUNDATION,
     X2Y2,
-    SEAPORT
+    SEAPORT,
+    SUDOSWAP
 }
