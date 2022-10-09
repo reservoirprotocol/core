@@ -192,11 +192,6 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
             if (selector != IFoundation.buyV2.selector) {
                 revert UnexpectedSelector();
             }
-        } else if (exchangeKind == ExchangeKind.SUDOSWAP) {
-            target = sudoswap;
-            if (selector != ISudoswap.swapETHForSpecificNFTs.selector) {
-                revert UnexpectedSelector();
-            }
         } else {
             revert UnsupportedExchange();
         }
@@ -287,6 +282,11 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
             if (selector != IFoundation.buyV2.selector) {
                 revert UnexpectedSelector();
             }
+        } else if (exchangeKind == ExchangeKind.SUDOSWAP) {
+            target = sudoswap;
+            if (selector != ISudoswap.swapETHForSpecificNFTs.selector) {
+                revert UnexpectedSelector();
+            }
         } else {
             revert UnsupportedExchange();
         }
@@ -299,6 +299,7 @@ contract ReservoirV5_0_0 is Ownable, ReentrancyGuard {
         }
 
         if (
+            exchangeKind != ExchangeKind.SUDOSWAP &&
             exchangeKind != ExchangeKind.SEAPORT &&
             exchangeKind != ExchangeKind.WYVERN_V23
         ) {
