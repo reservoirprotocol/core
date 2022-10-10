@@ -1293,6 +1293,7 @@ __metadata:
     "@types/mocha": ^9.0.0
     "@types/node": ^16.11.12
     chai: ^4.3.4
+    chai-string: ^1.5.0
     dotenv: ^10.0.0
     ethereum-waffle: ^3.4.0
     ethers: ^5.6.8
@@ -3440,6 +3441,15 @@ __metadata:
     bignumber.js: ^9.0.1
     nofilter: ^1.0.4
   checksum: b3c39dae64370f361526dbec88f51d0f1b47027224cdd21dbd64c228f0fe7eaa945932d349ec5324068a6c6dcdbb1e3b46242852524fd53c526d14cb60514bdc
+  languageName: node
+  linkType: hard
+
+"chai-string@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "chai-string@npm:1.5.0"
+  peerDependencies:
+    chai: ^4.1.2
+  checksum: d443bb416f6d4dd3395442f459af197aff93f2546dcb5bce6313badf505aa828615117f0eadc99e97ec518b7d2df387b538c81c647e6daf5c386d5bafa212e8f
   languageName: node
   linkType: hard
 

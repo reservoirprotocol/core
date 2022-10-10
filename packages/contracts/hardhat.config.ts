@@ -26,13 +26,13 @@ const config: HardhatUserConfig = {
   networks: {
     // Development
     hardhat: {
-      chainId: process.env.GOERLI ? 5 : 1,
-      forking: {
-        url: `https://eth-${
-          process.env.GOERLI ? "goerli" : "mainnet"
-        }.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-        blockNumber: Number(process.env.BLOCK_NUMBER),
-      },
+      //chainId: process.env.GOERLI ? 5 : 1,
+      //forking: {
+        //url: `https://eth-${
+          //process.env.GOERLI ? "goerli" : "mainnet"
+        //}.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
+        //blockNumber: Number(process.env.BLOCK_NUMBER),
+      //},
       accounts: {
         mnemonic:
           "void forward involve old phone resource sentence fall friend wait strike copper urge reduce chapter",
