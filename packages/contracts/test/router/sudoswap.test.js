@@ -1,5 +1,4 @@
 var chai = require('chai');
-chai.use(require('chai-string'));
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
