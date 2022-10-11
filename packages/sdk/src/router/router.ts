@@ -735,6 +735,19 @@ export class Router {
       }
     }
 
+    const executeTxData = this.contracts.router.interface.encodeFunctionData(
+      "execute",
+      [
+        [
+          {
+            module: internalTx.module,
+            data: internalTx.data,
+            value: 0,
+          },
+        ],
+      ]
+    );
+
     // Wrap the exchange-specific fill transaction via the router
     // (use the `onReceived` hooks for single token filling)
     if (detail.contractKind === "erc721") {
@@ -744,7 +757,7 @@ export class Router {
         data:
           new Interface(ERC721Abi).encodeFunctionData(
             "safeTransferFrom(address,address,uint256,bytes)",
-            [taker, internalTx.module, detail.tokenId, internalTx.data]
+            [taker, internalTx.module, detail.tokenId, executeTxData]
           ) + generateSourceBytes(options?.source),
       };
     } else {
@@ -759,7 +772,7 @@ export class Router {
               internalTx.module,
               detail.tokenId,
               detail.amount ?? 1,
-              internalTx.data,
+              executeTxData,
             ]
           ) + generateSourceBytes(options?.source),
       };
