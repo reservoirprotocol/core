@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
@@ -9,14 +11,19 @@ import {IX2Y2} from "../../../interfaces/IX2Y2.sol";
 
 // Notes on the X2Y2 module:
 // - supports filling listings (only ERC721 and ETH-denominated)
-// - TODO: support ERC1155 listings
-// - TODO: support bids
+// - supports filling bids (only ERC721)
+// - TODO: support ERC1155 listings/bids
 
 contract X2Y2Module is BaseExchangeModule {
+    using SafeERC20 for IERC20;
+
     // --- Fields ---
 
     IX2Y2 public constant EXCHANGE =
         IX2Y2(0x74312363e45DCaBA76c59ec49a7Aa8A65a67EeD3);
+
+    address public constant ERC721_DELEGATE =
+        0xF849de01B080aDC3A814FaBE1E2087475cF2E354;
 
     // --- Constructor ---
 
@@ -76,6 +83,66 @@ contract X2Y2Module is BaseExchangeModule {
         }
     }
 
+    // --- [ERC721] Single offer ---
+
+    function acceptERC721Offer(
+        IX2Y2.RunInput calldata input,
+        OfferParams calldata params,
+        uint256 tokenId
+    ) external nonReentrant {
+        if (input.details.length != 1) {
+            revert WrongParams();
+        }
+
+        // Extract the order's corresponding token
+        IX2Y2.SettleDetail calldata detail = input.details[0];
+        IX2Y2.Order calldata order = input.orders[detail.orderIdx];
+        IX2Y2.OrderItem calldata orderItem = order.items[detail.itemIdx];
+        if (detail.op != IX2Y2.Op.COMPLETE_BUY_OFFER) {
+            revert WrongParams();
+        }
+        // Apply mask (to support collection-wide offers)
+        bytes memory orderItemData = orderItem.data;
+        if (order.dataMask.length > 0 && detail.dataReplacement.length > 0) {
+            uint256 length = orderItemData.length;
+            for (uint256 i = 0; i < length; ) {
+                if (order.dataMask[i] != 0) {
+                    orderItemData[i] = detail.dataReplacement[i];
+                }
+
+                unchecked {
+                    ++i;
+                }
+            }
+        }
+        IX2Y2.Pair[] memory pairs = abi.decode(orderItemData, (IX2Y2.Pair[]));
+        if (pairs.length != 1) {
+            revert WrongParams();
+        }
+
+        IERC721 token = IERC721(pairs[0].token);
+
+        // Approve the exchange if needed
+        _approveERC721IfNeeded(token, address(ERC721_DELEGATE));
+
+        // Execute fill
+        try EXCHANGE.run(input) {
+            IERC20(order.currency).safeTransferFrom(
+                address(this),
+                params.fillTo,
+                detail.price
+            );
+        } catch {
+            // Revert if specified
+            if (params.revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
+        }
+
+        // Refund any ERC721 leftover
+        _sendAllERC721(params.refundTo, token, tokenId);
+    }
+
     // --- ERC721 / ERC1155 hooks ---
 
     // Single token offer acceptance can be done approval-less by using the
@@ -132,6 +199,9 @@ contract X2Y2Module is BaseExchangeModule {
         IX2Y2.OrderItem calldata orderItem = input
             .orders[detail.orderIdx]
             .items[detail.itemIdx];
+        if (detail.op != IX2Y2.Op.COMPLETE_SELL_OFFER) {
+            revert WrongParams();
+        }
         IX2Y2.Pair[] memory pairs = abi.decode(orderItem.data, (IX2Y2.Pair[]));
         if (pairs.length != 1) {
             revert WrongParams();

@@ -15,7 +15,7 @@ import { BundleOrder } from "./bundle-order";
 import { Order } from "./order";
 import * as Types from "./types";
 import * as CommonAddresses from "../common/addresses";
-import { TxData, bn, generateReferrerBytes, lc, n, s } from "../utils";
+import { TxData, bn, generateSourceBytes, lc, n, s } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -41,7 +41,7 @@ export class Exchange {
         amount: string;
         recipient: BigNumberish;
       }[];
-      referrer?: string;
+      source?: string;
     }
   ): Promise<TransactionResponse> {
     const tx = this.fillOrderTx(
@@ -64,7 +64,7 @@ export class Exchange {
         amount: string;
         recipient: BigNumberish;
       }[];
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     const recipient = options?.recipient ?? AddressZero;
@@ -138,7 +138,7 @@ export class Exchange {
                   ],
                   signature: order.params.signature!,
                 },
-              ]) + generateReferrerBytes(options?.referrer),
+              ]) + generateSourceBytes(options?.source),
             value:
               info.paymentToken === CommonAddresses.Eth[this.chainId]
                 ? bn(order.getMatchingPrice())
@@ -171,7 +171,7 @@ export class Exchange {
                   conduitKey,
                   recipient,
                 ]
-              ) + generateReferrerBytes(options?.referrer),
+              ) + generateSourceBytes(options?.source),
             value:
               info.paymentToken === CommonAddresses.Eth[this.chainId]
                 ? bn(order.getMatchingPrice())
@@ -231,7 +231,7 @@ export class Exchange {
                   ],
                   signature: order.params.signature!,
                 },
-              ]) + generateReferrerBytes(options?.referrer),
+              ]) + generateSourceBytes(options?.source),
           };
         } else {
           // Use "advanced" fulfillment
@@ -257,7 +257,7 @@ export class Exchange {
                   conduitKey,
                   recipient,
                 ]
-              ) + generateReferrerBytes(options?.referrer),
+              ) + generateSourceBytes(options?.source),
           };
         }
       }
@@ -290,7 +290,7 @@ export class Exchange {
               matchParams.criteriaResolvers || [],
               conduitKey,
               recipient,
-            ]) + generateReferrerBytes(options?.referrer),
+            ]) + generateSourceBytes(options?.source),
           value:
             (info as BundleAskOrderInfo).paymentToken ===
             CommonAddresses.Eth[this.chainId]
@@ -314,7 +314,7 @@ export class Exchange {
     options?: {
       recipient?: string;
       conduitKey?: string;
-      referrer?: string;
+      source?: string;
       maxOrdersToFulfill?: number;
     }
   ): Promise<TransactionResponse> {
@@ -334,7 +334,7 @@ export class Exchange {
     options?: {
       recipient?: string;
       conduitKey?: string;
-      referrer?: string;
+      source?: string;
       maxOrdersToFulfill?: number;
     }
   ): TxData {
@@ -390,7 +390,7 @@ export class Exchange {
             recipient,
             options?.maxOrdersToFulfill ?? 255,
           ]
-        ) + generateReferrerBytes(options?.referrer),
+        ) + generateSourceBytes(options?.source),
       value: bn(
         orders
           .filter((order) => {

@@ -4,7 +4,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -49,8 +49,8 @@ export class Exchange {
     taker: Signer,
     order: Order,
     options?: {
-      referrer?: string;
-      nativeReferrerAddress?: string;
+      source?: string;
+      nativeSourceAddress?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillOrderTx(await taker.getAddress(), order, options);
@@ -61,8 +61,8 @@ export class Exchange {
     taker: string,
     order: Order,
     options?: {
-      referrer?: string;
-      nativeReferrerAddress?: string;
+      source?: string;
+      nativeSourceAddress?: string;
     }
   ): TxData {
     return {
@@ -73,8 +73,8 @@ export class Exchange {
           order.params.contract,
           order.params.tokenId,
           order.params.price,
-          options?.nativeReferrerAddress ?? AddressZero,
-        ]) + generateReferrerBytes(options?.referrer),
+          options?.nativeSourceAddress ?? AddressZero,
+        ]) + generateSourceBytes(options?.source),
       value: bn(order.params.price).toHexString(),
     };
   }

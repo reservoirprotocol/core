@@ -8,7 +8,7 @@ import axios from "axios";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -118,7 +118,7 @@ export class Exchange {
   public async fillOrder(
     taker: Signer,
     order: Order,
-    options?: { referrer?: string }
+    options?: { source?: string }
   ) {
     const tx = await this.fillOrderTx(await taker.getAddress(), order, options);
     return taker.sendTransaction(tx);
@@ -127,7 +127,7 @@ export class Exchange {
   public async fillOrderTx(
     taker: string,
     order: Order,
-    options?: { referrer?: string; tokenId?: string }
+    options?: { source?: string; tokenId?: string }
   ): Promise<TxData> {
     if (order.params.type === "buy" && !options?.tokenId) {
       throw new Error("When filling buy orders, `tokenId` must be specified");
@@ -156,9 +156,9 @@ export class Exchange {
         headers: {
           "Content-Type": "application/json",
           "X-Api-Key": this.apiKey,
-          ...(options?.referrer
+          ...(options?.source
             ? {
-                "X-Api-Used-By": options?.referrer,
+                "X-Api-Used-By": options?.source,
               }
             : {}),
         },
@@ -170,7 +170,7 @@ export class Exchange {
       data:
         this.contract.interface.getSighash("run") +
         response.data.data[0].input.slice(2) +
-        generateReferrerBytes(options?.referrer),
+        generateSourceBytes(options?.source),
       to: this.contract.address,
       value: bn(order.params.price).toHexString(),
     };

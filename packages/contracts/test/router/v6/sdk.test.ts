@@ -11,16 +11,15 @@ import {
   getCurrentTimestamp,
   reset,
   setupNFTs,
-  setupRouter,
-} from "../utils";
+  setupRouterWithModules,
+} from "../../utils";
 import { ListingDetails } from "@reservoir0x/sdk/src/router/types";
 
-// TODO: Add more tests for multi buy
-describe("Router - multi buy", () => {
+describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
-  let referrer: SignerWithAddress;
+  let feeRecipient: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
@@ -28,24 +27,18 @@ describe("Router - multi buy", () => {
 
   let erc721: Contract;
   let erc1155: Contract;
-  let router: Sdk.Router.Router;
 
   beforeEach(async () => {
-    [deployer, referrer, alice, bob, carol, dan] = await ethers.getSigners();
+    [deployer, feeRecipient, alice, bob, carol, dan] =
+      await ethers.getSigners();
 
     ({ erc721, erc1155 } = await setupNFTs(deployer));
-
-    router = new Sdk.Router.Router(chainId, ethers.provider);
-    if (!process.env.USE_DEPLOYED_ROUTER) {
-      router.contract = await setupRouter(chainId, deployer);
-    }
+    await setupRouterWithModules(chainId, deployer);
   });
 
   afterEach(reset);
 
   it("Fill multiple listings", async () => {
-    const routerFee = 100;
-
     const buyer = dan;
 
     const sellOrders: ListingDetails[] = [];
@@ -148,11 +141,9 @@ describe("Router - multi buy", () => {
     const seller3 = carol;
     const tokenId3 = 0;
     const totalAmount3 = 9;
-    // TODO: Investigate precision issues (eg. when setting `amount3 = 4`)
-    const amount3 = 3;
+    const amount3 = 5;
     const price3 = parseEther("2");
     const fee3 = parseEther("0.1");
-    const totalPaid3 = price3.add(fee3);
     {
       // Mint erc1155 to seller
       await erc1155.connect(seller3).mintMany(tokenId3, totalAmount3);
@@ -198,7 +189,7 @@ describe("Router - multi buy", () => {
 
     const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
 
-    const referrerEthBalanceBefore = await referrer.getBalance();
+    const feeRecipientEthBalanceBefore = await feeRecipient.getBalance();
     const seller1EthBalanceBefore = await seller1.getBalance();
     const seller2WethBalanceBefore = await weth.getBalance(seller2.address);
     const seller3EthBalanceBefore = await seller3.getBalance();
@@ -212,13 +203,26 @@ describe("Router - multi buy", () => {
     expect(token2OwnerBefore).to.eq(seller2.address);
     expect(token3BuyerBalanceBefore).to.eq(0);
 
-    const tx = await router.fillListingsTx(sellOrders, buyer.address, {
-      referrer: "reservoir.market",
-      fee: { bps: routerFee, recipient: referrer.address },
-    });
-    await buyer.sendTransaction(tx);
+    const feesOnTop = [
+      {
+        recipient: feeRecipient.address,
+        amount: parseEther("0.03"),
+      },
+    ];
 
-    const referrerEthBalanceAfter = await referrer.getBalance();
+    const router = new Sdk.Router.Router(chainId, ethers.provider);
+    const { txData } = await router.fillListingsTx(
+      sellOrders,
+      buyer.address,
+      Sdk.Common.Addresses.Eth[chainId],
+      {
+        source: "reservoir.market",
+        fees: feesOnTop,
+      }
+    );
+    await buyer.sendTransaction(txData);
+
+    const feeRecipientEthBalanceAfter = await feeRecipient.getBalance();
     const seller1EthBalanceAfter = await seller1.getBalance();
     const seller2WethBalanceAfter = await weth.getBalance(seller2.address);
     const seller3EthBalanceAfter = await seller3.getBalance();
@@ -228,12 +232,8 @@ describe("Router - multi buy", () => {
       buyer.address,
       tokenId3
     );
-    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
-      price1
-        .add(price2)
-        .add(totalPaid3.mul(amount3).div(totalAmount3))
-        .mul(routerFee)
-        .div(10000)
+    expect(feeRecipientEthBalanceAfter.sub(feeRecipientEthBalanceBefore)).to.eq(
+      feesOnTop.map(({ amount }) => bn(amount)).reduce((a, b) => a.add(b))
     );
     expect(seller1EthBalanceAfter.sub(seller1EthBalanceBefore)).to.eq(
       price1.sub(price1.mul(fee1).div(10000))
@@ -241,22 +241,32 @@ describe("Router - multi buy", () => {
     expect(seller2WethBalanceAfter.sub(seller2WethBalanceBefore)).to.eq(
       price2.sub(price2.mul(fee2).div(10000))
     );
-    // TODO: Investigate precision issues
-    expect(seller3EthBalanceAfter.sub(seller3EthBalanceBefore).div(100)).to.eq(
-      price3.mul(amount3).div(totalAmount3).div(100)
+    expect(seller3EthBalanceAfter.sub(seller3EthBalanceBefore)).to.eq(
+      price3
+        .mul(amount3)
+        .add(totalAmount3 + 1)
+        .div(totalAmount3)
     );
     expect(token1OwnerAfter).to.eq(buyer.address);
     expect(token2OwnerAfter).to.eq(buyer.address);
     expect(token3BuyerBalanceAfter).to.eq(amount3);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
-    expect(await weth.getBalance(router.contract.address)).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.router.address)
+    ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.looksRareModule.address)
+    ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.seaportModule.address)
+    ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.zeroExV4Module.address)
+    ).to.eq(0);
   });
 
   it("Fill multiple listings with skipped reverts", async () => {
-    const routerFee = 100;
-
     const buyer = dan;
 
     const sellOrders: ListingDetails[] = [];
@@ -318,37 +328,54 @@ describe("Router - multi buy", () => {
       });
     }
 
-    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
-
-    const referrerEthBalanceBefore = await referrer.getBalance();
+    const feeRecipientEthBalanceBefore = await feeRecipient.getBalance();
     const seller1EthBalanceBefore = await seller1.getBalance();
     const token1OwnerBefore = await erc721.ownerOf(tokenId1);
     expect(token1OwnerBefore).to.eq(seller1.address);
 
+    const router = new Sdk.Router.Router(chainId, ethers.provider);
+
+    const feesOnTop = [
+      {
+        recipient: feeRecipient.address,
+        amount: parseEther("0.03"),
+      },
+    ];
+
     const nonPartialTx = await router.fillListingsTx(
       sellOrders,
       buyer.address,
+      Sdk.Common.Addresses.Eth[chainId],
       {
-        referrer: "reservoir.market",
-        fee: { bps: routerFee, recipient: referrer.address },
+        source: "reservoir.market",
+        fees: feesOnTop,
       }
     );
-    await expect(buyer.sendTransaction(nonPartialTx)).to.be.revertedWith(
-      "reverted with custom error 'UnsuccessfulFill()'"
+    await expect(buyer.sendTransaction(nonPartialTx.txData)).to.be.revertedWith(
+      "reverted with custom error 'UnsuccessfulExecution()'"
     );
 
-    const partialTx = await router.fillListingsTx(sellOrders, buyer.address, {
-      referrer: "reservoir.market",
-      fee: { bps: routerFee, recipient: referrer.address },
-      partial: true,
-    });
-    await buyer.sendTransaction(partialTx);
+    const partialTx = await router.fillListingsTx(
+      sellOrders,
+      buyer.address,
+      Sdk.Common.Addresses.Eth[chainId],
+      {
+        source: "reservoir.market",
+        fees: feesOnTop,
+        partial: true,
+      }
+    );
+    await buyer.sendTransaction(partialTx.txData);
 
-    const referrerEthBalanceAfter = await referrer.getBalance();
+    const feeRecipientEthBalanceAfter = await feeRecipient.getBalance();
     const seller1EthBalanceAfter = await seller1.getBalance();
     const token1OwnerAfter = await erc721.ownerOf(tokenId1);
-    expect(referrerEthBalanceAfter.sub(referrerEthBalanceBefore)).to.eq(
-      price1.mul(routerFee).div(10000)
+    expect(feeRecipientEthBalanceAfter.sub(feeRecipientEthBalanceBefore)).to.eq(
+      feesOnTop
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b))
+        // The fees get averaged over the number of listings
+        .div(2)
     );
     expect(seller1EthBalanceAfter.sub(seller1EthBalanceBefore)).to.eq(
       price1.sub(price1.mul(fee1).div(10000))
@@ -356,8 +383,12 @@ describe("Router - multi buy", () => {
     expect(token1OwnerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
-    expect(await weth.getBalance(router.contract.address)).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.router.address)
+    ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.seaportModule.address)
+    ).to.eq(0);
   });
 
   it("Fill multiple Seaport listings", async () => {
@@ -509,8 +540,6 @@ describe("Router - multi buy", () => {
       });
     }
 
-    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
-
     const seller1EthBalanceBefore = await seller1.getBalance();
     const seller2EthBalanceBefore = await seller2.getBalance();
     const seller3EthBalanceBefore = await seller3.getBalance();
@@ -522,10 +551,16 @@ describe("Router - multi buy", () => {
     expect(token2OwnerBefore).to.eq(seller2.address);
     expect(token3OwnerBefore).to.eq(seller3.address);
 
-    const tx = await router.fillListingsTx(sellOrders, buyer.address, {
-      referrer: "reservoir.market",
-    });
-    await buyer.sendTransaction(tx);
+    const router = new Sdk.Router.Router(chainId, ethers.provider);
+    const tx = await router.fillListingsTx(
+      sellOrders,
+      buyer.address,
+      Sdk.Common.Addresses.Eth[chainId],
+      {
+        source: "reservoir.market",
+      }
+    );
+    await buyer.sendTransaction(tx.txData);
 
     const seller1EthBalanceAfter = await seller1.getBalance();
     const seller2EthBalanceAfter = await seller2.getBalance();
@@ -548,6 +583,11 @@ describe("Router - multi buy", () => {
     expect(token3OwnerAfter).to.eq(buyer.address);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.router.address)
+    ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.seaportModule.address)
+    ).to.eq(0);
   });
 });

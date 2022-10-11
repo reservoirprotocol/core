@@ -4,7 +4,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -79,7 +79,7 @@ export class Exchange {
           order.params.askCurrency,
           order.params.askPrice,
           options?.finder ?? AddressZero,
-        ]) + generateReferrerBytes(options?.finder),
+        ]) + generateSourceBytes(options?.finder),
       value: bn(order.params.askPrice).toHexString(),
     };
   }

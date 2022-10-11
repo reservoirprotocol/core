@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { ethers, network } from "hardhat";
 
-// --- MISC UTILS ---
+// --- Misc ---
 
 export const bn = (value: BigNumberish) => BigNumber.from(value);
 
@@ -24,7 +24,7 @@ export const getRandomInteger = (min: number, max: number) => {
 export const getRandomFloat = (min: number, max: number) =>
   Math.random() * (max - min) + min;
 
-// --- NETWORK UTILS ---
+// --- Network ---
 
 // Reset forked network state
 export const reset = async () => {
@@ -47,9 +47,7 @@ export const reset = async () => {
 export const getChainId = () =>
   (network.config as any).forking?.url.includes("goerli") ? 5 : 1;
 
-// --- CONTRACT UTILS ---
-
-// TODO: Fix type issues and avoid returning `any`
+// --- Deployments ---
 
 // Deploy mock ERC20 contract
 export const setupTokens = async (deployer: SignerWithAddress) => {
@@ -72,94 +70,35 @@ export const setupNFTs = async (deployer: SignerWithAddress) => {
   return { erc721, erc1155 };
 };
 
-export enum ExchangeKind {
-  WYVERN_V23,
-  LOOKS_RARE,
-  ZEROEX_V4,
-  FOUNDATION,
-  X2Y2,
-  SEAPORT,
-}
-
-export const setupRouter = async (
+// Deploy router with modules and override any SDK addresses
+export const setupRouterWithModules = async (
   chainId: number,
-  deployer: SignerWithAddress,
-  version: "v1" | "v2" | "v3" | "v4" | "v5" = "v5"
+  deployer: SignerWithAddress
 ) => {
-  switch (version) {
-    case "v1":
-      return ethers
-        .getContractFactory("ReservoirV1_0_0", deployer)
-        .then((factory) =>
-          factory.deploy(
-            Sdk.Common.Addresses.Weth[chainId],
-            Sdk.LooksRare.Addresses.Exchange[chainId],
-            Sdk.WyvernV23.Addresses.Exchange[chainId],
-            Sdk.ZeroExV4.Addresses.Exchange[chainId]
-          )
-        ) as any;
+  // Deploy router
 
-    case "v2":
-      return ethers
-        .getContractFactory("ReservoirV2_0_0", deployer)
-        .then((factory) =>
-          factory.deploy(
-            Sdk.Common.Addresses.Weth[chainId],
-            Sdk.LooksRare.Addresses.Exchange[chainId],
-            Sdk.WyvernV23.Addresses.Exchange[chainId],
-            Sdk.ZeroExV4.Addresses.Exchange[chainId],
-            Sdk.Foundation.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Erc721Delegate[chainId]
-          )
-        ) as any;
+  const router = await ethers
+    .getContractFactory("ReservoirV6_0_0", deployer)
+    .then((factory) => factory.deploy());
+  Sdk.Router.Addresses.Router[chainId] = router.address.toLowerCase();
 
-    case "v3":
-      return ethers
-        .getContractFactory("ReservoirV3_0_0", deployer)
-        .then((factory) =>
-          factory.deploy(
-            Sdk.Common.Addresses.Weth[chainId],
-            Sdk.LooksRare.Addresses.Exchange[chainId],
-            Sdk.WyvernV23.Addresses.Exchange[chainId],
-            Sdk.ZeroExV4.Addresses.Exchange[chainId],
-            Sdk.Foundation.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
-            Sdk.Seaport.Addresses.Exchange[chainId]
-          )
-        ) as any;
+  // Deploy modules
 
-    case "v4":
-      return ethers
-        .getContractFactory("ReservoirV4_0_0", deployer)
-        .then((factory) =>
-          factory.deploy(
-            Sdk.Common.Addresses.Weth[chainId],
-            Sdk.LooksRare.Addresses.Exchange[chainId],
-            Sdk.WyvernV23.Addresses.Exchange[chainId],
-            Sdk.ZeroExV4.Addresses.Exchange[chainId],
-            Sdk.Foundation.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
-            Sdk.Seaport.Addresses.Exchange[chainId]
-          )
-        ) as any;
+  const looksRareModule = await ethers
+    .getContractFactory("LooksRareModule", deployer)
+    .then((factory) => factory.deploy(deployer.address, router.address));
+  Sdk.Router.Addresses.LooksRareModule[chainId] =
+    looksRareModule.address.toLowerCase();
 
-    case "v5":
-      return ethers
-        .getContractFactory("ReservoirV5_0_0", deployer)
-        .then((factory) =>
-          factory.deploy(
-            Sdk.Common.Addresses.Weth[chainId],
-            Sdk.LooksRare.Addresses.Exchange[chainId],
-            Sdk.WyvernV23.Addresses.Exchange[chainId],
-            Sdk.ZeroExV4.Addresses.Exchange[chainId],
-            Sdk.Foundation.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Exchange[chainId],
-            Sdk.X2Y2.Addresses.Erc721Delegate[chainId],
-            Sdk.Seaport.Addresses.Exchange[chainId]
-          )
-        ) as any;
-  }
+  const seaportModule = await ethers
+    .getContractFactory("SeaportModule", deployer)
+    .then((factory) => factory.deploy(deployer.address, router.address));
+  Sdk.Router.Addresses.SeaportModule[chainId] =
+    seaportModule.address.toLowerCase();
+
+  const zeroExV4Module = await ethers
+    .getContractFactory("ZeroExV4Module", deployer)
+    .then((factory) => factory.deploy(deployer.address, router.address));
+  Sdk.Router.Addresses.ZeroExV4Module[chainId] =
+    zeroExV4Module.address.toLowerCase();
 };

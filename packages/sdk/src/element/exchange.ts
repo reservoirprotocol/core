@@ -5,7 +5,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { BytesEmpty, TxData, bn, generateReferrerBytes } from "../utils";
+import { BytesEmpty, TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -26,7 +26,7 @@ export class Exchange {
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillOrderTx(
@@ -44,7 +44,7 @@ export class Exchange {
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     const feeAmount = order.getFeeAmount();
@@ -55,13 +55,13 @@ export class Exchange {
 
     if (order.params.kind?.startsWith("erc721")) {
       if (order.params.direction === Types.TradeDirection.BUY) {
-          data = this.contract.interface.encodeFunctionData("sellERC721", [
-            order.getRaw(),
-            order.getRaw(),
-            matchParams.nftId!,
-            matchParams.unwrapNativeToken ?? true,
-            BytesEmpty,
-          ]);
+        data = this.contract.interface.encodeFunctionData("sellERC721", [
+          order.getRaw(),
+          order.getRaw(),
+          matchParams.nftId!,
+          matchParams.unwrapNativeToken ?? true,
+          BytesEmpty,
+        ]);
       } else {
         data = this.contract.interface.encodeFunctionData("buyERC721", [
           order.getRaw(),
@@ -100,7 +100,7 @@ export class Exchange {
     return {
       from: taker,
       to,
-      data: data + generateReferrerBytes(options?.referrer),
+      data: data + generateSourceBytes(options?.source),
       value: value && bn(value).toHexString(),
     };
   }
@@ -112,7 +112,7 @@ export class Exchange {
     orders: Order[],
     matchParams: Types.MatchParams[],
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.batchBuyTx(
@@ -129,7 +129,7 @@ export class Exchange {
     orders: Order[],
     matchParams: Types.MatchParams[],
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     const sellOrders: any[] = [];
@@ -187,7 +187,7 @@ export class Exchange {
               sellOrders,
               signatures,
               false,
-            ])) + generateReferrerBytes(options?.referrer),
+            ])) + generateSourceBytes(options?.source),
       value: value && bn(value).toHexString(),
     };
   }
