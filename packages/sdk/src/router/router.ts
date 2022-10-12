@@ -321,6 +321,7 @@ export class Router {
       const orders = looksRareDetails.map(
         (d) => d.order as Sdk.LooksRare.Order
       );
+      const module = this.contracts.looksRareModule.address;
 
       const fees = (options?.fees ?? []).map(({ recipient, amount }) => ({
         recipient,
@@ -336,7 +337,7 @@ export class Router {
         .reduce((a, b) => a.add(b), bn(0));
 
       executions.push({
-        module: this.contracts.looksRareModule.address,
+        module,
         data:
           orders.length === 1
             ? this.contracts.looksRareModule.interface.encodeFunctionData(
@@ -344,7 +345,7 @@ export class Router {
                 [
                   orders[0].buildMatching(
                     // For LooksRare, the module acts as the taker proxy
-                    this.contracts.looksRareModule.address
+                    module
                   ),
                   orders[0].params,
                   {
@@ -362,7 +363,7 @@ export class Router {
                   orders.map((order) =>
                     order.buildMatching(
                       // For LooksRare, the module acts as the taker proxy
-                      this.contracts.looksRareModule.address
+                      module
                     )
                   ),
                   orders.map((order) => order.params),
@@ -489,6 +490,7 @@ export class Router {
     // Handle X2Y2 listings
     if (x2y2Details.length) {
       const orders = x2y2Details.map((d) => d.order as Sdk.X2Y2.Order);
+      const module = this.contracts.x2y2Module.address;
 
       const fees = (options?.fees ?? []).map(({ recipient, amount }) => ({
         recipient,
@@ -508,7 +510,7 @@ export class Router {
         process.env.X2Y2_API_KEY!
       );
       executions.push({
-        module: this.contracts.x2y2Module.address,
+        module,
         data:
           orders.length === 1
             ? this.contracts.x2y2Module.interface.encodeFunctionData(
@@ -517,10 +519,15 @@ export class Router {
                   // Fetch X2Y2-signed input
                   exchange.contract.interface.decodeFunctionData(
                     "run",
-                    await exchange.fetchInput(taker, orders[0], {
-                      source: options?.source,
-                      tokenId: x2y2Details[0].tokenId,
-                    })
+                    await exchange.fetchInput(
+                      // For X2Y2, the module acts as the taker proxy
+                      module,
+                      orders[0],
+                      {
+                        source: options?.source,
+                        tokenId: x2y2Details[0].tokenId,
+                      }
+                    )
                   ).input,
                   {
                     fillTo: taker,
@@ -540,10 +547,15 @@ export class Router {
                         // Fetch X2Y2-signed input
                         exchange.contract.interface.decodeFunctionData(
                           "run",
-                          await exchange.fetchInput(taker, order, {
-                            source: options?.source,
-                            tokenId: x2y2Details[i].tokenId,
-                          })
+                          await exchange.fetchInput(
+                            // For X2Y2, the module acts as the taker proxy
+                            module,
+                            order,
+                            {
+                              source: options?.source,
+                              tokenId: x2y2Details[i].tokenId,
+                            }
+                          )
                         ).input
                     )
                   ),
