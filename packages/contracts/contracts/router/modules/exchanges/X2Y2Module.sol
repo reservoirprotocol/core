@@ -11,8 +11,6 @@ import {IX2Y2} from "../../../interfaces/IX2Y2.sol";
 
 // Notes on the X2Y2 module:
 // - supports filling listings (only ERC721 and ETH-denominated)
-// - supports filling bids (only ERC721)
-// - TODO: support ERC1155 listings/bids
 
 contract X2Y2Module is BaseExchangeModule {
     using SafeERC20 for IERC20;
@@ -81,66 +79,6 @@ contract X2Y2Module is BaseExchangeModule {
                 ++i;
             }
         }
-    }
-
-    // --- [ERC721] Single offer ---
-
-    function acceptERC721Offer(
-        IX2Y2.RunInput calldata input,
-        OfferParams calldata params,
-        uint256 tokenId
-    ) external nonReentrant {
-        if (input.details.length != 1) {
-            revert WrongParams();
-        }
-
-        // Extract the order's corresponding token
-        IX2Y2.SettleDetail calldata detail = input.details[0];
-        IX2Y2.Order calldata order = input.orders[detail.orderIdx];
-        IX2Y2.OrderItem calldata orderItem = order.items[detail.itemIdx];
-        if (detail.op != IX2Y2.Op.COMPLETE_BUY_OFFER) {
-            revert WrongParams();
-        }
-        // Apply mask (to support collection-wide offers)
-        bytes memory orderItemData = orderItem.data;
-        if (order.dataMask.length > 0 && detail.dataReplacement.length > 0) {
-            uint256 length = orderItemData.length;
-            for (uint256 i = 0; i < length; ) {
-                if (order.dataMask[i] != 0) {
-                    orderItemData[i] = detail.dataReplacement[i];
-                }
-
-                unchecked {
-                    ++i;
-                }
-            }
-        }
-        IX2Y2.Pair[] memory pairs = abi.decode(orderItemData, (IX2Y2.Pair[]));
-        if (pairs.length != 1) {
-            revert WrongParams();
-        }
-
-        IERC721 token = IERC721(pairs[0].token);
-
-        // Approve the exchange if needed
-        _approveERC721IfNeeded(token, address(ERC721_DELEGATE));
-
-        // Execute fill
-        try EXCHANGE.run(input) {
-            IERC20(order.currency).safeTransferFrom(
-                address(this),
-                params.fillTo,
-                detail.price
-            );
-        } catch {
-            // Revert if specified
-            if (params.revertIfIncomplete) {
-                revert UnsuccessfulFill();
-            }
-        }
-
-        // Refund any ERC721 leftover
-        _sendAllERC721(params.refundTo, token, tokenId);
     }
 
     // --- ERC721 / ERC1155 hooks ---

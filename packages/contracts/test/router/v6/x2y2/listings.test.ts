@@ -121,8 +121,7 @@ describe("[ReservoirV6_0_0] X2Y2 listings", () => {
         "https://api.x2y2.org/api/orders/sign",
         {
           caller: x2y2Module.address,
-          // COMPLETE_SELL_OFFER
-          op: 1,
+          op: Sdk.X2Y2.Types.Op.COMPLETE_SELL_OFFER,
           amountToEth: "0",
           amountToWeth: "0",
           items: [

@@ -11,7 +11,6 @@ import {ISeaport} from "../../../interfaces/ISeaport.sol";
 // Notes on the Seaport module:
 // - supports filling listings (both ERC721/ERC1155)
 // - supports filling offers (both ERC721/ERC1155)
-// - TODO: integrate order validation
 
 contract SeaportModule is BaseExchangeModule {
     // --- Structs ---

@@ -118,7 +118,7 @@ export class Exchange {
   public async fillOrder(
     taker: Signer,
     order: Order,
-    options?: { source?: string }
+    options?: { source?: string; tokenId?: string }
   ) {
     const tx = await this.fillOrderTx(await taker.getAddress(), order, options);
     return taker.sendTransaction(tx);
@@ -129,48 +129,11 @@ export class Exchange {
     order: Order,
     options?: { source?: string; tokenId?: string }
   ): Promise<TxData> {
-    if (order.params.type === "buy" && !options?.tokenId) {
-      throw new Error("When filling buy orders, `tokenId` must be specified");
-    }
-
-    const response = await axios.post(
-      "https://api.x2y2.org/api/orders/sign",
-      {
-        caller: taker,
-        op:
-          order.params.type === "sell"
-            ? Types.Op.COMPLETE_SELL_OFFER
-            : Types.Op.COMPLETE_BUY_OFFER,
-        amountToEth: "0",
-        amountToWeth: "0",
-        items: [
-          {
-            orderId: order.params.id,
-            currency: order.params.currency,
-            price: order.params.price,
-            tokenId: order.params.type === "buy" ? options?.tokenId : undefined,
-          },
-        ],
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-Api-Key": this.apiKey,
-          ...(options?.source
-            ? {
-                "X-Api-Used-By": options?.source,
-              }
-            : {}),
-        },
-      }
-    );
+    const input = await this.fetchInput(taker, order, options);
 
     return {
       from: taker,
-      data:
-        this.contract.interface.getSighash("run") +
-        response.data.data[0].input.slice(2) +
-        generateSourceBytes(options?.source),
+      data: input + generateSourceBytes(options?.source),
       to: this.contract.address,
       value: bn(order.params.price).toHexString(),
     };
@@ -223,5 +186,54 @@ export class Exchange {
       ]),
       to: this.contract.address,
     };
+  }
+
+  // --- Sign order ---
+
+  public async fetchInput(
+    taker: string,
+    order: Order,
+    options?: { source?: string; tokenId?: string }
+  ): Promise<string> {
+    if (order.params.type === "buy" && !options?.tokenId) {
+      throw new Error("When filling buy orders, `tokenId` must be specified");
+    }
+
+    const response = await axios.post(
+      "https://api.x2y2.org/api/orders/sign",
+      {
+        caller: taker,
+        op:
+          order.params.type === "sell"
+            ? Types.Op.COMPLETE_SELL_OFFER
+            : Types.Op.COMPLETE_BUY_OFFER,
+        amountToEth: "0",
+        amountToWeth: "0",
+        items: [
+          {
+            orderId: order.params.id,
+            currency: order.params.currency,
+            price: order.params.price,
+            tokenId: order.params.type === "buy" ? options?.tokenId : undefined,
+          },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": this.apiKey,
+          ...(options?.source
+            ? {
+                "X-Api-Used-By": options?.source,
+              }
+            : {}),
+        },
+      }
+    );
+
+    return (
+      this.contract.interface.getSighash("run") +
+      response.data.data[0].input.slice(2)
+    );
   }
 }
