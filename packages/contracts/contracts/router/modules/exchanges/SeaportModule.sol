@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
@@ -173,34 +174,41 @@ contract SeaportModule is BaseExchangeModule {
         ISeaport.CriteriaResolver[] memory criteriaResolvers,
         OfferParams calldata params
     ) external nonReentrant {
-        // Extract the token from the consideration items
-        ISeaport.ConsiderationItem calldata item = order
+        // Extract the ERC721 token from the consideration items
+        ISeaport.ConsiderationItem calldata nftItem = order
             .parameters
             .consideration[0];
         if (
-            item.itemType != ISeaport.ItemType.ERC721 &&
-            item.itemType != ISeaport.ItemType.ERC721_WITH_CRITERIA
+            nftItem.itemType != ISeaport.ItemType.ERC721 &&
+            nftItem.itemType != ISeaport.ItemType.ERC721_WITH_CRITERIA
         ) {
             revert WrongParams();
         }
+        IERC721 nftToken = IERC721(nftItem.token);
 
-        IERC721 token = IERC721(item.token);
+        // Extract the payment token from the offer items
+        ISeaport.OfferItem calldata paymentItem = order.parameters.offer[0];
+        IERC20 paymentToken = IERC20(paymentItem.token);
 
         // Approve the exchange if needed
-        _approveERC721IfNeeded(token, EXCHANGE);
+        _approveERC721IfNeeded(nftToken, EXCHANGE);
+        _approveERC20IfNeeded(paymentToken, EXCHANGE, type(uint256).max);
 
         // Execute the fill
         params.revertIfIncomplete
             ? _fillSingleOrderWithRevertIfIncomplete(
                 order,
                 criteriaResolvers,
-                params.fillTo,
+                address(this),
                 0
             )
-            : _fillSingleOrder(order, criteriaResolvers, params.fillTo, 0);
+            : _fillSingleOrder(order, criteriaResolvers, address(this), 0);
 
         // Refund any ERC721 leftover
-        _sendAllERC721(params.refundTo, token, item.identifierOrCriteria);
+        _sendAllERC721(params.refundTo, nftToken, nftItem.identifierOrCriteria);
+
+        // Forward any payment to the specified receiver
+        _sendAllERC20(params.fillTo, paymentToken);
     }
 
     // --- Single ERC1155 offer ---
@@ -211,34 +219,45 @@ contract SeaportModule is BaseExchangeModule {
         ISeaport.CriteriaResolver[] memory criteriaResolvers,
         OfferParams calldata params
     ) external nonReentrant {
-        // Extract the token from the consideration items
-        ISeaport.ConsiderationItem calldata item = order
+        // Extract the ERC1155 token from the consideration items
+        ISeaport.ConsiderationItem calldata nftItem = order
             .parameters
             .consideration[0];
         if (
-            item.itemType != ISeaport.ItemType.ERC1155 &&
-            item.itemType != ISeaport.ItemType.ERC1155_WITH_CRITERIA
+            nftItem.itemType != ISeaport.ItemType.ERC1155 &&
+            nftItem.itemType != ISeaport.ItemType.ERC1155_WITH_CRITERIA
         ) {
             revert WrongParams();
         }
+        IERC1155 nftToken = IERC1155(nftItem.token);
 
-        IERC1155 token = IERC1155(item.token);
+        // Extract the payment token from the offer items
+        ISeaport.OfferItem calldata paymentItem = order.parameters.offer[0];
+        IERC20 paymentToken = IERC20(paymentItem.token);
 
         // Approve the exchange if needed
-        _approveERC1155IfNeeded(token, EXCHANGE);
+        _approveERC1155IfNeeded(nftToken, EXCHANGE);
+        _approveERC20IfNeeded(paymentToken, EXCHANGE, type(uint256).max);
 
         // Execute the fill
         params.revertIfIncomplete
             ? _fillSingleOrderWithRevertIfIncomplete(
                 order,
                 criteriaResolvers,
-                params.fillTo,
+                address(this),
                 0
             )
-            : _fillSingleOrder(order, criteriaResolvers, params.fillTo, 0);
+            : _fillSingleOrder(order, criteriaResolvers, address(this), 0);
 
         // Refund any ERC1155 leftover
-        _sendAllERC1155(params.refundTo, token, item.identifierOrCriteria);
+        _sendAllERC1155(
+            params.refundTo,
+            nftToken,
+            nftItem.identifierOrCriteria
+        );
+
+        // Forward any payment to the specified receiver
+        _sendAllERC20(params.fillTo, paymentToken);
     }
 
     // --- Generic handler (used for Seaport-based approvals) ---

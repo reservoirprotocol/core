@@ -801,10 +801,14 @@ export class Router {
         const order = detail.order as Sdk.LooksRare.Order;
         const module = this.contracts.looksRareModule.address;
 
-        const matchParams = order.buildMatching(module, {
-          tokenId: detail.tokenId,
-          ...(detail.extraArgs || {}),
-        });
+        const matchParams = order.buildMatching(
+          // For X2Y2, the module acts as the taker proxy
+          module,
+          {
+            tokenId: detail.tokenId,
+            ...(detail.extraArgs || {}),
+          }
+        );
 
         moduleLevelTx = {
           module,
@@ -838,7 +842,7 @@ export class Router {
 
         moduleLevelTx = {
           module: this.contracts.seaportModule.address,
-          data: this.contracts.looksRareModule.interface.encodeFunctionData(
+          data: this.contracts.seaportModule.interface.encodeFunctionData(
             detail.contractKind === "erc721"
               ? "acceptERC721Offer"
               : "acceptERC1155Offer",
@@ -873,7 +877,7 @@ export class Router {
         if (detail.contractKind === "erc721") {
           moduleLevelTx = {
             module: this.contracts.zeroExV4Module.address,
-            data: this.contracts.looksRareModule.interface.encodeFunctionData(
+            data: this.contracts.zeroExV4Module.interface.encodeFunctionData(
               "acceptERC721Offer",
               [
                 order.getRaw(),
@@ -890,7 +894,7 @@ export class Router {
         } else {
           moduleLevelTx = {
             module: this.contracts.zeroExV4Module.address,
-            data: this.contracts.looksRareModule.interface.encodeFunctionData(
+            data: this.contracts.zeroExV4Module.interface.encodeFunctionData(
               "acceptERC1155Offer",
               [
                 order.getRaw(),

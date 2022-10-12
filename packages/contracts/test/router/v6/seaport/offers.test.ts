@@ -115,6 +115,12 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
           id: getRandomInteger(1, 10000),
         },
         price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
+        fees: [
+          {
+            recipient: david.address,
+            amount: parseEther(getRandomFloat(0.001, 0.01).toFixed(6)),
+          },
+        ],
         isCancelled: partial && getRandomBoolean(),
       });
     }
@@ -260,7 +266,12 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
     expect(balancesAfter.carol.sub(balancesBefore.carol)).to.eq(
       offers
         .filter(({ isCancelled }) => !isCancelled)
-        .map(({ price }) => price)
+        .map(({ price, fees }) =>
+          bn(price).sub(
+            fees?.map(({ amount }) => bn(amount)).reduce((a, b) => a.add(b)) ??
+              0
+          )
+        )
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
