@@ -1,6 +1,7 @@
 import { ChainIdToAddress, ChainIdToAddressList, Network } from "../utils";
 
 export const Router: ChainIdToAddress = {
+  [Network.Ethereum]: "0x178a86d36d89c7fdebea90b739605da7b131ff6a", // V6_0_0
   [Network.EthereumGoerli]: "0xb35d22a4553ab9d2b85e2a606cbae55f844df50c", // V6_0_0
 };
 
@@ -15,14 +16,18 @@ export const UnwrapWETHModule: ChainIdToAddress = {};
 export const FoundationModule: ChainIdToAddress = {};
 
 export const LooksRareModule: ChainIdToAddress = {
+  [Network.Ethereum]: "0x920692834f93258b71221c58edf870ae013e2f9b",
   [Network.EthereumGoerli]: "0xe4c1c635f257348205ebca78fc9b342dd7813e2b",
 };
 
 export const SeaportModule: ChainIdToAddress = {
+  [Network.Ethereum]: "0x9d42b81f87753be94fafb220f764a3e70dd0425a",
   [Network.EthereumGoerli]: "0xa5731736a95a9609cb188baeadb493930fe8dd98",
 };
 
-export const X2Y2Module: ChainIdToAddress = {};
+export const X2Y2Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0xff78f7c6e23187fd4bdb2f7f35359a42d56878dd",
+};
 
 export const ZeroExV4Module: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x0e01862920bd5ef73ed1a5dccd2ecad56c3e051f",
@@ -36,6 +41,7 @@ export const AllRouters: ChainIdToAddressList = {
     "0x7c9733b19e14f37aca367fbd78922c098c55c874", // V3_0_0
     "0x8005488ff4f8982d2d8c1d602e6d747b1428dd41", // V4_0_0
     "0x9ebfb53fa8526906738856848a27cb11b0285c3f", // V5_0_0
+    "0x178a86d36d89c7fdebea90b739605da7b131ff6a", // V6_0_0
   ],
   [Network.EthereumGoerli]: [
     "0x4e650642393ac992553b8fdd98be7750e99660cc", // V5_0_0
