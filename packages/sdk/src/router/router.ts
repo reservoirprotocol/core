@@ -521,7 +521,7 @@ export class Router {
                       source: options?.source,
                       tokenId: x2y2Details[0].tokenId,
                     })
-                  ),
+                  ).input,
                   {
                     fillTo: taker,
                     refundTo: taker,
@@ -535,15 +535,16 @@ export class Router {
                 "acceptETHListings",
                 [
                   await Promise.all(
-                    orders.map(async (order, i) =>
-                      // Fetch X2Y2-signed input
-                      exchange.contract.interface.decodeFunctionData(
-                        "run",
-                        await exchange.fetchInput(taker, order, {
-                          source: options?.source,
-                          tokenId: x2y2Details[i].tokenId,
-                        })
-                      )
+                    orders.map(
+                      async (order, i) =>
+                        // Fetch X2Y2-signed input
+                        exchange.contract.interface.decodeFunctionData(
+                          "run",
+                          await exchange.fetchInput(taker, order, {
+                            source: options?.source,
+                            tokenId: x2y2Details[i].tokenId,
+                          })
+                        ).input
                     )
                   ),
                   {

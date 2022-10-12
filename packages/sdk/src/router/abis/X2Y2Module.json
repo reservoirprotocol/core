@@ -91,6 +91,19 @@
   },
   {
     "inputs": [],
+    "name": "ERC721_DELEGATE",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "EXCHANGE",
     "outputs": [
       {
