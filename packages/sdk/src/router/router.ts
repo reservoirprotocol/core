@@ -233,6 +233,10 @@ export class Router {
           detailsRef = seaportDetails;
           break;
 
+        case "x2y2":
+          detailsRef = x2y2Details;
+          break;
+
         case "zeroex-v4":
           detailsRef =
             contractKind === "erc721"
