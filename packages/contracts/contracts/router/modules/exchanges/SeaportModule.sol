@@ -204,8 +204,12 @@ contract SeaportModule is BaseExchangeModule {
             )
             : _fillSingleOrder(order, criteriaResolvers, address(this), 0);
 
+        uint256 identifier = nftItem.itemType == ISeaport.ItemType.ERC721
+            ? nftItem.identifierOrCriteria
+            : criteriaResolvers[0].identifier;
+
         // Refund any ERC721 leftover
-        _sendAllERC721(params.refundTo, nftToken, nftItem.identifierOrCriteria);
+        _sendAllERC721(params.refundTo, nftToken, identifier);
 
         // Forward any payment to the specified receiver
         _sendAllERC20(params.fillTo, paymentToken);
@@ -249,12 +253,12 @@ contract SeaportModule is BaseExchangeModule {
             )
             : _fillSingleOrder(order, criteriaResolvers, address(this), 0);
 
+        uint256 identifier = nftItem.itemType == ISeaport.ItemType.ERC1155
+            ? nftItem.identifierOrCriteria
+            : criteriaResolvers[0].identifier;
+
         // Refund any ERC1155 leftover
-        _sendAllERC1155(
-            params.refundTo,
-            nftToken,
-            nftItem.identifierOrCriteria
-        );
+        _sendAllERC1155(params.refundTo, nftToken, identifier);
 
         // Forward any payment to the specified receiver
         _sendAllERC20(params.fillTo, paymentToken);
