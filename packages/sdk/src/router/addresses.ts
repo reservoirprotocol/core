@@ -21,7 +21,7 @@ export const LooksRareModule: ChainIdToAddress = {
 };
 
 export const SeaportModule: ChainIdToAddress = {
-  [Network.Ethereum]: "0x85c4ea4d345a940836cc2495fc09e86a8681ec17",
+  [Network.Ethereum]: "0xef21d6b43ac0bb4608ca05628b05403a47310a3b",
   [Network.EthereumGoerli]: "0x037d39e603b803651acc7b36ff25e52f8680aa2f",
 };
 
