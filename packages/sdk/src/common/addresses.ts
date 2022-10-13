@@ -75,6 +75,7 @@ export const Routers: ChainIdToAddressMap = {
     "0x7c9733b19e14f37aca367fbd78922c098c55c874": "reservoir.tools",
     "0x8005488ff4f8982d2d8c1d602e6d747b1428dd41": "reservoir.tools",
     "0x9ebfb53fa8526906738856848a27cb11b0285c3f": "reservoir.tools",
+    "0x178a86d36d89c7fdebea90b739605da7b131ff6a": "reservoir.tools",
     // X2Y2
     "0x56dd5bbede9bfdb10a2845c4d70d4a2950163044": "x2y2.io",
   },
@@ -89,6 +90,7 @@ export const Routers: ChainIdToAddressMap = {
   [Network.EthereumGoerli]: {
     // Reservoir
     "0xf44caa746d184e6fba3071e8adbf9c041620fe44": "reservoir.tools",
+    "0xb35d22a4553ab9d2b85e2a606cbae55f844df50c": "reservoir.tools",
   },
 };
 
