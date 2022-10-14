@@ -1,5 +1,4 @@
 import { BigNumberish } from "@ethersproject/bignumber";
-import { HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
 import * as Types from "../../types";
