@@ -1,6 +1,7 @@
 import * as Common from "./common";
 import * as CryptoPunks from "./cryptopunks";
 import * as Element from "./element";
+import * as Forward from "./forward";
 import * as Foundation from "./foundation";
 import * as LooksRare from "./looks-rare";
 import * as Nftx from "./nftx";
@@ -23,6 +24,7 @@ export {
   Common,
   CryptoPunks,
   Element,
+  Forward,
   Foundation,
   LooksRare,
   Nftx,
