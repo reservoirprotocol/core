@@ -1,5 +1,5 @@
 import { ChainIdToAddress, Network } from "../utils";
 
 export const Exchange: ChainIdToAddress = {
-  [Network.EthereumGoerli]: "0xa6296a81f8a9359229f3729542e27bab5d020ca9",
+  [Network.EthereumGoerli]: "0xc3ae24e595c871a946a258da03756b7617805ea4",
 };
