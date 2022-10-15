@@ -228,4 +228,24 @@ export class Exchange {
   ): Promise<BigNumber> {
     return this.contract.connect(provider).getHashNonce(user);
   }
+
+  public async getOrderHash(
+    provider: Provider,
+    order: Order
+  ): Promise<BigNumber> {
+    const isSell = order.params.direction === Types.TradeDirection.SELL;
+    if (!order.params.nftAmount) {
+      if (isSell) {
+        return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
+      } else {
+        return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
+      }
+    } else {
+      if (isSell) {
+        return this.contract.connect(provider).getERC1155SellOrderHash(order.getRaw());
+      } else {
+        return this.contract.connect(provider).getERC1155BuyOrderHash(order.getRaw());
+      }
+    }
+  }
 }

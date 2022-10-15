@@ -36,15 +36,15 @@ export class Order {
   }
 
   public getRaw() {
-    const raw =  this.params.kind?.startsWith("erc721")
+    const raw = this.params.kind?.startsWith("erc721")
     ? toRawErc721Order(this)
     : toRawErc1155Order(this);
     return raw;
   }
 
   public hash() {
-    const [types, value, structName] = this.getEip712TypesAndValue();
-    return _TypedDataEncoder.hashStruct(structName, types, value);
+    const [types, value] = this.getEip712TypesAndValue();
+    return _TypedDataEncoder.hash(EIP712_DOMAIN(this.chainId), types, value);
   }
 
   public async sign(signer: TypedDataSigner) {

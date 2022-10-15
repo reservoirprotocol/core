@@ -83,6 +83,12 @@ describe("Element - ContractWide Erc721", () => {
     expect(buyerBalanceBefore).to.eq(price);
     expect(ownerBefore).to.eq(seller.address);
 
+    const orderHash = buyOrder.hash();
+    const orderHashOnChain = await exchange.getOrderHash(ethers.provider, buyOrder);
+
+    // Compare order hash
+    expect(orderHash).to.eq(orderHashOnChain);
+
     // Match orders
     await exchange.fillOrder(seller, buyOrder, sellOrder);
 
