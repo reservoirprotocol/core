@@ -60,13 +60,14 @@ describe("Element - TokenRange Erc1155", () => {
       amount: 1,
       paymentToken: Common.Addresses.Weth[chainId],
       price,
+      hashNonce: 0,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
       startTokenId: 0,
       endTokenId: 2,
     });
 
     // Sign the order
-    await buyOrder.sign(buyer, ethers.provider);
+    await buyOrder.sign(buyer);
 
     // Approve the exchange for escrowing.
     await erc1155
@@ -141,13 +142,14 @@ describe("Element - TokenRange Erc1155", () => {
       amount: 1,
       paymentToken: Common.Addresses.Weth[chainId],
       price,
+      hashNonce: 0,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
       startTokenId: 2,
       endTokenId: 3,
     });
 
     // Sign the order
-    await buyOrder.sign(buyer, ethers.provider);
+    await buyOrder.sign(buyer);
 
     // Approve the exchange for escrowing.
     await erc1155

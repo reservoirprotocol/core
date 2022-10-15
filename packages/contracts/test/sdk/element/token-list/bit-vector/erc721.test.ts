@@ -59,12 +59,13 @@ describe("Element - BitVector TokenList Erc721", () => {
       contract: erc721.address,
       paymentToken: Common.Addresses.Weth[chainId],
       price,
+      hashNonce: 0,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
       tokenIds: [0, 1, 2, 100, 101, 102, 675, 373, 748, 253, 827, 576],
     });
 
     // Sign the order
-    await buyOrder.sign(buyer, ethers.provider);
+    await buyOrder.sign(buyer);
 
     // Approve the exchange for escrowing.
     await erc721
@@ -119,12 +120,13 @@ describe("Element - BitVector TokenList Erc721", () => {
       contract: erc721.address,
       paymentToken: Common.Addresses.Weth[chainId],
       price,
+      hashNonce: 0,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
       tokenIds: [0, 2, 100, 101, 102],
     });
 
     // Sign the order
-    await buyOrder.sign(buyer, ethers.provider);
+    await buyOrder.sign(buyer);
 
     // Approve the exchange for escrowing.
     await erc721

@@ -31,6 +31,7 @@ export type BaseOrder = {
   }[];
   nft: string;
   nftId: string;
+  hashNonce: string;
   nftProperties: {
     propertyValidator: string;
     propertyData: string;

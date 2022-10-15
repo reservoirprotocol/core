@@ -1,7 +1,7 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
-
+import { Provider } from "@ethersproject/abstract-provider";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
@@ -219,5 +219,13 @@ export class Exchange {
       to: this.contract.address,
       data,
     };
+  }
+
+  // --- Get hashNonce ---
+  public async getHashNonce(
+    provider: Provider,
+    user: string
+  ): Promise<BigNumber> {
+    return this.contract.connect(provider).getHashNonce(user);
   }
 }

@@ -68,6 +68,7 @@ export class PackedListTokenListBuilder extends BaseBuilder {
       nonce: s(params.nonce)!,
       erc20Token: params.paymentToken,
       erc20TokenAmount: s(params.price),
+      hashNonce: s(params.hashNonce),
       fees: params.fees!.map(({ recipient, amount }) => ({
         recipient: lc(recipient),
         amount: s(amount),
