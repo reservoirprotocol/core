@@ -429,7 +429,7 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
     direction: order.direction,
     maker: lc(order.maker),
     taker: lc(order.taker),
-    expiry: n(order.expiry),
+    expiry: s(order.expiry),
     nonce: s(order.nonce),
     hashNonce: s(order.hashNonce),
     erc20Token: lc(order.erc20Token),

@@ -20,7 +20,7 @@ export type BaseOrder = {
   direction: TradeDirection;
   maker: string;
   taker: string;
-  expiry: number;
+  expiry: string;
   nonce: string;
   erc20Token: string;
   erc20TokenAmount: string;

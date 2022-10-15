@@ -49,7 +49,7 @@ export class ContractWideBuilder extends BaseBuilder {
           : Types.TradeDirection.BUY,
       maker: params.maker,
       taker: AddressZero,
-      expiry: params.expiry!,
+      expiry: s(params.expiry)!,
       nonce: s(params.nonce)!,
       erc20Token: params.paymentToken,
       erc20TokenAmount: s(params.price),
