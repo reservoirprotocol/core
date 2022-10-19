@@ -1,4 +1,5 @@
 import * as Common from "./common";
+import * as Blur from "./blur";
 import * as CryptoPunks from "./cryptopunks";
 import * as Element from "./element";
 import * as Forward from "./forward";
@@ -22,6 +23,7 @@ import * as Router from "./router";
 
 export {
   Common,
+  Blur,
   CryptoPunks,
   Element,
   Forward,
