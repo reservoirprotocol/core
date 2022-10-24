@@ -72,7 +72,9 @@ export class Router {
       } else {
         const order = details[0].order as Sdk.Universe.Order;
         const exchange = new Sdk.Universe.Exchange(this.chainId);
-        return exchange.fillOrderTx(taker, order);
+        return exchange.fillOrderTx(taker, order, {
+          amount: Number(details[0].amount),
+        });
       }
     }
 
@@ -234,95 +236,96 @@ export class Router {
     }
 
     // Rest of orders are individually filled
-    for (let i = 0; i < details.length; i++) {
-      const detail = details[i];
-      try {
-        const { tx, exchangeKind, maker, isEscrowed } =
-          await this.generateNativeListingFillTx(detail, taker, options);
+    await Promise.all(
+      details.map(async (detail, i) => {
+        try {
+          const { tx, exchangeKind, maker, isEscrowed } =
+            await this.generateNativeListingFillTx(detail, taker, options);
 
-        if (detail.contractKind === "erc721") {
-          routerTxs.push({
-            from: taker,
-            to: this.contract.address,
-            data:
-              !options?.skipPrecheck && !isEscrowed
-                ? this.contract.interface.encodeFunctionData(
-                    "singleERC721ListingFillWithPrecheck",
-                    [
-                      tx.data,
-                      exchangeKind,
-                      detail.contract,
-                      detail.tokenId,
-                      taker,
-                      maker,
-                      fee.recipient,
-                      fee.bps,
-                    ]
-                  )
-                : this.contract.interface.encodeFunctionData(
-                    "singleERC721ListingFill",
-                    [
-                      tx.data,
-                      exchangeKind,
-                      detail.contract,
-                      detail.tokenId,
-                      taker,
-                      fee.recipient,
-                      fee.bps,
-                    ]
-                  ),
-            value: bn(tx.value!)
-              // Add the referrer fee
-              .add(bn(tx.value!).mul(fee.bps).div(10000))
-              .toHexString(),
-          });
-        } else {
-          routerTxs.push({
-            from: taker,
-            to: this.contract.address,
-            data:
-              !options?.skipPrecheck && !isEscrowed
-                ? this.contract.interface.encodeFunctionData(
-                    "singleERC1155ListingFillWithPrecheck",
-                    [
-                      tx.data,
-                      exchangeKind,
-                      detail.contract,
-                      detail.tokenId,
-                      detail.amount ?? 1,
-                      taker,
-                      maker,
-                      fee.recipient,
-                      fee.bps,
-                    ]
-                  )
-                : this.contract.interface.encodeFunctionData(
-                    "singleERC1155ListingFill",
-                    [
-                      tx.data,
-                      exchangeKind,
-                      detail.contract,
-                      detail.tokenId,
-                      detail.amount ?? 1,
-                      taker,
-                      fee.recipient,
-                      fee.bps,
-                    ]
-                  ),
-            value: bn(tx.value!)
-              // Add the referrer fee
-              .add(bn(tx.value!).mul(fee.bps).div(10000))
-              .toHexString(),
-          });
+          if (detail.contractKind === "erc721") {
+            routerTxs.push({
+              from: taker,
+              to: this.contract.address,
+              data:
+                !options?.skipPrecheck && !isEscrowed
+                  ? this.contract.interface.encodeFunctionData(
+                      "singleERC721ListingFillWithPrecheck",
+                      [
+                        tx.data,
+                        exchangeKind,
+                        detail.contract,
+                        detail.tokenId,
+                        taker,
+                        maker,
+                        fee.recipient,
+                        fee.bps,
+                      ]
+                    )
+                  : this.contract.interface.encodeFunctionData(
+                      "singleERC721ListingFill",
+                      [
+                        tx.data,
+                        exchangeKind,
+                        detail.contract,
+                        detail.tokenId,
+                        taker,
+                        fee.recipient,
+                        fee.bps,
+                      ]
+                    ),
+              value: bn(tx.value!)
+                // Add the referrer fee
+                .add(bn(tx.value!).mul(fee.bps).div(10000))
+                .toHexString(),
+            });
+          } else {
+            routerTxs.push({
+              from: taker,
+              to: this.contract.address,
+              data:
+                !options?.skipPrecheck && !isEscrowed
+                  ? this.contract.interface.encodeFunctionData(
+                      "singleERC1155ListingFillWithPrecheck",
+                      [
+                        tx.data,
+                        exchangeKind,
+                        detail.contract,
+                        detail.tokenId,
+                        detail.amount ?? 1,
+                        taker,
+                        maker,
+                        fee.recipient,
+                        fee.bps,
+                      ]
+                    )
+                  : this.contract.interface.encodeFunctionData(
+                      "singleERC1155ListingFill",
+                      [
+                        tx.data,
+                        exchangeKind,
+                        detail.contract,
+                        detail.tokenId,
+                        detail.amount ?? 1,
+                        taker,
+                        fee.recipient,
+                        fee.bps,
+                      ]
+                    ),
+              value: bn(tx.value!)
+                // Add the referrer fee
+                .add(bn(tx.value!).mul(fee.bps).div(10000))
+                .toHexString(),
+            });
+          }
+        } catch (error) {
+          if (!options?.skipErrors) {
+            throw error;
+          } else if (options?.skippedIndexes) {
+            options.skippedIndexes.push(i);
+          }
         }
-      } catch (error) {
-        if (!options?.skipErrors) {
-          throw error;
-        } else if (options?.skippedIndexes) {
-          options.skippedIndexes.push(i);
-        }
-      }
-    }
+      })
+    );
 
     if (routerTxs.length === 1) {
       return {
@@ -361,7 +364,9 @@ export class Router {
     if (detail.kind === "universe") {
       const order = detail.order as Sdk.Universe.Order;
       const exchange = new Sdk.Universe.Exchange(this.chainId);
-      return exchange.fillOrderTx(taker, order);
+      return exchange.fillOrderTx(taker, order, {
+        amount: Number(detail.extraArgs.amount),
+      });
     }
 
     const { tx, exchangeKind } = await this.generateNativeBidFillTx(

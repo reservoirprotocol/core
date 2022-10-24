@@ -1,6 +1,8 @@
 import * as Common from "./common";
+import * as Blur from "./blur";
 import * as CryptoPunks from "./cryptopunks";
 import * as Element from "./element";
+import * as Forward from "./forward";
 import * as Foundation from "./foundation";
 import * as LooksRare from "./looks-rare";
 import * as Nftx from "./nftx";
@@ -21,8 +23,10 @@ import * as Router from "./router";
 
 export {
   Common,
+  Blur,
   CryptoPunks,
   Element,
+  Forward,
   Foundation,
   LooksRare,
   Nftx,
