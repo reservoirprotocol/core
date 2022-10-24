@@ -132,8 +132,8 @@ describe("Element - SingleToken Erc721", () => {
 
     // Approve the exchange for escrowing.
     await erc721
-    .connect(seller)
-    .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
+      .connect(seller)
+      .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
 
     // Create matching buy order
     const buyOrder = sellOrder.buildMatching();

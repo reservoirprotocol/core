@@ -71,7 +71,6 @@ describe("Element - SingleToken Erc1155", () => {
     // Sign the order
     await buyOrder.sign(buyer);
 
-
     // Approve the exchange for escrowing.
     await erc1155
     .connect(seller)

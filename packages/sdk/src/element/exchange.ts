@@ -228,6 +228,25 @@ export class Exchange {
   ): Promise<BigNumber> {
     return this.contract.connect(provider).getHashNonce(user);
   }
+  
+
+  // --- Increase nonce ---
+
+  public async incrementHashNonce(
+    maker: Signer
+  ): Promise<ContractTransaction> {
+    const tx = this.incrementHashNonceTx(await maker.getAddress());
+    return maker.sendTransaction(tx);
+  }
+
+  public incrementHashNonceTx(maker: string): TxData {
+    const data: string = this.contract.interface.encodeFunctionData("incrementHashNonce", []);
+    return {
+      from: maker,
+      to: this.contract.address,
+      data,
+    };
+  }
 
   public async getOrderHash(
     provider: Provider,
