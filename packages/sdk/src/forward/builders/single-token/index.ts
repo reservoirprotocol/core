@@ -14,6 +14,7 @@ export class SingleTokenBuilder extends BaseBuilder {
     try {
       const copyOrder = this.build({
         ...order.params,
+        side: order.params.side === Types.Side.BID ? "buy" : "sell",
         tokenKind:
           order.params.itemKind === Types.ItemKind.ERC721
             ? "erc721"
@@ -41,6 +42,7 @@ export class SingleTokenBuilder extends BaseBuilder {
 
     return new Order(this.chainId, {
       kind: "single-token",
+      side: params.side === "buy" ? Types.Side.BID : Types.Side.LISTING,
       itemKind:
         params.tokenKind === "erc721"
           ? Types.ItemKind.ERC721

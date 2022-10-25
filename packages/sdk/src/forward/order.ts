@@ -15,9 +15,9 @@ import ExchangeAbi from "./abis/Exchange.json";
 
 export class Order {
   public chainId: number;
-  public params: Types.Bid;
+  public params: Types.Order;
 
-  constructor(chainId: number, params: Types.Bid) {
+  constructor(chainId: number, params: Types.Order) {
     this.chainId = chainId;
 
     try {
@@ -33,13 +33,17 @@ export class Order {
   }
 
   public hash() {
-    return _TypedDataEncoder.hashStruct("Bid", BID_EIP712_TYPES, this.params);
+    return _TypedDataEncoder.hashStruct(
+      "Order",
+      ORDER_EIP712_TYPES,
+      this.params
+    );
   }
 
   public async sign(signer: TypedDataSigner) {
     const signature = await signer._signTypedData(
       EIP712_DOMAIN(this.chainId),
-      BID_EIP712_TYPES,
+      ORDER_EIP712_TYPES,
       this.params
     );
 
@@ -53,7 +57,7 @@ export class Order {
     return {
       signatureKind: "eip712",
       domain: EIP712_DOMAIN(this.chainId),
-      types: BID_EIP712_TYPES,
+      types: ORDER_EIP712_TYPES,
       value: this.params,
     };
   }
@@ -61,7 +65,7 @@ export class Order {
   public checkSignature() {
     const signer = verifyTypedData(
       EIP712_DOMAIN(this.chainId),
-      BID_EIP712_TYPES,
+      ORDER_EIP712_TYPES,
       this.params,
       this.params.signature!
     );
@@ -88,7 +92,7 @@ export class Order {
       provider
     );
 
-    const status = await exchange.bidStatuses(this.hash());
+    const status = await exchange.orderStatuses(this.hash());
     if (status.isCancelled) {
       throw new Error("cancelled");
     }
@@ -96,23 +100,27 @@ export class Order {
       throw new Error("filled");
     }
 
-    // Check balance
-    const erc20 = new Common.Helpers.Erc20(
-      provider,
-      Common.Addresses.Weth[this.chainId]
-    );
-    const balance = await erc20.getBalance(this.params.maker);
-    if (bn(balance).lt(bn(this.params.unitPrice).mul(this.params.amount))) {
-      throw new Error("no-balance");
-    }
+    if (this.params.side === Types.Side.BID) {
+      // Check balance
+      const erc20 = new Common.Helpers.Erc20(
+        provider,
+        Common.Addresses.Weth[this.chainId]
+      );
+      const balance = await erc20.getBalance(this.params.maker);
+      if (bn(balance).lt(bn(this.params.unitPrice).mul(this.params.amount))) {
+        throw new Error("no-balance");
+      }
 
-    // Check allowance
-    const allowance = await erc20.getAllowance(
-      this.params.maker,
-      exchange.address
-    );
-    if (bn(allowance).lt(bn(this.params.unitPrice).mul(this.params.amount))) {
-      throw new Error("no-approval");
+      // Check allowance
+      const allowance = await erc20.getAllowance(
+        this.params.maker,
+        exchange.address
+      );
+      if (bn(allowance).lt(bn(this.params.unitPrice).mul(this.params.amount))) {
+        throw new Error("no-approval");
+      }
+    } else {
+      // TODO: Add support for checking the fillability of listings
     }
   }
 
@@ -174,21 +182,22 @@ const EIP712_DOMAIN = (chainId: number) => ({
   verifyingContract: Addresses.Exchange[chainId],
 });
 
-export const BID_EIP712_TYPES = {
-  Bid: [
+export const ORDER_EIP712_TYPES = {
+  Order: [
+    { name: "side", type: "uint8" },
     { name: "itemKind", type: "uint8" },
     { name: "maker", type: "address" },
     { name: "token", type: "address" },
     { name: "identifierOrCriteria", type: "uint256" },
     { name: "unitPrice", type: "uint256" },
     { name: "amount", type: "uint128" },
-    { name: "salt", type: "uint128" },
+    { name: "salt", type: "uint256" },
     { name: "expiration", type: "uint256" },
     { name: "counter", type: "uint256" },
   ],
 };
 
-const normalize = (order: Types.Bid): Types.Bid => {
+const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:
   // - convert bignumbers to strings where needed
   // - convert strings to numbers where needed
@@ -196,6 +205,7 @@ const normalize = (order: Types.Bid): Types.Bid => {
 
   return {
     kind: order.kind,
+    side: n(order.side),
     itemKind: n(order.itemKind),
     maker: lc(order.maker),
     token: lc(order.token),
