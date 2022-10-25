@@ -7,6 +7,7 @@ import { s } from "../../../utils";
 
 interface BuildParams extends BaseBuildParams {
   tokenId: BigNumberish;
+  external?: boolean;
 }
 
 export class SingleTokenBuilder extends BaseBuilder {
@@ -38,15 +39,19 @@ export class SingleTokenBuilder extends BaseBuilder {
   }
 
   public build(params: BuildParams) {
+    if (params.external && params.side !== "sell") {
+      throw new Error("Mismatching params");
+    }
+
     this.defaultInitialize(params);
 
     return new Order(this.chainId, {
       kind: "single-token",
       side: params.side === "buy" ? Types.Side.BID : Types.Side.LISTING,
       itemKind:
-        params.tokenKind === "erc721"
+        (params.tokenKind === "erc721"
           ? Types.ItemKind.ERC721
-          : Types.ItemKind.ERC1155,
+          : Types.ItemKind.ERC1155) + (params.external ? 2 : 0),
       maker: params.maker,
       token: params.contract,
       identifierOrCriteria: s(params.tokenId),
