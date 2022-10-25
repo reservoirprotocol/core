@@ -60,11 +60,12 @@ describe("Element - ContractWide Erc721", () => {
       contract: erc721.address,
       paymentToken: Common.Addresses.Weth[chainId],
       price,
+      hashNonce: 0,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
     });
 
     // Sign the order
-    await buyOrder.sign(buyer, ethers.provider);
+    await buyOrder.sign(buyer);
 
     // Approve the exchange for escrowing.
     await erc721
@@ -81,6 +82,12 @@ describe("Element - ContractWide Erc721", () => {
 
     expect(buyerBalanceBefore).to.eq(price);
     expect(ownerBefore).to.eq(seller.address);
+
+    const orderHash = buyOrder.hash();
+    const orderHashOnChain = await exchange.getOrderHash(ethers.provider, buyOrder);
+
+    // Compare order hash
+    expect(orderHash).to.eq(orderHashOnChain);
 
     // Match orders
     await exchange.fillOrder(seller, buyOrder, sellOrder);

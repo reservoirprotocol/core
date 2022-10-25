@@ -1,7 +1,7 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
-
+import { Provider } from "@ethersproject/abstract-provider";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
@@ -219,5 +219,52 @@ export class Exchange {
       to: this.contract.address,
       data,
     };
+  }
+
+  // --- Get hashNonce ---
+  public async getHashNonce(
+    provider: Provider,
+    user: string
+  ): Promise<BigNumber> {
+    return this.contract.connect(provider).getHashNonce(user);
+  }
+  
+
+  // --- Increase nonce ---
+
+  public async incrementHashNonce(
+    maker: Signer
+  ): Promise<ContractTransaction> {
+    const tx = this.incrementHashNonceTx(await maker.getAddress());
+    return maker.sendTransaction(tx);
+  }
+
+  public incrementHashNonceTx(maker: string): TxData {
+    const data: string = this.contract.interface.encodeFunctionData("incrementHashNonce", []);
+    return {
+      from: maker,
+      to: this.contract.address,
+      data,
+    };
+  }
+
+  public async getOrderHash(
+    provider: Provider,
+    order: Order
+  ): Promise<BigNumber> {
+    const isSell = order.params.direction === Types.TradeDirection.SELL;
+    if (!order.params.nftAmount) {
+      if (isSell) {
+        return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
+      } else {
+        return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
+      }
+    } else {
+      if (isSell) {
+        return this.contract.connect(provider).getERC1155SellOrderHash(order.getRaw());
+      } else {
+        return this.contract.connect(provider).getERC1155BuyOrderHash(order.getRaw());
+      }
+    }
   }
 }

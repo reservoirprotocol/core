@@ -63,16 +63,17 @@ describe("Element - SingleToken Erc721", () => {
       tokenId: boughtTokenId,
       paymentToken: Common.Addresses.Weth[chainId],
       price,
+      hashNonce: 0,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 10000,
     });
 
     // Sign the order
-    await buyOrder.sign(buyer, ethers.provider);
+    await buyOrder.sign(buyer);
 
     // Approve the exchange for escrowing.
     await erc721
-    .connect(seller)
-    .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
+      .connect(seller)
+      .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
 
     // Create matching sell order
     const sellOrder = buyOrder.buildMatching();
@@ -122,16 +123,17 @@ describe("Element - SingleToken Erc721", () => {
       tokenId: soldTokenId,
       paymentToken: Element.Addresses.Eth[chainId],
       price,
+      hashNonce: 0,
       expiry: (await getCurrentTimestamp(ethers.provider)) + 100,
     });
 
     // Sign the order
-    await sellOrder.sign(seller, ethers.provider);
+    await sellOrder.sign(seller);
 
     // Approve the exchange for escrowing.
     await erc721
-    .connect(seller)
-    .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
+      .connect(seller)
+      .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
 
     // Create matching buy order
     const buyOrder = sellOrder.buildMatching();
@@ -189,6 +191,7 @@ describe("Element - SingleToken Erc721", () => {
       tokenId: boughtTokenId,
       paymentToken: Common.Addresses.Weth[chainId],
       price,
+      hashNonce: 0,
       fees: [
         {
           recipient: carol.address,
@@ -203,7 +206,7 @@ describe("Element - SingleToken Erc721", () => {
     });
 
     // Sign the order
-    await buyOrder.sign(buyer, ethers.provider);
+    await buyOrder.sign(buyer);
 
     // Approve the exchange for escrowing.
     await erc721
@@ -261,6 +264,7 @@ describe("Element - SingleToken Erc721", () => {
       tokenId: soldTokenId,
       paymentToken: Element.Addresses.Eth[chainId],
       price,
+      hashNonce: 0,
       fees: [
         {
           recipient: carol.address,
@@ -275,7 +279,7 @@ describe("Element - SingleToken Erc721", () => {
     });
 
     // Sign the order
-    await sellOrder.sign(seller, ethers.provider);
+    await sellOrder.sign(seller);
 
     // Approve the exchange for escrowing.
     await erc721

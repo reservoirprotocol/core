@@ -20,7 +20,7 @@ export type BaseOrder = {
   direction: TradeDirection;
   maker: string;
   taker: string;
-  expiry: number;
+  expiry: string;
   nonce: string;
   erc20Token: string;
   erc20TokenAmount: string;
@@ -31,6 +31,7 @@ export type BaseOrder = {
   }[];
   nft: string;
   nftId: string;
+  hashNonce: string;
   nftProperties: {
     propertyValidator: string;
     propertyData: string;

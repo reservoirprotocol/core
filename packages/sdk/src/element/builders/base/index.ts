@@ -16,9 +16,10 @@ export interface BaseBuildParams {
     amount: BigNumberish;
   }[];
   amount?: BigNumberish;
-  expiry?: number;
+  expiry?: BigNumberish;
   nonce?: BigNumberish;
   signatureType?: number;
+  hashNonce: BigNumberish,
   v?: number;
   r?: string;
   s?: string;

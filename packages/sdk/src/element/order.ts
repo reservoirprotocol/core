@@ -36,29 +36,19 @@ export class Order {
   }
 
   public getRaw() {
-    const raw =  this.params.kind?.startsWith("erc721")
+    const raw = this.params.kind?.startsWith("erc721")
     ? toRawErc721Order(this)
     : toRawErc1155Order(this);
     return raw;
   }
 
   public hash() {
-    const [types, value, structName] = this.getEip712TypesAndValue();
-    return _TypedDataEncoder.hashStruct(structName, types, value);
+    const [types, value] = this.getEip712TypesAndValue();
+    return _TypedDataEncoder.hash(EIP712_DOMAIN(this.chainId), types, value);
   }
 
-  public async sign(signer: TypedDataSigner, provider: Provider) {
+  public async sign(signer: TypedDataSigner) {
     const [types, value] = this.getEip712TypesAndValue();
-    const exchange = new Contract(
-      Addresses.Exchange[this.chainId],
-      ExchangeAbi as any,
-      provider
-    );
-
-    const hashNonce = await exchange.getHashNonce((signer as VoidSigner).address);
-    // add hashNonce
-    value.hashNonce = hashNonce;
-
     const { v, r, s } = splitSignature(
       await signer._signTypedData(EIP712_DOMAIN(this.chainId), types, value)
     );
@@ -439,8 +429,9 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
     direction: order.direction,
     maker: lc(order.maker),
     taker: lc(order.taker),
-    expiry: n(order.expiry),
+    expiry: s(order.expiry),
     nonce: s(order.nonce),
+    hashNonce: s(order.hashNonce),
     erc20Token: lc(order.erc20Token),
     erc20TokenAmount: s(order.erc20TokenAmount),
     fees: order.fees.map(({ recipient, amount, feeData }) => ({
