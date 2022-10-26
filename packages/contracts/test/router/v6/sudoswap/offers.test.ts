@@ -1,4 +1,3 @@
-import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
 import * as Sdk from "../../../../../sdk/src";
