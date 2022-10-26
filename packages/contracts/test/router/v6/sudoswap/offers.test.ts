@@ -1,16 +1,13 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
-import * as Sdk from "@reservoir0x/sdk/src";
+//import * as Sdk from "@reservoir0x/sdk/src";
+import * as Sdk from "../../../../../sdk";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../../helpers/router";
-import {
-  FoundationListing,
-  setupFoundationListings,
-} from "../../helpers/foundation";
 import {
   bn,
   getChainId,
@@ -33,7 +30,7 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
   let erc721: Contract;
   let router: Contract;
-  let foundationModule: Contract;
+  let sudoswapModule: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
@@ -43,8 +40,8 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
-    foundationModule = (await ethers
-      .getContractFactory("FoundationModule", deployer)
+    sudoswapModule = (await ethers
+      .getContractFactory("SudoswapModule", deployer)
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
@@ -59,8 +56,8 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
         david: await ethers.provider.getBalance(david.address),
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
-        foundationModule: await ethers.provider.getBalance(
-          foundationModule.address
+        sudoswapModule: await ethers.provider.getBalance(
+          sudoswapModule.address
         ),
       };
     } else {
@@ -72,7 +69,7 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
         david: await contract.getBalance(david.address),
         emilio: await contract.getBalance(emilio.address),
         router: await contract.getBalance(router.address),
-        foundationModule: await contract.getBalance(foundationModule.address),
+        sudoswapModule: await contract.getBalance(sudoswapModule.address),
       };
     }
   };

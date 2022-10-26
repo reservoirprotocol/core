@@ -67,5 +67,7 @@ describe("Foundation - SingleToken Erc721", () => {
 
     let owner0y = await contractPDB.ownerOf(tokenId);
     expect(owner0y).to.eq(alice.address);
+
+    //TODO: check balance(s)
   });
 });
