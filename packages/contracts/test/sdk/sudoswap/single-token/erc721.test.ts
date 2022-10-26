@@ -50,7 +50,7 @@ describe("Foundation - SingleToken Erc721", () => {
     let owner0x = await contractPDB.ownerOf(tokenId);
     expect(owner0x).to.eq(recipient);
 
-    // purchase nft...
+    // buy nft...
 
     const pairRouter = new Sudoswap.Router(chainId); //purchasing 
 
