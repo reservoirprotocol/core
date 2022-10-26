@@ -9,7 +9,7 @@ import "@nomiclabs/hardhat-ethers";
 
 import { getChainId } from "../../../utils";
 
-describe("Foundation - SingleToken Erc721", () => {
+describe("Sudoswap - SingleToken Erc721", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
