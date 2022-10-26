@@ -2,25 +2,24 @@ import { Signer } from "@ethersproject/abstract-signer";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
-import { Order, SwapList } from "./order";
-//import { SwapList } from "./types";
+import { Order } from "./order";
 import { TxData, generateReferrerBytes } from "../utils";
 
-import PairRouterAbi from "./abis/RouterPair.json";
+import RouterAbi from "./abis/RouterRoyalties.json";
 
 // Sudoswap:
 // - fully on-chain
 // - pooled liquidity
 
-export class Router {
+export class Exchange {
   public chainId: number;
   public contract: Contract;
 
   constructor(chainId: number) {
     this.chainId = chainId;
     this.contract = new Contract(
-      Addresses.PairRouter[this.chainId],
-      PairRouterAbi
+      Addresses.RouterWithRoyalties[this.chainId],
+      RouterAbi
     );
   }
 
@@ -71,42 +70,23 @@ export class Router {
     };
   }
 
-    // --- Swap ETH for specific NFTs ---
-    public async swapETHForSpecificNFTs(
+    // --- Deposit NFTs ---
+
+    public async depositNFTs(
       taker: Signer,
-      swapList: SwapList[],
-      ethRecipient: string,
-      nftRecipient: string,
-      value: string
+      order: Order,
+      tokenId: string,
+      options?: {
+        recipient?: string;
+        referrer?: string;
+      }
     ): Promise<ContractTransaction> {
-      const tx = this.swapETHForSpecificNFTsTx(
+      const tx = this.fillBuyOrderTx(
         await taker.getAddress(),
-        swapList,
-        ethRecipient,
-        nftRecipient,
-        value
+        order,
+        tokenId,
+        options
       );
       return taker.sendTransaction(tx);
-    }
-
-    public swapETHForSpecificNFTsTx(
-      taker: string,
-      swapList: SwapList[],
-      ethRecipient: string,
-      nftRecipient: string,
-      value: string
-    ): TxData {
-      return {
-        from: taker,
-        to: this.contract.address,
-        data:
-          this.contract.interface.encodeFunctionData("swapETHForSpecificNFTs", [
-            swapList,
-            ethRecipient,
-            nftRecipient,
-            Math.floor(Date.now() / 1000) + 10 * 60,
-          ]),
-        value: value
-      };
     }
 }
