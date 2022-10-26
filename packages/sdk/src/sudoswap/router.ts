@@ -3,7 +3,6 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { Order, SwapList } from "./order";
-//import { SwapList } from "./types";
 import { TxData, generateReferrerBytes } from "../utils";
 
 import PairRouterAbi from "./abis/RouterPair.json";
@@ -101,13 +100,27 @@ export class Router {
         from: taker,
         to: this.contract.address,
         data:
-          this.contract.interface.encodeFunctionData("swapETHForSpecificNFTs", [
-            swapList,
-            ethRecipient,
-            nftRecipient,
-            Math.floor(Date.now() / 1000) + 10 * 60,
-          ]),
+          this.swapETHForSpecificNFTsTxData(swapList, ethRecipient, nftRecipient),
+          // this.contract.interface.encodeFunctionData("swapETHForSpecificNFTs", [
+          //   swapList,
+          //   ethRecipient,
+          //   nftRecipient,
+          //   Math.floor(Date.now() / 1000) + 10 * 60,
+          // ]),
         value: value
       };
+    }
+
+    public swapETHForSpecificNFTsTxData(
+      swapList: SwapList[],
+      ethRecipient: string,
+      nftRecipient: string,
+    ): string {
+      return this.contract.interface.encodeFunctionData("swapETHForSpecificNFTs", [
+        swapList,
+        ethRecipient,
+        nftRecipient,
+        Math.floor(Date.now() / 1000) + 10 * 60,
+      ])
     }
 }

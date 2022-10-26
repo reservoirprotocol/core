@@ -24,8 +24,7 @@ describe("Foundation - SingleToken Erc721", () => {
   /**
    * npx hardhat test test/sdk/sudoswap/single-token/erc721.test.ts
    */
-
-  it("Default test", async () => {
+  it("Sudoswap sdk test", async () => {
 
     let tokenId = 6113;
 

@@ -1,21 +1,14 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
-//import * as Sdk from "@reservoir0x/sdk/src";
-import * as Sdk from "../../../../../sdk";
+import * as Sdk from "../../../../../sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
-  bn,
-  getChainId,
-  getRandomBoolean,
-  getRandomFloat,
-  getRandomInteger,
-  reset,
-  setupNFTs,
+  getChainId
 } from "../../../utils";
 
 describe("[ReservoirV6_0_0] Sudoswap offers", () => {
@@ -28,14 +21,11 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
   let david: SignerWithAddress;
   let emilio: SignerWithAddress;
 
-  let erc721: Contract;
   let router: Contract;
   let sudoswapModule: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
-
-    ({ erc721 } = await setupNFTs(deployer));
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
@@ -43,7 +33,7 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
     sudoswapModule = (await ethers
       .getContractFactory("SudoswapModule", deployer)
       .then((factory) =>
-        factory.deploy(router.address, router.address)
+        factory.deploy(router.address, router.address, Sdk.Sudoswap.Addresses.PairRouter[chainId])
       )) as any;
   });
 
@@ -74,136 +64,51 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
     }
   };
 
-  afterEach(reset);
-
-  const testAcceptListings = async (
-    // Whether to include fees on top
-    chargeFees: boolean,
-    // Whether to revert or not in case of any failures
-    revertIfIncomplete: boolean,
-    // Whether to cancel some orders in order to trigger partial filling
-    partial: boolean,
-    // Number of listings to fill
-    listingsCount: number
-  ) => {
+  /**
+   * npx hardhat test test/router/v6/sudoswap/offers.test.ts
+   */
+  it("Sudoswap router test", async () => {
     // Setup
 
     // Makers: Alice and Bob
     // Taker: Carol
     // Fee recipient: Emilio
 
-    const listings: FoundationListing[] = [];
-    const feesOnTop: BigNumber[] = [];
-    for (let i = 0; i < listingsCount; i++) {
-      listings.push({
-        seller: getRandomBoolean() ? alice : bob,
-        nft: {
-          contract: erc721,
-          id: getRandomInteger(1, 10000),
-        },
-        price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
-        isCancelled: partial && getRandomBoolean(),
-      });
-      if (chargeFees) {
-        feesOnTop.push(parseEther(getRandomFloat(0.0001, 0.1).toFixed(6)));
-      }
-    }
-    await setupFoundationListings(listings);
+    let tokenId = 6113;
+
+    let addresPDB = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F";
+    let abiOwnerOf = '[{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}]';
+    let contractPDB = new ethers.Contract(addresPDB, abiOwnerOf, ethers.provider);
+
+    let owner00 = await contractPDB.ownerOf(tokenId);
+
+    const pairFactory = new Sdk.Sudoswap.Exchange(chainId); //selling/deposit 
+
+    let nft = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F"; //PudgyDickbutts
+    let ids = [tokenId];
+    let recipient = "0x7794C476806731b74ba2049ccd413218248135DA"; //pool
+
+    const impersonatedSigner = await ethers.getImpersonatedSigner(owner00);
+
+    // list nft...
+
+    await pairFactory.depositNFTs(impersonatedSigner, nft, ids, recipient);
 
     // Prepare executions
 
-    const totalPrice = bn(
-      listings.map(({ price }) => price).reduce((a, b) => bn(a).add(b), bn(0))
-    );
-    const executions: ExecutionInfo[] = [
-      // 1. Fill listings
-      listingsCount > 1
-        ? {
-            module: foundationModule.address,
-            data: foundationModule.interface.encodeFunctionData(
-              "acceptETHListings",
-              [
-                listings.map((listing) => ({
-                  token: listing.nft.contract.address,
-                  tokenId: listing.nft.id,
-                  price: listing.price,
-                })),
-                {
-                  fillTo: carol.address,
-                  refundTo: carol.address,
-                  revertIfIncomplete,
-                  amount: totalPrice,
-                },
-                [
-                  ...feesOnTop.map((amount) => ({
-                    recipient: emilio.address,
-                    amount,
-                  })),
-                ],
-              ]
-            ),
-            value: totalPrice.add(
-              // Anything on top should be refunded
-              feesOnTop
-                .reduce((a, b) => bn(a).add(b), bn(0))
-                .add(parseEther("0.1"))
-            ),
-          }
-        : {
-            module: foundationModule.address,
-            data: foundationModule.interface.encodeFunctionData(
-              "acceptETHListing",
-              [
-                {
-                  token: listings[0].nft.contract.address,
-                  tokenId: listings[0].nft.id,
-                  price: listings[0].price,
-                },
-                {
-                  fillTo: carol.address,
-                  refundTo: carol.address,
-                  revertIfIncomplete,
-                  amount: totalPrice,
-                },
-                [
-                  ...feesOnTop.map((amount) => ({
-                    recipient: emilio.address,
-                    amount,
-                  })),
-                ],
-              ]
-            ),
-            value: totalPrice.add(
-              // Anything on top should be refunded
-              feesOnTop
-                .reduce((a, b) => bn(a).add(b), bn(0))
-                .add(parseEther("0.1"))
-            ),
-          },
-    ];
+    let swapListPair = recipient;
+    let swapListNftIds = ids;
+    let ethRecipient =	bob.address;
+    let nftRecipient =	alice.address;
 
-    // Checks
+    let swapList = new Sdk.Sudoswap.SwapList(swapListPair, swapListNftIds);
 
-    // If the `revertIfIncomplete` option is enabled and we have any
-    // orders that are not fillable, the whole transaction should be
-    // reverted
-    if (
-      partial &&
-      revertIfIncomplete &&
-      listings.some(({ isCancelled }) => isCancelled)
-    ) {
-      await expect(
-        router.connect(carol).execute(executions, {
-          value: executions
-            .map(({ value }) => value)
-            .reduce((a, b) => bn(a).add(b), bn(0)),
-        })
-      ).to.be.revertedWith(
-        "reverted with custom error 'UnsuccessfulExecution()'"
-      );
+    let sudoswap = new Sdk.Sudoswap.Router(chainId);
+    let data = sudoswap.swapETHForSpecificNFTsTxData([swapList], ethRecipient, nftRecipient);
+    let value = parseEther("0.2");
+    let module = Sdk.Sudoswap.Addresses.PairRouter[chainId];
 
-      return;
-    }
+    let execution: ExecutionInfo[] = [{module: module, data: data, value: value.toString()}];
 
     // Fetch pre-state
 
@@ -211,10 +116,8 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
     // Execute
 
-    await router.connect(carol).execute(executions, {
-      value: executions
-        .map(({ value }) => value)
-        .reduce((a, b) => bn(a).add(b), bn(0)),
+    await router.execute(execution, {
+      value: parseEther("0.2")
     });
 
     // Fetch post-state
@@ -223,89 +126,20 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
     // Checks
 
+    let owner0y = await contractPDB.ownerOf(tokenId);
+    expect(owner0y).to.eq(alice.address);
+
     // Alice got the payment
-    expect(balancesAfter.alice.sub(balancesBefore.alice)).to.eq(
-      listings
-        .filter(
-          ({ seller, isCancelled }) =>
-            !isCancelled && seller.address === alice.address
-        )
-        .map(({ price }) =>
-          bn(price).sub(
-            // Take into consideration the protocol fee
-            bn(price).mul(500).div(10000)
-          )
-        )
-        .reduce((a, b) => bn(a).add(b), bn(0))
-    );
+   
     // Bob got the payment
-    expect(balancesAfter.bob.sub(balancesBefore.bob)).to.eq(
-      listings
-        .filter(
-          ({ seller, isCancelled }) =>
-            !isCancelled && seller.address === bob.address
-        )
-        .map(({ price }) =>
-          bn(price).sub(
-            // Take into consideration the protocol fee
-            bn(price).mul(500).div(10000)
-          )
-        )
-        .reduce((a, b) => bn(a).add(b), bn(0))
-    );
 
     // Emilio got the fee payments
-    if (chargeFees) {
-      // Fees are charged per execution, and since we have a single execution
-      // here, we will have a single fee payment at the end adjusted over the
-      // amount that was actually paid (eg. prices of filled orders)
-      const actualPaid = listings
-        .filter(({ isCancelled }) => !isCancelled)
-        .map(({ price }) => price)
-        .reduce((a, b) => bn(a).add(b), bn(0));
-      expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
-        listings
-          .map((_, i) => feesOnTop[i].mul(actualPaid).div(totalPrice))
-          .reduce((a, b) => bn(a).add(b), bn(0))
-      );
-    }
 
     // Carol got the NFTs from all filled orders
-    for (let i = 0; i < listings.length; i++) {
-      if (!listings[i].isCancelled) {
-        expect(await erc721.ownerOf(listings[i].nft.id)).to.eq(carol.address);
-      } else {
-        expect(await erc721.ownerOf(listings[i].nft.id)).to.eq(
-          listings[i].seller.address
-        );
-      }
-    }
 
     // Router is stateless
     expect(balancesAfter.router).to.eq(0);
-    expect(balancesAfter.foundationModule).to.eq(0);
-  };
+    expect(balancesAfter.sudoswapModule).to.eq(0);
+  });
 
-  for (let multiple of [false, true]) {
-    for (let partial of [false, true]) {
-      for (let chargeFees of [false, true]) {
-        for (let revertIfIncomplete of [false, true]) {
-          it(
-            "[eth]" +
-              `${multiple ? "[multiple-orders]" : "[single-order]"}` +
-              `${partial ? "[partial]" : "[full]"}` +
-              `${chargeFees ? "[fees]" : "[no-fees]"}` +
-              `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
-            async () =>
-              testAcceptListings(
-                chargeFees,
-                revertIfIncomplete,
-                partial,
-                multiple ? getRandomInteger(2, 6) : 1
-              )
-          );
-        }
-      }
-    }
-  }
 });
