@@ -7,10 +7,6 @@ import { TxData, generateReferrerBytes } from "../utils";
 
 import RouterAbi from "./abis/RouterRoyalties.json";
 
-// Sudoswap:
-// - fully on-chain
-// - pooled liquidity
-
 export class Exchange {
   public chainId: number;
   public contract: Contract;
@@ -23,70 +19,43 @@ export class Exchange {
     );
   }
 
-  // --- Fill buy order ---
-
-  public async fillBuyOrder(
-    taker: Signer,
-    order: Order,
-    tokenId: string,
-    options?: {
-      recipient?: string;
-      referrer?: string;
-    }
-  ): Promise<ContractTransaction> {
-    const tx = this.fillBuyOrderTx(
-      await taker.getAddress(),
-      order,
-      tokenId,
-      options
-    );
-    return taker.sendTransaction(tx);
-  }
-
-  public fillBuyOrderTx(
-    taker: string,
-    order: Order,
-    tokenId: string,
-    options?: {
-      recipient?: string;
-      referrer?: string;
-    }
-  ): TxData {
-    return {
-      from: taker,
-      to: this.contract.address,
-      data:
-        this.contract.interface.encodeFunctionData("swapNFTsForToken", [
-          [
-            {
-              pair: order.params.pair,
-              nftIds: [tokenId],
-            },
-          ],
-          order.params.price ?? 0,
-          options?.recipient ?? taker,
-          Math.floor(Date.now() / 1000) + 10 * 60,
-        ]) + generateReferrerBytes(options?.referrer),
-    };
-  }
-
     // --- Deposit NFTs ---
 
-    public async depositNFTs(
-      taker: Signer,
-      order: Order,
-      tokenId: string,
-      options?: {
-        recipient?: string;
-        referrer?: string;
+    public async swapETHForSpecificNFTs(
+        taker: Signer,
+        swapList: SwapList[],
+        ethRecipient: string,
+        nftRecipient: string,
+        value: string
+      ): Promise<ContractTransaction> {
+        const tx = this.swapETHForSpecificNFTsTx(
+          await taker.getAddress(),
+          swapList,
+          ethRecipient,
+          nftRecipient,
+          value
+        );
+        return taker.sendTransaction(tx);
       }
-    ): Promise<ContractTransaction> {
-      const tx = this.fillBuyOrderTx(
-        await taker.getAddress(),
-        order,
-        tokenId,
-        options
-      );
-      return taker.sendTransaction(tx);
-    }
+  
+      public swapETHForSpecificNFTsTx(
+        taker: string,
+        swapList: SwapList[],
+        ethRecipient: string,
+        nftRecipient: string,
+        value: string
+      ): TxData {
+        return {
+          from: taker,
+          to: this.contract.address,
+          data:
+            this.contract.interface.encodeFunctionData("swapETHForSpecificNFTs", [
+              swapList,
+              ethRecipient,
+              nftRecipient,
+              Math.floor(Date.now() / 1000) + 10 * 60,
+            ]),
+          value: value
+        };
+      }
 }
