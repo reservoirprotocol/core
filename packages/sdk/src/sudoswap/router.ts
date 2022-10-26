@@ -101,12 +101,6 @@ export class Router {
         to: this.contract.address,
         data:
           this.swapETHForSpecificNFTsTxData(swapList, ethRecipient, nftRecipient),
-          // this.contract.interface.encodeFunctionData("swapETHForSpecificNFTs", [
-          //   swapList,
-          //   ethRecipient,
-          //   nftRecipient,
-          //   Math.floor(Date.now() / 1000) + 10 * 60,
-          // ]),
         value: value
       };
     }
