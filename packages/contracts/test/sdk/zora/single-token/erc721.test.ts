@@ -27,7 +27,7 @@ describe("Zora - SingleToken Erc721", () => {
   it("Fill sell order", async () => {
     const seller = alice;
     const buyer = bob;
-    const tokenId = 99;
+    const tokenId = "99";
     const price = parseEther("1");
 
     // Mint erc721 to the seller.

@@ -5,12 +5,12 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { ExecutionInfo } from "../../helpers/router";
+import { ExecutionInfo } from "../helpers/router";
 import {
   SeaportERC721Approval,
   setupSeaportERC721Approvals,
-} from "../../helpers/seaport";
-import { LooksRareOffer, setupLooksRareOffers } from "../../helpers/looks-rare";
+} from "../helpers/seaport";
+import { LooksRareOffer, setupLooksRareOffers } from "../helpers/looks-rare";
 import {
   bn,
   getChainId,

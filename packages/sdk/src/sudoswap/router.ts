@@ -3,7 +3,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
-import { TxData, generateReferrerBytes } from "../utils";
+import { TxData, generateSourceBytes } from "../utils";
 
 import RouterAbi from "./abis/Router.json";
 
@@ -31,7 +31,7 @@ export class Router {
     tokenId: string,
     options?: {
       recipient?: string;
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillBuyOrderTx(
@@ -49,7 +49,7 @@ export class Router {
     tokenId: string,
     options?: {
       recipient?: string;
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     return {
@@ -66,7 +66,7 @@ export class Router {
           order.params.price ?? 0,
           options?.recipient ?? taker,
           Math.floor(Date.now() / 1000) + 10 * 60,
-        ]) + generateReferrerBytes(options?.referrer),
+        ]) + generateSourceBytes(options?.source),
     };
   }
 }

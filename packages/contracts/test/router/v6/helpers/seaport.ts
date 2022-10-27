@@ -4,7 +4,7 @@ import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { ethers } from "hardhat";
 
-import { getChainId, getCurrentTimestamp } from "../../utils";
+import { getChainId, getCurrentTimestamp } from "../../../utils";
 
 // --- Listings ---
 
@@ -84,6 +84,10 @@ export type SeaportOffer = {
   };
   // All offers are in WETH
   price: BigNumberish;
+  fees?: {
+    recipient: string;
+    amount: BigNumberish;
+  }[];
   isCancelled?: boolean;
   order?: Sdk.Seaport.Order;
 };
@@ -92,7 +96,7 @@ export const setupSeaportOffers = async (offers: SeaportOffer[]) => {
   const chainId = getChainId();
 
   for (const offer of offers) {
-    const { buyer, nft, price } = offer;
+    const { buyer, nft, price, fees } = offer;
 
     const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
     await weth.deposit(buyer, price);
@@ -109,6 +113,7 @@ export const setupSeaportOffers = async (offers: SeaportOffer[]) => {
       amount: nft.amount ?? 1,
       paymentToken: weth.contract.address,
       price,
+      fees,
       counter: 0,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
@@ -245,7 +250,7 @@ export const setupSeaportERC721Approvals = async (
         .connect(giver)
         .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
     } else {
-      await nft.contract.connect(giver).mint(nft.id, nft.amount ?? 1);
+      await nft.contract.connect(giver).mintMany(nft.id, nft.amount ?? 1);
       await nft.contract
         .connect(giver)
         .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);

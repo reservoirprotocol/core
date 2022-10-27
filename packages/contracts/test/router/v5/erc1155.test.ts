@@ -5,15 +5,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import {
-  getChainId,
-  getCurrentTimestamp,
-  reset,
-  setupNFTs,
-  setupRouter,
-} from "../utils";
+import { getChainId, getCurrentTimestamp, reset, setupNFTs } from "../../utils";
 
-describe("Router - filling ERC1155", () => {
+describe("[ReservoirV5_0_0] Fill ERC1155", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -23,17 +17,14 @@ describe("Router - filling ERC1155", () => {
   let carol: SignerWithAddress;
 
   let erc1155: Contract;
-  let router: Sdk.Router.Router;
+  let router: Sdk.RouterV5.Router;
 
   beforeEach(async () => {
     [deployer, referrer, alice, bob, carol] = await ethers.getSigners();
 
     ({ erc1155 } = await setupNFTs(deployer));
 
-    router = new Sdk.Router.Router(chainId, ethers.provider);
-    if (!process.env.USE_DEPLOYED_ROUTER) {
-      router.contract = await setupRouter(chainId, deployer);
-    }
+    router = new Sdk.RouterV5.Router(chainId, ethers.provider);
   });
 
   afterEach(reset);
@@ -82,6 +73,9 @@ describe("Router - filling ERC1155", () => {
 
     const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerEthBalanceBefore = await seller.getBalance();
+    const routerEthBalanceBefore = await ethers.provider.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceBefore = await erc1155.balanceOf(
       seller.address,
       soldTokenId
@@ -106,7 +100,7 @@ describe("Router - filling ERC1155", () => {
       ],
       buyer.address,
       {
-        referrer: "reservoir.market",
+        source: "reservoir.market",
         fee: { bps: routerFee, recipient: referrer.address },
       }
     );
@@ -114,6 +108,9 @@ describe("Router - filling ERC1155", () => {
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerEthBalanceAfter = await seller.getBalance();
+    const routerEthBalanceAfter = await ethers.provider.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceAfter = await erc1155.balanceOf(
       seller.address,
       soldTokenId
@@ -132,7 +129,7 @@ describe("Router - filling ERC1155", () => {
     expect(buyerNftBalanceAfter).to.eq(1);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
+    expect(routerEthBalanceAfter.sub(routerEthBalanceBefore)).to.eq(0);
   });
 
   it("LooksRare - fill listing", async () => {
@@ -178,6 +175,12 @@ describe("Router - filling ERC1155", () => {
 
     const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerWethBalanceBefore = await weth.getBalance(seller.address);
+    const routerEthBalanceBefore = await ethers.provider.getBalance(
+      router.contract.address
+    );
+    const routerWethBalanceBefore = await weth.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceBefore = await erc1155.balanceOf(
       seller.address,
       soldTokenId
@@ -202,7 +205,7 @@ describe("Router - filling ERC1155", () => {
       ],
       buyer.address,
       {
-        referrer: "reservoir.market",
+        source: "reservoir.market",
         fee: { bps: routerFee, recipient: referrer.address },
       }
     );
@@ -210,6 +213,12 @@ describe("Router - filling ERC1155", () => {
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerWethBalanceAfter = await weth.getBalance(seller.address);
+    const routerEthBalanceAfter = await ethers.provider.getBalance(
+      router.contract.address
+    );
+    const routerWethBalanceAfter = await weth.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceAfter = await erc1155.balanceOf(
       seller.address,
       soldTokenId
@@ -228,8 +237,8 @@ describe("Router - filling ERC1155", () => {
     expect(buyerNftBalanceAfter).to.eq(1);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
-    expect(await weth.getBalance(router.contract.address)).to.eq(0);
+    expect(routerEthBalanceAfter.sub(routerEthBalanceBefore)).to.eq(0);
+    expect(routerWethBalanceAfter.sub(routerWethBalanceBefore)).to.eq(0);
   });
 
   it("LooksRare - fill bid", async () => {
@@ -278,6 +287,9 @@ describe("Router - filling ERC1155", () => {
     await buyOrder.checkFillability(ethers.provider);
 
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
+    const routerWethBalanceBefore = await weth.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceBefore = await erc1155.balanceOf(
       seller.address,
       boughtTokenId
@@ -299,12 +311,15 @@ describe("Router - filling ERC1155", () => {
       },
       seller.address,
       {
-        referrer: "reservoir.market",
+        source: "reservoir.market",
       }
     );
     await seller.sendTransaction(tx);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
+    const routerWethBalanceAfter = await weth.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceAfter = await erc1155.balanceOf(
       seller.address,
       boughtTokenId
@@ -318,7 +333,7 @@ describe("Router - filling ERC1155", () => {
     expect(buyerNftBalanceAfter).to.eq(1);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await weth.getBalance(router.contract.address)).to.eq(0);
+    expect(routerWethBalanceAfter.sub(routerWethBalanceBefore)).to.eq(0);
   });
 
   it("ZeroExV4 - fill listing", async () => {
@@ -356,6 +371,9 @@ describe("Router - filling ERC1155", () => {
 
     const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerEthBalanceBefore = await seller.getBalance();
+    const routerEthBalanceBefore = await ethers.provider.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceBefore = await erc1155.balanceOf(
       seller.address,
       soldTokenId
@@ -380,7 +398,7 @@ describe("Router - filling ERC1155", () => {
       ],
       buyer.address,
       {
-        referrer: "reservoir.market",
+        source: "reservoir.market",
         fee: { bps: routerFee, recipient: referrer.address },
       }
     );
@@ -388,6 +406,9 @@ describe("Router - filling ERC1155", () => {
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerEthBalanceAfter = await seller.getBalance();
+    const routerEthBalanceAfter = await ethers.provider.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceAfter = await erc1155.balanceOf(
       seller.address,
       soldTokenId
@@ -404,7 +425,7 @@ describe("Router - filling ERC1155", () => {
     expect(buyerNftBalanceAfter).to.eq(1);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
+    expect(routerEthBalanceAfter.sub(routerEthBalanceBefore)).to.eq(0);
   });
 
   it("ZeroExV4 - fill listings (batch buy)", async () => {
@@ -448,6 +469,9 @@ describe("Router - filling ERC1155", () => {
 
     const referrerEthBalanceBefore = await referrer.getBalance();
     const sellerEthBalanceBefore = await seller.getBalance();
+    const routerEthBalanceBefore = await ethers.provider.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceBefore = await erc1155.balanceOf(
       seller.address,
       soldTokenId
@@ -470,7 +494,7 @@ describe("Router - filling ERC1155", () => {
       })),
       buyer.address,
       {
-        referrer: "reservoir.market",
+        source: "reservoir.market",
         fee: { bps: routerFee, recipient: referrer.address },
       }
     );
@@ -478,6 +502,9 @@ describe("Router - filling ERC1155", () => {
 
     const referrerEthBalanceAfter = await referrer.getBalance();
     const sellerEthBalanceAfter = await seller.getBalance();
+    const routerEthBalanceAfter = await ethers.provider.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceAfter = await erc1155.balanceOf(
       seller.address,
       soldTokenId
@@ -496,7 +523,7 @@ describe("Router - filling ERC1155", () => {
     expect(buyerNftBalanceAfter).to.eq(2);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await ethers.provider.getBalance(router.contract.address)).to.eq(0);
+    expect(routerEthBalanceAfter.sub(routerEthBalanceBefore)).to.eq(0);
   });
 
   it("ZeroExV4 - fill bid", async () => {
@@ -540,6 +567,9 @@ describe("Router - filling ERC1155", () => {
     await buyOrder.checkFillability(ethers.provider);
 
     const buyerWethBalanceBefore = await weth.getBalance(buyer.address);
+    const routerWethBalanceBefore = await weth.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceBefore = await erc1155.balanceOf(
       seller.address,
       boughtTokenId
@@ -561,12 +591,15 @@ describe("Router - filling ERC1155", () => {
       },
       seller.address,
       {
-        referrer: "reservoir.market",
+        source: "reservoir.market",
       }
     );
     await seller.sendTransaction(tx);
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
+    const routerWethBalanceAfter = await weth.getBalance(
+      router.contract.address
+    );
     const sellerNftBalanceAfter = await erc1155.balanceOf(
       seller.address,
       boughtTokenId
@@ -580,6 +613,6 @@ describe("Router - filling ERC1155", () => {
     expect(buyerNftBalanceAfter).to.eq(1);
 
     // Router is stateless (it shouldn't keep any funds)
-    expect(await weth.getBalance(router.contract.address)).to.eq(0);
+    expect(routerWethBalanceAfter.sub(routerWethBalanceBefore)).to.eq(0);
   });
 });

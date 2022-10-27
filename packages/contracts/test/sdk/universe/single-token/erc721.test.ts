@@ -3,11 +3,11 @@ import { parseEther } from "@ethersproject/units";
 import * as Common from "@reservoir0x/sdk/src/common";
 import * as Universe from "@reservoir0x/sdk/src/universe";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { constants } from "ethers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { getChainId, reset, setupNFTs } from "../../../utils";
-import { BigNumber, constants } from "ethers";
+import { bn, getChainId, reset, setupNFTs } from "../../../utils";
 
 describe("Universe - SingleToken Erc721", () => {
   const chainId = getChainId();
@@ -43,7 +43,6 @@ describe("Universe - SingleToken Erc721", () => {
     await weth.approve(buyer, Universe.Addresses.Exchange[chainId]);
 
     const buyerBalanceBefore = await weth.getBalance(seller.address);
-    const sellerBalanceBefore = await weth.getBalance(buyer.address);
 
     // Mint erc721 to seller
     await erc721.connect(seller).mint(soldTokenId);
@@ -57,6 +56,7 @@ describe("Universe - SingleToken Erc721", () => {
     const daoFee = await exchange.getDaoFee(seller.provider!);
 
     const builder = new Universe.Builders.SingleToken(chainId);
+
     // Build buy order
     const buyOrder = builder.build({
       maker: buyer.address,
@@ -69,11 +69,12 @@ describe("Universe - SingleToken Erc721", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     // Sign the order
     await buyOrder.sign(buyer);
-    await buyOrder.checkSignature();
+    buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
 
@@ -82,7 +83,7 @@ describe("Universe - SingleToken Erc721", () => {
 
     // Match orders
     await exchange.fillOrder(seller, buyOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerBalanceAfter = await weth.getBalance(seller.address);
@@ -109,7 +110,6 @@ describe("Universe - SingleToken Erc721", () => {
     await weth.approve(buyer, Universe.Addresses.Exchange[chainId]);
 
     const buyerBalanceBefore = await weth.getBalance(seller.address);
-    const sellerBalanceBefore = await weth.getBalance(buyer.address);
 
     // Mint erc721 to seller
     await erc721.connect(seller).mint(soldTokenId);
@@ -138,20 +138,14 @@ describe("Universe - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       fees: [
-        {
-          account: charlie.address,
-          value: revenueSplitBpsA,
-        },
-        {
-          account: dan.address,
-          value: revenueSplitBpsB,
-        },
+        `${charlie.address}:${revenueSplitBpsA}`,
+        `${dan.address}:${revenueSplitBpsB}`,
       ],
     });
 
     // Sign the order
     await buyOrder.sign(buyer);
-    await buyOrder.checkSignature();
+    buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
 
@@ -160,7 +154,7 @@ describe("Universe - SingleToken Erc721", () => {
 
     // Match orders
     await exchange.fillOrder(seller, buyOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerBalanceAfter = await weth.getBalance(seller.address);
@@ -169,9 +163,7 @@ describe("Universe - SingleToken Erc721", () => {
 
     let priceAfterFees = price;
     priceAfterFees = priceAfterFees.sub(
-      priceAfterFees
-        .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
-        .div(10000)
+      priceAfterFees.mul(bn(revenueSplitBpsA).add(revenueSplitBpsB)).div(10000)
     );
     priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
@@ -221,11 +213,12 @@ describe("Universe - SingleToken Erc721", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     // Sign the order
     await sellOrder.sign(seller);
-    await sellOrder.checkSignature();
+    sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
 
@@ -234,7 +227,7 @@ describe("Universe - SingleToken Erc721", () => {
 
     // Match orders
     await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
@@ -289,14 +282,8 @@ describe("Universe - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       fees: [
-        {
-          account: charlie.address,
-          value: revenueSplitBpsA,
-        },
-        {
-          account: dan.address,
-          value: revenueSplitBpsB,
-        },
+        `${charlie.address}:${revenueSplitBpsA}`,
+        `${dan.address}:${revenueSplitBpsB}`,
       ],
     });
 
@@ -311,7 +298,7 @@ describe("Universe - SingleToken Erc721", () => {
 
     // Match orders
     await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerBalanceAfter = await weth.getBalance(buyer.address);
@@ -319,9 +306,7 @@ describe("Universe - SingleToken Erc721", () => {
     const ownerAfter = await nft.getOwner(soldTokenId);
     let priceAfterFees = price;
     priceAfterFees = priceAfterFees.sub(
-      priceAfterFees
-        .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
-        .div(10000)
+      priceAfterFees.mul(bn(revenueSplitBpsA).add(revenueSplitBpsB)).div(10000)
     );
     priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
@@ -361,9 +346,12 @@ describe("Universe - SingleToken Erc721", () => {
       paymentToken: constants.AddressZero,
       startTime: 0,
       endTime: 0,
-    }); // Sign the order
+      fees: [],
+    });
+
+    // Sign the order
     await sellOrder.sign(seller);
-    await sellOrder.checkSignature();
+    sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
@@ -375,7 +363,7 @@ describe("Universe - SingleToken Erc721", () => {
 
     // Match orders
     const tx = await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const txReceipt = await tx.wait();
@@ -428,20 +416,14 @@ describe("Universe - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       fees: [
-        {
-          account: charlie.address,
-          value: revenueSplitBpsA,
-        },
-        {
-          account: dan.address,
-          value: revenueSplitBpsB,
-        },
+        `${charlie.address}:${revenueSplitBpsA}`,
+        `${dan.address}:${revenueSplitBpsB}`,
       ],
     });
 
     // Sign the order
     await sellOrder.sign(seller);
-    await sellOrder.checkSignature();
+    sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
     const ownerBefore = await nft.getOwner(soldTokenId);
     expect(ownerBefore).to.eq(seller.address);
@@ -453,7 +435,7 @@ describe("Universe - SingleToken Erc721", () => {
 
     // Match orders
     const tx = await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const txReceipt = await tx.wait();
@@ -469,9 +451,7 @@ describe("Universe - SingleToken Erc721", () => {
 
     let priceAfterFees = price;
     priceAfterFees = priceAfterFees.sub(
-      priceAfterFees
-        .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
-        .div(10000)
+      priceAfterFees.mul(bn(revenueSplitBpsA).add(revenueSplitBpsB)).div(10000)
     );
     priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
@@ -500,6 +480,7 @@ describe("Universe - SingleToken Erc721", () => {
       paymentToken: constants.AddressZero,
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     await sellOrder.checkFillability(ethers.provider);
@@ -532,6 +513,7 @@ describe("Universe - SingleToken Erc721", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     await sellOrder.checkFillability(ethers.provider);
@@ -563,6 +545,7 @@ describe("Universe - SingleToken Erc721", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     await buyOrder.checkFillability(ethers.provider);

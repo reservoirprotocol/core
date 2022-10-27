@@ -3,7 +3,7 @@ import { Contract } from "@ethersproject/contracts";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
-import { getChainId } from "../../utils";
+import { getChainId } from "../../../utils";
 
 // --- Listings ---
 

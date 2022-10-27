@@ -278,7 +278,7 @@ describe("ZeroEx V4 - SingleToken Erc721", () => {
 
     // Match orders
     await exchange.fillOrder(buyer, sellOrder, buyOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);

@@ -10,7 +10,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { ExecutionInfo } from "../helpers/router";
+import { ExecutionInfo } from "./helpers/router";
 import {
   SeaportERC721Approval,
   SeaportListing,
@@ -18,7 +18,7 @@ import {
   setupSeaportERC721Approvals,
   setupSeaportListings,
   setupSeaportOffers,
-} from "../helpers/seaport";
+} from "./helpers/seaport";
 import {
   bn,
   getChainId,
@@ -55,7 +55,7 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
       .then((factory) => factory.deploy())) as any;
     balanceAssertModule = (await ethers
       .getContractFactory("BalanceAssertModule", deployer)
-      .then((factory) => factory.deploy(deployer.address))) as any;
+      .then((factory) => factory.deploy())) as any;
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
       .then((factory) =>

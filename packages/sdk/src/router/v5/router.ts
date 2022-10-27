@@ -5,11 +5,11 @@ import { Contract } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { ExchangeKind, BidDetails, ListingDetails } from "./types";
-import * as Sdk from "../index";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import * as Sdk from "../../index";
+import { TxData, bn, generateSourceBytes } from "../../utils";
 
-import Erc721Abi from "../common/abis/Erc721.json";
-import Erc1155Abi from "../common/abis/Erc1155.json";
+import Erc721Abi from "../../common/abis/Erc721.json";
+import Erc1155Abi from "../../common/abis/Erc1155.json";
 import RouterAbi from "./abis/ReservoirV5_0_0.json";
 
 export class Router {
@@ -31,7 +31,7 @@ export class Router {
     details: ListingDetails[],
     taker: string,
     options?: {
-      referrer?: string;
+      source?: string;
       fee?: {
         recipient: string;
         bps: number | string;
@@ -330,7 +330,7 @@ export class Router {
     if (routerTxs.length === 1) {
       return {
         ...routerTxs[0],
-        data: routerTxs[0].data + generateReferrerBytes(options?.referrer),
+        data: routerTxs[0].data + generateSourceBytes(options?.source),
       };
     } else if (routerTxs.length > 1) {
       return {
@@ -341,7 +341,7 @@ export class Router {
             routerTxs.map((tx) => tx.data),
             routerTxs.map((tx) => tx.value!.toString()),
             !options?.partial,
-          ]) + generateReferrerBytes(options?.referrer),
+          ]) + generateSourceBytes(options?.source),
         value: routerTxs
           .map((tx) => bn(tx.value!))
           .reduce((a, b) => a.add(b), bn(0))
@@ -356,7 +356,7 @@ export class Router {
     detail: BidDetails,
     taker: string,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ) {
     // Assume the bid details are consistent with the underlying order object
@@ -380,7 +380,7 @@ export class Router {
       return {
         from: taker,
         to: Sdk.X2Y2.Addresses.Exchange[this.chainId],
-        data: tx.data + generateReferrerBytes(options?.referrer),
+        data: tx.data + generateSourceBytes(options?.source),
       };
     }
 
@@ -389,7 +389,7 @@ export class Router {
       return {
         from: taker,
         to: Sdk.Sudoswap.Addresses.RouterWithRoyalties[this.chainId],
-        data: tx.data + generateReferrerBytes(options?.referrer),
+        data: tx.data + generateSourceBytes(options?.source),
       };
     }
 
@@ -411,7 +411,7 @@ export class Router {
                 [tx.data, exchangeKind, detail.contract, taker, true]
               ),
             ]
-          ) + generateReferrerBytes(options?.referrer),
+          ) + generateSourceBytes(options?.source),
       };
     } else {
       return {
@@ -431,7 +431,7 @@ export class Router {
                 [tx.data, exchangeKind, detail.contract, taker, true]
               ),
             ]
-          ) + generateReferrerBytes(options?.referrer),
+          ) + generateSourceBytes(options?.source),
       };
     }
 
@@ -442,7 +442,7 @@ export class Router {
 
     // return {
     //   ...tx,
-    //   data: tx.data + generateReferrerBytes(options?.referrer),
+    //   data: tx.data + generateReferrerBytes(options?.source),
     // };
   }
 
@@ -450,7 +450,7 @@ export class Router {
     { kind, order, tokenId, amount }: ListingDetails,
     taker: string,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<{
     tx: TxData;
@@ -559,7 +559,7 @@ export class Router {
     { kind, order, tokenId, extraArgs }: BidDetails,
     taker: string,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<{ tx: TxData; exchangeKind: ExchangeKind }> {
     // When filling through the router, in all below cases we set
@@ -633,7 +633,7 @@ export class Router {
       return {
         tx: await exchange.fillOrderTx(taker, order, {
           tokenId,
-          referrer: options?.referrer,
+          source: options?.source,
         }),
         exchangeKind: ExchangeKind.X2Y2,
       };

@@ -9,7 +9,7 @@ import { Contract } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -29,7 +29,7 @@ export class Exchange {
     order: Order,
     matchParams: Types.MatchParams,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<TransactionResponse> {
     const tx = this.fillOrderTx(
@@ -46,7 +46,7 @@ export class Exchange {
     order: Order,
     matchParams: Types.MatchParams,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     if (order.params.side === Types.Side.LISTING) {
@@ -60,7 +60,7 @@ export class Exchange {
               signature: order.params.signature!,
               fillAmount: matchParams.fillAmount,
             },
-          ]) + generateReferrerBytes(options?.referrer),
+          ]) + generateSourceBytes(options?.source),
         value: bn(order.params.unitPrice)
           .mul(matchParams.fillAmount)
           .toHexString(),
@@ -77,7 +77,7 @@ export class Exchange {
                 signature: order.params.signature!,
                 fillAmount: matchParams.fillAmount,
               },
-            ]) + generateReferrerBytes(options?.referrer),
+            ]) + generateSourceBytes(options?.source),
         };
       } else {
         return {
@@ -92,7 +92,7 @@ export class Exchange {
               },
               matchParams.tokenId!,
               matchParams.criteriaProof!,
-            ]) + generateReferrerBytes(options?.referrer),
+            ]) + generateSourceBytes(options?.source),
         };
       }
     }

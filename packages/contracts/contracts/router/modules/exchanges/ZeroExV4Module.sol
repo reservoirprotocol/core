@@ -11,7 +11,6 @@ import {IZeroExV4} from "../../../interfaces/IZeroExV4.sol";
 // Notes:
 // - supports filling listings (both ERC721/ERC1155)
 // - supports filling offers (both ERC721/ERC1155)
-// - TODO: support filling multiple quantites of ERC1155
 
 contract ZeroExV4Module is BaseExchangeModule {
     using SafeERC20 for IERC20;
@@ -139,6 +138,7 @@ contract ZeroExV4Module is BaseExchangeModule {
     function acceptETHListingERC1155(
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
+        uint128 amount,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -152,6 +152,7 @@ contract ZeroExV4Module is BaseExchangeModule {
         _buyERC1155(
             order,
             signature,
+            amount,
             params.fillTo,
             params.revertIfIncomplete,
             params.amount
@@ -163,6 +164,7 @@ contract ZeroExV4Module is BaseExchangeModule {
     function acceptERC20ListingERC1155(
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
+        uint128 amount,
         ERC20ListingParams calldata params,
         Fee[] calldata fees
     )
@@ -179,6 +181,7 @@ contract ZeroExV4Module is BaseExchangeModule {
         _buyERC1155(
             order,
             signature,
+            amount,
             params.fillTo,
             params.revertIfIncomplete,
             0
@@ -190,6 +193,7 @@ contract ZeroExV4Module is BaseExchangeModule {
     function acceptETHListingsERC1155(
         IZeroExV4.ERC1155Order[] calldata orders,
         IZeroExV4.Signature[] calldata signatures,
+        uint128[] memory amounts,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -203,6 +207,7 @@ contract ZeroExV4Module is BaseExchangeModule {
         _buyERC1155s(
             orders,
             signatures,
+            amounts,
             params.fillTo,
             params.revertIfIncomplete,
             params.amount
@@ -214,6 +219,7 @@ contract ZeroExV4Module is BaseExchangeModule {
     function acceptERC20ListingsERC1155(
         IZeroExV4.ERC1155Order[] calldata orders,
         IZeroExV4.Signature[] calldata signatures,
+        uint128[] memory amounts,
         ERC20ListingParams calldata params,
         Fee[] calldata fees
     )
@@ -230,6 +236,7 @@ contract ZeroExV4Module is BaseExchangeModule {
         _buyERC1155s(
             orders,
             signatures,
+            amounts,
             params.fillTo,
             params.revertIfIncomplete,
             0
@@ -269,6 +276,7 @@ contract ZeroExV4Module is BaseExchangeModule {
     function acceptERC1155Offer(
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
+        uint128 amount,
         OfferParams calldata params,
         uint256 tokenId
     ) external nonReentrant {
@@ -276,10 +284,10 @@ contract ZeroExV4Module is BaseExchangeModule {
         _approveERC1155IfNeeded(order.erc1155Token, address(EXCHANGE));
 
         // Execute fill
-        try EXCHANGE.sellERC1155(order, signature, tokenId, 1, false, "") {
+        try EXCHANGE.sellERC1155(order, signature, tokenId, amount, false, "") {
             order.erc20Token.safeTransfer(
                 params.fillTo,
-                order.erc20TokenAmount
+                (order.erc20TokenAmount * order.erc1155TokenAmount) / amount
             );
         } catch {
             // Revert if specified
@@ -358,16 +366,17 @@ contract ZeroExV4Module is BaseExchangeModule {
     function _buyERC1155(
         IZeroExV4.ERC1155Order calldata order,
         IZeroExV4.Signature calldata signature,
+        uint128 amount,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
     ) internal {
-        try EXCHANGE.buyERC1155{value: value}(order, signature, 1, "") {
+        try EXCHANGE.buyERC1155{value: value}(order, signature, amount, "") {
             order.erc1155Token.safeTransferFrom(
                 address(this),
                 receiver,
                 order.erc1155TokenId,
-                1,
+                amount,
                 ""
             );
         } catch {
@@ -420,6 +429,7 @@ contract ZeroExV4Module is BaseExchangeModule {
     function _buyERC1155s(
         IZeroExV4.ERC1155Order[] calldata orders,
         IZeroExV4.Signature[] calldata signatures,
+        uint128[] memory amounts,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
@@ -428,7 +438,7 @@ contract ZeroExV4Module is BaseExchangeModule {
 
         uint128[] memory fillAmounts = new uint128[](length);
         for (uint256 i = 0; i < length; ) {
-            fillAmounts[i] = 1;
+            fillAmounts[i] = amounts[i];
 
             unchecked {
                 ++i;
@@ -451,7 +461,7 @@ contract ZeroExV4Module is BaseExchangeModule {
                         address(this),
                         receiver,
                         orders[i].erc1155TokenId,
-                        1,
+                        fillAmounts[i],
                         ""
                     );
                 }
