@@ -169,7 +169,7 @@ describe("LooksRare - SingleToken Erc1155", () => {
     const ownerBalanceAfter = await nft.getBalance(seller.address, soldTokenId);
 
     expect(buyerBalanceAfter).to.be.lt(buyerBalanceBefore.sub(price));
-    expect(sellerBalanceAfter).to.eq(price.sub(price.mul(200).div(10000)));
+    expect(sellerBalanceAfter).to.eq(price.sub(price.mul(150).div(10000)));
     expect(ownerBalanceAfter).to.eq(0);
   });
 });

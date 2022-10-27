@@ -3,7 +3,6 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { BaseBuildParams, BaseBuilder } from "../base";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
-import * as CommonAddresses from "../../../common/addresses";
 import { BytesEmpty, s } from "../../../utils";
 
 interface BuildParams extends BaseBuildParams {
@@ -32,6 +31,16 @@ export class SingleTokenBuilder extends BaseBuilder {
   }
 
   public build(params: BuildParams) {
+    if (
+      params.strategy &&
+      [
+        Addresses.StrategyStandardSale[this.chainId],
+        Addresses.StrategyStandardSaleDeprecated[this.chainId],
+      ].includes(params.strategy.toLowerCase())
+    ) {
+      throw new Error("Invalid strategy");
+    }
+
     this.defaultInitialize(params);
 
     return new Order(this.chainId, {
@@ -42,7 +51,7 @@ export class SingleTokenBuilder extends BaseBuilder {
       price: s(params.price),
       tokenId: s(params.tokenId),
       amount: "1",
-      strategy: Addresses.StrategyStandardSaleForFixedPrice[this.chainId],
+      strategy: params.strategy ?? Addresses.StrategyStandardSale[this.chainId],
       currency: params.currency,
       nonce: s(params.nonce),
       startTime: params.startTime!,
@@ -61,7 +70,11 @@ export class SingleTokenBuilder extends BaseBuilder {
       taker,
       price: order.params.price,
       tokenId: order.params.tokenId,
-      minPercentageToAsk: 8500,
+      minPercentageToAsk:
+        order.params.strategy.toLowerCase() ===
+        Addresses.StrategyStandardSale[this.chainId]
+          ? 9800
+          : 9750,
       params: BytesEmpty,
     };
   }

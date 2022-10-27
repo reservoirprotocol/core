@@ -280,7 +280,7 @@ describe("Router - filling ERC721", () => {
     const seller = bob;
 
     const price = parseEther("1");
-    const fee = 200;
+    const fee = 150;
     const routerFee = 500;
     const soldTokenId = 0;
 
@@ -431,7 +431,7 @@ describe("Router - filling ERC721", () => {
     const seller = bob;
 
     const price = parseEther("1");
-    const routerFee = 200;
+    const routerFee = 150;
     const soldTokenId = 0;
 
     // Mint erc721 to seller

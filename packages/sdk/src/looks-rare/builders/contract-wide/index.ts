@@ -3,7 +3,6 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { BaseBuildParams, BaseBuilder } from "../base";
 import * as Addresses from "../../addresses";
 import { Order } from "../../order";
-import * as CommonAddresses from "../../../common/addresses";
 import { BytesEmpty, s } from "../../../utils";
 
 interface BuildParams extends BaseBuildParams {}
@@ -30,11 +29,21 @@ export class ContractWideBuilder extends BaseBuilder {
   }
 
   public build(params: BuildParams) {
-    this.defaultInitialize(params);
+    if (
+      params.strategy &&
+      [
+        Addresses.StrategyCollectionSale[this.chainId],
+        Addresses.StrategyCollectionSaleDeprecated[this.chainId],
+      ].includes(params.strategy.toLowerCase())
+    ) {
+      throw new Error("Invalid strategy");
+    }
 
     if (params.isOrderAsk) {
       throw new Error("Unsupported order side");
     }
+
+    this.defaultInitialize(params);
 
     return new Order(this.chainId, {
       kind: "contract-wide",
@@ -45,7 +54,7 @@ export class ContractWideBuilder extends BaseBuilder {
       tokenId: "0",
       amount: "1",
       strategy:
-        Addresses.StrategyAnyItemFromCollectionForFixedPrice[this.chainId],
+        params.strategy ?? Addresses.StrategyCollectionSale[this.chainId],
       currency: params.currency,
       nonce: s(params.nonce),
       startTime: params.startTime!,
@@ -68,7 +77,11 @@ export class ContractWideBuilder extends BaseBuilder {
       taker,
       price: order.params.price,
       tokenId: s(data.tokenId),
-      minPercentageToAsk: 8500,
+      minPercentageToAsk:
+        order.params.strategy.toLowerCase() ===
+        Addresses.StrategyCollectionSale[this.chainId]
+          ? 9800
+          : 9750,
       params: BytesEmpty,
     };
   }
