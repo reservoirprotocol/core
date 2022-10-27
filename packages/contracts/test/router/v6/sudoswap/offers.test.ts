@@ -43,10 +43,22 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
   it("Sudoswap router test", async () => {
     // Setup
 
-    const tokenId: number = 6113; //example token
-    const pool: string = "0x7794C476806731b74ba2049ccd413218248135DA";
+    const contractPDB = await setupSudoswapPoolListing();
 
-    const contractPDB = await setupSudoswapPoolListing(tokenId, pool);
+    const tokenId: number = 6113; //example token
+
+    const owner00 = await contractPDB.ownerOf(tokenId);
+
+    const pairFactory = new Sdk.Sudoswap.Exchange(chainId); //selling/deposit 
+  
+    const nft: string = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F"; //PudgyDickbutts (PDB)
+    const pool: string = "0x7794C476806731b74ba2049ccd413218248135DA"; //Mainnet PDB pool
+    
+    const impersonatedSigner = await ethers.getImpersonatedSigner(owner00);
+  
+    // List nft
+  
+    await pairFactory.depositNFTs(impersonatedSigner, nft, [tokenId], pool);
 
     // Prepare executions
 
