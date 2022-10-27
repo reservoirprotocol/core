@@ -256,7 +256,7 @@ describe("[ReservoirV6_0_0] LooksRare offers", () => {
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
-            bn(price).mul(200).div(10000)
+            bn(price).mul(150).div(10000)
           )
         )
         .reduce((a, b) => bn(a).add(b), bn(0))

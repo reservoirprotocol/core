@@ -102,7 +102,7 @@ describe("Router - multi buy", () => {
     const seller2 = bob;
     const tokenId2 = 1;
     const price2 = parseEther("2");
-    const fee2 = bn(200);
+    const fee2 = bn(150);
     {
       // Mint erc721 to seller
       await erc721.connect(seller2).mint(tokenId2);

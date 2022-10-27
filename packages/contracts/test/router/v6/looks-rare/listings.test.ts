@@ -257,7 +257,7 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
-            bn(price).mul(200).div(10000)
+            bn(price).mul(150).div(10000)
           )
         )
         .reduce((a, b) => bn(a).add(b), bn(0))
@@ -272,7 +272,7 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
-            bn(price).mul(200).div(10000)
+            bn(price).mul(150).div(10000)
           )
         )
         .reduce((a, b) => bn(a).add(b), bn(0))

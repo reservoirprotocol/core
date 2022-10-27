@@ -15,6 +15,7 @@ export interface BaseBuildParams {
   startTime?: number;
   endTime?: number;
   minPercentageToAsk?: number;
+  strategy?: string;
   v?: number;
   r?: string;
   s?: string;
