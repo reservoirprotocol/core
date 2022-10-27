@@ -26,7 +26,6 @@ export const getCurrentTimestamp = (delay = 0) =>
 export const lc = (x: string) => x?.toLowerCase();
 export const n = (x: any) => (x ? Number(x) : x);
 export const s = (x: any) => (x ? String(x) : x);
-export const toCheckSum = (x: any) => utils.getAddress(x);
 
 // Misc
 

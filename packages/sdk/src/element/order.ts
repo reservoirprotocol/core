@@ -1,17 +1,18 @@
 import { Provider } from "@ethersproject/abstract-provider";
-import { TypedDataSigner } from "@ethersproject/abstract-signer";
+import { TypedDataSigner, VoidSigner } from "@ethersproject/abstract-signer";
 import { BigNumber } from "@ethersproject/bignumber";
 import { splitSignature } from "@ethersproject/bytes";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
 import { verifyTypedData } from "@ethersproject/wallet";
+
 import * as Addresses from "./addresses";
 import { Builders } from "./builders";
 import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import * as Common from "../common";
-import { bn, lc, n, s, toCheckSum } from "../utils";
+import { bn, lc, n, s } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -426,23 +427,23 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
   return {
     kind: order.kind,
     direction: order.direction,
-    maker: toCheckSum(order.maker),
-    taker: toCheckSum(order.taker),
+    maker: lc(order.maker),
+    taker: lc(order.taker),
     expiry: s(order.expiry),
     nonce: s(order.nonce),
     hashNonce: s(order.hashNonce),
-    erc20Token: toCheckSum(order.erc20Token),
+    erc20Token: lc(order.erc20Token),
     erc20TokenAmount: s(order.erc20TokenAmount),
     fees: order.fees.map(({ recipient, amount, feeData }) => ({
-      recipient: toCheckSum(recipient),
+      recipient: lc(recipient),
       amount: s(amount),
       feeData: lc(feeData),
     })),
-    nft: toCheckSum(order.nft),
+    nft: lc(order.nft),
     nftId: s(order.nftId),
     nftProperties: order.nftProperties.map(
       ({ propertyValidator, propertyData }) => ({
-        propertyValidator: toCheckSum(propertyValidator),
+        propertyValidator: lc(propertyValidator),
         propertyData: lc(propertyData),
       })
     ),
