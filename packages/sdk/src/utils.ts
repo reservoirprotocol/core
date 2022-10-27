@@ -1,7 +1,6 @@
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { randomBytes } from "@ethersproject/random";
 import { toUtf8Bytes, toUtf8String } from "@ethersproject/strings";
-import { utils } from 'ethers';
 
 // Constants
 
