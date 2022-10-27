@@ -255,7 +255,7 @@ export class Exchange {
     const isSell = order.params.direction === Types.TradeDirection.SELL;
     if (!order.params.nftAmount) {
       if (isSell) {
-        return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
+        return this.contract.connect(provider).getERC721SellOrderHash(order.getRaw());
       } else {
         return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
       }
