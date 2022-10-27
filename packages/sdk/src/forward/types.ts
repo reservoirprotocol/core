@@ -1,14 +1,20 @@
 export type OrderKind = "contract-wide" | "single-token" | "token-list";
 
+export enum Side {
+  BID,
+  LISTING,
+}
+
 export enum ItemKind {
   ERC721,
   ERC1155,
-  ERC721_WITH_CRITERIA,
-  ERC1155_WITH_CRITERIA,
+  ERC721_CRITERIA_OR_EXTERNAL,
+  ERC1155_CRITERIA_OR_EXTERNAL,
 }
 
-export type Bid = {
+export type Order = {
   kind?: OrderKind;
+  side: Side;
   itemKind: ItemKind;
   maker: string;
   token: string;

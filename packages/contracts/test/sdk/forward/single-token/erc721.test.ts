@@ -40,10 +40,6 @@ describe("Forward - SingleToken Erc721", () => {
 
     const exchange = new Forward.Exchange(chainId);
 
-    // Initialize vault
-    await exchange.createVault(buyer);
-    const vault = await exchange.getVault(ethers.provider, buyer.address);
-
     // Mint erc721 to seller
     await erc721.connect(seller).mint(boughtTokenId);
     const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
@@ -58,6 +54,7 @@ describe("Forward - SingleToken Erc721", () => {
     // Build bid
     const bid = builder.build({
       tokenKind: "erc721",
+      side: "buy",
       maker: buyer.address,
       contract: erc721.address,
       tokenId: boughtTokenId,
@@ -94,6 +91,75 @@ describe("Forward - SingleToken Erc721", () => {
     expect(sellerWethBalanceAfter).to.eq(
       sellerWethBalanceBefore.add(unitPrice)
     );
-    expect(ownerAfter).to.eq(vault);
+    expect(ownerAfter.toLowerCase()).to.eq(
+      exchange.contract.address.toLowerCase()
+    );
+  });
+
+  it("Build and fill external listing", async () => {
+    const seller = alice;
+    const buyer = bob;
+    const unitPrice = parseEther("1");
+    const soldTokenId = 1;
+
+    const exchange = new Forward.Exchange(chainId);
+
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
+    const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
+    await nft.approve(seller, Forward.Addresses.Exchange[chainId]);
+
+    const builder = new Forward.Builders.SingleToken(chainId);
+
+    // Build listing
+    const listing = builder.build({
+      tokenKind: "erc721",
+      side: "sell",
+      external: true,
+      maker: seller.address,
+      contract: erc721.address,
+      tokenId: soldTokenId,
+      unitPrice,
+      counter: 0,
+      expiration: (await getCurrentTimestamp(ethers.provider)) + 60,
+    });
+    await listing.sign(seller);
+
+    // Check the fillability
+    await listing.checkFillability(ethers.provider);
+
+    // Create matching params
+    const matchParams = listing.buildMatching();
+
+    const buyerEthBalanceBefore = await ethers.provider.getBalance(
+      buyer.address
+    );
+    const sellerEthBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const ownerBefore = await nft.getOwner(soldTokenId);
+
+    expect(ownerBefore).to.eq(seller.address);
+
+    // Match orders
+    await exchange.fillOrder(buyer, listing, matchParams, {
+      referrer: "reservoir.market",
+    });
+
+    const buyerEthBalanceAfter = await ethers.provider.getBalance(
+      buyer.address
+    );
+    const sellerEthBalanceAfter = await ethers.provider.getBalance(
+      seller.address
+    );
+    const ownerAfter = await nft.getOwner(soldTokenId);
+
+    expect(sellerEthBalanceAfter.sub(sellerEthBalanceBefore)).to.be.eq(
+      unitPrice
+    );
+    expect(buyerEthBalanceBefore.sub(buyerEthBalanceAfter)).to.be.gt(unitPrice);
+    expect(ownerAfter.toLowerCase()).to.eq(
+      exchange.contract.address.toLowerCase()
+    );
   });
 });
