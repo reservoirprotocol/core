@@ -4,6 +4,7 @@ import * as Sdk from "../../../../../sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { setupSudoswapPoolListing } from "../../helpers/sudoswap";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
@@ -42,30 +43,15 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
   it("Sudoswap router test", async () => {
     // Setup
 
-    let tokenId = 6113;
+    const tokenId: number = 6113; //example token
+    const pool: string = "0x7794C476806731b74ba2049ccd413218248135DA";
 
-    let addresPDB = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F";
-    let abiOwnerOf = '[{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}]';
-    let contractPDB = new ethers.Contract(addresPDB, abiOwnerOf, ethers.provider);
-
-    let owner00 = await contractPDB.ownerOf(tokenId);
-
-    const pairFactory = new Sdk.Sudoswap.Exchange(chainId); //selling/deposit 
-
-    let nft = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F"; //PudgyDickbutts
-    let ids = [tokenId];
-    let pool = "0x7794C476806731b74ba2049ccd413218248135DA";
-
-    const impersonatedSigner = await ethers.getImpersonatedSigner(owner00);
-
-    // List nft
-
-    await pairFactory.depositNFTs(impersonatedSigner, nft, ids, pool);
+    const contractPDB = await setupSudoswapPoolListing(tokenId, pool);
 
     // Prepare executions
 
-    let swapListPair = pool;
-    let swapListNftIds = ids;
+    let swapListPair: string = pool;
+    let swapListNftIds: number[] = [tokenId];
     let ethRecipient =	bob.address;
     let nftRecipient =	alice.address;
 
