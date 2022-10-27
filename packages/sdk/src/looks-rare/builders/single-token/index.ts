@@ -33,7 +33,7 @@ export class SingleTokenBuilder extends BaseBuilder {
   public build(params: BuildParams) {
     if (
       params.strategy &&
-      [
+      ![
         Addresses.StrategyStandardSale[this.chainId],
         Addresses.StrategyStandardSaleDeprecated[this.chainId],
       ].includes(params.strategy.toLowerCase())

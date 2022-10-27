@@ -31,7 +31,7 @@ export class ContractWideBuilder extends BaseBuilder {
   public build(params: BuildParams) {
     if (
       params.strategy &&
-      [
+      ![
         Addresses.StrategyCollectionSale[this.chainId],
         Addresses.StrategyCollectionSaleDeprecated[this.chainId],
       ].includes(params.strategy.toLowerCase())
