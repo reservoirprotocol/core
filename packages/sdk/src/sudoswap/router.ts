@@ -2,7 +2,8 @@ import { Signer } from "@ethersproject/abstract-signer";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
-import { Order, SwapList } from "./order";
+import { SwapList } from "./types";
+import { Order } from "./order";
 import { TxData, generateReferrerBytes } from "../utils";
 
 import PairRouterAbi from "./abis/RouterPair.json";

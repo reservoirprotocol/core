@@ -27,13 +27,3 @@ const normalize = (order: Types.OrderParams): Types.OrderParams => {
     price: s(order.price),
   };
 };
-
-export class SwapList {
-  public pair: string;
-  public nftIds: number[];
-
-  constructor(pair: string, nftIds: number[]) {
-    this.pair = pair;
-    this.nftIds = nftIds;
-  }
-}
