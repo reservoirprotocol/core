@@ -23,15 +23,15 @@ export class Exchange {
 
     public async depositNFTs(
         maker: Signer,
-        nft: string, //contract
-        ids: number[], //tokenId
-        recipient: string //pool
+        nft: string,
+        ids: number[],
+        pool: string
       ): Promise<ContractTransaction> {
         const tx = this.depositNFTsTx(
           await maker.getAddress(),
           nft,
           ids,
-          recipient
+          pool
         );
         return maker.sendTransaction(tx);
       }
@@ -40,7 +40,7 @@ export class Exchange {
         maker: string,
         nft: string,
         ids: number[],
-        recipient: string
+        pool: string
       ): TxData {
         return {
           from: maker,
@@ -49,7 +49,7 @@ export class Exchange {
             this.contract.interface.encodeFunctionData("depositNFTs", [
                 nft,
                 ids,
-                recipient,
+                pool,
             ])
         };
       }
