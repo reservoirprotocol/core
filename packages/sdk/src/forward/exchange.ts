@@ -9,7 +9,7 @@ import { Contract } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -38,7 +38,7 @@ export class Exchange {
       matchParams,
       options
     );
-    return taker.sendTransaction({ ...tx, gasLimit: 1000000 });
+    return taker.sendTransaction(tx);
   }
 
   public fillOrderTx(
@@ -49,57 +49,53 @@ export class Exchange {
       referrer?: string;
     }
   ): TxData {
-    if (order.params.kind === "single-token") {
+    if (order.params.side === Types.Side.LISTING) {
       return {
         from: taker,
         to: this.contract.address,
         data:
-          this.contract.interface.encodeFunctionData("fill", [
+          this.contract.interface.encodeFunctionData("fillListing", [
             {
-              bid: order.params,
+              order: order.params,
               signature: order.params.signature!,
               fillAmount: matchParams.fillAmount,
             },
           ]) + generateReferrerBytes(options?.referrer),
+        value: bn(order.params.unitPrice)
+          .mul(matchParams.fillAmount)
+          .toHexString(),
       };
     } else {
-      return {
-        from: taker,
-        to: this.contract.address,
-        data:
-          this.contract.interface.encodeFunctionData("fillWithCriteria", [
-            {
-              bid: order.params,
-              signature: order.params.signature!,
-              fillAmount: matchParams.fillAmount,
-            },
-            matchParams.tokenId!,
-            matchParams.criteriaProof!,
-          ]) + generateReferrerBytes(options?.referrer),
-      };
+      if (order.params.kind === "single-token") {
+        return {
+          from: taker,
+          to: this.contract.address,
+          data:
+            this.contract.interface.encodeFunctionData("fillBid", [
+              {
+                order: order.params,
+                signature: order.params.signature!,
+                fillAmount: matchParams.fillAmount,
+              },
+            ]) + generateReferrerBytes(options?.referrer),
+        };
+      } else {
+        return {
+          from: taker,
+          to: this.contract.address,
+          data:
+            this.contract.interface.encodeFunctionData("fillBidWithCriteria", [
+              {
+                order: order.params,
+                signature: order.params.signature!,
+                fillAmount: matchParams.fillAmount,
+              },
+              matchParams.tokenId!,
+              matchParams.criteriaProof!,
+            ]) + generateReferrerBytes(options?.referrer),
+        };
+      }
     }
-  }
-
-  // --- Create vault ---
-
-  public async createVault(
-    maker: Signer,
-    conduitKey?: string
-  ): Promise<TransactionResponse> {
-    const tx = this.createVaultTx(await maker.getAddress(), conduitKey);
-    return maker.sendTransaction(tx);
-  }
-
-  public createVaultTx(maker: string, conduitKey?: string): TxData {
-    return {
-      from: maker,
-      to: this.contract.address,
-      data: this.contract.interface.encodeFunctionData("createVault", [
-        conduitKey ??
-          // OpenSea's conduit key
-          "0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000",
-      ]),
-    };
   }
 
   // --- Cancel order ---
@@ -129,11 +125,5 @@ export class Exchange {
     user: string
   ): Promise<BigNumberish> {
     return this.contract.connect(provider).counters(user);
-  }
-
-  // --- Get vault ---
-
-  public async getVault(provider: Provider, user: string): Promise<string> {
-    return this.contract.connect(provider).vaults(user);
   }
 }
