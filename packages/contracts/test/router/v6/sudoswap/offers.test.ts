@@ -69,7 +69,7 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
     let ethRecipient =	bob.address;
     let nftRecipient =	alice.address;
 
-    let swapList = new Sdk.Sudoswap.SwapList(swapListPair, swapListNftIds);
+    let swapList: Sdk.Sudoswap.SwapList = {pair: swapListPair, nftIds: swapListNftIds};
 
     let sudoswap = new Sdk.Sudoswap.Router(chainId);
     let data = sudoswap.swapETHForSpecificNFTsTxData([swapList], ethRecipient, nftRecipient);
