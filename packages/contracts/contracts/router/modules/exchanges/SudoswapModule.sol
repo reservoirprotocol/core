@@ -11,15 +11,14 @@ contract SudoswapModule is BaseExchangeModule {
 
     // --- Fields ---
 
-    ISudoswapRouter public immutable SUDOSWAP_ROUTER;
+    ISudoswapRouter public constant SUDOSWAP_ROUTER = 
+        ISudoswapRouter(0x2B2e8cDA09bBA9660dCA5cB6233787738Ad68329);
 
     // --- Constructor ---
 
-    constructor(address owner, address router, address sudoswap)
+    constructor(address owner, address router)
         BaseModule(owner)
         BaseExchangeModule(router) {
-
-        SUDOSWAP_ROUTER = ISudoswapRouter(sudoswap);
     }
 
     // --- Fallback ---

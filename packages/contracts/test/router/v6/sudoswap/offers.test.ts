@@ -32,7 +32,7 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
     sudoswapModule = (await ethers
       .getContractFactory("SudoswapModule", deployer)
       .then((factory) =>
-        factory.deploy(router.address, router.address, Sdk.Sudoswap.Addresses.PairRouter[chainId])
+        factory.deploy(router.address, router.address)
       )) as any;
   });
 
