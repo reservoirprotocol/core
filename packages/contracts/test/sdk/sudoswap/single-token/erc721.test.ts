@@ -58,7 +58,7 @@ describe("Sudoswap - SingleToken Erc721", () => {
     let ethRecipient =	bob.address;
     let nftRecipient =	alice.address;
 
-    let swapList = new Sudoswap.SwapList(swapListPair, swapListNftIds);
+    let swapList: Sudoswap.SwapList = {pair: swapListPair, nftIds: swapListNftIds};
 
     await pairRouter.swapETHForSpecificNFTs(
       alice, [swapList], ethRecipient, nftRecipient, parseEther("0.2").toString()
@@ -66,7 +66,5 @@ describe("Sudoswap - SingleToken Erc721", () => {
 
     let owner0y = await contractPDB.ownerOf(tokenId);
     expect(owner0y).to.eq(alice.address);
-
-    //TODO: check balance(s)
   });
 });
