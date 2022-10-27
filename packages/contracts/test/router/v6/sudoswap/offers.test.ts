@@ -54,17 +54,17 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
     let nft = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F"; //PudgyDickbutts
     let ids = [tokenId];
-    let recipient = "0x7794C476806731b74ba2049ccd413218248135DA"; //pool
+    let pool = "0x7794C476806731b74ba2049ccd413218248135DA";
 
     const impersonatedSigner = await ethers.getImpersonatedSigner(owner00);
 
     // List nft
 
-    await pairFactory.depositNFTs(impersonatedSigner, nft, ids, recipient);
+    await pairFactory.depositNFTs(impersonatedSigner, nft, ids, pool);
 
     // Prepare executions
 
-    let swapListPair = recipient;
+    let swapListPair = pool;
     let swapListNftIds = ids;
     let ethRecipient =	bob.address;
     let nftRecipient =	alice.address;
