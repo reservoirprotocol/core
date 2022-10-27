@@ -66,7 +66,7 @@ contract SudoswapModule is BaseExchangeModule {
             }
         }
         if (remainingValue > 0) {
-            address remainingValueRecipient = payable(tx.origin); // TODO: parameterize? 
+            address remainingValueRecipient = payable(ethRecipient); 
             _sendETH(remainingValueRecipient, remainingValue);
         }
     }
