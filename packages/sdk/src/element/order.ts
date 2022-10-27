@@ -6,7 +6,6 @@ import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
 import { verifyTypedData } from "@ethersproject/wallet";
-import { utils } from 'ethers';
 import * as Addresses from "./addresses";
 import { Builders } from "./builders";
 import { BaseBuilder, BaseOrderInfo } from "./builders/base";
