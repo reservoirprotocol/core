@@ -39,9 +39,8 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
   const getBalances = async (tokenOwner00: string, tokenOwner01?: string) => {
       return {
-        tokenOwner00: await ethers.provider.getBalance(tokenOwner00),
+        seller: await ethers.provider.getBalance(tokenOwner00),
         tokenOwner01: tokenOwner01 == null ? ethers.BigNumber.from("0") : await ethers.provider.getBalance(tokenOwner01), 
-        //alice: await ethers.provider.getBalance(alice.address),
         sudoswapModule: await ethers.provider.getBalance(
           sudoswapModule.address
         ),
@@ -60,12 +59,8 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
     const owner00 = await contractPDB.ownerOf(tokenId);
 
-
-    /* * */
-    let test00 = await getBalances(owner00);
-    console.log(test00);
-    /* * */
-
+    let makerBalance00 = await getBalances(owner00);
+    
 
     const pairFactory = new Sdk.Sudoswap.Exchange(chainId); //selling/deposit 
   
@@ -76,14 +71,21 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
   
     // List nft
   
-    await pairFactory.depositNFTs(impersonatedSigner, nft, [tokenId], pool);
+    let txnPre = await pairFactory.depositNFTs(impersonatedSigner, nft, [tokenId], pool);
+    let txnPost = await txnPre.wait();
+    let txnCost = txnPost.cumulativeGasUsed.mul(txnPost.effectiveGasPrice);
 
-    // Prepare executions
+    let makerBalance01 = await getBalances(owner00);
+    let balanceAfterTxnBN = makerBalance01.seller;
+    let balanceAfterTxn = balanceAfterTxnBN.toString();
+    let startingBalanceSubTxnCost = makerBalance00.seller.sub(txnCost).toString();
+    expect(balanceAfterTxn).to.eq(startingBalanceSubTxnCost);
+
 
     let swapListPair: string = pool;
     let swapListNftIds: number[] = [tokenId];
-    let ethRecipient =	bob.address;
-    let nftRecipient =	alice.address;
+    let ethRecipient = alice.address;
+    let nftRecipient = alice.address;
 
     let swapList: Sdk.Sudoswap.SwapList = {pair: swapListPair, nftIds: swapListNftIds};
 
@@ -104,10 +106,9 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
     let owner0y = await contractPDB.ownerOf(tokenId);
     expect(owner0y).to.eq(alice.address);
-
-
-    let test01 = await getBalances(owner00, owner0y);
-    console.log(test01);
+    
   });
+
+
 
 });
