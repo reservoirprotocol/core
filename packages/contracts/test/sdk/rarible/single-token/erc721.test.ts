@@ -68,6 +68,19 @@ describe("Rarible - SingleToken Erc721", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      payouts: [{ account: buyer.address, value: "10000" }],
+      marketplaceMarker: "rarible",
+      maxFeesBasePoint: 1000,
+      originFeeFirst: {
+        account: charlie.address,
+        value: "1000",
+      },
+      originFeeSecond: {
+        account: dan.address,
+        value: "1000",
+      },
     });
 
     // Sign the order
@@ -135,7 +148,7 @@ describe("Rarible - SingleToken Erc721", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
-      maxFeesBasePoint: '1000',
+      maxFeesBasePoint: "1000",
       fees: [
         `${charlie.address}:${revenueSplitBpsA}`,
         `${dan.address}:${revenueSplitBpsB}`,
@@ -148,7 +161,7 @@ describe("Rarible - SingleToken Erc721", () => {
         //   value: revenueSplitBpsB,
         // },
       ],
-      payouts: [``]
+      payouts: [``],
     });
 
     // Sign the order
@@ -212,7 +225,7 @@ describe("Rarible - SingleToken Erc721", () => {
 
     const sellOrder = builder.build({
       maker: seller.address,
-      side: 'sell',
+      side: "sell",
       tokenKind: "erc721",
       contract: erc721.address,
       tokenId: soldTokenId.toString(),
@@ -288,8 +301,8 @@ describe("Rarible - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       fees: [
-        `${ charlie.address }:${ revenueSplitBpsA }`,
-        `${ dan.address }:${ revenueSplitBpsB }`
+        `${charlie.address}:${revenueSplitBpsA}`,
+        `${dan.address}:${revenueSplitBpsB}`,
         // {
         //   account: charlie.address,
         //   value: revenueSplitBpsA,
@@ -346,7 +359,6 @@ describe("Rarible - SingleToken Erc721", () => {
 
     const exchange = new Rarible.Exchange(chainId);
 
-
     const builder = new Rarible.Builders.SingleToken(chainId);
     // Build sell order
     const sellOrder = builder.build({
@@ -361,8 +373,8 @@ describe("Rarible - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       fees: [`${seller.address}:${100}`],
-      maxFeesBasePoint: '1000',
-      payouts: [`${seller.address}:10000`]
+      maxFeesBasePoint: "1000",
+      payouts: [`${seller.address}:10000`],
     }); // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
@@ -390,9 +402,7 @@ describe("Rarible - SingleToken Erc721", () => {
     expect(buyerBalanceAfter).to.be.eq(
       buyerBalanceBefore.sub(gasUsed).sub(price)
     );
-    expect(sellerBalanceAfter).to.eq(
-      sellerBalanceBefore.add(price)
-    );
+    expect(sellerBalanceAfter).to.eq(sellerBalanceBefore.add(price));
     expect(ownerAfter).to.eq(buyer.address);
   });
 
@@ -477,100 +487,5 @@ describe("Rarible - SingleToken Erc721", () => {
 
     expect(sellerBalanceAfter).to.eq(sellerBalanceBefore.add(priceAfterFees));
     expect(ownerAfter).to.eq(buyer.address);
-  });
-
-  it("Build and cancel ERC721 ETH sell order", async () => {
-    const seller = bob;
-    const price = parseEther("1");
-    const soldTokenId = 0;
-
-    const exchange = new Rarible.Exchange(chainId);
-
-    const builder = new Rarible.Builders.SingleToken(chainId);
-
-    // Build sell order
-    const sellOrder = builder.build({
-      maker: seller.address,
-      side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
-      tokenId: soldTokenId.toString(),
-      price: price.toString(),
-      tokenAmount: 1,
-      paymentToken: constants.AddressZero,
-      startTime: 0,
-      endTime: 0,
-    });
-
-    await sellOrder.checkFillability(ethers.provider);
-
-    // Cancel orders
-    await exchange.cancelOrder(seller, sellOrder);
-
-    const orderFill = await exchange.getOrderFill(seller.provider!, sellOrder);
-    expect(orderFill).to.eq(constants.MaxUint256);
-  });
-
-  it("Build and cancel ERC721 WETH sell order", async () => {
-    const seller = bob;
-    const price = parseEther("1");
-    const soldTokenId = 0;
-
-    const exchange = new Rarible.Exchange(chainId);
-
-    const builder = new Rarible.Builders.SingleToken(chainId);
-
-    // Build sell order
-    const sellOrder = builder.build({
-      maker: seller.address,
-      side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
-      tokenId: soldTokenId.toString(),
-      price: price.toString(),
-      tokenAmount: 1,
-      paymentToken: Common.Addresses.Weth[chainId],
-      startTime: 0,
-      endTime: 0,
-    });
-
-    await sellOrder.checkFillability(ethers.provider);
-
-    // Cancel orders
-    await exchange.cancelOrder(seller, sellOrder);
-
-    const orderFill = await exchange.getOrderFill(seller.provider!, sellOrder);
-    expect(orderFill).to.eq(constants.MaxUint256);
-  });
-
-  it("Build and cancel ERC721 WETH buy order", async () => {
-    const buyer = bob;
-    const price = parseEther("1");
-    const soldTokenId = 0;
-
-    const exchange = new Rarible.Exchange(chainId);
-
-    const builder = new Rarible.Builders.SingleToken(chainId);
-
-    const buyOrder = builder.build({
-      maker: buyer.address,
-      side: "buy",
-      tokenKind: "erc721",
-      contract: erc721.address,
-      tokenId: soldTokenId.toString(),
-      price: price.toString(),
-      tokenAmount: 1,
-      paymentToken: Common.Addresses.Weth[chainId],
-      startTime: 0,
-      endTime: 0,
-    });
-
-    await buyOrder.checkFillability(ethers.provider);
-
-    // Cancel orders
-    await exchange.cancelOrder(buyer, buyOrder);
-
-    const orderFill = await exchange.getOrderFill(buyer.provider!, buyOrder);
-    expect(orderFill).to.eq(constants.MaxUint256);
   });
 });

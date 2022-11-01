@@ -12,7 +12,9 @@ import { ethers, utils } from "ethers/lib";
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
-import { encode, hashAssetType } from "./utils";
+import { encode, encodeOrderData, hashAssetType } from "./utils";
+import { Constants } from ".";
+import { ORDER_DATA_TYPES, ORDER_TYPES } from "./constants";
 
 export class Order {
   public chainId: number;
@@ -27,16 +29,16 @@ export class Order {
       throw new Error("Invalid params");
     }
     // Validate fees
-    if (
-      this.params.data.revenueSplits &&
-      this.params.data.revenueSplits.length &&
-      this.params.data.revenueSplits.reduce(
-        (acc, curr) => (acc += Number(curr.value)),
-        0
-      ) > 10000
-    ) {
-      throw new Error("Invalid royalties");
-    }
+    // if (
+    //   this.params.data.revenueSplits &&
+    //   this.params.data.revenueSplits.length &&
+    //   this.params.data.revenueSplits.reduce(
+    //     (acc, curr) => (acc += Number(curr.value)),
+    //     0
+    //   ) > 10000
+    // ) {
+    //   throw new Error("Invalid royalties");
+    // }
 
     if (this.params.start > this.params.end) {
       throw new Error("Invalid listing and/or expiration time");
@@ -44,17 +46,35 @@ export class Order {
   }
 
   public hashOrderKey() {
-    const encodedOrder = utils.defaultAbiCoder.encode(
-      ["address", "bytes32", "bytes32", "uint256"],
-      [
-        lc(this.params.maker),
-        hashAssetType(this.params.make.assetType),
-        hashAssetType(this.params.take.assetType),
-        this.params.salt,
-      ]
-    );
+    let encodedOrderKey = null;
 
-    return utils.keccak256(encodedOrder);
+    if (
+      this.params.data.dataType === ORDER_DATA_TYPES.V1 ||
+      this.params.data.dataType === ORDER_DATA_TYPES.DEFAULT_DATA_TYPE
+    ) {
+      encodedOrderKey = utils.defaultAbiCoder.encode(
+        ["address", "bytes32", "bytes32", "uint256"],
+        [
+          lc(this.params.maker),
+          hashAssetType(this.params.make.assetType),
+          hashAssetType(this.params.take.assetType),
+          this.params.salt,
+        ]
+      );
+    } else {
+      encodedOrderKey = utils.defaultAbiCoder.encode(
+        ["address", "bytes32", "bytes32", "uint256", "bytes"],
+        [
+          lc(this.params.maker),
+          hashAssetType(this.params.make.assetType),
+          hashAssetType(this.params.take.assetType),
+          this.params.salt,
+          encodeOrderData(this.params),
+        ]
+      );
+    }
+
+    return utils.keccak256(encodedOrderKey);
   }
 
   public async sign(signer: TypedDataSigner) {
@@ -349,6 +369,35 @@ const normalize = (order: Types.Order): Types.Order => {
   // - convert strings to numbers where needed
   // - lowercase all strings
 
+  //TODO: Do the normalization of the data type here
+  let dataInfo:
+    | Types.ILegacyOrderData
+    | Types.IV1OrderData
+    | Types.IV2OrderData
+    | Types.IV3OrderSellData
+    | Types.IV3OrderBuyData
+    | null = null;
+
+  switch (order.data.dataType) {
+    case ORDER_DATA_TYPES.LEGACY:
+      dataInfo = order.data;
+      break;
+    case ORDER_DATA_TYPES.V1:
+      dataInfo = order.data;
+      break;
+    case ORDER_DATA_TYPES.V2:
+      dataInfo = order.data;
+      break;
+    case ORDER_DATA_TYPES.V3_SELL:
+      dataInfo = order.data;
+      break;
+    case ORDER_DATA_TYPES.V3_BUY:
+      dataInfo = order.data;
+      break;
+    default:
+      throw Error("Unknown rarible order data type");
+  }
+
   return {
     kind: order.kind,
     type: order.type,
@@ -381,16 +430,7 @@ const normalize = (order: Types.Order): Types.Order => {
     salt: s(order.salt),
     start: n(order.start),
     end: n(order.end),
-    data: {
-      dataType: order.data.dataType,
-      revenueSplits:
-        !order.data.revenueSplits || !order.data.revenueSplits.length
-          ? []
-          : order.data.revenueSplits.map((split) => ({
-              account: lc(split.account),
-              value: n(split.value),
-            })),
-    },
+    data: dataInfo,
     signature: order.signature,
   };
 };

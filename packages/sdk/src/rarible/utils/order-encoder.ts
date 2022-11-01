@@ -1,6 +1,7 @@
 import { utils } from "ethers";
-import { Types } from "..";
+import { Constants, Types } from "..";
 import { lc } from "../../utils";
+import { ORDER_DATA_TYPES } from "../constants";
 import { Asset, IPart, LocalAssetType } from "../types";
 
 export const encodeAsset = (token?: string, tokenId?: string) => {
@@ -38,18 +39,115 @@ export const encodeAssetClass = (assetClass: string) => {
   return utils.keccak256(utils.toUtf8Bytes(assetClass)).substring(0, 10);
 };
 
-export const encodeOrderData = (payments: IPart[]) => {
+export const encodeV2OrderData = (payments: IPart[]) => {
   if (!payments) {
-    return "0x";
+    return [];
   }
-  return utils.defaultAbiCoder.encode(
-    ["tuple(tuple(address account,uint96 value)[] revenueSplits)"],
-    [
-      {
-        revenueSplits: payments,
-      },
-    ]
-  );
+  return payments;
+};
+
+// V3 Order Data fields are encoded in a special way. From Rarible's docs:
+// - `uint payouts`, `uint originFeeFirst`, `uint originFeeSecond`, work the same as in `V1` orders, but there is only 1 value
+// and address + amount are encoded into uint (first 12 bytes for amount, last 20 bytes for address), not using `LibPart.Part` struct
+export const encodeV3OrderData = (part: IPart) => {
+  if (!part) {
+    return utils.defaultAbiCoder.encode(["uint"], ["0"]);
+  }
+
+  const { account, value } = part;
+  const uint96EncodedValue = utils.solidityPack(["uint96"], [value]);
+  const encodedData = `${uint96EncodedValue}${account.slice(2)}`;
+
+  // -- DEBUG -- //
+  // console.log(part);
+  // console.log(encodedValue);
+  // const encodedAddress = utils.defaultAbiCoder.encode(["address"], [account]);
+  // console.log(encodedAddress);
+  // console.log(final);
+  // // -- DEBUG -- //
+  return encodedData;
+};
+
+export const encodeOrderData = (
+  order: Types.Order | Types.TakerOrderParams
+) => {
+  let encodedOrderData = "";
+
+  switch (order.data.dataType) {
+    case ORDER_DATA_TYPES.V1:
+      const v1Data = order.data as Types.IV1OrderData;
+
+      encodedOrderData = utils.defaultAbiCoder.encode(
+        [
+          "tuple(address account,uint96 value)[] payouts",
+          "tuple(address account,uint96 value)[] originFees",
+        ],
+        [
+          encodeV2OrderData(v1Data.payouts),
+          encodeV2OrderData(v1Data.originFees),
+        ]
+      );
+      break;
+    case Constants.ORDER_DATA_TYPES.V2:
+      const v2Data = order.data as Types.IV2OrderData;
+
+      encodedOrderData = utils.defaultAbiCoder.encode(
+        [
+          "tuple(address account,uint96 value)[] payouts",
+          "tuple(address account,uint96 value)[] originFees",
+          "bool isMakeFill",
+        ],
+        [
+          encodeV2OrderData(v2Data.payouts),
+          encodeV2OrderData(v2Data.originFees),
+          v2Data.isMakeFill,
+        ]
+      );
+      break;
+    case Constants.ORDER_DATA_TYPES.V3_SELL:
+      const v3SellData = order.data as Types.IV3OrderSellData;
+
+      encodedOrderData = utils.defaultAbiCoder.encode(
+        [
+          "uint payouts",
+          "uint originFeeFirst",
+          "uint originFeeSecond",
+          "uint maxFeesBasePoint",
+          "bytes32 marketplaceMarker",
+        ],
+        [
+          encodeV3OrderData(v3SellData.payouts),
+          encodeV3OrderData(v3SellData.originFeeFirst),
+          encodeV3OrderData(v3SellData.originFeeSecond),
+          v3SellData.maxFeesBasePoint,
+          utils.keccak256(utils.toUtf8Bytes(v3SellData.marketplaceMarker)),
+        ]
+      );
+
+      break;
+    case Constants.ORDER_DATA_TYPES.V3_BUY:
+      const v3BuyData = order.data as Types.IV3OrderBuyData;
+
+      encodedOrderData = utils.defaultAbiCoder.encode(
+        [
+          "uint payouts",
+          "uint originFeeFirst",
+          "uint originFeeSecond",
+          "bytes32 marketplaceMarker",
+        ],
+        [
+          encodeV3OrderData(v3BuyData.payouts),
+          encodeV3OrderData(v3BuyData.originFeeFirst),
+          encodeV3OrderData(v3BuyData.originFeeSecond),
+          utils.keccak256(utils.toUtf8Bytes(v3BuyData.marketplaceMarker)),
+        ]
+      );
+      break;
+    default:
+      throw Error("Unknown rarible order type");
+  }
+
+  return utils.keccak256(encodedOrderData);
 };
 
 export const hashAssetType = (assetType: LocalAssetType) => {
@@ -111,6 +209,6 @@ export const encode = (order: Types.TakerOrderParams | Types.Order) => {
     start: order.start,
     end: order.end,
     dataType: encodeAssetClass(order.data?.dataType!),
-    data: encodeOrderData(order.data?.revenueSplits || []),
+    data: encodeOrderData(order),
   };
 };

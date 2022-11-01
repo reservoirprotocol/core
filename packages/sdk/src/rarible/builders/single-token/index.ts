@@ -5,6 +5,7 @@ import { lc, n, s } from "../../../utils";
 import { BigNumber, constants } from "ethers/lib/ethers";
 import { AssetClass } from "../../types";
 import { Constants } from "../..";
+import { ORDER_DATA_TYPES } from "../../constants";
 
 export class SingleTokenBuilder extends BaseBuilder {
   public getInfo(order: Order): BaseOrderInfo {
@@ -58,10 +59,8 @@ export class SingleTokenBuilder extends BaseBuilder {
         startTime: order.params.start,
         endTime: order.params.end,
         tokenAmount: n(nftInfo.value),
-        fees:
-          order.params.data.revenueSplits?.map(
-            ({ account, value }) => `${account}:${value}`
-          ) || [],
+        orderType: order.params.type,
+        dataType: order.params.data.dataType,
       });
 
       if (!copyOrder) {
@@ -103,9 +102,67 @@ export class SingleTokenBuilder extends BaseBuilder {
       value: params.price,
     };
 
+    let data:
+      | Types.ILegacyOrderData
+      | Types.IV1OrderData
+      | Types.IV2OrderData
+      | Types.IV3OrderBuyData
+      | Types.IV3OrderSellData;
+
+    switch (params.dataType) {
+      // Can't find info about Legacy type in the contract but it's found in V1 orders that Rarible's API returns
+      case ORDER_DATA_TYPES.LEGACY:
+        const legacyData: Types.ILegacyOrderData = {
+          dataType: ORDER_DATA_TYPES.LEGACY,
+          fee: params.fee!,
+        };
+        data = legacyData;
+        break;
+      case ORDER_DATA_TYPES.V1:
+        const v1Data: Types.IV1OrderData = {
+          dataType: ORDER_DATA_TYPES.V1,
+          payouts: params.payouts!,
+          originFees: params.originFees!,
+        };
+        data = v1Data;
+        break;
+      case ORDER_DATA_TYPES.V2:
+        const v2Data: Types.IV2OrderData = {
+          dataType: ORDER_DATA_TYPES.V2,
+          payouts: params.payouts!,
+          originFees: params.originFees!,
+          isMakeFill: params.isMakeFill!,
+        };
+        data = v2Data;
+        break;
+      case ORDER_DATA_TYPES.V3_SELL:
+        const v3SellData: Types.IV3OrderSellData = {
+          dataType: ORDER_DATA_TYPES.V3_SELL,
+          payouts: params.payouts![0]!,
+          originFeeFirst: params.originFeeFirst!,
+          originFeeSecond: params.originFeeSecond!,
+          maxFeesBasePoint: params.maxFeesBasePoint!,
+          marketplaceMarker: params.marketplaceMarker!,
+        };
+        data = v3SellData;
+        break;
+      case ORDER_DATA_TYPES.V3_BUY:
+        const v3BuyData: Types.IV3OrderBuyData = {
+          dataType: ORDER_DATA_TYPES.V3_BUY,
+          payouts: params.payouts![0]!,
+          originFeeFirst: params.originFeeFirst!,
+          originFeeSecond: params.originFeeSecond!,
+          marketplaceMarker: params.marketplaceMarker!,
+        };
+        data = v3BuyData;
+        break;
+      default:
+        throw Error("Unknown order data type");
+    }
+
     return new Order(this.chainId, {
       kind: "single-token",
-      type: params.side === "buy" ? Constants.BUY : Constants.SELL,
+      type: params.orderType,
       maker: params.maker,
       make: params.side === "buy" ? paymentInfo : nftInfo,
       taker: constants.AddressZero,
@@ -113,19 +170,7 @@ export class SingleTokenBuilder extends BaseBuilder {
       salt: s(params.salt),
       start: params.startTime,
       end: params.endTime!,
-      maxFeesBasePoint: params.maxFeesBasePoint,
-      data: {
-        dataType: params.side === "buy" ? Constants.BUY : Constants.SELL,
-        revenueSplits:
-          params.fees?.map((fee) => {
-            const [account, value] = fee.split(":");
-
-            return {
-              account,
-              value,
-            };
-          }) || [],
-      },
+      data,
     });
   }
 
@@ -143,11 +188,15 @@ export class SingleTokenBuilder extends BaseBuilder {
       salt: 0,
       start: order.start,
       end: order.end,
-      data: {
-        dataType: order.data.dataType === Constants.BUY ? Constants.SELL : Constants.BUY,
-        revenueSplits: order.data.revenueSplits || [],
-      },
+      data: order.data,
     };
+
+    // `V3` orders can only be matched if buy-order is `V3_BUY` and the sell-order is `V3_SELL`
+    if (order.data.dataType === ORDER_DATA_TYPES.V3_SELL) {
+      order.data.dataType = ORDER_DATA_TYPES.V3_BUY;
+    } else if (order.data.dataType === ORDER_DATA_TYPES.V3_BUY) {
+      order.data.dataType = ORDER_DATA_TYPES.V3_SELL;
+    }
 
     // for erc1155 we need to take the value from request (the amount parameter)
     if (AssetClass.ERC1155 == order.make.assetType.assetClass) {
