@@ -6,7 +6,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, generateReferrerBytes, lc } from "../utils";
+import { TxData, bn, generateSourceBytes, lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 import { BigNumber } from "ethers/lib";
@@ -126,7 +126,7 @@ export class Exchange {
     return {
       from: result.from!,
       to: result.to!,
-      data: result.data + generateReferrerBytes(options?.referrer),
+      data: result.data + generateSourceBytes(options?.referrer),
       value: result.value && result.value.toHexString(),
     };
   }
