@@ -58,18 +58,18 @@ export type Order = {
 
 export type Purchase = {
   sellOrderMaker: string;
-  sellOrderNftAmount: number;
+  sellOrderNftAmount: string;
   nftAssetClass: string;
   nftData: string;
-  sellOrderPaymentAmount: number;
+  sellOrderPaymentAmount: string;
   paymentToken: string;
-  sellOrderSalt: number;
+  sellOrderSalt: string;
   sellOrderStart: number;
   sellOrderEnd: number;
   sellOrderDataType: string;
   sellOrderData: string;
   sellOrderSignature: string;
-  buyOrderPaymentAmount: number;
+  buyOrderPaymentAmount: string;
   buyOrderNftAmount: number;
   buyOrderData: string;
 };
@@ -77,18 +77,18 @@ export type Purchase = {
 /*All accept bid parameters need for create buyOrder and sellOrder*/
 export type AcceptBid = {
   bidMaker: string;
-  bidNftAmount: number;
+  bidNftAmount: string;
   nftAssetClass: string;
   nftData: string;
-  bidPaymentAmount: number;
+  bidPaymentAmount: string;
   paymentToken: string;
-  bidSalt: number;
+  bidSalt: string;
   bidStart: number;
   bidEnd: number;
   bidDataType: string;
   bidData: string;
   bidSignature: string;
-  sellOrderPaymentAmount: number;
+  sellOrderPaymentAmount: string;
   sellOrderNftAmount: number;
   sellOrderData: string;
 };

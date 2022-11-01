@@ -88,7 +88,6 @@ export class Exchange {
           value: value.toString(),
         }
       );
-
       return {
         from: from!,
         to: to!,

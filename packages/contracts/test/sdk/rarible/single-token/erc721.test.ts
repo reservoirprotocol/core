@@ -83,12 +83,10 @@ describe("Rarible - SingleToken Erc721", () => {
     expect(buyerBalanceBefore).to.eq(0);
     expect(ownerBefore).to.eq(seller.address);
 
-    console.log("FILLING");
     // Match orders
     await exchange.fillOrder(seller, buyOrder, {
       referrer: "reservoir.market",
     });
-
     const buyerBalanceAfter = await weth.getBalance(seller.address);
     const sellerBalanceAfter = await weth.getBalance(buyer.address);
     const ownerAfter = await nft.getOwner(soldTokenId);

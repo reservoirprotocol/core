@@ -222,39 +222,38 @@ export const encodeForContract = (
     case "buy":
       const bid: Types.AcceptBid = {
         bidMaker: order.maker,
-        bidNftAmount: Number(order.take.value),
+        bidNftAmount: order.take.value,
         nftAssetClass: encodeAssetClass(order.take.assetType.assetClass),
         nftData: encodeAssetData(order.take.assetType),
-        bidPaymentAmount: Number(order.make.value),
-        paymentToken: encodeAsset(order.make.assetType.contract),
-        bidSalt: Number(order.salt),
+        bidPaymentAmount: order.make.value,
+        paymentToken: order.make.assetType.contract!,
+        bidSalt: order.salt,
         bidStart: order.start,
         bidEnd: order.end,
         bidDataType: encodeAssetClass(order.data?.dataType!),
         bidData: encodeOrderData(order),
         bidSignature: order.signature!,
-        sellOrderPaymentAmount: Number(matchingOrder.take.value),
+        sellOrderPaymentAmount: matchingOrder.take.value,
         sellOrderNftAmount: Number(matchingOrder.make.value),
         sellOrderData: encodeOrderData(matchingOrder),
       };
-      console.log("HERE");
       encodedOrder = bid;
       break;
     case "sell":
       const purchase: Types.Purchase = {
         sellOrderMaker: order.maker,
-        sellOrderNftAmount: Number(order.make.value),
+        sellOrderNftAmount: order.make.value,
         nftAssetClass: encodeAssetClass(order.make.assetType.assetClass),
         nftData: encodeAssetData(order.make.assetType),
-        sellOrderPaymentAmount: Number(order.take.value),
-        paymentToken: encodeAsset(order.take.assetType.contract),
-        sellOrderSalt: Number(order.salt),
+        sellOrderPaymentAmount: order.take.value,
+        paymentToken: order.take.assetType.contract!,
+        sellOrderSalt: order.salt,
         sellOrderStart: order.start,
         sellOrderEnd: order.end,
         sellOrderDataType: encodeAssetClass(order.data?.dataType!),
         sellOrderData: encodeOrderData(order),
         sellOrderSignature: order.signature!,
-        buyOrderPaymentAmount: Number(matchingOrder.make.value),
+        buyOrderPaymentAmount: matchingOrder.make.value,
         buyOrderNftAmount: Number(matchingOrder.take.value),
         buyOrderData: encodeOrderData(matchingOrder),
       };
