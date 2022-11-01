@@ -28,7 +28,7 @@ describe("Rarible - SingleToken Erc721", () => {
 
   afterEach(reset);
 
-  it("Build and fill ERC721 WETH buy order no revenue splits - rarible", async () => {
+  it("Rarible - Build and fill ERC721 WETH buy order no revenue splits", async () => {
     const seller = alice;
     const buyer = bob;
     const price = parseEther("1");
@@ -340,7 +340,7 @@ describe("Rarible - SingleToken Erc721", () => {
     expect(ownerAfter).to.eq(buyer.address);
   });
 
-  it("Build and fill ERC721 ETH sell order no revenue splits - rar", async () => {
+  it("Rarible - Build and fill ERC721 ETH sell order no revenue splits", async () => {
     const buyer = alice;
     const seller = bob;
     const price = parseEther("1");
@@ -352,7 +352,7 @@ describe("Rarible - SingleToken Erc721", () => {
     const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
 
     // Approve the transfer manager
-    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+    await nft.approve(seller, Rarible.Addresses.TransferProxy[chainId]);
 
     const exchange = new Rarible.Exchange(chainId);
 
@@ -369,9 +369,13 @@ describe("Rarible - SingleToken Erc721", () => {
       paymentToken: constants.AddressZero,
       startTime: 0,
       endTime: 0,
-      fees: [`${seller.address}:${100}`],
-      maxFeesBasePoint: "1000",
-      payouts: [`${seller.address}:10000`],
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      payouts: [{ account: seller.address, value: "10000" }],
+      // originFeeFirst: { account: charlie.address, value: "200" },
+      // originFeeSecond: { account: dan.address, value: "200" },
+      marketplaceMarker: "rarible",
+      maxFeesBasePoint: 1000,
     }); // Sign the order
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();

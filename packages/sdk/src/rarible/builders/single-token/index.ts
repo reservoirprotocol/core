@@ -181,7 +181,7 @@ export class SingleTokenBuilder extends BaseBuilder {
   ) {
     const rightOrder = {
       type: order.type,
-      maker: taker,
+      maker: lc(taker),
       taker: constants.AddressZero,
       make: JSON.parse(JSON.stringify(order.take)),
       take: JSON.parse(JSON.stringify(order.make)),
@@ -194,8 +194,15 @@ export class SingleTokenBuilder extends BaseBuilder {
     // `V3` orders can only be matched if buy-order is `V3_BUY` and the sell-order is `V3_SELL`
     if (order.data.dataType === ORDER_DATA_TYPES.V3_SELL) {
       rightOrder.data.dataType = ORDER_DATA_TYPES.V3_BUY;
+      rightOrder.data.originFeeFirst = null;
+      rightOrder.data.originFeeSecond = null;
+      rightOrder.data.maxFeesBasePoint = null;
+      rightOrder.data.payouts = null;
     } else if (order.data.dataType === ORDER_DATA_TYPES.V3_BUY) {
       rightOrder.data.dataType = ORDER_DATA_TYPES.V3_SELL;
+      rightOrder.data.originFeeFirst = null;
+      rightOrder.data.originFeeSecond = null;
+      rightOrder.data.payouts = null;
     }
 
     // for erc1155 we need to take the value from request (the amount parameter)
@@ -211,7 +218,6 @@ export class SingleTokenBuilder extends BaseBuilder {
         oldValue - rightOrder.make.value || "1"
       );
     }
-
     return rightOrder;
   }
 }

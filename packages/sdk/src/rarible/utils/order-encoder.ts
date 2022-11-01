@@ -1,4 +1,4 @@
-import { utils } from "ethers";
+import { constants, utils } from "ethers";
 import { Constants, Types } from "..";
 import { lc } from "../../utils";
 import { ORDER_DATA_TYPES } from "../constants";
@@ -147,8 +147,7 @@ export const encodeOrderData = (
     default:
       throw Error("Unknown rarible order type");
   }
-
-  return utils.keccak256(encodedOrderData);
+  return encodedOrderData;
 };
 
 export const hashAssetType = (assetType: LocalAssetType) => {
@@ -217,7 +216,6 @@ export const encodeForContract = (
     };
   }
 
-  let encodedOrder: Types.AcceptBid | Types.Purchase;
   switch (order.side) {
     case "buy":
       const bid: Types.AcceptBid = {
@@ -226,7 +224,7 @@ export const encodeForContract = (
         nftAssetClass: encodeAssetClass(order.take.assetType.assetClass),
         nftData: encodeAssetData(order.take.assetType),
         bidPaymentAmount: order.make.value,
-        paymentToken: order.make.assetType.contract!,
+        paymentToken: order.make.assetType.contract || constants.AddressZero,
         bidSalt: order.salt,
         bidStart: order.start,
         bidEnd: order.end,
@@ -237,8 +235,7 @@ export const encodeForContract = (
         sellOrderNftAmount: Number(matchingOrder.make.value),
         sellOrderData: encodeOrderData(matchingOrder),
       };
-      encodedOrder = bid;
-      break;
+      return bid;
     case "sell":
       const purchase: Types.Purchase = {
         sellOrderMaker: order.maker,
@@ -246,7 +243,7 @@ export const encodeForContract = (
         nftAssetClass: encodeAssetClass(order.make.assetType.assetClass),
         nftData: encodeAssetData(order.make.assetType),
         sellOrderPaymentAmount: order.take.value,
-        paymentToken: order.take.assetType.contract!,
+        paymentToken: order.take.assetType.contract || constants.AddressZero,
         sellOrderSalt: order.salt,
         sellOrderStart: order.start,
         sellOrderEnd: order.end,
@@ -257,13 +254,10 @@ export const encodeForContract = (
         buyOrderNftAmount: Number(matchingOrder.take.value),
         buyOrderData: encodeOrderData(matchingOrder),
       };
-      encodedOrder = purchase;
-      break;
+      return purchase;
     default:
       throw Error("Unknown order side");
   }
-
-  return encodedOrder!;
 };
 
 /**
