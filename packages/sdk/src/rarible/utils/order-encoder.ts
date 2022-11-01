@@ -1,34 +1,59 @@
 import { constants, utils } from "ethers";
 import { Constants, Types } from "..";
-import { lc } from "../../utils";
 import { ORDER_DATA_TYPES } from "../constants";
-import { Asset, IPart, LocalAssetType } from "../types";
-
-export const encodeAsset = (token?: string, tokenId?: string) => {
-  if (tokenId) {
-    return utils.defaultAbiCoder.encode(
-      ["address", "uint256"],
-      [token, tokenId]
-    );
-  } else if (token) {
-    return utils.defaultAbiCoder.encode(["address"], [token]);
-  } else {
-    return "0x";
-  }
-};
-
-export const encodeBundle = (tokenAddresses: string[], tokenIds: any) => {
-  const toEncode = tokenAddresses.map((token, index) => {
-    return [token, tokenIds[index]];
-  });
-  return utils.defaultAbiCoder.encode(
-    ["tuple(address,uint256[])[]"],
-    [toEncode]
-  );
-};
+import { AssetClass, IPart, LocalAssetType } from "../types";
 
 export const encodeAssetData = (assetType: LocalAssetType) => {
-  return encodeAsset(assetType.contract, assetType.tokenId);
+  switch (assetType.assetClass) {
+    case AssetClass.ETH:
+      return "0x";
+    case AssetClass.ERC20:
+    case AssetClass.COLLECTION:
+      return utils.defaultAbiCoder.encode(["address"], [assetType.contract]);
+    case AssetClass.ERC721:
+    case AssetClass.ERC1155:
+      return utils.defaultAbiCoder.encode(
+        ["address", "uint256"],
+        [assetType.contract, assetType.tokenId]
+      );
+    case AssetClass.ERC721_LAZY:
+      return utils.defaultAbiCoder.encode(
+        [
+          "address contract",
+          "tuple(uint256 tokenId, string uri, tuple(address account, uint96 value)[] creators, tuple(address account, uint96 value)[] royalties, bytes[] signatures)",
+        ],
+        [
+          assetType.contract,
+          {
+            tokenId: assetType.tokenId,
+            uri: assetType.uri,
+            creators: encodeV2OrderData(assetType.creators),
+            royalties: encodeV2OrderData(assetType.royalties),
+            signatures: assetType.signatures || [],
+          },
+        ]
+      );
+    case AssetClass.ERC1155_LAZY:
+      return utils.defaultAbiCoder.encode(
+        [
+          "address contract",
+          "tuple(uint256 tokenId, string uri, uint256 supply, tuple(address account, uint96 value)[] creators, tuple(address account, uint96 value)[] royalties, bytes[] signatures)",
+        ],
+        [
+          assetType.contract,
+          {
+            tokenId: assetType.tokenId,
+            uri: assetType.uri,
+            supply: assetType.supply,
+            creators: encodeV2OrderData(assetType.creators),
+            royalties: encodeV2OrderData(assetType.royalties),
+            signatures: assetType.signatures || [],
+          },
+        ]
+      );
+    default:
+      throw Error("Unknown rarible asset data");
+  }
 };
 
 export const encodeAssetClass = (assetClass: string) => {
@@ -39,7 +64,7 @@ export const encodeAssetClass = (assetClass: string) => {
   return utils.keccak256(utils.toUtf8Bytes(assetClass)).substring(0, 10);
 };
 
-export const encodeV2OrderData = (payments: IPart[]) => {
+export const encodeV2OrderData = (payments: IPart[] | undefined) => {
   if (!payments) {
     return [];
   }
@@ -58,13 +83,6 @@ export const encodeV3OrderData = (part: IPart) => {
   const uint96EncodedValue = utils.solidityPack(["uint96"], [value]);
   const encodedData = `${uint96EncodedValue}${account.slice(2)}`;
 
-  // -- DEBUG -- //
-  // console.log(part);
-  // console.log(encodedValue);
-  // const encodedAddress = utils.defaultAbiCoder.encode(["address"], [account]);
-  // console.log(encodedAddress);
-  // console.log(final);
-  // // -- DEBUG -- //
   return encodedData;
 };
 
@@ -102,7 +120,7 @@ export const encodeOrderData = (
           {
             payouts: encodeV2OrderData(v2Data.payouts),
             originFees: encodeV2OrderData(v2Data.originFees),
-            isMakeFill: v2Data.isMakeFill || false,
+            isMakeFill: v2Data.isMakeFill || true,
           },
         ]
       );
@@ -158,7 +176,6 @@ export const encodeOrderData = (
 };
 
 export const hashAssetType = (assetType: LocalAssetType) => {
-  const assetTypeData = encodeAssetData(assetType);
   const encodedAssetType = utils.defaultAbiCoder.encode(
     ["bytes32", "bytes4", "bytes32"],
     [
@@ -166,26 +183,10 @@ export const hashAssetType = (assetType: LocalAssetType) => {
         utils.toUtf8Bytes("AssetType(bytes4 assetClass,bytes data)")
       ),
       encodeAssetClass(assetType.assetClass),
-      utils.keccak256(assetTypeData),
+      utils.keccak256(encodeAssetData(assetType)),
     ]
   );
   return utils.keccak256(encodedAssetType);
-};
-
-export const hashAsset = (asset: Asset) => {
-  const encodedAsset = utils.defaultAbiCoder.encode(
-    ["bytes32", "bytes32", "uint256"],
-    [
-      utils.keccak256(
-        utils.toUtf8Bytes(
-          "Asset(AssetType assetType,uint256 value)AssetType(bytes4 assetClass,bytes data)"
-        )
-      ),
-      hashAssetType(asset.assetType),
-      asset.value,
-    ]
-  );
-  return utils.keccak256(encodedAsset);
 };
 
 /**
@@ -195,34 +196,8 @@ export const hashAsset = (asset: Asset) => {
  */
 export const encodeForContract = (
   order: Types.Order,
-  matchingOrder?: Types.TakerOrderParams
+  matchingOrder: Types.TakerOrderParams
 ) => {
-  if (!matchingOrder) {
-    return {
-      maker: order.maker,
-      makeAsset: {
-        assetType: {
-          assetClass: encodeAssetClass(order.make.assetType.assetClass),
-          data: encodeAssetData(order.make.assetType),
-        },
-        value: order.make.value,
-      },
-      taker: order.taker,
-      takeAsset: {
-        assetType: {
-          assetClass: encodeAssetClass(order.take.assetType.assetClass),
-          data: encodeAssetData(order.take.assetType),
-        },
-        value: order.take.value,
-      },
-      salt: order.salt,
-      start: order.start,
-      end: order.end,
-      dataType: encodeAssetClass(order.data?.dataType!),
-      data: encodeOrderData(order),
-    };
-  }
-
   switch (order.side) {
     case "buy":
       const bid: Types.AcceptBid = {

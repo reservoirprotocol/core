@@ -8,7 +8,7 @@ import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import { lc, n, s } from "../utils";
 
-import { BigNumber, ethers, utils } from "ethers/lib";
+import { BigNumber, constants, ethers, utils } from "ethers/lib";
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
@@ -68,9 +68,16 @@ export class Order {
     return utils.keccak256(encodedOrderKey);
   }
 
+  private EIP712_DOMAIN = (chainId: number) => ({
+    name: "Exchange",
+    version: "2",
+    chainId,
+    verifyingContract: Addresses.Exchange[chainId],
+  });
+
   public async sign(signer: TypedDataSigner) {
     const signature = await signer._signTypedData(
-      Types.EIP712_DOMAIN(this.chainId),
+      this.EIP712_DOMAIN(this.chainId),
       Types.EIP712_TYPES,
       toRawOrder(this)
     );
@@ -84,7 +91,7 @@ export class Order {
   public getSignatureData() {
     return {
       signatureKind: "eip712",
-      domain: Types.EIP712_DOMAIN(this.chainId),
+      domain: this.EIP712_DOMAIN(this.chainId),
       types: Types.EIP712_TYPES,
       value: toRawOrder(this),
     };
@@ -92,7 +99,7 @@ export class Order {
 
   public checkSignature() {
     const signer = utils.verifyTypedData(
-      Types.EIP712_DOMAIN(this.chainId),
+      this.EIP712_DOMAIN(this.chainId),
       Types.EIP712_TYPES,
       toRawOrder(this),
       this.params.signature!
@@ -327,7 +334,10 @@ export class Order {
   }
 }
 
-const toRawOrder = (order: Order): any => encodeForMatchOrders(order.params);
+const toRawOrder = (order: Order): any => {
+  const encoded = encodeForMatchOrders(order.params);
+  return encoded;
+};
 
 const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:
@@ -416,16 +426,19 @@ const normalize = (order: Types.Order): Types.Order => {
     tokenId: makeTokenId,
     contract: makeContract,
     value: makeValue,
+    lazyMintInfo: makeLazyMintInfo,
   } = parseAssetData(order.make);
   var {
     assetClass: takeAssetClass,
     tokenId: takeTokenId,
     contract: takeContract,
     value: takeValue,
+    lazyMintInfo: takeLazyMintInfo,
   } = parseAssetData(order.take);
 
   const maker = extractAddressFromChain(order.maker);
-  const taker = extractAddressFromChain(order.taker);
+  const taker = extractAddressFromChain(order.taker || constants.AddressZero);
+  const hash = extractAddressFromChain(order.hash || order.id || "");
 
   const tokenKind = takeAssetClass.toLowerCase().includes("collection")
     ? "contract-wide"
@@ -434,11 +447,6 @@ const normalize = (order: Types.Order): Types.Order => {
   const side = tokenKind === "contract-wide" || takeTokenId ? "buy" : "sell";
   const salt = BigNumber.from(order.salt).toString();
 
-  let hash = order.hash || order.id || "";
-  const hasChainInfo = hash.indexOf(":") >= 0;
-  if (hasChainInfo) {
-    hash = hash.split(":")[1];
-  }
   return {
     kind: tokenKind,
     side: side,
@@ -455,6 +463,7 @@ const normalize = (order: Types.Order): Types.Order => {
         ...(makeContract && {
           contract: lc(makeContract),
         }),
+        ...makeLazyMintInfo,
       },
       value: s(makeValue),
     },
@@ -468,33 +477,33 @@ const normalize = (order: Types.Order): Types.Order => {
         ...(takeContract && {
           contract: lc(takeContract),
         }),
+        ...takeLazyMintInfo,
       },
       value: s(takeValue),
     },
     salt: salt,
-    start: n(order.start),
-    end: n(order.end),
+    start: n(order.start || 0),
+    end: n(order.end || 0),
     data: dataInfo,
   };
 };
 
 function extractAddressFromChain(address: string) {
+  if (!address) {
+    return "";
+  }
+
   const addressHasChainInfo = address.indexOf(":") >= 0;
   const parsedAddress = addressHasChainInfo ? address.split(":")[1] : address;
   return parsedAddress;
 }
 
 function parseAssetData(assetInfo: Types.LocalAsset) {
-  let assetClass =
-    assetInfo.assetType?.assetClass || (assetInfo as any)?.type["@type"] || "";
-
-  if (assetClass.toLowerCase().includes("erc721")) {
-    assetClass = Types.AssetClass.ERC721;
-  } else if (assetClass.toLowerCase().includes("erc1155")) {
-    assetClass = Types.AssetClass.ERC1155;
-  } else if (assetClass.toLowerCase().includes("collection")) {
-    assetClass = Types.AssetClass.COLLECTION;
-  }
+  let assetClass = (
+    assetInfo.assetType?.assetClass ||
+    assetInfo.type["@type"] ||
+    ""
+  ).toUpperCase();
 
   const contract = extractAddressFromChain(
     assetInfo.assetType?.contract || (assetInfo as any)?.type?.contract || ""
@@ -509,7 +518,26 @@ function parseAssetData(assetInfo: Types.LocalAsset) {
     ? utils.parseUnits(assetInfo.value, "18")
     : assetInfo.value;
 
-  return { assetClass, tokenId, contract, value };
+  const lazyMintInfo = {
+    ...(assetInfo.type?.uri && { uri: assetInfo.type?.uri || "" }),
+    ...(assetInfo.type?.creators && {
+      creators: (assetInfo.type?.creators || []).map((l: Types.IPart) =>
+        normalizePartData(l)
+      ),
+    }),
+    ...(assetInfo.type?.royalties && {
+      royalties: (assetInfo.type?.royalties || []).map((l: Types.IPart) =>
+        normalizePartData(l)
+      ),
+    }),
+    ...(assetInfo.type?.signatures && {
+      signatures: (assetInfo.type?.signatures || []).map((l: string) =>
+        extractAddressFromChain(l)
+      ),
+    }),
+  };
+
+  return { assetClass, tokenId, contract, value, lazyMintInfo };
 }
 
 function normalizePartData(fee: Types.IPart) {

@@ -1,13 +1,5 @@
 import { BigNumberish } from "ethers";
-import { Addresses } from ".";
 import { ORDER_DATA_TYPES, ORDER_TYPES } from "./constants";
-
-export const EIP712_DOMAIN = (chainId: number) => ({
-  name: "Exchange",
-  version: "2",
-  chainId,
-  verifyingContract: Addresses.Exchange[chainId],
-});
 
 export const EIP712_TYPES = {
   AssetType: [
@@ -37,6 +29,8 @@ export enum AssetClass {
   ERC721 = "ERC721",
   ERC1155 = "ERC1155",
   COLLECTION = "COLLECTION",
+  ERC721_LAZY = "ERC721_LAZY",
+  ERC1155_LAZY = "ERC1155_LAZY",
 }
 
 export enum OrderSide {
@@ -58,9 +52,16 @@ export type LocalAssetType = {
   assetClass: string;
   contract?: string;
   tokenId?: string;
+  uri?: string;
+  supply?: string;
+  creators?: IPart[];
+  royalties?: IPart[];
+  signatures?: string[];
 };
 
 export type LocalAsset = {
+  // Comes from API
+  type?: any;
   assetType: LocalAssetType;
   value: string;
 };
