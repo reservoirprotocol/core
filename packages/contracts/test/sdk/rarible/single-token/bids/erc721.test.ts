@@ -28,7 +28,8 @@ describe("Rarible - SingleToken Bids Erc721", () => {
 
   afterEach(reset);
 
-  it("Rarible - Build and fill ERC721 WETH buy order no revenue splits", async () => {
+  //TODO: Fix these
+  it("Rarible V3 Order data - 0 origin fees Build and fill ERC721 WETH buy order", async () => {
     const seller = alice;
     const buyer = bob;
     const price = parseEther("1");
@@ -183,4 +184,13 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     expect(buyerBalanceAfter).to.eq(priceAfterFees);
     expect(ownerAfter).to.eq(buyer.address);
   });
+
+  // TODO: Implement these
+  it("Rarible V1 Order data - 1 payout | 2 origin fees - Build and fill ERC721 WETH buy order", async () => {});
+  it("Rarible V1 Order data - 2 payouts | 0 origin fees - Build and fill ERC721 WETH buy order", async () => {});
+  it("Rarible V2 Order data - 1 payout | 2 origin fees - Build and fill ERC721 WETH buy order", async () => {});
+  it("Rarible V2 Order data - 2 payouts | 2 origin fees - Build and fill ERC721 WETH buy order", async () => {});
+  it("Rarible V2 Order data - 1 payout | 0 origin fees - Build and fill ERC721 WETH buy order", async () => {});
+  it("Rarible V3 Order data - 1 origin fee Build and fill ERC721 WETH buy order", async () => {});
+  it("Rarible V3 Order data - 2 origin fees Build and fill ERC721 WETH buy order", async () => {});
 });
