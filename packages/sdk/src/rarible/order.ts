@@ -81,7 +81,7 @@ export class Order {
     const signature = await signer._signTypedData(
       EIP712_DOMAIN(this.chainId),
       EIP712_TYPES,
-      encode(this.params)
+      toRawOrder(this)
     );
 
     this.params = {

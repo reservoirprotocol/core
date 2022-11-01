@@ -188,14 +188,14 @@ export class SingleTokenBuilder extends BaseBuilder {
       salt: 0,
       start: order.start,
       end: order.end,
-      data: order.data,
+      data: JSON.parse(JSON.stringify(order.data)),
     };
 
     // `V3` orders can only be matched if buy-order is `V3_BUY` and the sell-order is `V3_SELL`
     if (order.data.dataType === ORDER_DATA_TYPES.V3_SELL) {
-      order.data.dataType = ORDER_DATA_TYPES.V3_BUY;
+      rightOrder.data.dataType = ORDER_DATA_TYPES.V3_BUY;
     } else if (order.data.dataType === ORDER_DATA_TYPES.V3_BUY) {
-      order.data.dataType = ORDER_DATA_TYPES.V3_SELL;
+      rightOrder.data.dataType = ORDER_DATA_TYPES.V3_SELL;
     }
 
     // for erc1155 we need to take the value from request (the amount parameter)

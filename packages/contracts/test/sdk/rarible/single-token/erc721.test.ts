@@ -69,18 +69,9 @@ describe("Rarible - SingleToken Erc721", () => {
       startTime: 0,
       endTime: 0,
       orderType: Rarible.Constants.ORDER_TYPES.V2,
-      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_BUY,
       payouts: [{ account: buyer.address, value: "10000" }],
       marketplaceMarker: "rarible",
-      maxFeesBasePoint: 1000,
-      originFeeFirst: {
-        account: charlie.address,
-        value: "1000",
-      },
-      originFeeSecond: {
-        account: dan.address,
-        value: "1000",
-      },
     });
 
     // Sign the order
@@ -234,6 +225,13 @@ describe("Rarible - SingleToken Erc721", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      payouts: [{ account: seller.address, value: "10000" }],
+      // originFeeFirst: { account: charlie.address, value: "200" },
+      // originFeeSecond: { account: dan.address, value: "200" },
+      marketplaceMarker: "rarible",
+      maxFeesBasePoint: 1000,
     });
 
     // Sign the order

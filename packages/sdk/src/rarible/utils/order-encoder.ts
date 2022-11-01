@@ -119,7 +119,8 @@ export const encodeOrderData = (
           encodeV3OrderData(v3SellData.payouts),
           encodeV3OrderData(v3SellData.originFeeFirst),
           encodeV3OrderData(v3SellData.originFeeSecond),
-          v3SellData.maxFeesBasePoint,
+          // TODO: Think of how to generate when maxFeesBasePoint is not passed in case of buy orders
+          v3SellData.maxFeesBasePoint || "1000",
           utils.keccak256(utils.toUtf8Bytes(v3SellData.marketplaceMarker)),
         ]
       );
@@ -189,7 +190,6 @@ export const hashAsset = (asset: Asset) => {
 export const encode = (order: Types.TakerOrderParams | Types.Order) => {
   return {
     maker: order.maker,
-    // dataType: encodeAssetClass(order.type),
     makeAsset: {
       assetType: {
         assetClass: encodeAssetClass(order.make.assetType.assetClass),
