@@ -185,13 +185,14 @@ describe("Rarible - SingleToken Bids Erc721", () => {
   it("Rarible V2 Order data - 2 origin fees - Build and fill ERC721 WETH buy order", async () => {
     const seller = alice;
     const buyer = bob;
-    const price = parseEther("1");
+    const nftPrice = parseEther("0.2");
+    const priceSent = parseEther("1");
     const soldTokenId = 0;
 
     const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
     // Mint weth to buyer
-    await weth.deposit(buyer, price);
+    await weth.deposit(buyer, priceSent);
 
     // Approve the exchange contract for the buyer
     await weth.approve(buyer, Rarible.Addresses.ERC20TransferProxy[chainId]);
@@ -219,7 +220,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
       tokenKind: "erc721",
       contract: erc721.address,
       tokenId: soldTokenId.toString(),
-      price: price.toString(),
+      price: nftPrice.toString(),
       tokenAmount: 1,
       paymentToken: Common.Addresses.Weth[chainId],
       orderType: Rarible.Constants.ORDER_TYPES.V2,
@@ -252,28 +253,32 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     const sellerBalanceAfter = await weth.getBalance(buyer.address);
     const ownerAfter = await nft.getOwner(soldTokenId);
 
-    let priceAfterFees = price;
-    priceAfterFees = priceAfterFees.sub(
-      priceAfterFees
+    let priceWithFees = nftPrice;
+    priceWithFees = priceWithFees.add(
+      priceWithFees
         .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
         .div(10000)
     );
 
-    expect(sellerBalanceAfter).to.be.eq(0);
-    expect(buyerBalanceAfter).to.eq(priceAfterFees);
+    expect(sellerBalanceAfter).to.be.eq(priceSent.sub(priceWithFees));
+    expect(buyerBalanceAfter).to.eq(nftPrice);
     expect(ownerAfter).to.eq(buyer.address);
   });
 
   it("Rarible V2 Order data - 1 origin fees - Build and fill ERC721 WETH buy order", async () => {
+    // Read this doc for info about how BID fees are calculated
+    // https://github.com/rarible/protocol-contracts/blob/master/transfer-manager/contracts/RaribleTransferManager.md?plain=1#L68
+
     const seller = alice;
     const buyer = bob;
-    const price = parseEther("1");
+    const nftPrice = parseEther("0.2");
+    const priceSent = parseEther("1");
     const soldTokenId = 0;
 
     const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
     // Mint weth to buyer
-    await weth.deposit(buyer, price);
+    await weth.deposit(buyer, priceSent);
 
     // Approve the exchange contract for the buyer
     await weth.approve(buyer, Rarible.Addresses.ERC20TransferProxy[chainId]);
@@ -300,7 +305,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
       tokenKind: "erc721",
       contract: erc721.address,
       tokenId: soldTokenId.toString(),
-      price: price.toString(),
+      price: nftPrice.toString(),
       tokenAmount: 1,
       paymentToken: Common.Addresses.Weth[chainId],
       orderType: Rarible.Constants.ORDER_TYPES.V2,
@@ -329,13 +334,13 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     const sellerBalanceAfter = await weth.getBalance(buyer.address);
     const ownerAfter = await nft.getOwner(soldTokenId);
 
-    let priceAfterFees = price;
-    priceAfterFees = priceAfterFees.sub(
-      priceAfterFees.mul(BigNumber.from(revenueSplitBpsA)).div(10000)
+    let priceWithFees = nftPrice;
+    priceWithFees = priceWithFees.add(
+      priceWithFees.mul(BigNumber.from(revenueSplitBpsA)).div(10000)
     );
 
-    expect(sellerBalanceAfter).to.be.eq(0);
-    expect(buyerBalanceAfter).to.eq(priceAfterFees);
+    expect(sellerBalanceAfter).to.be.eq(priceSent.sub(priceWithFees));
+    expect(buyerBalanceAfter).to.eq(nftPrice);
     expect(ownerAfter).to.eq(buyer.address);
   });
 

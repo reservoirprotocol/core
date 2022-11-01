@@ -15,17 +15,23 @@ export class SingleTokenBuilder extends BaseBuilder {
     let side: "sell" | "buy";
     const makeAssetClass = order.params.make.assetType.assetClass;
     const takeAssetClass = order.params.take.assetType.assetClass;
+    //TODO: Can be rewriten to be more readable
     if (
       (makeAssetClass === Types.AssetClass.ERC721 ||
-        makeAssetClass === Types.AssetClass.ERC1155) &&
+        makeAssetClass === Types.AssetClass.ERC721_LAZY ||
+        makeAssetClass === Types.AssetClass.ERC1155 ||
+        makeAssetClass === Types.AssetClass.ERC1155_LAZY) &&
       (takeAssetClass === Types.AssetClass.ERC20 ||
         takeAssetClass === Types.AssetClass.ETH)
     ) {
       side = "sell";
     } else if (
-      makeAssetClass === Types.AssetClass.ERC20 &&
-      (takeAssetClass === Types.AssetClass.ERC721 ||
-        takeAssetClass === Types.AssetClass.ERC1155)
+      makeAssetClass === Types.AssetClass.COLLECTION ||
+      (makeAssetClass === Types.AssetClass.ERC20 &&
+        (takeAssetClass === Types.AssetClass.ERC721 ||
+          takeAssetClass === Types.AssetClass.ERC721_LAZY ||
+          takeAssetClass === Types.AssetClass.ERC1155 ||
+          takeAssetClass === Types.AssetClass.ERC1155_LAZY))
     ) {
       side = "buy";
     } else {
