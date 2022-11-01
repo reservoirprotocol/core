@@ -1,4 +1,11 @@
+import { BigNumberish } from "@ethersproject/bignumber";
+
 import * as Sdk from "../../index";
+
+export type Fee = {
+  recipient: string;
+  amount: BigNumberish;
+};
 
 export type GenericOrder =
   | {
@@ -49,6 +56,7 @@ export type ListingFillDetails = {
   currency: string;
   // Relevant for partially-fillable orders
   amount?: number | string;
+  fees?: Fee[];
 };
 
 export type BidFillDetails = {

@@ -217,7 +217,7 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
       Sdk.Common.Addresses.Eth[chainId],
       {
         source: "reservoir.market",
-        fees: feesOnTop,
+        globalFees: feesOnTop,
       }
     );
     await buyer.sendTransaction(txData);
@@ -348,7 +348,7 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
       Sdk.Common.Addresses.Eth[chainId],
       {
         source: "reservoir.market",
-        fees: feesOnTop,
+        globalFees: feesOnTop,
       }
     );
     await expect(buyer.sendTransaction(nonPartialTx.txData)).to.be.revertedWith(
@@ -361,7 +361,7 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
       Sdk.Common.Addresses.Eth[chainId],
       {
         source: "reservoir.market",
-        fees: feesOnTop,
+        globalFees: feesOnTop,
         partial: true,
       }
     );

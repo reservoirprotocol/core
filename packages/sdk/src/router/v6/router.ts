@@ -5,7 +5,7 @@ import { AddressZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
-import { BidDetails, ListingDetails } from "./types";
+import { BidDetails, Fee, ListingDetails } from "./types";
 import * as Sdk from "../../index";
 import { TxData, bn, generateSourceBytes } from "../../utils";
 
@@ -75,10 +75,8 @@ export class Router {
     currency = Sdk.Common.Addresses.Eth[this.chainId],
     options?: {
       source?: string;
-      fees?: {
-        recipient: string;
-        amount: BigNumberish;
-      }[];
+      // Will be split among all listings to get filled
+      globalFees?: Fee[];
       // Include a balance assert module call for every listing
       assertBalances?: boolean;
       // Force filling through the router (where possible)
@@ -103,7 +101,7 @@ export class Router {
       if (details.length > 1) {
         throw new Error("Zora sweeping is not supported");
       } else {
-        if (options?.fees?.length) {
+        if (options?.globalFees?.length) {
           throw new Error("Fees not supported");
         }
 
@@ -121,7 +119,7 @@ export class Router {
       if (details.length > 1) {
         throw new Error("Universe sweeping is not supported");
       } else {
-        if (options?.fees?.length) {
+        if (options?.globalFees?.length) {
           throw new Error("Fees not supported");
         }
 
@@ -141,7 +139,7 @@ export class Router {
       if (details.length > 1) {
         throw new Error("Cryptopunks sweeping is not supported");
       } else {
-        if (options?.fees?.length) {
+        if (options?.globalFees?.length) {
           throw new Error("Fees not supported");
         }
 
@@ -159,7 +157,7 @@ export class Router {
     if (
       details.every(({ kind }) => kind === "seaport") &&
       // TODO: Look into using consideration tips for fees when filling directly
-      !options?.fees?.length &&
+      !options?.globalFees?.length &&
       !options?.forceRouter
     ) {
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
@@ -264,7 +262,7 @@ export class Router {
         (d) => d.order as Sdk.Foundation.Order
       );
 
-      const fees = (options?.fees ?? []).map(({ recipient, amount }) => ({
+      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
         recipient,
         // The fees are averaged over the number of listings to fill
         amount: bn(amount).mul(foundationDetails.length).div(details.length),
@@ -323,11 +321,17 @@ export class Router {
       );
       const module = this.contracts.looksRareModule.address;
 
-      const fees = (options?.fees ?? []).map(({ recipient, amount }) => ({
-        recipient,
-        // The fees are averaged over the number of listings to fill
-        amount: bn(amount).mul(looksRareDetails.length).div(details.length),
-      }));
+      const fees = [
+        // Global fees
+        ...(options?.globalFees ?? []).map(({ recipient, amount }) => ({
+          recipient,
+          // The fees are averaged over the number of listings to fill
+          amount: bn(amount).mul(looksRareDetails.length).div(details.length),
+        })),
+        // Local fees
+        // TODO: Should not split the local fees among all executions
+        ...looksRareDetails.flatMap(({ fees }) => fees ?? []),
+      ];
 
       const totalPrice = orders
         .map((order) => bn(order.params.price))
@@ -389,7 +393,7 @@ export class Router {
     if (seaportDetails.length) {
       const orders = seaportDetails.map((d) => d.order as Sdk.Seaport.Order);
 
-      const fees = (options?.fees ?? []).map(({ recipient, amount }) => ({
+      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
         recipient,
         // The fees are averaged over the number of listings to fill
         amount: bn(amount).mul(seaportDetails.length).div(details.length),
@@ -492,7 +496,7 @@ export class Router {
       const orders = x2y2Details.map((d) => d.order as Sdk.X2Y2.Order);
       const module = this.contracts.x2y2Module.address;
 
-      const fees = (options?.fees ?? []).map(({ recipient, amount }) => ({
+      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
         recipient,
         // The fees are averaged over the number of listings to fill
         amount: bn(amount).mul(x2y2Details.length).div(details.length),
@@ -583,7 +587,7 @@ export class Router {
         (d) => d.order as Sdk.ZeroExV4.Order
       );
 
-      const fees = (options?.fees ?? []).map(({ recipient, amount }) => ({
+      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
         recipient,
         // The fees are averaged over the number of listings to fill
         amount: bn(amount)
@@ -651,7 +655,7 @@ export class Router {
         (d) => d.order as Sdk.ZeroExV4.Order
       );
 
-      const fees = (options?.fees ?? []).map(({ recipient, amount }) => ({
+      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
         recipient,
         // The fees are averaged over the number of listings to fill
         // TODO: Take into account the amount filled as well (relevant for ERC1155)
