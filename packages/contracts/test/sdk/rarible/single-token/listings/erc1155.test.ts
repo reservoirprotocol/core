@@ -56,7 +56,6 @@ describe("Rarible - SingleToken Erc1155", () => {
     await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
 
     const exchange = new Rarible.Exchange(chainId);
-    const daoFee = await exchange.getDaoFee(buyer.provider!);
 
     const builder = new Rarible.Builders.SingleToken(chainId);
     // Build sell order
@@ -66,8 +65,15 @@ describe("Rarible - SingleToken Erc1155", () => {
       tokenKind: "erc1155",
       contract: erc1155.address,
       tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
       price: price.toString(),
       tokenAmount: mintTokensAmount,
+      payouts: [],
+      originFeeFirst: { account: charlie.address, value: '150' },
+      originFeeSecond: { account: dan.address, value: '100' },
+      marketplaceMarker: "rarible",
+      maxFeesBasePoint: 1000,      
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
@@ -110,7 +116,6 @@ describe("Rarible - SingleToken Erc1155", () => {
     );
 
     expect(buyerBalanceAfter).to.be.eq(0);
-    expect(sellerBalanceAfter).to.eq(price.sub(price.mul(daoFee).div(10000)));
     expect(sellerNftBalanceAfter).to.eq(0);
     expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
   });
@@ -142,7 +147,6 @@ describe("Rarible - SingleToken Erc1155", () => {
     await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
 
     const exchange = new Rarible.Exchange(chainId);
-    const daoFee = await exchange.getDaoFee(buyer.provider!);
 
     const builder = new Rarible.Builders.SingleToken(chainId);
     // Build sell order
@@ -152,6 +156,8 @@ describe("Rarible - SingleToken Erc1155", () => {
       tokenKind: "erc1155",
       contract: erc1155.address,
       tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: Common.Addresses.Weth[chainId],
@@ -200,7 +206,7 @@ describe("Rarible - SingleToken Erc1155", () => {
     expect(buyerBalanceAfter).to.be.eq(price.sub(filledPrice));
 
     expect(sellerBalanceAfter).to.eq(
-      filledPrice.sub(filledPrice.mul(daoFee).div(10000))
+      filledPrice
     );
 
     expect(sellerNftBalanceAfter).to.eq(fillAmount);
@@ -233,7 +239,6 @@ describe("Rarible - SingleToken Erc1155", () => {
     await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
 
     const exchange = new Rarible.Exchange(chainId);
-    const daoFee = await exchange.getDaoFee(buyer.provider!);
     const revenueSplitBpsA = "1000";
     const revenueSplitBpsB = "1500";
 
@@ -250,7 +255,9 @@ describe("Rarible - SingleToken Erc1155", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
-      fees: [
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      originFees: [
         {
           account: charlie.address,
           value: revenueSplitBpsA,
@@ -304,7 +311,6 @@ describe("Rarible - SingleToken Erc1155", () => {
         .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
         .div(10000)
     );
-    priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
     expect(buyerBalanceAfter).to.be.eq(0);
     expect(sellerBalanceAfter).to.eq(priceAfterFees);
@@ -328,7 +334,6 @@ describe("Rarible - SingleToken Erc1155", () => {
 
     const exchange = new Rarible.Exchange(chainId);
 
-    const daoFee = await exchange.getDaoFee(buyer.provider!);
 
     const builder = new Rarible.Builders.SingleToken(chainId);
     // Build sell order
@@ -338,6 +343,8 @@ describe("Rarible - SingleToken Erc1155", () => {
       tokenKind: "erc1155",
       contract: erc1155.address,
       tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: constants.AddressZero,
@@ -389,7 +396,7 @@ describe("Rarible - SingleToken Erc1155", () => {
       buyerBalanceBefore.sub(gasUsed).sub(price)
     );
     expect(sellerBalanceAfter).to.eq(
-      sellerBalanceBefore.add(price.sub(price.mul(daoFee).div(10000)))
+      sellerBalanceBefore.add(price)
     );
     expect(sellerNftBalanceAfter).eq(0);
     expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
@@ -413,8 +420,6 @@ describe("Rarible - SingleToken Erc1155", () => {
 
     const exchange = new Rarible.Exchange(chainId);
 
-    const daoFee = await exchange.getDaoFee(buyer.provider!);
-
     const builder = new Rarible.Builders.SingleToken(chainId);
     // Build sell order
     const sellOrder = builder.build({
@@ -423,6 +428,8 @@ describe("Rarible - SingleToken Erc1155", () => {
       tokenKind: "erc1155",
       contract: erc1155.address,
       tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
       price: price.toString(),
       tokenAmount: mintTokensAmount,
       paymentToken: constants.AddressZero,
@@ -477,7 +484,7 @@ describe("Rarible - SingleToken Erc1155", () => {
 
     expect(sellerBalanceAfter).to.eq(
       sellerBalanceBefore.add(
-        filledPrice.sub(filledPrice.mul(daoFee).div(10000))
+        filledPrice
       )
     );
     expect(sellerNftBalanceAfter).eq(mintTokensAmount - fillAmount);
@@ -500,7 +507,6 @@ describe("Rarible - SingleToken Erc1155", () => {
 
     const exchange = new Rarible.Exchange(chainId);
 
-    const daoFee = await exchange.getDaoFee(buyer.provider!);
     const revenueSplitBpsA = "1000";
     const revenueSplitBpsB = "1500";
 
@@ -512,12 +518,14 @@ describe("Rarible - SingleToken Erc1155", () => {
       tokenKind: "erc1155",
       contract: erc1155.address,
       tokenId: soldTokenId.toString(),
-      price: price.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
       tokenAmount: mintTokensAmount,
       paymentToken: constants.AddressZero,
+      price: price.toString(),
       startTime: 0,
       endTime: 0,
-      fees: [
+      originFees: [
         {
           account: charlie.address,
           value: revenueSplitBpsA,
@@ -575,7 +583,6 @@ describe("Rarible - SingleToken Erc1155", () => {
         .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
         .div(10000)
     );
-    priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
     expect(buyerBalanceAfter).to.be.eq(
       buyerBalanceBefore.sub(gasUsed).sub(price)
@@ -586,33 +593,2521 @@ describe("Rarible - SingleToken Erc1155", () => {
   });
 
   //TODO: Implement these
-  it("Rarible V1 Order data - 1 payout | 2 origin fees - Build and fill ERC1155 WETH sell order", async () => {});
-  it("Rarible V1 Order data - 1 payout | 2 origin fees - Build and partial fill ERC1155 WETH sell order", async () => {});
-  it("Rarible V1 Order data - 2 payouts | 0 origin fees - Build and fill ERC1155 WETH sell order", async () => {});
-  it("Rarible V1 Order data - 2 payouts | 0 origin fees - Build and partial ERC1155 WETH sell order", async () => {});
-  it("Rarible V2 Order data - 1 payout | 2 origin fees - Build and fill ERC1155 WETH sell order", async () => {});
-  it("Rarible V2 Order data - 1 payout | 2 origin fees - Build and partial ERC1155 WETH sell order", async () => {});
-  it("Rarible V2 Order data - 2 payouts | 2 origin fees - Build and fill ERC1155 WETH sell order", async () => {});
-  it("Rarible V2 Order data - 2 payouts | 2 origin fees - Build and partial ERC1155 WETH sell order", async () => {});
-  it("Rarible V2 Order data - 1 payout | 0 origin fees - Build and fill ERC1155 WETH sell order", async () => {});
-  it("Rarible V2 Order data - 1 payout | 0 origin fees - Build and partial ERC1155 WETH sell order", async () => {});
-  it("Rarible V3 Order data - 1 origin fee Build and fill ERC1155 WETH sell order", async () => {});
-  it("Rarible V3 Order data - 1 origin fee Build and partial ERC1155 WETH sell order", async () => {});
-  it("Rarible V3 Order data - 2 origin fees Build and fill ERC1155 WETH sell order", async () => {});
-  it("Rarible V3 Order data - 2 origin fees Build and partial ERC1155 WETH sell order", async () => {});
+  it("Rarible V1 Order data - 1 payout and 2 origin fees - Build and fill ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
 
-  it("Rarible V1 Order data - 1 payout | 2 origin fees - Build and fill ERC1155 ETH sell order", async () => {});
-  it("Rarible V1 Order data - 1 payout | 2 origin fees - Build and partial fill ERC1155 ETH sell order", async () => {});
-  it("Rarible V1 Order data - 2 payouts | 0 origin fees - Build and fill ERC1155 ETH sell order", async () => {});
-  it("Rarible V1 Order data - 2 payouts | 0 origin fees - Build and partial ERC1155 ETH sell order", async () => {});
-  it("Rarible V2 Order data - 1 payout | 2 origin fees - Build and fill ERC1155 ETH sell order", async () => {});
-  it("Rarible V2 Order data - 1 payout | 2 origin fees - Build and partial ERC1155 ETH sell order", async () => {});
-  it("Rarible V2 Order data - 2 payouts | 2 origin fees - Build and fill ERC1155 ETH sell order", async () => {});
-  it("Rarible V2 Order data - 2 payouts | 2 origin fees - Build and partial ERC1155 ETH sell order", async () => {});
-  it("Rarible V2 Order data - 1 payout | 0 origin fees - Build and fill ERC1155 ETH sell order", async () => {});
-  it("Rarible V2 Order data - 1 payout | 0 origin fees - Build and partial ERC1155 ETH sell order", async () => {});
-  it("Rarible V3 Order data - 1 origin fee Build and fill ERC1155 ETH sell order", async () => {});
-  it("Rarible V3 Order data - 1 origin fee Build and partial ERC1155 ETH sell order", async () => {});
-  it("Rarible V3 Order data - 2 origin fees Build and fill ERC1155 ETH sell order", async () => {});
-  it("Rarible V3 Order data - 2 origin fees Build and partial ERC1155 ETH sell order", async () => {});
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V1,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
+      payouts: [
+        { account: seller.address, value: "10000"},
+      ],
+      originFees: [
+        { account: charlie.address, value: "100"},
+        { account: dan.address, value: "150"},
+      ],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V1 Order data - 1 payout and 2 origin fees - Build and partial fill ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V1,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
+      payouts: [
+        { account: seller.address, value: "10000"},
+      ],
+      originFees: [
+        { account: charlie.address, value: "100"},
+        { account: dan.address, value: "150"},
+      ],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V1 Order data - 2 payouts and 0 origin fees - Build and fill ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V1,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
+      payouts: [
+        { account: seller.address, value: "10000"},
+      ],
+      originFees: [
+        // { account: charlie.address, value: "100"},
+        // { account: dan.address, value: "150"},
+      ],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V1 Order data - 2 payouts and 0 origin fees - Build and partial ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V1,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
+      payouts: [
+        { account: seller.address, value: "10000"},
+      ],
+      originFees: [
+        // { account: charlie.address, value: "100"},
+        // { account: dan.address, value: "150"},
+      ],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V2 Order data - 1 payout and 2 origin fees - Build and fill ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "10000"},
+      ],
+      originFees: [
+        { account: charlie.address, value: "100"},
+        { account: dan.address, value: "150"},
+      ],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V2 Order data - 1 payout and 2 origin fees - Build and partial ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "10000"},
+      ],
+      originFees: [
+        { account: charlie.address, value: "100"},
+        { account: dan.address, value: "150"},
+      ],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V2 Order data - 2 payouts and 2 origin fees - Build and fill ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "9000"},
+        { account: dan.address, value: "1000"},
+      ],
+      originFees: [
+        { account: charlie.address, value: "100"},
+        { account: dan.address, value: "150"},
+      ],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V2 Order data - 2 payouts and 2 origin fees - Build and partial ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "9000"},
+        { account: dan.address, value: "1000"},
+      ],
+      originFees: [
+        { account: charlie.address, value: "100"},
+        { account: dan.address, value: "150"},
+      ],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V2 Order data - 1 payout and 0 origin fees - Build and fill ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "10000"},
+      ],
+      originFees: [],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V2 Order data - 1 payout and 0 origin fees - Build and partial ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "10000"},
+      ],
+      originFees: [],
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V3 Order data - 1 origin fee Build and fill ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      originFeeFirst: { account: charlie.address, value: '150' },
+      // originFeeSecond: { account: dan.address, value: '100' },
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V3 Order data - 1 origin fee Build and partial ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      originFeeFirst: { account: charlie.address, value: '150' },
+      // originFeeSecond: { account: dan.address, value: '100' },
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+  it("Rarible V3 Order data - 2 origin fees Build and fill ERC1155 ETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      originFeeFirst: { account: charlie.address, value: '150' },
+      originFeeSecond: { account: dan.address, value: '100' },
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+
+  it("Rarible V3 Order data - 2 origin fees Build and partial ERC1155 ETH sell order", async () => {    
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      originFeeFirst: { account: charlie.address, value: '150' },
+      originFeeSecond: { account: dan.address, value: '100' },
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+    });
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerNftBalanceBefore).eq(mintTokensAmount.toString());
+    expect(buyerNftBalanceBefore).eq(0);
+
+    // Match orders
+    const tx = await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount - 1,
+      assetClass: 'ERC1155'
+    });
+
+    const txReceipt = await tx.wait();
+
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+    const gasUsed = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+
+    expect(buyerBalanceAfter).to.be.eq(
+      buyerBalanceBefore.sub(gasUsed).sub(price)
+    );
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price)
+    );
+    expect(sellerNftBalanceAfter).eq(0);
+    expect(buyerNftBalanceAfter).eq(mintTokensAmount.toString());
+  });
+
+//weth
+  it("Rarible V1 Order data - 1 payout and 2 origin fees - Build and fill ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V1,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
+      payouts: [
+        { account: seller.address, value: "10000" },
+      ],
+      originFees: [
+        { account: charlie.address, value: "150" },
+        { account: dan.address, value: "200" },
+      ],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V1 Order data - 1 payout and 2 origin fees - Build and partial fill ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V1,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
+      payouts: [
+        { account: seller.address, value: "10000" },
+      ],
+      originFees: [
+        { account: charlie.address, value: "150" },
+        { account: dan.address, value: "200" },
+      ],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount - 1,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V1 Order data - 2 payouts and 0 origin fees - Build and fill ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V1,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
+      payouts: [
+        { account: seller.address, value: "9600" },
+        { account: dan.address, value: "400" },
+      ],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V1 Order data - 2 payouts and 0 origin fees - Build and partial ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V1,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
+      payouts: [
+        { account: seller.address, value: "9600" },
+        { account: dan.address, value: "400" },
+      ],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount - 1,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V2 Order data - 1 payout and 2 origin fees - Build and fill ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "9600" },
+      ],
+      originFees: [
+        { account: charlie.address, value: "150" },
+        { account: dan.address, value: "200" },
+      ],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V2 Order data - 1 payout and 2 origin fees - Build and partial ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "10000" },
+      ],
+      originFees: [
+        { account: charlie.address, value: "150" },
+        { account: dan.address, value: "200" },
+      ],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount - 1,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V2 Order data - 2 payouts and 2 origin fees - Build and fill ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "9600" },
+        { account: dan.address, value: "400" },
+      ],
+      originFees: [
+        { account: charlie.address, value: "150" },
+        { account: dan.address, value: "200" },
+      ],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V2 Order data - 2 payouts and 2 origin fees - Build and partial ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [
+        { account: seller.address, value: "9600" },
+        { account: dan.address, value: "400" },
+      ],
+      originFees: [
+        { account: charlie.address, value: "150" },
+        { account: dan.address, value: "200" },
+      ],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount - 1,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V2 Order data - 1 payout and 0 origin fees - Build and fill ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [{ account: seller.address, value: "10000" }],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+
+  it("Rarible V2 Order data - 1 payout and 0 origin fees - Build and partial ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      paymentToken: constants.AddressZero,
+      startTime: 0,
+      endTime: 0,
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
+      payouts: [{ account: seller.address, value: "10000" }],
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount - 1,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+
+  it("Rarible V3 Order data - 1 origin fee Build and fill ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price);
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      payouts: [],
+      originFeeFirst: { account: charlie.address, value: '150' },
+      // originFeeSecond: { account: dan.address, value: '100' },
+      marketplaceMarker: "rarible",
+      maxFeesBasePoint: 1000,      
+      paymentToken: Common.Addresses.Weth[chainId],
+      startTime: 0,
+      endTime: 0,
+      isMakeFill: true,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price);
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+
+  it("Rarible V3 Order data - 1 origin fee Build and partial ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price);
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      price: price.toString(),
+      tokenAmount: mintTokensAmount - 1,
+      payouts: [],
+      originFeeFirst: { account: charlie.address, value: '150' },
+      originFeeSecond: { account: dan.address, value: '100' },
+      marketplaceMarker: "rarible",
+      maxFeesBasePoint: 1000,      
+      paymentToken: Common.Addresses.Weth[chainId],
+      startTime: 0,
+      endTime: 0,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price);
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+  it("Rarible V3 Order data - 2 origin fees Build and fill ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      payouts: [],
+      originFeeFirst: { account: charlie.address, value: '150' },
+      originFeeSecond: { account: dan.address, value: '100' },
+      marketplaceMarker: "rarible",
+      maxFeesBasePoint: 1000,      
+      paymentToken: Common.Addresses.Weth[chainId],
+      startTime: 0,
+      endTime: 0,
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(mintTokensAmount));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
+
+  it("Rarible V3 Order data - 2 origin fees Build and partial ERC1155 WETH sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const mintTokensAmount = 4;
+
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+
+    // Mint weth to buyer
+    await weth.deposit(buyer, price.mul(mintTokensAmount));
+
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+
+    const buyerBalanceBefore = await weth.getBalance(buyer.address);
+    const sellerBalanceBefore = await weth.getBalance(seller.address);
+    // Mint erc1155 to seller
+    await erc1155.connect(seller).mintMany(soldTokenId, mintTokensAmount);
+
+    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+
+    // Approve the transfer manager
+    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+
+    const exchange = new Rarible.Exchange(chainId);
+
+    const builder = new Rarible.Builders.SingleToken(chainId);
+    // Build sell order
+    const sellOrder = builder.build({
+      maker: seller.address,
+      side: "sell",
+      tokenKind: "erc1155",
+      contract: erc1155.address,
+      tokenId: soldTokenId.toString(),
+      orderType: Rarible.Constants.ORDER_TYPES.V2,
+      dataType: Rarible.Constants.ORDER_DATA_TYPES.V3_SELL,
+      price: price.toString(),
+      tokenAmount: mintTokensAmount,
+      payouts: [],
+      // originFeeFirst: { account: charlie.address, value: '150' },
+      // originFeeSecond: { account: dan.address, value: '100' },
+      marketplaceMarker: "rarible",
+      maxFeesBasePoint: 1000,      
+      paymentToken: Common.Addresses.Weth[chainId],
+      startTime: 0,
+      endTime: 0,
+      // isMakeFill: false
+    });
+
+    // Sign the order
+    await sellOrder.sign(seller);
+    await sellOrder.checkSignature();
+    await sellOrder.checkFillability(ethers.provider);
+
+    const sellerNftBalanceBefore = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceBefore = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(sellerBalanceBefore).to.eq(0);
+    expect(buyerBalanceBefore).to.eq(price.mul(4));
+    expect(sellerNftBalanceBefore).to.eq(mintTokensAmount);
+    expect(buyerNftBalanceBefore).to.eq(0);
+
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder, {
+      assetClass: 'ERC1155',
+      referrer: "reservoir.market",
+      amount: mintTokensAmount,
+    });
+
+    const buyerBalanceAfter = await weth.getBalance(buyer.address);
+    const sellerBalanceAfter = await weth.getBalance(seller.address);
+    const sellerNftBalanceAfter = await nft.getBalance(
+      seller.address,
+      soldTokenId
+    );
+    const buyerNftBalanceAfter = await nft.getBalance(
+      buyer.address,
+      soldTokenId
+    );
+
+    expect(buyerBalanceAfter).to.be.eq(0);
+    expect(sellerNftBalanceAfter).to.eq(0);
+    expect(buyerNftBalanceAfter).to.eq(mintTokensAmount);
+  });
 });
