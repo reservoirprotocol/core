@@ -65,35 +65,59 @@ export class Exchange {
       amount?: number;
     }
   ): Promise<TxData> {
+    console.log("1");
     const takerOrderParams = makerOrder.buildMatching(taker, options);
-
+    console.log("2");
     // 3. generate the match tx
     const value = this.calculateTxValue(
       makerOrder.params.take.assetType.assetClass,
       makerOrder.params.take.value
     );
+    console.log("3");
+    const encodedOrder = encode(makerOrder.params, takerOrderParams);
 
-    const {
-      from,
-      to,
-      data,
-      value: matchedValue,
-    } = await this.contract.populateTransaction.matchOrders(
-      encode(makerOrder.params),
-      makerOrder.params.signature,
-      encode(takerOrderParams),
-      "0x",
-      {
+    // Switch is better here
+    const side = makerOrder.getInfo()?.side;
+    console.log("SWITCHING");
+    if (side === "buy") {
+      const {
+        from,
+        to,
+        data,
+        value: matchedValue,
+      } = await this.contract.populateTransaction.directAcceptBid(
+        encodedOrder,
+        {
+          from: taker,
+          value: value.toString(),
+        }
+      );
+
+      return {
+        from: from!,
+        to: to!,
+        data: data + generateReferrerBytes(options?.referrer),
+        value: matchedValue && matchedValue.toHexString(),
+      };
+    } else if (side === "sell") {
+      const {
+        from,
+        to,
+        data,
+        value: matchedValue,
+      } = await this.contract.populateTransaction.directPurchase(encodedOrder, {
         from: taker,
         value: value.toString(),
-      }
-    );
-    return {
-      from: from!,
-      to: to!,
-      data: data + generateReferrerBytes(options?.referrer),
-      value: matchedValue && matchedValue.toHexString(),
-    };
+      });
+      return {
+        from: from!,
+        to: to!,
+        data: data + generateReferrerBytes(options?.referrer),
+        value: matchedValue && matchedValue.toHexString(),
+      };
+    } else {
+      throw Error("Unknown order side");
+    }
   }
 
   // --- Cancel order ---

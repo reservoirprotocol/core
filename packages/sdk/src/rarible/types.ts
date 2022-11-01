@@ -53,6 +53,44 @@ export type Order = {
     | IV3OrderSellData
     | IV3OrderBuyData;
   signature?: string;
+  side?: string;
+};
+
+export type Purchase = {
+  sellOrderMaker: string;
+  sellOrderNftAmount: number;
+  nftAssetClass: string;
+  nftData: string;
+  sellOrderPaymentAmount: number;
+  paymentToken: string;
+  sellOrderSalt: number;
+  sellOrderStart: number;
+  sellOrderEnd: number;
+  sellOrderDataType: string;
+  sellOrderData: string;
+  sellOrderSignature: string;
+  buyOrderPaymentAmount: number;
+  buyOrderNftAmount: number;
+  buyOrderData: string;
+};
+
+/*All accept bid parameters need for create buyOrder and sellOrder*/
+export type AcceptBid = {
+  bidMaker: string;
+  bidNftAmount: number;
+  nftAssetClass: string;
+  nftData: string;
+  bidPaymentAmount: number;
+  paymentToken: string;
+  bidSalt: number;
+  bidStart: number;
+  bidEnd: number;
+  bidDataType: string;
+  bidData: string;
+  bidSignature: string;
+  sellOrderPaymentAmount: number;
+  sellOrderNftAmount: number;
+  sellOrderData: string;
 };
 
 export interface IPart {

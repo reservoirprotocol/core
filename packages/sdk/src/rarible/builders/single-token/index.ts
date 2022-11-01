@@ -159,8 +159,9 @@ export class SingleTokenBuilder extends BaseBuilder {
       default:
         throw Error("Unknown order data type");
     }
-
+    console.log("SIDE: " + params.side);
     return new Order(this.chainId, {
+      side: params.side,
       kind: "single-token",
       type: params.orderType,
       maker: params.maker,

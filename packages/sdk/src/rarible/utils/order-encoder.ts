@@ -187,28 +187,84 @@ export const hashAsset = (asset: Asset) => {
  * @param order
  * @returns encoded order which is ready to be signed
  */
-export const encode = (order: Types.TakerOrderParams | Types.Order) => {
-  return {
-    maker: order.maker,
-    makeAsset: {
-      assetType: {
-        assetClass: encodeAssetClass(order.make.assetType.assetClass),
-        data: encodeAssetData(order.make.assetType),
+export const encode = (
+  order: Types.Order,
+  matchingOrder?: Types.TakerOrderParams
+) => {
+  if (!matchingOrder) {
+    return {
+      maker: order.maker,
+      makeAsset: {
+        assetType: {
+          assetClass: encodeAssetClass(order.make.assetType.assetClass),
+          data: encodeAssetData(order.make.assetType),
+        },
+        value: order.make.value,
       },
-      value: order.make.value,
-    },
-    taker: order.taker,
-    takeAsset: {
-      assetType: {
-        assetClass: encodeAssetClass(order.take.assetType.assetClass),
-        data: encodeAssetData(order.take.assetType),
+      taker: order.taker,
+      takeAsset: {
+        assetType: {
+          assetClass: encodeAssetClass(order.take.assetType.assetClass),
+          data: encodeAssetData(order.take.assetType),
+        },
+        value: order.take.value,
       },
-      value: order.take.value,
-    },
-    salt: order.salt,
-    start: order.start,
-    end: order.end,
-    dataType: encodeAssetClass(order.data?.dataType!),
-    data: encodeOrderData(order),
-  };
+      salt: order.salt,
+      start: order.start,
+      end: order.end,
+      dataType: encodeAssetClass(order.data?.dataType!),
+      data: encodeOrderData(order),
+    };
+  }
+
+  let encodedOrder: Types.AcceptBid | Types.Purchase;
+  switch (order.side) {
+    case "buy":
+      const bid: Types.AcceptBid = {
+        bidMaker: order.maker,
+        bidNftAmount: Number(order.take.value),
+        nftAssetClass: encodeAssetClass(order.take.assetType.assetClass),
+        nftData: encodeAssetData(order.take.assetType),
+        bidPaymentAmount: Number(order.make.value),
+        paymentToken: encodeAsset(order.make.assetType.contract),
+        bidSalt: Number(order.salt),
+        bidStart: order.start,
+        bidEnd: order.end,
+        bidDataType: encodeAssetClass(order.data?.dataType!),
+        bidData: encodeOrderData(order),
+        bidSignature: order.signature!,
+        sellOrderPaymentAmount: Number(matchingOrder.take.value),
+        sellOrderNftAmount: Number(matchingOrder.make.value),
+        sellOrderData: encodeOrderData(matchingOrder),
+      };
+      console.log("HERE");
+      encodedOrder = bid;
+      break;
+    case "sell":
+      const purchase: Types.Purchase = {
+        sellOrderMaker: order.maker,
+        sellOrderNftAmount: Number(order.make.value),
+        nftAssetClass: encodeAssetClass(order.make.assetType.assetClass),
+        nftData: encodeAssetData(order.make.assetType),
+        sellOrderPaymentAmount: Number(order.take.value),
+        paymentToken: encodeAsset(order.take.assetType.contract),
+        sellOrderSalt: Number(order.salt),
+        sellOrderStart: order.start,
+        sellOrderEnd: order.end,
+        sellOrderDataType: encodeAssetClass(order.data?.dataType!),
+        sellOrderData: encodeOrderData(order),
+        sellOrderSignature: order.signature!,
+        buyOrderPaymentAmount: Number(matchingOrder.make.value),
+        buyOrderNftAmount: Number(matchingOrder.take.value),
+        buyOrderData: encodeOrderData(matchingOrder),
+      };
+      encodedOrder = purchase;
+      break;
+    default:
+      throw Error("Unknown order side");
+  }
+
+  console.log("RETURNING");
+  console.log(encodedOrder);
+  return encodedOrder!;
 };

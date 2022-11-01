@@ -83,6 +83,7 @@ describe("Rarible - SingleToken Erc721", () => {
     expect(buyerBalanceBefore).to.eq(0);
     expect(ownerBefore).to.eq(seller.address);
 
+    console.log("FILLING");
     // Match orders
     await exchange.fillOrder(seller, buyOrder, {
       referrer: "reservoir.market",
