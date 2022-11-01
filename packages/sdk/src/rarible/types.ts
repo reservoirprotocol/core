@@ -6,6 +6,7 @@ export enum AssetClass {
   ETH = "ETH",
   ERC721 = "ERC721",
   ERC1155 = "ERC1155",
+  COLLECTION = "COLLECTION",
 }
 
 export enum OrderSide {
@@ -34,7 +35,7 @@ export type LocalAsset = {
   value: string;
 };
 
-export type OrderKind = "single-token";
+export type OrderKind = "single-token" | "contract-wide";
 
 export type Order = {
   kind?: OrderKind;
@@ -133,8 +134,8 @@ export type TakerOrderParams = {
   type: string;
   maker: string;
   taker: string;
-  make: Asset;
-  take: Asset;
+  make: LocalAsset;
+  take: LocalAsset;
   salt: number;
   start: number;
   end: number;
@@ -152,7 +153,6 @@ export interface BaseBuildParams {
   side: "buy" | "sell";
   tokenKind: "erc721" | "erc1155";
   contract: string;
-  tokenId: string;
   tokenAmount?: number;
   price: string;
   paymentToken: string;

@@ -266,7 +266,7 @@ export const encodeForContract = (
  * @param order
  * @returns encoded order which is ready to be signed
  */
-export const encodeForSigning = (
+export const encodeForMatchOrders = (
   order: Types.Order | Types.TakerOrderParams
 ) => {
   return {

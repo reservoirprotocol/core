@@ -1,6 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish } from "ethers";
+import { BigNumberish, PopulatedTransaction } from "ethers";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
@@ -10,7 +10,10 @@ import { TxData, bn, generateReferrerBytes, lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 import { BigNumber } from "ethers/lib";
-import { encodeForContract } from "./utils";
+import {
+  encodeForContract as v2Encode,
+  encodeForMatchOrders as v1Encode,
+} from "./utils";
 
 export class Exchange {
   public chainId: number;
@@ -29,7 +32,9 @@ export class Exchange {
   public async fillOrder(
     taker: Signer,
     makerOrder: Order,
-    options?: {
+    options: {
+      tokenId: string;
+      assetClass: "ERC721" | "ERC1155";
       referrer?: string;
       amount?: number;
     }
@@ -60,59 +65,70 @@ export class Exchange {
   public async fillOrderTx(
     taker: string,
     makerOrder: Order,
-    options?: {
+    options: {
+      tokenId: string;
+      assetClass: "ERC721" | "ERC1155";
       referrer?: string;
       amount?: number;
     }
   ): Promise<TxData> {
+    let result: PopulatedTransaction;
+    const side = makerOrder.getInfo()?.side;
     const takerOrderParams = makerOrder.buildMatching(taker, options);
-    // 3. generate the match tx
     const value = this.calculateTxValue(
       makerOrder.params.take.assetType.assetClass,
       makerOrder.params.take.value
     );
-    const encodedOrder = encodeForContract(makerOrder.params, takerOrderParams);
 
-    // Switch is better here
-    const side = makerOrder.getInfo()?.side;
-    if (side === "buy") {
-      const {
-        from,
-        to,
-        data,
-        value: matchedValue,
-      } = await this.contract.populateTransaction.directAcceptBid(
+    //TODO: We can refactor this in the future to use directAcceptBid function to cost less gass
+    if (
+      side === "buy" &&
+      makerOrder.params.take.assetType.assetClass ===
+        Types.AssetClass.COLLECTION
+    ) {
+      result = await this.contract.populateTransaction.matchOrders(
+        v1Encode(makerOrder.params),
+        makerOrder.params.signature,
+        v1Encode(takerOrderParams),
+        "0x",
+        {
+          from: taker,
+          value: value.toString(),
+        }
+      );
+    } else if (
+      side === "buy" &&
+      (makerOrder.params.take.assetType.assetClass ===
+        Types.AssetClass.ERC1155 ||
+        makerOrder.params.take.assetType.assetClass === Types.AssetClass.ERC721)
+    ) {
+      const encodedOrder = v2Encode(makerOrder.params, takerOrderParams);
+      result = await this.contract.populateTransaction.directAcceptBid(
         encodedOrder,
         {
           from: taker,
           value: value.toString(),
         }
       );
-      return {
-        from: from!,
-        to: to!,
-        data: data + generateReferrerBytes(options?.referrer),
-        value: matchedValue && matchedValue.toHexString(),
-      };
     } else if (side === "sell") {
-      const {
-        from,
-        to,
-        data,
-        value: matchedValue,
-      } = await this.contract.populateTransaction.directPurchase(encodedOrder, {
-        from: taker,
-        value: value.toString(),
-      });
-      return {
-        from: from!,
-        to: to!,
-        data: data + generateReferrerBytes(options?.referrer),
-        value: matchedValue && matchedValue.toHexString(),
-      };
+      const encodedOrder = v2Encode(makerOrder.params, takerOrderParams);
+      result = await this.contract.populateTransaction.directPurchase(
+        encodedOrder,
+        {
+          from: taker,
+          value: value.toString(),
+        }
+      );
     } else {
       throw Error("Unknown order side");
     }
+
+    return {
+      from: result.from!,
+      to: result.to!,
+      data: result.data + generateReferrerBytes(options?.referrer),
+      value: result.value && result.value.toHexString(),
+    };
   }
 
   // --- Cancel order ---
@@ -127,9 +143,7 @@ export class Exchange {
 
   public async cancelOrderTx(orderParams: Types.Order): Promise<TxData> {
     const { from, to, data, value } =
-      await this.contract.populateTransaction.cancel(
-        encodeForContract(orderParams)
-      );
+      await this.contract.populateTransaction.cancel(v1Encode(orderParams));
 
     return {
       from: from!,

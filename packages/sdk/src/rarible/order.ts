@@ -12,7 +12,7 @@ import { ethers, utils } from "ethers/lib";
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
-import { encodeForSigning, encodeOrderData, hashAssetType } from "./utils";
+import { encodeForMatchOrders, encodeOrderData, hashAssetType } from "./utils";
 import { Constants } from ".";
 import { ORDER_DATA_TYPES, ORDER_TYPES } from "./constants";
 
@@ -308,6 +308,10 @@ export class Order {
         return new Builders.SingleToken(this.chainId);
       }
 
+      case "contract-wide": {
+        return new Builders.ContractWide(this.chainId);
+      }
+
       default: {
         throw new Error("Unknown order kind");
       }
@@ -358,7 +362,7 @@ const EIP712_TYPES = {
   ],
 };
 
-const toRawOrder = (order: Order): any => encodeForSigning(order.params);
+const toRawOrder = (order: Order): any => encodeForMatchOrders(order.params);
 
 const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:

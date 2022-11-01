@@ -6,11 +6,8 @@ import { BigNumber, constants } from "ethers/lib/ethers";
 import { AssetClass } from "../../types";
 import { ORDER_DATA_TYPES } from "../../constants";
 import { buildOrderData } from "../utils";
-interface BuildParams extends Types.BaseBuildParams {
-  tokenId: string;
-}
 
-export class SingleTokenBuilder extends BaseBuilder {
+export class ContractWideBuilder extends BaseBuilder {
   public getInfo(order: Order): BaseOrderInfo {
     let side: "sell" | "buy";
     const makeAssetClass = order.params.make.assetType.assetClass;
@@ -25,7 +22,8 @@ export class SingleTokenBuilder extends BaseBuilder {
     } else if (
       makeAssetClass === Types.AssetClass.ERC20 &&
       (takeAssetClass === Types.AssetClass.ERC721 ||
-        takeAssetClass === Types.AssetClass.ERC1155)
+        takeAssetClass === Types.AssetClass.ERC1155 ||
+        takeAssetClass === Types.AssetClass.COLLECTION)
     ) {
       side = "buy";
     } else {
@@ -52,7 +50,6 @@ export class SingleTokenBuilder extends BaseBuilder {
             ? "erc721"
             : "erc1155",
         contract: lc(nftInfo.assetType.contract!),
-        tokenId: nftInfo.assetType.tokenId!,
         price: paymentInfo.value,
         paymentToken:
           paymentInfo.assetType.assetClass === AssetClass.ETH
@@ -80,13 +77,12 @@ export class SingleTokenBuilder extends BaseBuilder {
     return true;
   }
 
-  public build(params: BuildParams) {
+  public build(params: Types.BaseBuildParams) {
     this.defaultInitialize(params);
     const nftInfo = {
       assetType: {
-        assetClass: params.tokenKind.toUpperCase(),
+        assetClass: Types.AssetClass.COLLECTION,
         contract: lc(params.contract),
-        tokenId: params.tokenId,
       },
       value: s(params.tokenAmount || 1),
     };
@@ -107,7 +103,7 @@ export class SingleTokenBuilder extends BaseBuilder {
 
     return new Order(this.chainId, {
       side: params.side,
-      kind: "single-token",
+      kind: "contract-wide",
       type: params.orderType,
       maker: params.maker,
       make: params.side === "buy" ? paymentInfo : nftInfo,
@@ -123,14 +119,30 @@ export class SingleTokenBuilder extends BaseBuilder {
   public buildMatching(
     order: Types.Order,
     taker: string,
-    data: { amount?: string }
+    data: { tokenId: string; assetClass: "ERC721" | "ERC1155"; amount?: string }
   ) {
+    let make,
+      take = null;
+    if (order.side === "buy") {
+      take = JSON.parse(JSON.stringify(order.make));
+      make = {
+        assetType: {
+          assetClass: data.assetClass,
+          contract: order.take.assetType.contract,
+          tokenId: data.tokenId,
+        },
+        value: order.take.value,
+      };
+    } else {
+      throw Error("Unknown side");
+    }
+
     const rightOrder = {
       type: order.type,
       maker: lc(taker),
       taker: order.maker,
-      make: JSON.parse(JSON.stringify(order.take)),
-      take: JSON.parse(JSON.stringify(order.make)),
+      make,
+      take,
       salt: 0,
       start: order.start,
       end: order.end,
@@ -163,12 +175,12 @@ export class SingleTokenBuilder extends BaseBuilder {
     }
 
     if (AssetClass.ERC1155 == order.take.assetType.assetClass) {
-      const oldValue = rightOrder.make.value;
+      const oldValue = rightOrder.make.value as any;
 
       rightOrder.make.value = Math.floor(Number(data.amount)).toString();
-      rightOrder.take.value = BigNumber.from(rightOrder.take.value).div(
-        oldValue - rightOrder.make.value || "1"
-      );
+      rightOrder.take.value = BigNumber.from(rightOrder.take.value)
+        .div(oldValue - (rightOrder.make.value as any) || "1")
+        .toString();
     }
     return rightOrder;
   }
