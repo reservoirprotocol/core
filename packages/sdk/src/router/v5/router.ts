@@ -90,6 +90,18 @@ export class Router {
       }
     }
 
+    if (details.some(({ kind }) => kind === "rarible")) {
+      if (details.length > 1) {
+        throw new Error("Rarible sweeping is not supported");
+      } else {
+        const order = details[0].order as Sdk.Rarible.Order;
+        const exchange = new Sdk.Rarible.Exchange(this.chainId);
+        return exchange.fillOrderTx(taker, order, {
+          amount: Number(details[0].amount),
+        });
+      }
+    }
+
     // If all orders are Seaport, then we fill on Seaport directly
     // TODO: Once the modular router is implemented, a refactoring
     // might be needed - to use the router-generated order instead
