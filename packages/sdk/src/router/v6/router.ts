@@ -134,6 +134,24 @@ export class Router {
       }
     }
 
+    //TODO: Add Rarible router module
+    if (details.some(({ kind }) => kind === "rarible")) {
+      if (details.length > 1) {
+        throw new Error("Rarible sweeping is not supported");
+      } else {
+        const order = details[0].order as Sdk.Rarible.Order;
+        const exchange = new Sdk.Rarible.Exchange(this.chainId);
+        return {
+          txData: await exchange.fillOrderTx(taker, order, {
+            tokenId: details[0].tokenId,
+            assetClass: details[0].contractKind.toUpperCase(),
+            amount: Number(details[0].amount),
+          }),
+          success: [true],
+        };
+      }
+    }
+
     // TODO: Add Cryptopunks router module
     if (details.some(({ kind }) => kind === "cryptopunks")) {
       if (details.length > 1) {
@@ -762,6 +780,19 @@ export class Router {
         txData: await exchange.fillOrderTx(taker, order, {
           amount: Number(detail.amount ?? 1),
           source: options?.source,
+        }),
+        direct: true,
+      };
+    }
+
+    if (detail.kind === "rarible") {
+      const order = detail.order as Sdk.Rarible.Order;
+      const exchange = new Sdk.Rarible.Exchange(this.chainId);
+      return {
+        txData: await exchange.fillOrderTx(taker, order, {
+          tokenId: detail.tokenId,
+          assetClass: detail.contractKind.toUpperCase(),
+          amount: Number(detail.extraArgs.amount),
         }),
         direct: true,
       };
