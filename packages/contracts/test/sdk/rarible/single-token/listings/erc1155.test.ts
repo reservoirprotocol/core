@@ -6,7 +6,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { getChainId, reset, setupNFTs } from "../../../utils";
+import { getChainId, reset, setupNFTs } from "../../../../utils";
 import { BigNumber, constants } from "ethers";
 
 //TODO: Add check signature check

@@ -9,7 +9,8 @@ import { ethers } from "hardhat";
 import { getChainId, reset, setupNFTs } from "../../../../utils";
 import { BigNumber, constants } from "ethers";
 
-describe("Rarible - SingleToken Cancel Erc721", () => {
+//TODO: Add check signature check
+describe("Rarible - SingleToken Cancel Erc1155", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -18,17 +19,17 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
   let charlie: SignerWithAddress;
   let dan: SignerWithAddress;
 
-  let erc721: Contract;
+  let erc1155: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, charlie, dan] = await ethers.getSigners();
 
-    ({ erc721 } = await setupNFTs(deployer));
+    ({ erc1155 } = await setupNFTs(deployer));
   });
 
   afterEach(reset);
 
-  it("Rarible V1 Order data - 1 payout | 2 origin fees - Build and cancel ERC721 ETH sell order", async () => {
+  it("Rarible V1 Order data - 1 payout | 2 origin fees - Build and cancel ERC1155 ETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -41,8 +42,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -73,7 +74,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V1 Order data - 2 payouts | 0 origin fees - Build and cancel ERC721 ETH sell order", async () => {
+  it("Rarible V1 Order data - 2 payouts | 0 origin fees - Build and cancel ERC1155 ETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -86,8 +87,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -111,7 +112,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V2 Order data - 1 payout | 2 origin fees - Build and cancel ERC721 ETH sell order", async () => {
+  it("Rarible V2 Order data - 1 payout | 2 origin fees - Build and cancel ERC1155 ETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -124,8 +125,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -157,7 +158,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V2 Order data - 2 payouts | 2 origin fees - Build and cancel ERC721 ETH sell order", async () => {
+  it("Rarible V2 Order data - 2 payouts | 2 origin fees - Build and cancel ERC1155 ETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -170,8 +171,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -206,7 +207,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V2 Order data - 1 payout | 0 origin fees - Build and cancel ERC721 ETH sell order", async () => {
+  it("Rarible V2 Order data - 1 payout | 0 origin fees - Build and cancel ERC1155 ETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -219,8 +220,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -242,7 +243,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 0 origin fees - Build and cancel ERC721 ETH sell order", async () => {
+  it("Rarible V3 Order data - 0 origin fees - Build and cancel ERC1155 ETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -255,8 +256,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -287,7 +288,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 1 origin fee - Build and cancel ERC721 ETH sell order", async () => {
+  it("Rarible V3 Order data - 1 origin fee - Build and cancel ERC1155 ETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -300,8 +301,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -332,7 +333,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 2 origin fees - Build and cancel ERC721 ETH sell order", async () => {
+  it("Rarible V3 Order data - 2 origin fees - Build and cancel ERC1155 ETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -345,8 +346,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -377,7 +378,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 0 origin fees Build and cancel ERC721 WETH sell order", async () => {
+  it("Rarible V3 Order data - 0 origin fees Build and cancel ERC1155 WETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -390,8 +391,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -414,7 +415,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 1 origin fee Build and cancel ERC721 WETH sell order", async () => {
+  it("Rarible V3 Order data - 1 origin fee Build and cancel ERC1155 WETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -427,8 +428,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -455,7 +456,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 2 origin fees Build and cancel ERC721 WETH sell order", async () => {
+  it("Rarible V3 Order data - 2 origin fees Build and cancel ERC1155 WETH sell order", async () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -468,8 +469,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const sellOrder = builder.build({
       maker: seller.address,
       side: "sell",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -500,7 +501,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 0 origin fees Build and cancel ERC721 WETH buy order", async () => {
+  it("Rarible V3 Order data - 0 origin fees Build and cancel ERC1155 WETH buy order", async () => {
     const buyer = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -512,8 +513,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const buyOrder = builder.build({
       maker: buyer.address,
       side: "buy",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -536,7 +537,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 1 origin fee Build and cancel ERC721 WETH buy order", async () => {
+  it("Rarible V3 Order data - 1 origin fee Build and cancel ERC1155 WETH buy order", async () => {
     const buyer = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -548,8 +549,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const buyOrder = builder.build({
       maker: buyer.address,
       side: "buy",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,
@@ -577,7 +578,7 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     expect(orderFill).to.eq(constants.MaxUint256);
   });
 
-  it("Rarible V3 Order data - 2 origin fees Build and cancel ERC721 WETH buy order", async () => {
+  it("Rarible V3 Order data - 2 origin fees Build and cancel ERC1155 WETH buy order", async () => {
     const buyer = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
@@ -589,8 +590,8 @@ describe("Rarible - SingleToken Cancel Erc721", () => {
     const buyOrder = builder.build({
       maker: buyer.address,
       side: "buy",
-      tokenKind: "erc721",
-      contract: erc721.address,
+      tokenKind: "erc1155",
+      contract: erc1155.address,
       tokenId: soldTokenId.toString(),
       price: price.toString(),
       tokenAmount: 1,

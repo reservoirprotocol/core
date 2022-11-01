@@ -79,28 +79,29 @@ export const encodeOrderData = (
 
       encodedOrderData = utils.defaultAbiCoder.encode(
         [
-          "tuple(address account,uint96 value)[] payouts",
-          "tuple(address account,uint96 value)[] originFees",
+          "tuple(tuple(address account,uint96 value)[] payouts, tuple(address account,uint96 value)[] originFees)",
         ],
         [
-          encodeV2OrderData(v1Data.payouts),
-          encodeV2OrderData(v1Data.originFees),
+          {
+            payouts: encodeV2OrderData(v1Data.payouts),
+            originFees: encodeV2OrderData(v1Data.originFees),
+          },
         ]
       );
       break;
+
     case Constants.ORDER_DATA_TYPES.V2:
       const v2Data = order.data as Types.IV2OrderData;
-
       encodedOrderData = utils.defaultAbiCoder.encode(
         [
-          "tuple(address account,uint96 value)[] payouts",
-          "tuple(address account,uint96 value)[] originFees",
-          "bool isMakeFill",
+          "tuple(tuple(address account,uint96 value)[] payouts, tuple(address account,uint96 value)[] originFees, bool isMakeFill)",
         ],
         [
-          encodeV2OrderData(v2Data.payouts),
-          encodeV2OrderData(v2Data.originFees),
-          v2Data.isMakeFill,
+          {
+            payouts: encodeV2OrderData(v2Data.payouts),
+            originFees: encodeV2OrderData(v2Data.originFees),
+            isMakeFill: v2Data.isMakeFill,
+          },
         ]
       );
       break;
@@ -265,7 +266,9 @@ export const encodeForContract = (
  * @param order
  * @returns encoded order which is ready to be signed
  */
-export const encodeForSigning = (order: Types.Order) => {
+export const encodeForSigning = (
+  order: Types.Order | Types.TakerOrderParams
+) => {
   return {
     maker: order.maker,
     makeAsset: {

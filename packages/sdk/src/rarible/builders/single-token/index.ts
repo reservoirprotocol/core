@@ -182,7 +182,7 @@ export class SingleTokenBuilder extends BaseBuilder {
     const rightOrder = {
       type: order.type,
       maker: lc(taker),
-      taker: constants.AddressZero,
+      taker: order.maker,
       make: JSON.parse(JSON.stringify(order.take)),
       take: JSON.parse(JSON.stringify(order.make)),
       salt: 0,
@@ -190,6 +190,12 @@ export class SingleTokenBuilder extends BaseBuilder {
       end: order.end,
       data: JSON.parse(JSON.stringify(order.data)),
     };
+
+    if (order.data.dataType === ORDER_DATA_TYPES.V2) {
+      rightOrder.data.payouts = null;
+      rightOrder.data.isMakeFill = null;
+      rightOrder.data.originFees = null;
+    }
 
     // `V3` orders can only be matched if buy-order is `V3_BUY` and the sell-order is `V3_SELL`
     if (order.data.dataType === ORDER_DATA_TYPES.V3_SELL) {
