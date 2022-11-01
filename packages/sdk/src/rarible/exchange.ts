@@ -67,7 +67,7 @@ export class Exchange {
     makerOrder: Order,
     options: {
       tokenId: string;
-      assetClass: "ERC721" | "ERC1155";
+      assetClass: string;
       referrer?: string;
       amount?: number;
     }
