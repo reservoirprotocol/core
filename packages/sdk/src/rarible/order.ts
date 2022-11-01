@@ -8,7 +8,7 @@ import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import { lc, n, s } from "../utils";
 
-import { ethers, utils } from "ethers/lib";
+import { BigNumber, ethers, utils } from "ethers/lib";
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
@@ -25,20 +25,10 @@ export class Order {
 
     try {
       this.params = normalize(params);
-    } catch {
+    } catch (err) {
+      console.log(err);
       throw new Error("Invalid params");
     }
-    // Validate fees
-    // if (
-    //   this.params.data.revenueSplits &&
-    //   this.params.data.revenueSplits.length &&
-    //   this.params.data.revenueSplits.reduce(
-    //     (acc, curr) => (acc += Number(curr.value)),
-    //     0
-    //   ) > 10000
-    // ) {
-    //   throw new Error("Invalid royalties");
-    // }
 
     if (this.params.start > this.params.end) {
       throw new Error("Invalid listing and/or expiration time");
@@ -100,6 +90,11 @@ export class Order {
   }
 
   public checkSignature() {
+    // If order comes from API, there's no need to verify
+    // if (this.params.data["@type"]) {
+    //   return true;
+    // }
+
     const signer = utils.verifyTypedData(
       EIP712_DOMAIN(this.chainId),
       EIP712_TYPES,
@@ -370,7 +365,6 @@ const normalize = (order: Types.Order): Types.Order => {
   // - convert strings to numbers where needed
   // - lowercase all strings
 
-  //TODO: Do the normalization of the data type here
   let dataInfo:
     | Types.ILegacyOrderData
     | Types.IV1OrderData
@@ -379,60 +373,180 @@ const normalize = (order: Types.Order): Types.Order => {
     | Types.IV3OrderBuyData
     | null = null;
 
+  order.data.dataType =
+    order.data.dataType || (order.data["@type"] as ORDER_DATA_TYPES) || "";
+
   switch (order.data.dataType) {
     case ORDER_DATA_TYPES.LEGACY:
-      dataInfo = order.data;
-      break;
     case ORDER_DATA_TYPES.V1:
+    case ORDER_DATA_TYPES.API_V1:
+      order.data.dataType = ORDER_DATA_TYPES.V1;
+
       dataInfo = order.data;
       break;
     case ORDER_DATA_TYPES.V2:
-      dataInfo = order.data;
+    case ORDER_DATA_TYPES.API_V2:
+      order.data.dataType = ORDER_DATA_TYPES.V2;
+
+      dataInfo = order.data as Types.IV2OrderData;
+      if (dataInfo.originFees) {
+        dataInfo.originFees = dataInfo.originFees.map((fee) =>
+          parsePartData(fee)
+        );
+      }
+      if (dataInfo.payouts) {
+        dataInfo.payouts = dataInfo.payouts.map((fee) => parsePartData(fee));
+      }
+
       break;
     case ORDER_DATA_TYPES.V3_SELL:
-      dataInfo = order.data;
+    case ORDER_DATA_TYPES.API_V3_SELL:
+      dataInfo = order.data as Types.IV3OrderSellData;
+      order.data.dataType = ORDER_DATA_TYPES.V3_SELL;
+
+      if (dataInfo.originFeeFirst) {
+        dataInfo.originFeeFirst = parsePartData(dataInfo.originFeeFirst);
+      }
+
+      if (dataInfo.originFeeSecond) {
+        dataInfo.originFeeSecond = parsePartData(dataInfo.originFeeSecond);
+      }
+
+      if (dataInfo.payouts) {
+        dataInfo.payouts = parsePartData(dataInfo.payouts);
+      }
+
       break;
     case ORDER_DATA_TYPES.V3_BUY:
-      dataInfo = order.data;
+    case ORDER_DATA_TYPES.API_V3_BUY:
+      dataInfo = order.data as Types.IV3OrderBuyData;
+      order.data.dataType = ORDER_DATA_TYPES.V3_BUY;
+
+      if (dataInfo.originFeeFirst) {
+        dataInfo.originFeeFirst = parsePartData(dataInfo.originFeeFirst);
+      }
+
+      if (dataInfo.originFeeSecond) {
+        dataInfo.originFeeSecond = parsePartData(dataInfo.originFeeSecond);
+      }
+
+      if (dataInfo.payouts) {
+        dataInfo.payouts = parsePartData(dataInfo.payouts);
+      }
+
       break;
     default:
       throw Error("Unknown rarible order data type");
   }
+  var {
+    assetClass: makeAssetClass,
+    tokenId: makeTokenId,
+    contract: makeContract,
+    value: makeValue,
+  } = parseAssetData(order.make);
+  var {
+    assetClass: takeAssetClass,
+    tokenId: takeTokenId,
+    contract: takeContract,
+    value: takeValue,
+  } = parseAssetData(order.take);
 
+  const makerHasChainInfo = order.maker.indexOf(":") >= 0;
+  const maker = makerHasChainInfo ? order.maker.split(":")[1] : order.maker;
+
+  const takerHasChainInfo = order.taker.indexOf(":") >= 0;
+  const taker = takerHasChainInfo ? order.taker.split(":")[1] : order.taker;
+
+  const tokenKind = takeAssetClass.toLowerCase().includes("collection")
+    ? "contract-wide"
+    : "single-token";
+
+  const side = tokenKind === "contract-wide" || takeTokenId ? "buy" : "sell";
+  const salt = BigNumber.from(order.salt).toString();
+
+  let hash = order.hash || order.id || "";
+  const hasChainInfo = hash.indexOf(":") >= 0;
+  if (hasChainInfo) {
+    hash = hash.split(":")[1];
+  }
   return {
-    kind: order.kind,
-    type: order.type,
-    maker: lc(order.maker),
+    kind: tokenKind,
+    side: side,
+    signature: order.signature,
+    type: order.type || "RARIBLE",
+    maker: lc(maker),
+    hash: hash,
     make: {
       assetType: {
-        assetClass: s(order.make.assetType.assetClass),
-        ...(order.make.assetType.tokenId && {
-          tokenId: order.make.assetType.tokenId,
+        assetClass: s(makeAssetClass),
+        ...(makeTokenId && {
+          tokenId: makeTokenId,
         }),
-        ...(order.make.assetType.contract && {
-          contract: lc(order.make.assetType.contract),
+        ...(makeContract && {
+          contract: lc(makeContract),
         }),
       },
-      value: s(order.make.value),
+      value: s(makeValue),
     },
-    taker: lc(order.taker),
+    taker: lc(taker),
     take: {
       assetType: {
-        assetClass: s(order.take.assetType.assetClass),
-        ...(order.take.assetType.tokenId && {
-          tokenId: order.take.assetType.tokenId,
+        assetClass: s(takeAssetClass),
+        ...(takeTokenId && {
+          tokenId: takeTokenId,
         }),
-        ...(order.take.assetType.contract && {
-          contract: lc(order.take.assetType.contract),
+        ...(takeContract && {
+          contract: lc(takeContract),
         }),
       },
-      value: s(order.take.value),
+      value: s(takeValue),
     },
-    salt: s(order.salt),
+    salt: salt,
     start: n(order.start),
     end: n(order.end),
     data: dataInfo,
-    signature: order.signature,
-    side: order.side,
   };
 };
+
+function parseAssetData(assetInfo: Types.LocalAsset) {
+  let assetClass =
+    assetInfo.assetType?.assetClass || (assetInfo as any)?.type["@type"] || "";
+
+  if (assetClass.toLowerCase().includes("erc721")) {
+    assetClass = Types.AssetClass.ERC721;
+  } else if (assetClass.toLowerCase().includes("erc1155")) {
+    assetClass = Types.AssetClass.ERC1155;
+  } else if (assetClass.toLowerCase().includes("collection")) {
+    assetClass = Types.AssetClass.COLLECTION;
+  }
+
+  let contract =
+    assetInfo.assetType?.contract || (assetInfo as any)?.type?.contract || "";
+
+  const contractHasChainInfo = contract.indexOf(":") >= 0;
+
+  contract = contractHasChainInfo ? contract.split(":")[1] : contract;
+
+  const tokenId =
+    assetInfo.assetType?.tokenId || (assetInfo as any)?.type?.tokenId || "";
+
+  const valueIsDecimal = assetInfo.value.includes(".");
+  // It's safe to assume for now that 18 will work
+  const value = valueIsDecimal
+    ? utils.parseUnits(assetInfo.value, "18")
+    : assetInfo.value;
+
+  return { assetClass, tokenId, contract, value };
+}
+
+function parsePartData(fee: Types.IPart) {
+  const [_, accountAddress] = fee.account.split(":");
+  const hasChainInfo = fee.account.indexOf(":") >= 0;
+  if (!hasChainInfo) {
+    return { ...fee, account: lc(fee.account) };
+  }
+  return {
+    ...fee,
+    account: lc(accountAddress),
+  };
+}

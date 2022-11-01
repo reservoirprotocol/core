@@ -17,7 +17,7 @@ export abstract class BaseBuilder {
     params.salt = params.salt ?? getRandomBytes();
   }
 
-  public abstract getInfo(order: Order): BaseOrderInfo | undefined;
+  public abstract getInfo(order: Order): BaseOrderInfo;
   public abstract isValid(order: Order): boolean;
   public abstract build(params: Types.BaseBuildParams): Order;
   public abstract buildMatching(

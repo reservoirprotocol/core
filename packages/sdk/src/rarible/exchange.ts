@@ -33,8 +33,8 @@ export class Exchange {
     taker: Signer,
     makerOrder: Order,
     options: {
-      tokenId: string;
-      assetClass: "ERC721" | "ERC1155";
+      assetClass?: "ERC721" | "ERC1155";
+      tokenId?: string;
       referrer?: string;
       amount?: number;
     }
@@ -66,8 +66,8 @@ export class Exchange {
     taker: string,
     makerOrder: Order,
     options: {
-      tokenId: string;
-      assetClass: string;
+      tokenId?: string;
+      assetClass?: string;
       referrer?: string;
       amount?: number;
     }

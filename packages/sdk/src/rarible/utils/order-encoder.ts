@@ -75,6 +75,7 @@ export const encodeOrderData = (
 
   switch (order.data.dataType) {
     case ORDER_DATA_TYPES.V1:
+    case ORDER_DATA_TYPES.API_V1:
       const v1Data = order.data as Types.IV1OrderData;
 
       encodedOrderData = utils.defaultAbiCoder.encode(
@@ -91,6 +92,7 @@ export const encodeOrderData = (
       break;
 
     case Constants.ORDER_DATA_TYPES.V2:
+    case Constants.ORDER_DATA_TYPES.API_V2:
       const v2Data = order.data as Types.IV2OrderData;
       encodedOrderData = utils.defaultAbiCoder.encode(
         [
@@ -100,12 +102,13 @@ export const encodeOrderData = (
           {
             payouts: encodeV2OrderData(v2Data.payouts),
             originFees: encodeV2OrderData(v2Data.originFees),
-            isMakeFill: v2Data.isMakeFill,
+            isMakeFill: v2Data.isMakeFill || false,
           },
         ]
       );
       break;
     case Constants.ORDER_DATA_TYPES.V3_SELL:
+    case Constants.ORDER_DATA_TYPES.API_V3_SELL:
       const v3SellData = order.data as Types.IV3OrderSellData;
 
       encodedOrderData = utils.defaultAbiCoder.encode(
@@ -128,6 +131,7 @@ export const encodeOrderData = (
 
       break;
     case Constants.ORDER_DATA_TYPES.V3_BUY:
+    case Constants.ORDER_DATA_TYPES.API_V3_BUY:
       const v3BuyData = order.data as Types.IV3OrderBuyData;
 
       encodedOrderData = utils.defaultAbiCoder.encode(

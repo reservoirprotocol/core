@@ -39,6 +39,8 @@ export type OrderKind = "single-token" | "contract-wide";
 
 export type Order = {
   kind?: OrderKind;
+  hash?: string;
+  id?: string;
   type: ORDER_TYPES;
   maker: string;
   make: LocalAsset;
@@ -99,21 +101,25 @@ export interface IPart {
   value: string;
 }
 export interface ILegacyOrderData {
+  "@type"?: string;
   dataType: ORDER_DATA_TYPES;
   fee: number;
 }
 export interface IV1OrderData {
+  "@type"?: string;
   dataType: ORDER_DATA_TYPES;
   payouts: IPart[];
   originFees: IPart[];
 }
 export interface IV2OrderData {
+  "@type"?: string;
   dataType: ORDER_DATA_TYPES;
   payouts: IPart[];
   originFees: IPart[];
   isMakeFill: boolean;
 }
 export interface IV3OrderSellData {
+  "@type"?: string;
   dataType: ORDER_DATA_TYPES;
   payouts: IPart;
   originFeeFirst: IPart;
@@ -123,6 +129,7 @@ export interface IV3OrderSellData {
 }
 
 export interface IV3OrderBuyData {
+  "@type"?: string;
   dataType: ORDER_DATA_TYPES;
   payouts: IPart;
   originFeeFirst: IPart;
