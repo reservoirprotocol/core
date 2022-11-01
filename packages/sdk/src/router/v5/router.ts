@@ -78,6 +78,20 @@ export class Router {
       }
     }
 
+    if (details.some(({ kind }) => kind === "rarible")) {
+      if (details.length > 1) {
+        throw new Error("Rarible sweeping is not supported");
+      } else {
+        const order = details[0].order as Sdk.Rarible.Order;
+        const exchange = new Sdk.Rarible.Exchange(this.chainId);
+        return exchange.fillOrderTx(taker, order, {
+          tokenId: details[0].tokenId,
+          assetClass: details[0].contractKind.toUpperCase(),
+          amount: Number(details[0].amount),
+        });
+      }
+    }
+
     // If all orders are Seaport, then we fill on Seaport directly
     // TODO: Once the modular router is implemented, a refactoring
     // might be needed - to use the router-generated order instead
@@ -369,6 +383,16 @@ export class Router {
       });
     }
 
+    if (detail.kind === "rarible") {
+      const order = detail.order as Sdk.Rarible.Order;
+      const exchange = new Sdk.Rarible.Exchange(this.chainId);
+      return exchange.fillOrderTx(taker, order, {
+        tokenId: detail.tokenId,
+        assetClass: detail.contractKind.toUpperCase(),
+        amount: Number(detail.extraArgs.amount),
+      });
+    }
+
     const { tx, exchangeKind } = await this.generateNativeBidFillTx(
       detail,
       taker,
@@ -447,7 +471,7 @@ export class Router {
   }
 
   private async generateNativeListingFillTx(
-    { kind, order, tokenId, amount }: ListingDetails,
+    { kind, order, tokenId, amount, contractKind }: ListingDetails,
     taker: string,
     options?: {
       source?: string;
@@ -548,6 +572,19 @@ export class Router {
       return {
         tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
         exchangeKind: ExchangeKind.ELEMENT,
+        maker: order.params.maker,
+      };
+    } else if (kind === "rarible") {
+      order = order as Sdk.Rarible.Order;
+
+      const exchange = new Sdk.Rarible.Exchange(this.chainId);
+      return {
+        tx: await exchange.fillOrderTx(taker, order, {
+          assetClass: contractKind,
+          tokenId,
+          amount: Number(amount) ?? 1,
+        }),
+        exchangeKind: ExchangeKind.RARIBLE,
         maker: order.params.maker,
       };
     }

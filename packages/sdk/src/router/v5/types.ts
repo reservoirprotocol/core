@@ -11,6 +11,7 @@ export enum ExchangeKind {
   ZORA,
   UNIVERSE,
   ELEMENT,
+  RARIBLE,
 }
 
 export type GenericOrder =
@@ -53,7 +54,11 @@ export type GenericOrder =
   | {
       kind: "element";
       order: Sdk.Element.Order;
-    };
+    }
+  | {
+    kind: "rarible";
+    order: Sdk.Rarible.Order;
+  };  
 
 export type ListingFillDetails = {
   contractKind: "erc721" | "erc1155";
