@@ -12,7 +12,7 @@ import { ethers, utils } from "ethers/lib";
 import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
-import { encode, encodeOrderData, hashAssetType } from "./utils";
+import { encodeForSigning, encodeOrderData, hashAssetType } from "./utils";
 import { Constants } from ".";
 import { ORDER_DATA_TYPES, ORDER_TYPES } from "./constants";
 
@@ -78,14 +78,12 @@ export class Order {
   }
 
   public async sign(signer: TypedDataSigner) {
-    console.log("SIGNING");
     const signature = await signer._signTypedData(
       EIP712_DOMAIN(this.chainId),
       EIP712_TYPES,
       toRawOrder(this)
     );
 
-    console.log("SIGNED");
     this.params = {
       ...this.params,
       signature,
@@ -360,10 +358,7 @@ const EIP712_TYPES = {
   ],
 };
 
-const toRawOrder = (order: Order): any => {
-  console.log(order.params.side);
-  return encode(order.params, order.buildMatching(""));
-};
+const toRawOrder = (order: Order): any => encodeForSigning(order.params);
 
 const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:

@@ -187,7 +187,7 @@ export const hashAsset = (asset: Asset) => {
  * @param order
  * @returns encoded order which is ready to be signed
  */
-export const encode = (
+export const encodeForContract = (
   order: Types.Order,
   matchingOrder?: Types.TakerOrderParams
 ) => {
@@ -264,7 +264,36 @@ export const encode = (
       throw Error("Unknown order side");
   }
 
-  console.log("RETURNING");
-  console.log(encodedOrder);
   return encodedOrder!;
+};
+
+/**
+ * Encode Order object for contract calls
+ * @param order
+ * @returns encoded order which is ready to be signed
+ */
+export const encodeForSigning = (order: Types.Order) => {
+  return {
+    maker: order.maker,
+    makeAsset: {
+      assetType: {
+        assetClass: encodeAssetClass(order.make.assetType.assetClass),
+        data: encodeAssetData(order.make.assetType),
+      },
+      value: order.make.value,
+    },
+    taker: order.taker,
+    takeAsset: {
+      assetType: {
+        assetClass: encodeAssetClass(order.take.assetType.assetClass),
+        data: encodeAssetData(order.take.assetType),
+      },
+      value: order.take.value,
+    },
+    salt: order.salt,
+    start: order.start,
+    end: order.end,
+    dataType: encodeAssetClass(order.data?.dataType!),
+    data: encodeOrderData(order),
+  };
 };

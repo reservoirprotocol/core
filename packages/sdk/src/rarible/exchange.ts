@@ -10,7 +10,7 @@ import { TxData, bn, generateReferrerBytes, lc } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 import { BigNumber } from "ethers/lib";
-import { encode } from "./utils";
+import { encodeForContract } from "./utils";
 
 export class Exchange {
   public chainId: number;
@@ -65,20 +65,16 @@ export class Exchange {
       amount?: number;
     }
   ): Promise<TxData> {
-    console.log("1");
     const takerOrderParams = makerOrder.buildMatching(taker, options);
-    console.log("2");
     // 3. generate the match tx
     const value = this.calculateTxValue(
       makerOrder.params.take.assetType.assetClass,
       makerOrder.params.take.value
     );
-    console.log("3");
-    const encodedOrder = encode(makerOrder.params, takerOrderParams);
+    const encodedOrder = encodeForContract(makerOrder.params, takerOrderParams);
 
     // Switch is better here
     const side = makerOrder.getInfo()?.side;
-    console.log("SWITCHING");
     if (side === "buy") {
       const {
         from,
@@ -132,7 +128,9 @@ export class Exchange {
 
   public async cancelOrderTx(orderParams: Types.Order): Promise<TxData> {
     const { from, to, data, value } =
-      await this.contract.populateTransaction.cancel(encode(orderParams));
+      await this.contract.populateTransaction.cancel(
+        encodeForContract(orderParams)
+      );
 
     return {
       from: from!,
