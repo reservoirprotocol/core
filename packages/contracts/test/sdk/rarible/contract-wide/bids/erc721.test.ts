@@ -110,7 +110,7 @@ describe("Rarible - ContractWide Bids Erc721", () => {
     await weth.deposit(buyer, price);
 
     // Approve the exchange contract for the buyer
-    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+    await weth.approve(buyer, Rarible.Addresses.ERC20TransferProxy[chainId]);
 
     const buyerBalanceBefore = await weth.getBalance(seller.address);
     const sellerBalanceBefore = await weth.getBalance(buyer.address);
@@ -121,7 +121,7 @@ describe("Rarible - ContractWide Bids Erc721", () => {
     const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
 
     // Approve the transfer manager
-    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+    await nft.approve(seller, Rarible.Addresses.NFTTransferProxy[chainId]);
 
     const exchange = new Rarible.Exchange(chainId);
     const revenueSplitBpsA = "100";
@@ -228,12 +228,10 @@ describe("Rarible - ContractWide Bids Erc721", () => {
       endTime: 0,
       orderType: Rarible.Constants.ORDER_TYPES.V1,
       dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
-      payouts: [
-        { account: buyer.address, value: "9000" },
-      ],
+      payouts: [{ account: buyer.address, value: "9000" }],
       originFees: [
         { account: dan.address, value: "9000" },
-        { account: charlie.address, value: "9000" }
+        { account: charlie.address, value: "9000" },
       ],
       marketplaceMarker: "rarible",
     });
@@ -304,7 +302,7 @@ describe("Rarible - ContractWide Bids Erc721", () => {
       dataType: Rarible.Constants.ORDER_DATA_TYPES.V1,
       payouts: [
         { account: buyer.address, value: "9000" },
-        { account: dan.address, value: "1000"}
+        { account: dan.address, value: "1000" },
       ],
       originFees: [],
       marketplaceMarker: "rarible",
@@ -374,12 +372,10 @@ describe("Rarible - ContractWide Bids Erc721", () => {
       endTime: 0,
       orderType: Rarible.Constants.ORDER_TYPES.V2,
       dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
-      payouts: [
-        { account: buyer.address, value: "10000" },
-      ],
+      payouts: [{ account: buyer.address, value: "10000" }],
       originFees: [
         { account: charlie.address, value: "100" },
-        { account: dan.address, value: "150"}
+        { account: dan.address, value: "150" },
       ],
       marketplaceMarker: "rarible",
     });
@@ -450,11 +446,11 @@ describe("Rarible - ContractWide Bids Erc721", () => {
       dataType: Rarible.Constants.ORDER_DATA_TYPES.V2,
       payouts: [
         { account: buyer.address, value: "9000" },
-        { account: dan.address, value: "1000"}
+        { account: dan.address, value: "1000" },
       ],
       originFees: [
         { account: charlie.address, value: "100" },
-        { account: dan.address, value: "150"}
+        { account: dan.address, value: "150" },
       ],
       marketplaceMarker: "rarible",
     });
@@ -632,7 +628,7 @@ describe("Rarible - ContractWide Bids Erc721", () => {
     await weth.deposit(buyer, price);
 
     // Approve the exchange contract for the buyer
-    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+    await weth.approve(buyer, Rarible.Addresses.ERC20TransferProxy[chainId]);
 
     const buyerBalanceBefore = await weth.getBalance(seller.address);
     const sellerBalanceBefore = await weth.getBalance(buyer.address);
@@ -643,7 +639,7 @@ describe("Rarible - ContractWide Bids Erc721", () => {
     const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
 
     // Approve the transfer manager
-    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+    await nft.approve(seller, Rarible.Addresses.NFTTransferProxy[chainId]);
 
     const exchange = new Rarible.Exchange(chainId);
     const revenueSplitBpsA = "100";
@@ -665,7 +661,7 @@ describe("Rarible - ContractWide Bids Erc721", () => {
       startTime: 0,
       endTime: 0,
       maxFeesBasePoint: 1000,
-      originFeeFirst: { account: charlie.address, value: '150' },
+      originFeeFirst: { account: charlie.address, value: "150" },
       // originFees: [
       //   {
       //     account: charlie.address,
@@ -720,7 +716,7 @@ describe("Rarible - ContractWide Bids Erc721", () => {
     await weth.deposit(buyer, price);
 
     // Approve the exchange contract for the buyer
-    await weth.approve(buyer, Rarible.Addresses.Exchange[chainId]);
+    await weth.approve(buyer, Rarible.Addresses.ERC20TransferProxy[chainId]);
 
     const buyerBalanceBefore = await weth.getBalance(seller.address);
     const sellerBalanceBefore = await weth.getBalance(buyer.address);
@@ -731,7 +727,7 @@ describe("Rarible - ContractWide Bids Erc721", () => {
     const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
 
     // Approve the transfer manager
-    await nft.approve(seller, Rarible.Addresses.Exchange[chainId]);
+    await nft.approve(seller, Rarible.Addresses.NFTTransferProxy[chainId]);
 
     const exchange = new Rarible.Exchange(chainId);
     const revenueSplitBpsA = "100";

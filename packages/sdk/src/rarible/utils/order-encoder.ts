@@ -125,7 +125,9 @@ export const encodeOrderData = (
           encodeV3OrderData(v3SellData.originFeeSecond),
           // TODO: Think of how to generate when maxFeesBasePoint is not passed in case of buy orders
           v3SellData.maxFeesBasePoint || "1000",
-          utils.keccak256(utils.toUtf8Bytes(v3SellData.marketplaceMarker)),
+          utils.keccak256(
+            utils.toUtf8Bytes(v3SellData.marketplaceMarker || "")
+          ),
         ]
       );
 
@@ -145,7 +147,7 @@ export const encodeOrderData = (
           encodeV3OrderData(v3BuyData.payouts),
           encodeV3OrderData(v3BuyData.originFeeFirst),
           encodeV3OrderData(v3BuyData.originFeeSecond),
-          utils.keccak256(utils.toUtf8Bytes(v3BuyData.marketplaceMarker)),
+          utils.keccak256(utils.toUtf8Bytes(v3BuyData.marketplaceMarker || "")),
         ]
       );
       break;

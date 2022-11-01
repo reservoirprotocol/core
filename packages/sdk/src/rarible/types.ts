@@ -1,5 +1,35 @@
 import { BigNumberish } from "ethers";
+import { Addresses } from ".";
 import { ORDER_DATA_TYPES, ORDER_TYPES } from "./constants";
+
+export const EIP712_DOMAIN = (chainId: number) => ({
+  name: "Exchange",
+  version: "2",
+  chainId,
+  verifyingContract: Addresses.Exchange[chainId],
+});
+
+export const EIP712_TYPES = {
+  AssetType: [
+    { name: "assetClass", type: "bytes4" },
+    { name: "data", type: "bytes" },
+  ],
+  Asset: [
+    { name: "assetType", type: "AssetType" },
+    { name: "value", type: "uint256" },
+  ],
+  Order: [
+    { name: "maker", type: "address" },
+    { name: "makeAsset", type: "Asset" },
+    { name: "taker", type: "address" },
+    { name: "takeAsset", type: "Asset" },
+    { name: "salt", type: "uint256" },
+    { name: "start", type: "uint256" },
+    { name: "end", type: "uint256" },
+    { name: "dataType", type: "bytes4" },
+    { name: "data", type: "bytes" },
+  ],
+};
 
 export enum AssetClass {
   ERC20 = "ERC20",

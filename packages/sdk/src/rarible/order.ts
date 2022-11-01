@@ -38,30 +38,31 @@ export class Order {
   public hashOrderKey() {
     let encodedOrderKey = null;
 
-    if (
-      this.params.data.dataType === ORDER_DATA_TYPES.V1 ||
-      this.params.data.dataType === ORDER_DATA_TYPES.DEFAULT_DATA_TYPE
-    ) {
-      encodedOrderKey = utils.defaultAbiCoder.encode(
-        ["address", "bytes32", "bytes32", "uint256"],
-        [
-          lc(this.params.maker),
-          hashAssetType(this.params.make.assetType),
-          hashAssetType(this.params.take.assetType),
-          this.params.salt,
-        ]
-      );
-    } else {
-      encodedOrderKey = utils.defaultAbiCoder.encode(
-        ["address", "bytes32", "bytes32", "uint256", "bytes"],
-        [
-          lc(this.params.maker),
-          hashAssetType(this.params.make.assetType),
-          hashAssetType(this.params.take.assetType),
-          this.params.salt,
-          encodeOrderData(this.params),
-        ]
-      );
+    switch (this.params.data.dataType) {
+      case ORDER_DATA_TYPES.V1:
+      case ORDER_DATA_TYPES.DEFAULT_DATA_TYPE:
+        encodedOrderKey = utils.defaultAbiCoder.encode(
+          ["address", "bytes32", "bytes32", "uint256"],
+          [
+            lc(this.params.maker),
+            hashAssetType(this.params.make.assetType),
+            hashAssetType(this.params.take.assetType),
+            this.params.salt,
+          ]
+        );
+        break;
+      default:
+        encodedOrderKey = utils.defaultAbiCoder.encode(
+          ["address", "bytes32", "bytes32", "uint256", "bytes"],
+          [
+            lc(this.params.maker),
+            hashAssetType(this.params.make.assetType),
+            hashAssetType(this.params.take.assetType),
+            this.params.salt,
+            encodeOrderData(this.params),
+          ]
+        );
+        break;
     }
 
     return utils.keccak256(encodedOrderKey);
@@ -69,8 +70,8 @@ export class Order {
 
   public async sign(signer: TypedDataSigner) {
     const signature = await signer._signTypedData(
-      EIP712_DOMAIN(this.chainId),
-      EIP712_TYPES,
+      Types.EIP712_DOMAIN(this.chainId),
+      Types.EIP712_TYPES,
       toRawOrder(this)
     );
 
@@ -83,21 +84,16 @@ export class Order {
   public getSignatureData() {
     return {
       signatureKind: "eip712",
-      domain: EIP712_DOMAIN(this.chainId),
-      types: EIP712_TYPES,
+      domain: Types.EIP712_DOMAIN(this.chainId),
+      types: Types.EIP712_TYPES,
       value: toRawOrder(this),
     };
   }
 
   public checkSignature() {
-    // If order comes from API, there's no need to verify
-    // if (this.params.data["@type"]) {
-    //   return true;
-    // }
-
     const signer = utils.verifyTypedData(
-      EIP712_DOMAIN(this.chainId),
-      EIP712_TYPES,
+      Types.EIP712_DOMAIN(this.chainId),
+      Types.EIP712_TYPES,
       toRawOrder(this),
       this.params.signature!
     );
@@ -313,13 +309,16 @@ export class Order {
     }
   }
 
-  private detectKind(): Types.Order["kind"] {
+  private detectKind(): Types.OrderKind {
     // single-token
-    {
-      const builder = new Builders.SingleToken(this.chainId);
-      if (builder.isValid(this)) {
-        return "single-token";
-      }
+    const singleTokenBuilder = new Builders.SingleToken(this.chainId);
+    if (singleTokenBuilder.isValid(this)) {
+      return "single-token";
+    }
+
+    const contractBuilder = new Builders.ContractWide(this.chainId);
+    if (contractBuilder.isValid(this)) {
+      return "contract-wide";
     }
 
     throw new Error(
@@ -328,39 +327,11 @@ export class Order {
   }
 }
 
-const EIP712_DOMAIN = (chainId: number) => ({
-  name: "Exchange",
-  version: "2",
-  chainId,
-  verifyingContract: Addresses.Exchange[chainId],
-});
-
-const EIP712_TYPES = {
-  AssetType: [
-    { name: "assetClass", type: "bytes4" },
-    { name: "data", type: "bytes" },
-  ],
-  Asset: [
-    { name: "assetType", type: "AssetType" },
-    { name: "value", type: "uint256" },
-  ],
-  Order: [
-    { name: "maker", type: "address" },
-    { name: "makeAsset", type: "Asset" },
-    { name: "taker", type: "address" },
-    { name: "takeAsset", type: "Asset" },
-    { name: "salt", type: "uint256" },
-    { name: "start", type: "uint256" },
-    { name: "end", type: "uint256" },
-    { name: "dataType", type: "bytes4" },
-    { name: "data", type: "bytes" },
-  ],
-};
-
 const toRawOrder = (order: Order): any => encodeForMatchOrders(order.params);
 
 const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:
+  // - parse Rarible API order format
   // - convert bignumbers to strings where needed
   // - convert strings to numbers where needed
   // - lowercase all strings
@@ -391,11 +362,13 @@ const normalize = (order: Types.Order): Types.Order => {
       dataInfo = order.data as Types.IV2OrderData;
       if (dataInfo.originFees) {
         dataInfo.originFees = dataInfo.originFees.map((fee) =>
-          parsePartData(fee)
+          normalizePartData(fee)
         );
       }
       if (dataInfo.payouts) {
-        dataInfo.payouts = dataInfo.payouts.map((fee) => parsePartData(fee));
+        dataInfo.payouts = dataInfo.payouts.map((fee) =>
+          normalizePartData(fee)
+        );
       }
 
       break;
@@ -405,15 +378,15 @@ const normalize = (order: Types.Order): Types.Order => {
       order.data.dataType = ORDER_DATA_TYPES.V3_SELL;
 
       if (dataInfo.originFeeFirst) {
-        dataInfo.originFeeFirst = parsePartData(dataInfo.originFeeFirst);
+        dataInfo.originFeeFirst = normalizePartData(dataInfo.originFeeFirst);
       }
 
       if (dataInfo.originFeeSecond) {
-        dataInfo.originFeeSecond = parsePartData(dataInfo.originFeeSecond);
+        dataInfo.originFeeSecond = normalizePartData(dataInfo.originFeeSecond);
       }
 
       if (dataInfo.payouts) {
-        dataInfo.payouts = parsePartData(dataInfo.payouts);
+        dataInfo.payouts = normalizePartData(dataInfo.payouts);
       }
 
       break;
@@ -423,15 +396,15 @@ const normalize = (order: Types.Order): Types.Order => {
       order.data.dataType = ORDER_DATA_TYPES.V3_BUY;
 
       if (dataInfo.originFeeFirst) {
-        dataInfo.originFeeFirst = parsePartData(dataInfo.originFeeFirst);
+        dataInfo.originFeeFirst = normalizePartData(dataInfo.originFeeFirst);
       }
 
       if (dataInfo.originFeeSecond) {
-        dataInfo.originFeeSecond = parsePartData(dataInfo.originFeeSecond);
+        dataInfo.originFeeSecond = normalizePartData(dataInfo.originFeeSecond);
       }
 
       if (dataInfo.payouts) {
-        dataInfo.payouts = parsePartData(dataInfo.payouts);
+        dataInfo.payouts = normalizePartData(dataInfo.payouts);
       }
 
       break;
@@ -451,11 +424,8 @@ const normalize = (order: Types.Order): Types.Order => {
     value: takeValue,
   } = parseAssetData(order.take);
 
-  const makerHasChainInfo = order.maker.indexOf(":") >= 0;
-  const maker = makerHasChainInfo ? order.maker.split(":")[1] : order.maker;
-
-  const takerHasChainInfo = order.taker.indexOf(":") >= 0;
-  const taker = takerHasChainInfo ? order.taker.split(":")[1] : order.taker;
+  const maker = extractAddressFromChain(order.maker);
+  const taker = extractAddressFromChain(order.taker);
 
   const tokenKind = takeAssetClass.toLowerCase().includes("collection")
     ? "contract-wide"
@@ -508,6 +478,12 @@ const normalize = (order: Types.Order): Types.Order => {
   };
 };
 
+function extractAddressFromChain(address: string) {
+  const addressHasChainInfo = address.indexOf(":") >= 0;
+  const parsedAddress = addressHasChainInfo ? address.split(":")[1] : address;
+  return parsedAddress;
+}
+
 function parseAssetData(assetInfo: Types.LocalAsset) {
   let assetClass =
     assetInfo.assetType?.assetClass || (assetInfo as any)?.type["@type"] || "";
@@ -520,12 +496,9 @@ function parseAssetData(assetInfo: Types.LocalAsset) {
     assetClass = Types.AssetClass.COLLECTION;
   }
 
-  let contract =
-    assetInfo.assetType?.contract || (assetInfo as any)?.type?.contract || "";
-
-  const contractHasChainInfo = contract.indexOf(":") >= 0;
-
-  contract = contractHasChainInfo ? contract.split(":")[1] : contract;
+  const contract = extractAddressFromChain(
+    assetInfo.assetType?.contract || (assetInfo as any)?.type?.contract || ""
+  );
 
   const tokenId =
     assetInfo.assetType?.tokenId || (assetInfo as any)?.type?.tokenId || "";
@@ -539,14 +512,7 @@ function parseAssetData(assetInfo: Types.LocalAsset) {
   return { assetClass, tokenId, contract, value };
 }
 
-function parsePartData(fee: Types.IPart) {
-  const [_, accountAddress] = fee.account.split(":");
-  const hasChainInfo = fee.account.indexOf(":") >= 0;
-  if (!hasChainInfo) {
-    return { ...fee, account: lc(fee.account) };
-  }
-  return {
-    ...fee,
-    account: lc(accountAddress),
-  };
+function normalizePartData(fee: Types.IPart) {
+  const address = extractAddressFromChain(fee.account);
+  return { ...fee, account: lc(address) };
 }
