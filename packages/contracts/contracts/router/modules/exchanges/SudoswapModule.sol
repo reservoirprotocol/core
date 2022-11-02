@@ -54,19 +54,19 @@ contract SudoswapModule is BaseExchangeModule {
         uint256 value
     ) internal {
 
-        uint256 remainingValue = 0;
+        //uint256 remainingValue = 0;
 
         // Execute fill
-        try SUDOSWAP_ROUTER.swapETHForSpecificNFTs{value: value}(swapList, payable(ethRecipient), nftRecipient, deadline) returns (uint256 _remainingValue) {
-            remainingValue = _remainingValue;
+        try SUDOSWAP_ROUTER.swapETHForSpecificNFTs{value: value}(swapList, payable(ethRecipient), nftRecipient, deadline) { //returns (uint256 _remainingValue) {
+            //remainingValue = _remainingValue;
         } catch {
             if (revertIfIncomplete) {
                 revert UnsuccessfulFill();
             }
         }
-        if (remainingValue > 0) {
-            address remainingValueRecipient = payable(ethRecipient); 
-            _sendETH(remainingValueRecipient, remainingValue);
-        }
+        //if (remainingValue > 0) {
+            //address remainingValueRecipient = payable(ethRecipient); 
+            //_sendETH(remainingValueRecipient, remainingValue);
+        //}
     }
 }
