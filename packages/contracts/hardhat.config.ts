@@ -6,7 +6,6 @@ import { HardhatUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
-import "@tenderly/hardhat-tenderly";
 import "hardhat-gas-reporter";
 
 const getNetworkConfig = (chainId?: number) => {
@@ -84,10 +83,6 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     enabled: Boolean(Number(process.env.REPORT_GAS)),
-  },
-  tenderly: {
-    username: String(process.env.TENDERLY_USERNAME),
-    project: String(process.env.TENDERLY_PROJECT),
   },
   mocha: {
     timeout: 60000 * 10,
