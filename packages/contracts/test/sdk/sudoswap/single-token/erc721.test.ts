@@ -1,4 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { setupSudoswapTestContract } from "../../../../../contracts/test/router/helpers/sudoswap";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { parseEther } from "@ethersproject/units";
@@ -26,13 +27,11 @@ describe("Sudoswap - SingleToken Erc721", () => {
    */
   it("Sudoswap sdk test", async () => {
 
-    let tokenId = 6113;
+    const contractPDB = await setupSudoswapTestContract();
 
-    let addresPDB = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F";
-    let abiOwnerOf = '[{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}]';
-    let contractPDB = new ethers.Contract(addresPDB, abiOwnerOf, ethers.provider);
+    const tokenId: number = 6113; //example token
 
-    let owner00 = await contractPDB.ownerOf(tokenId);
+    const owner00 = await contractPDB.ownerOf(tokenId);
 
     const pairFactory = new Sudoswap.Exchange(chainId); //selling/deposit 
 

@@ -4,7 +4,7 @@ import * as Sdk from "../../../../../sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { setupSudoswapPoolListing } from "../../helpers/sudoswap";
+import { setupSudoswapTestContract, addresTokenPDB, addresPoolPDB } from "../../helpers/sudoswap";
 
 import { ExecutionInfo } from "../../helpers/router";
 import {
@@ -53,7 +53,7 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
   it("Sudoswap router test", async () => {
     // Setup
 
-    const contractPDB = await setupSudoswapPoolListing();
+    const contractPDB = await setupSudoswapTestContract();
 
     const tokenId: number = 6113; //example token
 
@@ -61,17 +61,13 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
     let makerBalance00 = await getBalances(owner00);
     
-
     const pairFactory = new Sdk.Sudoswap.Exchange(chainId); //selling/deposit 
-  
-    const nft: string = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F"; //PudgyDickbutts (PDB)
-    const pool: string = "0x7794C476806731b74ba2049ccd413218248135DA"; //Mainnet PDB pool
     
     const impersonatedSigner = await ethers.getImpersonatedSigner(owner00);
   
     // List nft
   
-    let txnPre = await pairFactory.depositNFTs(impersonatedSigner, nft, [tokenId], pool);
+    let txnPre = await pairFactory.depositNFTs(impersonatedSigner, addresTokenPDB, [tokenId], addresPoolPDB);
     let txnPost = await txnPre.wait();
     let txnCost = txnPost.cumulativeGasUsed.mul(txnPost.effectiveGasPrice);
 
@@ -81,13 +77,11 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
     let startingBalanceSubTxnCost = makerBalance00.seller.sub(txnCost).toString();
     expect(balanceAfterTxn).to.eq(startingBalanceSubTxnCost);
 
-
-    let swapListPair: string = pool;
     let swapListNftIds: number[] = [tokenId];
     let ethRecipient = alice.address;
     let nftRecipient = alice.address;
 
-    let swapList: Sdk.Sudoswap.SwapList = {pair: swapListPair, nftIds: swapListNftIds};
+    let swapList: Sdk.Sudoswap.SwapList = {pair: addresPoolPDB, nftIds: swapListNftIds};
 
     let sudoswap = new Sdk.Sudoswap.Router(chainId);
     let data = sudoswap.swapETHForSpecificNFTsTxData([swapList], ethRecipient, nftRecipient);
