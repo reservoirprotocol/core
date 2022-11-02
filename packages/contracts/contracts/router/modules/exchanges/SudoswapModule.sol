@@ -49,9 +49,12 @@ contract SudoswapModule is BaseExchangeModule {
     {
 
         console.log("Transferring...");
+        console.log("modile - 0x: %s", address(this).balance);
 
         // Execute fill
-        //_buy(swapList, params.refundTo, params.fillTo, deadline, params.revertIfIncomplete, params.amount);
+        _buy(swapList, params.refundTo, params.fillTo, deadline, params.revertIfIncomplete, params.amount);
+
+        console.log("modile - 0y: %s", address(this).balance);
     }
 
     // --- Internal ---
@@ -65,21 +68,25 @@ contract SudoswapModule is BaseExchangeModule {
         uint256 value
     ) internal {
 
-        //uint256 remainingValue = 0;
+        uint256 remainingValue = 0;
 
-        console.log("Transferring from %s to %s %s tokens", msg.sender, nftRecipient, ethRecipient);
+        console.log("modile - 00: %s", address(this).balance);
 
         // Execute fill
-        try SUDOSWAP_ROUTER.swapETHForSpecificNFTs{value: value}(swapList, payable(ethRecipient), nftRecipient, deadline) { //returns (uint256 _remainingValue) {
-            //remainingValue = _remainingValue;
+        try SUDOSWAP_ROUTER.swapETHForSpecificNFTs{value: value}(swapList, payable(ethRecipient), nftRecipient, deadline) returns (uint256 _remainingValue) {
+            remainingValue = _remainingValue;
+
+            console.log("remainingValue: ", remainingValue);
+
         } catch {
+
+            console.log("oi oi oi");
+
             if (revertIfIncomplete) {
                 revert UnsuccessfulFill();
             }
         }
-        //if (remainingValue > 0) {
-            //address remainingValueRecipient = payable(ethRecipient); 
-            //_sendETH(remainingValueRecipient, remainingValue);
-        //}
+
+        console.log("modile - 01: %s", address(this).balance);
     }
 }
