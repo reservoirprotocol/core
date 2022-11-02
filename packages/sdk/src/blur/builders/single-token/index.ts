@@ -8,6 +8,9 @@ import * as Types from "../../types";
 import * as CommonAddresses from "../../../common/addresses";
 import { BytesEmpty, lc, s, n } from "../../../utils";
 
+export const ZERO_BYTES32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000000';
+
 interface BuildParams extends BaseBuildParams {
   tokenId: BigNumberish;
 }
@@ -74,12 +77,20 @@ export class SingleTokenBuilder extends BaseBuilder {
 
   public buildMatching(
     order: Order,
-    data?: { amount?: BigNumberish; unwrapNativeToken?: boolean }
+    data?: { amount?: BigNumberish }
   ) {
     return {
-      nftId: order.params.tokenId,
-      nftAmount: data?.amount ? s(data.amount) : "1",
-      unwrapNativeToken: data?.unwrapNativeToken,
+      order: {
+        ...order.params,
+        side: order.params.side === Types.TradeDirection.SELL ? Types.TradeDirection.BUY : Types.TradeDirection.SELL,
+        amount: data?.amount ? s(data.amount) : "1",
+      },
+      v: 27,
+      r: ZERO_BYTES32,
+      s: ZERO_BYTES32,
+      extraSignature: "0x",
+      signatureVersion: 0,
+      blockNumber: 0
     };
   }
 }

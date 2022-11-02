@@ -41,10 +41,15 @@ export type BaseOrder = {
 };
 
 
-// export type Input = {
-//   order: BaseOrder;
-
-// }
+export type OrderInput = {
+  order: BaseOrder;
+  v?: number;
+  r?: string;
+  s?: string;
+  extraSignature: string;
+  signatureVersion: number;
+  blockNumber: number;
+}
 // export type MatchParams = {
 //   nftId?: string;
 //   nftAmount?: string;

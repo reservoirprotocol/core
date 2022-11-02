@@ -9,6 +9,7 @@ import { BytesEmpty, TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
+
 export class Exchange {
   public chainId: number;
   public contract: Contract;
@@ -21,90 +22,57 @@ export class Exchange {
 
   // // --- Fill order ---
 
-  // public async fillOrder(
-  //   taker: Signer,
-  //   order: Order,
-  //   matchParams: Types.MatchParams,
-  //   options?: {
-  //     noDirectTransfer?: boolean;
-  //     referrer?: string;
-  //   }
-  // ): Promise<ContractTransaction> {
-  //   const tx = this.fillOrderTx(
-  //     await taker.getAddress(),
-  //     order,
-  //     matchParams,
-  //     options
-  //   );
-  //   return taker.sendTransaction(tx);
-  // }
+  public async fillOrder(
+    taker: Signer,
+    order: Order,
+    matchParams: Types.OrderInput,
+    options?: {
+      noDirectTransfer?: boolean;
+      referrer?: string;
+    }
+  ): Promise<ContractTransaction> {
+    const tx = this.fillOrderTx(
+      await taker.getAddress(),
+      order,
+      matchParams,
+      options
+    );
+    return taker.sendTransaction(tx);
+  }
 
-  // public fillOrderTx(
-  //   taker: string,
-  //   order: Order,
-  //   matchParams: Types.MatchParams,
-  //   options?: {
-  //     noDirectTransfer?: boolean;
-  //     referrer?: string;
-  //   }
-  // ): TxData {
-  //   const feeAmount = order.getFeeAmount();
+  public fillOrderTx(
+    taker: string,
+    order: Order,
+    matchOrder: Types.OrderInput,
+    options?: {
+      noDirectTransfer?: boolean;
+      referrer?: string;
+    }
+  ): TxData {
 
-  //   let to = this.contract.address;
-  //   let data: string;
-  //   let value: BigNumber | undefined;
+    let to = this.contract.address;
+    let data: string;
+    let value: BigNumber | undefined;
 
-  //   if (order.params.kind?.startsWith("erc721")) {
-  //     if (order.params.direction === Types.TradeDirection.BUY) {
-  //         data = this.contract.interface.encodeFunctionData("sellERC721", [
-  //           order.getRaw(),
-  //           order.getRaw(),
-  //           matchParams.nftId!,
-  //           matchParams.unwrapNativeToken ?? true,
-  //           BytesEmpty,
-  //         ]);
-  //     } else {
-  //       data = this.contract.interface.encodeFunctionData("buyERC721", [
-  //         order.getRaw(),
-  //         order.getRaw(),
-  //       ]);
-  //       value = bn(order.params.erc20TokenAmount).add(feeAmount);
-  //     }
-  //   } else {
-  //     if (order.params.direction === Types.TradeDirection.BUY) {
-  //       data = this.contract.interface.encodeFunctionData("sellERC1155", [
-  //         order.getRaw(),
-  //         order.getRaw(),
-  //         matchParams.nftId!,
-  //         matchParams.nftAmount!,
-  //         matchParams.unwrapNativeToken ?? true,
-  //         BytesEmpty,
-  //       ]);
-  //     } else {
-  //       data = this.contract.interface.encodeFunctionData("buyERC1155", [
-  //         order.getRaw(),
-  //         order.getRaw(),
-  //         matchParams.nftAmount!,
-  //       ]);
-  //       value = bn(matchParams.nftAmount!)
-  //         .mul(order.params.erc20TokenAmount)
-  //         .add(order.params.nftAmount!)
-  //         .sub(1)
-  //         .div(order.params.nftAmount!)
-  //         // Buyer pays the fees
-  //         .add(
-  //           feeAmount.mul(matchParams.nftAmount!).div(order.params.nftAmount!)
-  //         );
-  //     }
-  //   }
+    console.log("fillOrderTx", [
+      order.getRaw(),
+      matchOrder
+    ])
 
-  //   return {
-  //     from: taker,
-  //     to,
-  //     data: data + generateReferrerBytes(options?.referrer),
-  //     value: value && bn(value).toHexString(),
-  //   };
-  // }
+    data = this.contract.interface.encodeFunctionData("execute", [
+      order.getRaw(),
+      matchOrder
+    ]);
+
+    value = bn(order.params.price);
+
+    return {
+      from: taker,
+      to,
+      data: data + generateReferrerBytes(options?.referrer),
+      value: value && bn(value).toHexString(),
+    };
+  }
 
   // // --- Batch fill listings ---
 

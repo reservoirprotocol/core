@@ -8,8 +8,8 @@ import { _TypedDataEncoder } from "@ethersproject/hash";
 import { verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
-// import { Builders } from "./builders";
-// import { BaseBuilder, BaseOrderInfo } from "./builders/base";
+import { Builders } from "./builders";
+import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import * as Common from "../common";
 import { bn, lc, n, s } from "../utils";
@@ -35,15 +35,20 @@ export class Order {
     // }
   }
 
-  // public getRaw() {
-  //   return this.params.kind?.startsWith("erc721")
-  //     ? toRawErc721Order(this)
-  //     : toRawErc1155Order(this);
-  // }
+  public getRaw() {
+    return {
+      order: this.params,
+      v: this.params.v,
+      r: this.params.r ?? "",
+      s: this.params.s ?? "",
+      extraSignature: "0x",
+      signatureVersion: 0,
+      blockNumber: 0
+    }
+  }
 
   public hash() {
     const [types, value, structName] = this.getEip712TypesAndValue();
-    console.log(types, value, structName)
     return _TypedDataEncoder.hashStruct(structName, types, value);
   }
 
@@ -181,9 +186,9 @@ export class Order {
   //   }
   // }
 
-  // public buildMatching(data?: any) {
-  //   return this.getBuilder().buildMatching(this, data);
-  // }
+  public buildMatching(data?: any) {
+    return this.getBuilder().buildMatching(this, data);
+  }
 
   // public getFeeAmount(): BigNumber {
   //   let feeAmount = bn(0);
@@ -197,38 +202,9 @@ export class Order {
     return [ORDER_EIP712_TYPES, toRawOrder(this), "Order"];
   }
 
-  // private getBuilder(): BaseBuilder {
-  //   switch (this.params.kind) {
-  //     case "erc721-contract-wide":
-  //     case "erc1155-contract-wide": {
-  //       return new Builders.ContractWide(this.chainId);
-  //     }
-
-  //     case "erc721-single-token":
-  //     case "erc1155-single-token": {
-  //       return new Builders.SingleToken(this.chainId);
-  //     }
-
-  //     case "erc721-token-range":
-  //     case "erc1155-token-range": {
-  //       return new Builders.TokenRange(this.chainId);
-  //     }
-
-  //     case "erc721-token-list-bit-vector":
-  //     case "erc1155-token-list-bit-vector": {
-  //       return new Builders.TokenList.BitVector(this.chainId);
-  //     }
-
-  //     case "erc721-token-list-packed-list":
-  //     case "erc1155-token-list-packed-list": {
-  //       return new Builders.TokenList.PackedList(this.chainId);
-  //     }
-
-  //     default: {
-  //       throw new Error("Unknown order kind");
-  //     }
-  //   }
-  // }
+  private getBuilder(): BaseBuilder {
+    return new Builders.SingleToken(this.chainId);
+  }
 
   // private detectKind(): Types.OrderKind {
   //   // contract-wide
