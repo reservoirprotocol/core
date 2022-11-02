@@ -180,7 +180,7 @@ export class Router {
         .map(async (detail) => {
           const order = detail.order as Sdk.Seaport.Types.PartialOrder;
           const result = await axios.get(
-            `https://order-filler.vercel.app/api/listing?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}`
+            `https://order-fetcher.vercel.app/api/listing?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}`
           );
 
           const fullOrder = new Sdk.Seaport.Order(
@@ -920,6 +920,48 @@ export class Router {
                 extraData: "0x",
               },
               matchParams.criteriaResolvers ?? [],
+              {
+                fillTo: taker,
+                refundTo: taker,
+                revertIfIncomplete: true,
+              },
+            ]
+          ),
+        };
+
+        break;
+      }
+
+      case "seaport-partial": {
+        const order = detail.order as Sdk.Seaport.Types.PartialOrder;
+        const result = await axios.get(
+          `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}`
+        );
+
+        const fullOrder = new Sdk.Seaport.Order(
+          this.chainId,
+          result.data.order
+        );
+
+        moduleLevelTx = {
+          module: this.contracts.seaportModule.address,
+          data: this.contracts.seaportModule.interface.encodeFunctionData(
+            detail.contractKind === "erc721"
+              ? "acceptERC721Offer"
+              : "acceptERC1155Offer",
+            [
+              {
+                parameters: {
+                  ...fullOrder.params,
+                  totalOriginalConsiderationItems:
+                    fullOrder.params.consideration.length,
+                },
+                numerator: detail.amount ?? 1,
+                denominator: 1,
+                signature: fullOrder.params.signature,
+                extraData: "0x",
+              },
+              result.data.criteriaResolvers ?? [],
               {
                 fillTo: taker,
                 refundTo: taker,
