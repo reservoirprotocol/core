@@ -52,8 +52,8 @@ contract ReservoirV6_0_0 is ReentrancyGuard {
     function execute(ExecutionInfo[] calldata executionInfos)
         external
         payable
-        //nonReentrant
-        //refundETH
+        nonReentrant
+        refundETH
     {
         uint256 length = executionInfos.length;
         for (uint256 i = 0; i < length; ) {
@@ -82,8 +82,8 @@ contract ReservoirV6_0_0 is ReentrancyGuard {
     ) 
     external 
     payable 
-    //nonReentrant 
-    //refundETH 
+    nonReentrant 
+    refundETH 
     {
         // Cache some data for efficiency
         address target = amountCheckInfo.target;
@@ -115,8 +115,6 @@ contract ReservoirV6_0_0 is ReentrancyGuard {
         if (!module.isContract()) {
             revert UnsuccessfulExecution();
         }
-
-        console.log("v6 - 00: %s", address(this).balance);
 
         (bool success, ) = module.call{value: executionInfo.value}(
             executionInfo.data
