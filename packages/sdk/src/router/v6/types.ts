@@ -29,6 +29,10 @@ export type GenericOrder =
       order: Sdk.Seaport.Order;
     }
   | {
+      kind: "seaport-partial";
+      order: Sdk.Seaport.Types.PartialOrder;
+    }
+  | {
       kind: "cryptopunks";
       order: Sdk.CryptoPunks.Order;
     }

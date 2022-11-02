@@ -3,6 +3,7 @@ import { Provider } from "@ethersproject/abstract-provider";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
+import axios from "axios";
 
 import * as Addresses from "./addresses";
 import { BidDetails, Fee, ListingDetails } from "./types";
@@ -169,6 +170,31 @@ export class Router {
         };
       }
     }
+
+    // Handle partial seaport orders:
+    // - fetch the full order data for each partial order (concurrently)
+    // - remove any partial order from the details
+    await Promise.all(
+      details
+        .filter(({ kind }) => kind === "seaport-partial")
+        .map(async (detail) => {
+          const order = detail.order as Sdk.Seaport.Types.PartialOrder;
+          const result = await axios.get(
+            `https://order-filler.vercel.app/api/listing?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}`
+          );
+
+          const fullOrder = new Sdk.Seaport.Order(
+            this.chainId,
+            result.data.order
+          );
+          details.push({
+            ...detail,
+            kind: "seaport",
+            order: fullOrder,
+          });
+        })
+    );
+    details = details.filter(({ kind }) => kind !== "seaport-partial");
 
     // If all orders are Seaport, then fill on Seaport directly
     // TODO: Directly fill for other exchanges as well
