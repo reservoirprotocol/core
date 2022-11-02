@@ -4,6 +4,8 @@ pragma solidity ^0.8.9;
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
+import "hardhat/console.sol";
+
 contract ReservoirV6_0_0 is ReentrancyGuard {
     using Address for address;
 
@@ -108,6 +110,8 @@ contract ReservoirV6_0_0 is ReentrancyGuard {
         if (!module.isContract()) {
             revert UnsuccessfulExecution();
         }
+
+        console.log("module 01: %s", module);
 
         (bool success, ) = module.call{value: executionInfo.value}(
             executionInfo.data

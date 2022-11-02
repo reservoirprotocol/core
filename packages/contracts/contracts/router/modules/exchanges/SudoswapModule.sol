@@ -7,6 +7,8 @@ import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {ISudoswapRouter} from "../../../interfaces/ISudoswapRouter.sol";
 
+import "hardhat/console.sol";
+
 contract SudoswapModule is BaseExchangeModule {
 
     // --- Fields ---
@@ -16,7 +18,7 @@ contract SudoswapModule is BaseExchangeModule {
 
     // --- Constructor ---
 
-    constructor(address owner, address router)
+    constructor(address owner)
         BaseModule(owner)
         BaseExchangeModule(router) {
     }
@@ -26,6 +28,12 @@ contract SudoswapModule is BaseExchangeModule {
     receive() external payable {}
 
     // --- Single ETH listing ---
+    function sayHelloWorld(uint256 value) public payable returns (string memory) {
+
+        console.log("value 0x: %s", value);
+
+        return "Hello World";
+    }
 
     function swapETHForSpecificNFTs(
         ISudoswapRouter.PairSwapSpecific[] calldata swapList,
@@ -35,12 +43,15 @@ contract SudoswapModule is BaseExchangeModule {
     )
         external
         payable
-        nonReentrant
-        refundETHLeftover(params.refundTo)
-        chargeETHFees(fees, params.amount)
+        //nonReentrant
+        //refundETHLeftover(params.refundTo)
+        //chargeETHFees(fees, params.amount)
     {
+
+        console.log("Transferring...");
+
         // Execute fill
-        _buy(swapList, params.refundTo, params.fillTo, deadline, params.revertIfIncomplete, params.amount);
+        //_buy(swapList, params.refundTo, params.fillTo, deadline, params.revertIfIncomplete, params.amount);
     }
 
     // --- Internal ---
@@ -55,6 +66,8 @@ contract SudoswapModule is BaseExchangeModule {
     ) internal {
 
         //uint256 remainingValue = 0;
+
+        console.log("Transferring from %s to %s %s tokens", msg.sender, nftRecipient, ethRecipient);
 
         // Execute fill
         try SUDOSWAP_ROUTER.swapETHForSpecificNFTs{value: value}(swapList, payable(ethRecipient), nftRecipient, deadline) { //returns (uint256 _remainingValue) {

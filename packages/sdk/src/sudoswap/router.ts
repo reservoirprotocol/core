@@ -115,7 +115,7 @@ export class Router {
         swapList,
         ethRecipient,
         nftRecipient,
-        Math.floor(Date.now() / 1000) + 10 * 60,
+        1666734514,
       ])
     }
 }

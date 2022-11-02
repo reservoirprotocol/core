@@ -27,23 +27,17 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
 
-    router = (await ethers
-      .getContractFactory("ReservoirV6_0_0", deployer)
-      .then((factory) => factory.deploy())) as any;
-    sudoswapModule = (await ethers
-      .getContractFactory("SudoswapModule", deployer)
-      .then((factory) =>
-        factory.deploy(router.address, router.address)
-      )) as any;
+    let ReservoirV6_0_0 = await ethers.getContractFactory("ReservoirV6_0_0");
+    router = await ReservoirV6_0_0.deploy() as any;
+
+    let SudoswapModule = await ethers.getContractFactory("SudoswapModule");
+    sudoswapModule = await SudoswapModule.deploy(deployer.address) as any;
   });
 
-  const getBalances = async (tokenOwner00: string, tokenOwner01?: string) => {
+  const getBalances = async (owner: string) => {
       return {
-        seller: await ethers.provider.getBalance(tokenOwner00),
-        tokenOwner01: tokenOwner01 == null ? ethers.BigNumber.from("0") : await ethers.provider.getBalance(tokenOwner01), 
-        sudoswapModule: await ethers.provider.getBalance(
-          sudoswapModule.address
-        ),
+        seller: await ethers.provider.getBalance(owner), 
+        module: await ethers.provider.getBalance(sudoswapModule.address)
       };
   };
 
@@ -58,8 +52,6 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
     const tokenId: number = 6113; //example token
 
     const owner00 = await contractPDB.ownerOf(tokenId);
-
-    let makerBalance00 = await getBalances(owner00);
     
     const pairFactory = new Sdk.Sudoswap.Exchange(chainId); //selling/deposit 
     
@@ -67,15 +59,7 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
   
     // List nft
   
-    let txnPre = await pairFactory.depositNFTs(impersonatedSigner, addresTokenPDB, [tokenId], addresPoolPDB);
-    let txnPost = await txnPre.wait();
-    let txnCost = txnPost.cumulativeGasUsed.mul(txnPost.effectiveGasPrice);
-
-    let makerBalance01 = await getBalances(owner00);
-    let balanceAfterTxnBN = makerBalance01.seller;
-    let balanceAfterTxn = balanceAfterTxnBN.toString();
-    let startingBalanceSubTxnCost = makerBalance00.seller.sub(txnCost).toString();
-    expect(balanceAfterTxn).to.eq(startingBalanceSubTxnCost);
+    await pairFactory.depositNFTs(impersonatedSigner, addresTokenPDB, [tokenId], addresPoolPDB);
 
     let swapListNftIds: number[] = [tokenId];
     let ethRecipient = alice.address;
@@ -85,21 +69,31 @@ describe("[ReservoirV6_0_0] Sudoswap offers", () => {
 
     let sudoswap = new Sdk.Sudoswap.Router(chainId);
     let data = sudoswap.swapETHForSpecificNFTsTxData([swapList], ethRecipient, nftRecipient);
-    let value = parseEther("0.2");
-    let module = Sdk.Sudoswap.Addresses.PairRouter[chainId];
+    let value = parseEther("1.0").toString();
+    //let module = Sdk.Sudoswap.Addresses.PairRouter[chainId];
 
-    let execution: ExecutionInfo[] = [{module: module, data: data, value: value.toString()}];
+    console.log("module 00: " + sudoswapModule.address);
+
+    
+    let abi = '[{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[],"name":"InvalidParams","type":"error"},{"inputs":[],"name":"Unauthorized","type":"error"},{"inputs":[],"name":"UnsuccessfulCall","type":"error"},{"inputs":[],"name":"UnsuccessfulFill","type":"error"},{"inputs":[],"name":"UnsuccessfulPayment","type":"error"},{"inputs":[],"name":"WrongParams","type":"error"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"target","type":"address"},{"indexed":false,"internalType":"bytes","name":"data","type":"bytes"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"CallExecuted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"inputs":[],"name":"SUDOSWAP_ROUTER","outputs":[{"internalType":"contract ISudoswapRouter","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"claimOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"targets","type":"address[]"},{"internalType":"bytes[]","name":"data","type":"bytes[]"},{"internalType":"uint256[]","name":"values","type":"uint256[]"}],"name":"makeCalls","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingOwner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"router","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"value","type":"uint256"}],"name":"sayHelloWorld","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"components":[{"internalType":"address","name":"pair","type":"address"},{"internalType":"uint256[]","name":"nftIds","type":"uint256[]"}],"internalType":"struct ISudoswapRouter.PairSwapSpecific[]","name":"swapList","type":"tuple[]"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"components":[{"internalType":"address","name":"fillTo","type":"address"},{"internalType":"address","name":"refundTo","type":"address"},{"internalType":"bool","name":"revertIfIncomplete","type":"bool"},{"internalType":"uint256","name":"amount","type":"uint256"}],"internalType":"struct BaseExchangeModule.ETHListingParams","name":"params","type":"tuple"},{"components":[{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"internalType":"struct BaseExchangeModule.Fee[]","name":"fees","type":"tuple[]"}],"name":"swapETHForSpecificNFTs","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}]';
+    let contract = new ethers.Contract(sudoswapModule.address, abi, ethers.provider);
+    let data0x = contract.interface.encodeFunctionData("sayHelloWorld", [666]);
+    
+    //let execution: ExecutionInfo[] = [{module: ethers.utils.getAddress(sudoswapModule.address), data: data0x, value: value}];
+    let execution: ExecutionInfo[] = [{module: sudoswapModule.address, data: data0x, value: value}];
 
     // Execute
-
     await router.execute(execution, {
-      value: parseEther("0.2")
+      value: value
     });
 
     // Checks
 
-    let owner0y = await contractPDB.ownerOf(tokenId);
-    expect(owner0y).to.eq(alice.address);
+    //let owner0y = await contractPDB.ownerOf(tokenId);
+    //expect(owner0y).to.eq(alice.address);
+
+
+    
     
   });
 
