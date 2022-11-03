@@ -6,7 +6,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { BytesEmpty, TxData, bn, generateReferrerBytes } from "../utils";
+import { BytesEmpty, TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 import Erc721Abi from "../common/abis/Erc721.json";
@@ -29,7 +29,7 @@ export class Exchange {
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillOrderTx(
@@ -47,7 +47,7 @@ export class Exchange {
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     const feeAmount = order.getFeeAmount();
@@ -144,7 +144,7 @@ export class Exchange {
     return {
       from: taker,
       to,
-      data: data + generateReferrerBytes(options?.referrer),
+      data: data + generateSourceBytes(options?.source),
       value: value && bn(value).toHexString(),
     };
   }
@@ -156,7 +156,7 @@ export class Exchange {
     orders: Order[],
     matchParams: Types.MatchParams[],
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.batchBuyTx(
@@ -173,7 +173,7 @@ export class Exchange {
     orders: Order[],
     matchParams: Types.MatchParams[],
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     const sellOrders: any[] = [];
@@ -233,7 +233,7 @@ export class Exchange {
               signatures,
               callbackData,
               false,
-            ])) + generateReferrerBytes(options?.referrer),
+            ])) + generateSourceBytes(options?.source),
       value: value && bn(value).toHexString(),
     };
   }

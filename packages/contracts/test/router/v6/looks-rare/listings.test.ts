@@ -6,11 +6,11 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { ExecutionInfo } from "../../helpers/router";
+import { ExecutionInfo } from "../helpers/router";
 import {
   LooksRareListing,
   setupLooksRareListings,
-} from "../../helpers/looks-rare";
+} from "../helpers/looks-rare";
 import {
   bn,
   getChainId,
@@ -36,7 +36,6 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
   let router: Contract;
   let looksRareModule: Contract;
   let seaportModule: Contract;
-  let uniswapV3Module: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
@@ -53,11 +52,6 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
       )) as any;
     seaportModule = (await ethers
       .getContractFactory("SeaportModule", deployer)
-      .then((factory) =>
-        factory.deploy(router.address, router.address)
-      )) as any;
-    uniswapV3Module = (await ethers
-      .getContractFactory("UniswapV3Module", deployer)
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
@@ -257,7 +251,7 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
-            bn(price).mul(200).div(10000)
+            bn(price).mul(150).div(10000)
           )
         )
         .reduce((a, b) => bn(a).add(b), bn(0))
@@ -272,7 +266,7 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
-            bn(price).mul(200).div(10000)
+            bn(price).mul(150).div(10000)
           )
         )
         .reduce((a, b) => bn(a).add(b), bn(0))

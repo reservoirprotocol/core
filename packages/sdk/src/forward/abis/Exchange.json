@@ -135,6 +135,12 @@
       },
       {
         "indexed": false,
+        "internalType": "enum Forward.ItemKind",
+        "name": "itemKind",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "maker",
         "type": "address"

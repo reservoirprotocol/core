@@ -6,13 +6,13 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { ExecutionInfo } from "../../helpers/router";
+import { ExecutionInfo } from "../helpers/router";
 import {
   SeaportERC20Approval,
   SeaportListing,
   setupSeaportERC20Approvals,
   setupSeaportListings,
-} from "../../helpers/seaport";
+} from "../helpers/seaport";
 import {
   bn,
   getChainId,

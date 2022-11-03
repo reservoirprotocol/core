@@ -3,13 +3,12 @@ import { parseEther } from "@ethersproject/units";
 import * as Common from "@reservoir0x/sdk/src/common";
 import * as Universe from "@reservoir0x/sdk/src/universe";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { constants } from "ethers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { getChainId, reset, setupNFTs } from "../../../utils";
-import { BigNumber, constants } from "ethers";
+import { bn, getChainId, reset, setupNFTs } from "../../../utils";
 
-//TODO: Add check signature check
 describe("Universe - SingleToken Erc1155", () => {
   const chainId = getChainId();
 
@@ -71,6 +70,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     // Sign the order
@@ -92,7 +92,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     await exchange.fillOrder(seller, buyOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: mintTokensAmount,
     });
 
@@ -156,6 +156,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     // Sign the order
@@ -178,7 +179,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     await exchange.fillOrder(seller, buyOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: fillAmount,
     });
 
@@ -247,14 +248,8 @@ describe("Universe - SingleToken Erc1155", () => {
       startTime: 0,
       endTime: 0,
       fees: [
-        {
-          account: charlie.address,
-          value: revenueSplitBpsA,
-        },
-        {
-          account: dan.address,
-          value: revenueSplitBpsB,
-        },
+        `${charlie.address}:${revenueSplitBpsA}`,
+        `${dan.address}:${revenueSplitBpsB}`,
       ],
     });
 
@@ -277,7 +272,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     await exchange.fillOrder(seller, buyOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: mintTokensAmount,
     });
 
@@ -294,9 +289,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     let priceAfterFees = price;
     priceAfterFees = priceAfterFees.sub(
-      priceAfterFees
-        .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
-        .div(10000)
+      priceAfterFees.mul(bn(revenueSplitBpsA).add(revenueSplitBpsB)).div(10000)
     );
     priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
@@ -347,6 +340,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     // Sign the order
@@ -370,7 +364,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: mintTokensAmount,
     });
 
@@ -433,6 +427,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     // Sign the order
@@ -456,7 +451,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: fillAmount,
     });
 
@@ -527,14 +522,8 @@ describe("Universe - SingleToken Erc1155", () => {
       startTime: 0,
       endTime: 0,
       fees: [
-        {
-          account: charlie.address,
-          value: revenueSplitBpsA,
-        },
-        {
-          account: dan.address,
-          value: revenueSplitBpsB,
-        },
+        `${charlie.address}:${revenueSplitBpsA}`,
+        `${dan.address}:${revenueSplitBpsB}`,
       ],
     });
 
@@ -559,7 +548,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: mintTokensAmount,
     });
 
@@ -576,9 +565,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     let priceAfterFees = price;
     priceAfterFees = priceAfterFees.sub(
-      priceAfterFees
-        .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
-        .div(10000)
+      priceAfterFees.mul(bn(revenueSplitBpsA).add(revenueSplitBpsB)).div(10000)
     );
     priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
@@ -619,6 +606,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: constants.AddressZero,
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
     // Sign the order
     await sellOrder.sign(seller);
@@ -643,7 +631,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     const tx = await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: mintTokensAmount,
     });
 
@@ -704,6 +692,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: constants.AddressZero,
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
     // Sign the order
     await sellOrder.sign(seller);
@@ -728,7 +717,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     const tx = await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: fillAmount,
     });
 
@@ -794,14 +783,8 @@ describe("Universe - SingleToken Erc1155", () => {
       startTime: 0,
       endTime: 0,
       fees: [
-        {
-          account: charlie.address,
-          value: revenueSplitBpsA,
-        },
-        {
-          account: dan.address,
-          value: revenueSplitBpsB,
-        },
+        `${charlie.address}:${revenueSplitBpsA}`,
+        `${dan.address}:${revenueSplitBpsB}`,
       ],
     });
     // Sign the order
@@ -827,7 +810,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     // Match orders
     const tx = await exchange.fillOrder(buyer, sellOrder, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       amount: mintTokensAmount,
     });
 
@@ -847,9 +830,7 @@ describe("Universe - SingleToken Erc1155", () => {
 
     let priceAfterFees = price;
     priceAfterFees = priceAfterFees.sub(
-      priceAfterFees
-        .mul(BigNumber.from(revenueSplitBpsA).add(revenueSplitBpsB))
-        .div(10000)
+      priceAfterFees.mul(bn(revenueSplitBpsA).add(revenueSplitBpsB)).div(10000)
     );
     priceAfterFees = priceAfterFees.sub(priceAfterFees.mul(daoFee).div(10000));
 
@@ -882,6 +863,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: constants.AddressZero,
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     await sellOrder.checkFillability(ethers.provider);
@@ -913,6 +895,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     await sellOrder.checkFillability(ethers.provider);
@@ -943,6 +926,7 @@ describe("Universe - SingleToken Erc1155", () => {
       paymentToken: Common.Addresses.Weth[chainId],
       startTime: 0,
       endTime: 0,
+      fees: [],
     });
 
     await buyOrder.checkFillability(ethers.provider);

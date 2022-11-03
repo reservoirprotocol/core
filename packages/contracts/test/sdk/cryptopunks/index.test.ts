@@ -54,7 +54,7 @@ describe("CryptoPunks", () => {
     });
     await punks.createListing(seller, listing);
 
-    await punks.fillListing(buyer, listing, { referrer: "reservoir.market" });
+    await punks.fillListing(buyer, listing, { source: "reservoir.market" });
 
     expect(
       await punks.contract.connect(ethers.provider).punkIndexToAddress(tokenId)
@@ -82,7 +82,7 @@ describe("CryptoPunks", () => {
     });
     await punks.createBid(buyer, bid);
 
-    await punks.fillBid(seller, bid, { referrer: "reservoir.market" });
+    await punks.fillBid(seller, bid, { source: "reservoir.market" });
 
     expect(
       await punks.contract.connect(ethers.provider).punkIndexToAddress(tokenId)

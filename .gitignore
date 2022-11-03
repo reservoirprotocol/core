@@ -32,7 +32,7 @@ cache
 tenderly.yaml
 
 # Test files
-test.ts
+test*
 
 # OpenZeppelin
 unknown-*

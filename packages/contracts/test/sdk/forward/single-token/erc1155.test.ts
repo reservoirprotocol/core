@@ -84,7 +84,7 @@ describe("Forward - SingleToken Erc1155", () => {
 
     // Match orders
     await exchange.fillOrder(seller, bid, matchParams, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);

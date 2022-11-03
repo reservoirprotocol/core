@@ -61,7 +61,7 @@ describe("Foundation - SingleToken Erc721", () => {
 
     // Fill sell order.
     await exchange.fillOrder(buyer, order, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
       nativeReferrerAddress: referrer.address,
     });
 

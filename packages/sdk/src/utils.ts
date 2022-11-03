@@ -34,23 +34,23 @@ const SEPARATOR = "1f";
 // Only allow printable ASCII characters
 const isPrintableASCII = (value: string) => /^[\x20-\x7F]*$/.test(value);
 
-export const generateReferrerBytes = (referrer?: string) => {
-  if (referrer && !isPrintableASCII(referrer)) {
+export const generateSourceBytes = (source?: string) => {
+  if (source && !isPrintableASCII(source)) {
     throw new Error("Not a printable ASCII string");
   }
 
-  return referrer
-    ? `${SEPARATOR}${Buffer.from(toUtf8Bytes(referrer)).toString(
+  return source
+    ? `${SEPARATOR}${Buffer.from(toUtf8Bytes(source)).toString(
         "hex"
       )}${SEPARATOR}`
     : "";
 };
 
-export const getReferrer = (calldata: string) => {
+export const getSource = (calldata: string) => {
   try {
     if (calldata.endsWith(SEPARATOR)) {
       const index = calldata.slice(0, -2).lastIndexOf(SEPARATOR);
-      // If we cannot find the separated referrer string within the last
+      // If we cannot find the separated source string within the last
       // 32 bytes of the calldata, we simply assume it is missing
       if (index === -1 || calldata.length - index - 5 > 64) {
         return undefined;

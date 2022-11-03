@@ -230,8 +230,7 @@ contract LooksRareModule is BaseExchangeModule {
         // Execute the fill
         try EXCHANGE.matchBidWithTakerAsk(takerAsk, makerBid) {
             // Forward any payment to the specified receiver
-            IERC20 currency = makerBid.currency;
-            currency.safeTransfer(receiver, currency.balanceOf(address(this)));
+            makerBid.currency.safeTransfer(receiver, takerAsk.price);
         } catch {
             // Revert if specified
             if (revertIfIncomplete) {

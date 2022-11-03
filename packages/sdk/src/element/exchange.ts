@@ -5,7 +5,7 @@ import { Provider } from "@ethersproject/abstract-provider";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { BytesEmpty, TxData, bn, generateReferrerBytes } from "../utils";
+import { BytesEmpty, TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -26,7 +26,7 @@ export class Exchange {
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillOrderTx(
@@ -44,7 +44,7 @@ export class Exchange {
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     const feeAmount = order.getFeeAmount();
@@ -55,13 +55,13 @@ export class Exchange {
 
     if (order.params.kind?.startsWith("erc721")) {
       if (order.params.direction === Types.TradeDirection.BUY) {
-          data = this.contract.interface.encodeFunctionData("sellERC721", [
-            order.getRaw(),
-            order.getRaw(),
-            matchParams.nftId!,
-            matchParams.unwrapNativeToken ?? true,
-            BytesEmpty,
-          ]);
+        data = this.contract.interface.encodeFunctionData("sellERC721", [
+          order.getRaw(),
+          order.getRaw(),
+          matchParams.nftId!,
+          matchParams.unwrapNativeToken ?? true,
+          BytesEmpty,
+        ]);
       } else {
         data = this.contract.interface.encodeFunctionData("buyERC721", [
           order.getRaw(),
@@ -100,7 +100,7 @@ export class Exchange {
     return {
       from: taker,
       to,
-      data: data + generateReferrerBytes(options?.referrer),
+      data: data + generateSourceBytes(options?.source),
       value: value && bn(value).toHexString(),
     };
   }
@@ -112,7 +112,7 @@ export class Exchange {
     orders: Order[],
     matchParams: Types.MatchParams[],
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.batchBuyTx(
@@ -129,7 +129,7 @@ export class Exchange {
     orders: Order[],
     matchParams: Types.MatchParams[],
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     const sellOrders: any[] = [];
@@ -187,7 +187,7 @@ export class Exchange {
               sellOrders,
               signatures,
               false,
-            ])) + generateReferrerBytes(options?.referrer),
+            ])) + generateSourceBytes(options?.source),
       value: value && bn(value).toHexString(),
     };
   }
@@ -228,19 +228,19 @@ export class Exchange {
   ): Promise<BigNumber> {
     return this.contract.connect(provider).getHashNonce(user);
   }
-  
 
   // --- Increase nonce ---
 
-  public async incrementHashNonce(
-    maker: Signer
-  ): Promise<ContractTransaction> {
+  public async incrementHashNonce(maker: Signer): Promise<ContractTransaction> {
     const tx = this.incrementHashNonceTx(await maker.getAddress());
     return maker.sendTransaction(tx);
   }
 
   public incrementHashNonceTx(maker: string): TxData {
-    const data: string = this.contract.interface.encodeFunctionData("incrementHashNonce", []);
+    const data: string = this.contract.interface.encodeFunctionData(
+      "incrementHashNonce",
+      []
+    );
     return {
       from: maker,
       to: this.contract.address,
@@ -255,15 +255,23 @@ export class Exchange {
     const isSell = order.params.direction === Types.TradeDirection.SELL;
     if (!order.params.nftAmount) {
       if (isSell) {
-        return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
+        return this.contract
+          .connect(provider)
+          .getERC721SellOrderHash(order.getRaw());
       } else {
-        return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
+        return this.contract
+          .connect(provider)
+          .getERC721BuyOrderHash(order.getRaw());
       }
     } else {
       if (isSell) {
-        return this.contract.connect(provider).getERC1155SellOrderHash(order.getRaw());
+        return this.contract
+          .connect(provider)
+          .getERC1155SellOrderHash(order.getRaw());
       } else {
-        return this.contract.connect(provider).getERC1155BuyOrderHash(order.getRaw());
+        return this.contract
+          .connect(provider)
+          .getERC1155BuyOrderHash(order.getRaw());
       }
     }
   }

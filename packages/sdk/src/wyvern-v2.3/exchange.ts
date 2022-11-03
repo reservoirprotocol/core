@@ -7,7 +7,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as CommonAddresses from "../common/addresses";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -25,7 +25,7 @@ export class Exchange {
     buyOrder: Order,
     sellOrder: Order,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillOrderTx(
@@ -42,7 +42,7 @@ export class Exchange {
     buyOrder: Order,
     sellOrder: Order,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     const addrs = [
@@ -125,7 +125,7 @@ export class Exchange {
     return {
       from: taker,
       to: buyOrder.params.exchange,
-      data: data + generateReferrerBytes(options?.referrer),
+      data: data + generateSourceBytes(options?.source),
       value: value ? bn(value).toHexString() : undefined,
     };
   }

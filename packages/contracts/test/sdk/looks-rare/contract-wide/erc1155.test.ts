@@ -103,7 +103,7 @@ describe("LooksRare - ContractWide Erc1155", () => {
     );
 
     expect(buyerBalanceAfter).to.eq(0);
-    expect(sellerBalanceAfter).to.eq(price.sub(price.mul(200).div(10000)));
+    expect(sellerBalanceAfter).to.eq(price.sub(price.mul(150).div(10000)));
     expect(ownerBalanceAfter).to.eq(0);
   });
 });

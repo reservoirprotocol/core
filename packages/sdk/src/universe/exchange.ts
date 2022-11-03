@@ -1,16 +1,15 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish } from "ethers";
+import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, generateReferrerBytes, lc } from "../utils";
+import { encode } from "./utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
-import { BigNumber } from "ethers/lib";
-import { encode } from "./utils";
 
 export class Exchange {
   public chainId: number;
@@ -30,7 +29,7 @@ export class Exchange {
     taker: Signer,
     makerOrder: Order,
     options?: {
-      referrer?: string;
+      source?: string;
       amount?: number;
     }
   ): Promise<ContractTransaction> {
@@ -46,12 +45,12 @@ export class Exchange {
    * Calculate transaction value in case its a ETH order
    */
   public calculateTxValue(takeClass: string, takeAmount: string) {
-    let value = BigNumber.from(0);
+    let value = bn(0);
     // "ETH" can only be TAKE'a asset class in case it is a direct buy from a listing.
     // In this case transaction value is the ETH value from order.take.amount.
     // There can't be situations when ETH is a MAKE's asset class
     if (takeClass === "ETH") {
-      value = BigNumber.from(takeAmount);
+      value = bn(takeAmount);
     }
 
     return value;
@@ -61,7 +60,7 @@ export class Exchange {
     taker: string,
     makerOrder: Order,
     options?: {
-      referrer?: string;
+      source?: string;
       amount?: number;
     }
   ): Promise<TxData> {
@@ -91,7 +90,7 @@ export class Exchange {
     return {
       from: from!,
       to: to!,
-      data: data + generateReferrerBytes(options?.referrer),
+      data: data + generateSourceBytes(options?.source),
       value: matchedValue && matchedValue.toHexString(),
     };
   }

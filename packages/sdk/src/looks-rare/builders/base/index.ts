@@ -15,6 +15,7 @@ export interface BaseBuildParams {
   startTime?: number;
   endTime?: number;
   minPercentageToAsk?: number;
+  strategy?: string;
   v?: number;
   r?: string;
   s?: string;
@@ -28,10 +29,8 @@ export abstract class BaseBuilder {
   }
 
   protected defaultInitialize(params: BaseBuildParams) {
-    // Default listing time is 5 minutes in the past to allow for any
-    // time discrepancies when checking the order's validity on-chain
-    params.startTime = params.startTime ?? getCurrentTimestamp(-5 * 60);
-    params.endTime = params.endTime ?? getCurrentTimestamp(365 * 24 * 60 * 60);
+    params.startTime = params.startTime ?? getCurrentTimestamp(-1 * 60);
+    params.endTime = params.endTime ?? getCurrentTimestamp(24 * 60 * 60);
     params.minPercentageToAsk = params.minPercentageToAsk ?? 8500;
     params.nonce = params.nonce ?? getRandomBytes(10);
     params.v = params.v ?? 0;

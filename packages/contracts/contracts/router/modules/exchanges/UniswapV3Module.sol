@@ -7,7 +7,6 @@ import {IUniswapV3Router} from "../../../interfaces/IUniswapV3Router.sol";
 
 // Notes:
 // - supports swapping ETH and ERC20 to any token via a direct path
-// - TODO: support swapping via indirect paths
 
 contract UniswapV3Module is BaseExchangeModule {
     // --- Fields ---
