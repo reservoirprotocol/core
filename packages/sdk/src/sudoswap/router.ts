@@ -7,6 +7,7 @@ import { Order } from "./order";
 import { TxData, generateReferrerBytes } from "../utils";
 
 import PairRouterAbi from "./abis/RouterPair.json";
+import ModuleAbi from "./abis/Module.json";
 
 // Sudoswap:
 // - fully on-chain
@@ -66,7 +67,7 @@ export class Router {
           ],
           order.params.price ?? 0,
           options?.recipient ?? taker,
-          Math.floor(Date.now() / 1000) + 10 * 60,
+          this.getDeadline(),
         ]) + generateReferrerBytes(options?.referrer),
     };
   }
@@ -101,21 +102,34 @@ export class Router {
         from: taker,
         to: this.contract.address,
         data:
-          this.swapETHForSpecificNFTsTxData(swapList, ethRecipient, nftRecipient),
+          this.contract.interface.encodeFunctionData("swapETHForSpecificNFTs", [
+            swapList,
+            ethRecipient,
+            nftRecipient,
+            this.getDeadline(),
+          ]),
         value: value
       };
     }
 
+    getDeadline(): number {
+      return Math.floor(Date.now() / 1000) + 10 * 60;
+    }
+  
     public swapETHForSpecificNFTsTxData(
+      addressModule: string, //TODO: remove once 'Module: ChainIdToAddress' is set
       swapList: SwapList[],
-      ethRecipient: string,
-      nftRecipient: string,
+      ethListingParams: any,
+      fee: any[],
     ): string {
-      return this.contract.interface.encodeFunctionData("swapETHForSpecificNFTs", [
+
+      const module = new Contract(addressModule, ModuleAbi);
+      let txnData = module.interface.encodeFunctionData("swapETHForSpecificNFTs", [
         swapList,
-        ethRecipient,
-        nftRecipient,
-        Math.floor(Date.now() / 1000) + 10 * 60,
-      ])
+        this.getDeadline(),
+        ethListingParams,
+        fee
+      ]);
+      return txnData;
     }
 }

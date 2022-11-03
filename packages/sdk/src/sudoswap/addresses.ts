@@ -12,3 +12,8 @@ export const PairRouter: ChainIdToAddress = {
   [Network.Ethereum]: "0x2B2e8cDA09bBA9660dCA5cB6233787738Ad68329",
 };
 
+//TODO: populate once deployed
+export const Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0x0000000000000000000000000000000000000000",
+};
+
