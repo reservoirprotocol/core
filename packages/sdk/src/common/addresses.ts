@@ -62,13 +62,18 @@ export const Routers: ChainIdToAddressMap = {
     // Rarity Garden
     "0x603d022611bfe6a101dcdab207d96c527f1d4d8e": "rarity.garden",
     "0x39b6862c4783db2651d64bc160349dc9a15f1fb7": "rarity.garden",
-    // Reservoir
+    // Reservoir (routers)
     "0xc52b521b284792498c1036d4c2ed4b73387b3859": "reservoir.tools",
     "0x5aa9ca240174a54af6d9bfc69214b2ed948de86d": "reservoir.tools",
     "0x7c9733b19e14f37aca367fbd78922c098c55c874": "reservoir.tools",
     "0x8005488ff4f8982d2d8c1d602e6d747b1428dd41": "reservoir.tools",
     "0x9ebfb53fa8526906738856848a27cb11b0285c3f": "reservoir.tools",
     "0x178a86d36d89c7fdebea90b739605da7b131ff6a": "reservoir.tools",
+    // Reservoir (modules)
+    "0x920692834f93258b71221c58edf870ae013e2f9b": "reservoir.tools",
+    "0xef21d6b43ac0bb4608ca05628b05403a47310a3b": "reservoir.tools",
+    "0xff78f7c6e23187fd4bdb2f7f35359a42d56878dd": "reservoir.tools",
+    "0x0e01862920bd5ef73ed1a5dccd2ecad56c3e051f": "reservoir.tools",
     // X2Y2
     "0x56dd5bbede9bfdb10a2845c4d70d4a2950163044": "x2y2.io",
   },
