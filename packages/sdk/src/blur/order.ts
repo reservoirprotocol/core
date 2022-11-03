@@ -12,9 +12,8 @@ import { Builders } from "./builders";
 import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import * as Common from "../common";
-import { bn, lc, n, s } from "../utils";
-
-// import ExchangeAbi from "./abis/Exchange.json";
+import { bn, lc, n, s, BytesEmpty } from "../utils";
+import ExchangeAbi from "./abis/Exchange.json";
 
 export class Order {
   public chainId: number;
@@ -30,9 +29,9 @@ export class Order {
     }
 
     // Detect kind
-    // if (!params.kind) {
-    //   this.params.kind = this.detectKind();
-    // }
+    if (!params.kind) {
+      this.params.kind = this.detectKind();
+    }
   }
 
   public getRaw() {
@@ -41,7 +40,7 @@ export class Order {
       v: this.params.v,
       r: this.params.r ?? "",
       s: this.params.s ?? "",
-      extraSignature: "0x",
+      extraSignature: BytesEmpty,
       signatureVersion: 0,
       blockNumber: 0
     }
@@ -92,111 +91,96 @@ export class Order {
     }
   }
 
-  // public checkValidity() {
-  //   if (!this.getBuilder().isValid(this)) {
-  //     throw new Error("Invalid order");
-  //   }
-  // }
+  public checkValidity() {
+    if (!this.getBuilder().isValid(this)) {
+      throw new Error("Invalid order");
+    }
+  }
 
   // public getInfo(): BaseOrderInfo | undefined {
   //   return this.getBuilder().getInfo(this);
   // }
 
-  // public async checkFillability(provider: Provider) {
-  //   const chainId = await provider.getNetwork().then((n) => n.chainId);
+  public async checkFillability(provider: Provider) {
+    const chainId = await provider.getNetwork().then((n) => n.chainId);
 
-  //   const exchange = new Contract(
-  //     Addresses.Exchange[this.chainId],
-  //     ExchangeAbi as any,
-  //     provider
-  //   );
+    const exchange = new Contract(
+      Addresses.Exchange[this.chainId],
+      ExchangeAbi as any,
+      provider
+    );
 
-  //   let status: number | undefined;
-  //   if (this.params.kind?.startsWith("erc721")) {
-  //     status = await exchange.getERC721OrderStatus(toRawErc721Order(this));
-  //   } else {
-  //     ({ status } = await exchange.getERC1155OrderInfo(
-  //       toRawErc1155Order(this)
-  //     ));
-  //   }
+    let status: boolean = await exchange.cancelledOrFilled(this.hash());
+    if (status) {
+      throw new Error("not-fillable");
+    }
 
-  //   if (status !== 1) {
-  //     throw new Error("not-fillable");
-  //   }
+    // Determine the order's fees (which are to be payed by the buyer)
+    // let feeAmount = this.getFeeAmount();
 
-  //   // Determine the order's fees (which are to be payed by the buyer)
-  //   let feeAmount = this.getFeeAmount();
+    if (this.params.side === Types.TradeDirection.BUY) {
+      // Check that maker has enough balance to cover the payment
+      // and the approval to the token transfer proxy is set
+      const erc20 = new Common.Helpers.Erc20(provider, this.params.paymentToken);
+      const balance = await erc20.getBalance(this.params.trader);
+      if (bn(balance).lt(bn(this.params.price))) {
+        throw new Error("no-balance");
+      }
 
-  //   if (this.params.direction === Types.TradeDirection.BUY) {
-  //     // Check that maker has enough balance to cover the payment
-  //     // and the approval to the token transfer proxy is set
-  //     const erc20 = new Common.Helpers.Erc20(provider, this.params.erc20Token);
-  //     const balance = await erc20.getBalance(this.params.maker);
-  //     if (bn(balance).lt(bn(this.params.erc20TokenAmount).add(feeAmount))) {
-  //       throw new Error("no-balance");
-  //     }
+      // Check allowance
+      const allowance = await erc20.getAllowance(
+        this.params.trader,
+        Addresses.ExecutionDelegate[chainId]
+      );
+      if (bn(allowance).lt(bn(this.params.paymentToken))) {
+        throw new Error("no-approval");
+      }
+    } else {
+      if (this.params.kind?.startsWith("erc721")) {
+        const erc721 = new Common.Helpers.Erc721(provider, this.params.collection);
 
-  //     // Check allowance
-  //     const allowance = await erc20.getAllowance(
-  //       this.params.maker,
-  //       Addresses.Exchange[chainId]
-  //     );
-  //     if (bn(allowance).lt(bn(this.params.erc20TokenAmount).add(feeAmount))) {
-  //       throw new Error("no-approval");
-  //     }
-  //   } else {
-  //     if (this.params.kind?.startsWith("erc721")) {
-  //       const erc721 = new Common.Helpers.Erc721(provider, this.params.nft);
+        // Check ownership
+        const owner = await erc721.getOwner(this.params.tokenId);
+        if (lc(owner) !== lc(this.params.trader)) {
+          throw new Error("no-balance");
+        }
 
-  //       // Check ownership
-  //       const owner = await erc721.getOwner(this.params.nftId);
-  //       if (lc(owner) !== lc(this.params.maker)) {
-  //         throw new Error("no-balance");
-  //       }
+        // Check approval
+        const isApproved = await erc721.isApproved(
+          this.params.trader,
+          Addresses.ExecutionDelegate[this.chainId]
+        );
+        if (!isApproved) {
+          throw new Error("no-approval");
+        }
+      } else {
+        const erc1155 = new Common.Helpers.Erc1155(provider, this.params.collection);
 
-  //       // Check approval
-  //       const isApproved = await erc721.isApproved(
-  //         this.params.maker,
-  //         Addresses.Exchange[this.chainId]
-  //       );
-  //       if (!isApproved) {
-  //         throw new Error("no-approval");
-  //       }
-  //     } else {
-  //       const erc1155 = new Common.Helpers.Erc1155(provider, this.params.nft);
+        // Check balance
+        const balance = await erc1155.getBalance(
+          this.params.trader,
+          this.params.tokenId
+        );
 
-  //       // Check balance
-  //       const balance = await erc1155.getBalance(
-  //         this.params.maker,
-  //         this.params.nftId
-  //       );
-  //       if (bn(balance).lt(this.params.nftAmount!)) {
-  //         throw new Error("no-balance");
-  //       }
+        if (bn(balance).lt(this.params.amount!)) {
+          throw new Error("no-balance");
+        }
 
-  //       // Check approval
-  //       const isApproved = await erc1155.isApproved(
-  //         this.params.maker,
-  //         Addresses.Exchange[this.chainId]
-  //       );
-  //       if (!isApproved) {
-  //         throw new Error("no-approval");
-  //       }
-  //     }
-  //   }
-  // }
+        // Check approval
+        const isApproved = await erc1155.isApproved(
+          this.params.trader,
+          Addresses.ExecutionDelegate[this.chainId]
+        );
+        if (!isApproved) {
+          throw new Error("no-approval");
+        }
+      }
+    }
+  }
 
   public buildMatching(data?: any) {
     return this.getBuilder().buildMatching(this, data);
   }
-
-  // public getFeeAmount(): BigNumber {
-  //   let feeAmount = bn(0);
-  //   for (const { amount } of this.params.fees) {
-  //     feeAmount = feeAmount.add(amount);
-  //   }
-  //   return feeAmount;
-  // }
 
   private getEip712TypesAndValue() {
     return [ORDER_EIP712_TYPES, toRawOrder(this), "Order"];
@@ -206,59 +190,15 @@ export class Order {
     return new Builders.SingleToken(this.chainId);
   }
 
-  // private detectKind(): Types.OrderKind {
-  //   // contract-wide
-  //   {
-  //     const builder = new Builders.ContractWide(this.chainId);
-  //     if (builder.isValid(this)) {
-  //       return this.params.nftAmount
-  //         ? "erc1155-contract-wide"
-  //         : "erc721-contract-wide";
-  //     }
-  //   }
+  private detectKind(): Types.OrderKind {
+    if (this.params.matchingPolicy === Addresses.StandardPolicyERC721[this.chainId]) {
+      return 'erc721-single-token'
+    }
 
-  //   // single-token
-  //   {
-  //     const builder = new Builders.SingleToken(this.chainId);
-  //     if (builder.isValid(this)) {
-  //       return this.params.nftAmount
-  //         ? "erc1155-single-token"
-  //         : "erc721-single-token";
-  //     }
-  //   }
-
-  //   // token-range
-  //   {
-  //     const builder = new Builders.TokenRange(this.chainId);
-  //     if (builder.isValid(this)) {
-  //       return this.params.nftAmount
-  //         ? "erc1155-token-range"
-  //         : "erc721-token-range";
-  //     }
-  //   }
-
-  //   // token-list
-  //   {
-  //     const builder = new Builders.TokenList.BitVector(this.chainId);
-  //     if (builder.isValid(this)) {
-  //       return this.params.nftAmount
-  //         ? "erc1155-token-list-bit-vector"
-  //         : "erc721-token-list-bit-vector";
-  //     }
-  //   }
-  //   {
-  //     const builder = new Builders.TokenList.PackedList(this.chainId);
-  //     if (builder.isValid(this)) {
-  //       return this.params.nftAmount
-  //         ? "erc1155-token-list-packed-list"
-  //         : "erc721-token-list-packed-list";
-  //     }
-  //   }
-
-  //   throw new Error(
-  //     "Could not detect order kind (order might have unsupported params/calldata)"
-  //   );
-  // }
+    throw new Error(
+      "Could not detect order kind (order might have unsupported params/calldata)"
+    );
+  }
 }
 
 const EIP712_DOMAIN = (chainId: number) => ({
@@ -294,14 +234,6 @@ const ORDER_EIP712_TYPES = {
 const toRawOrder = (order: Order): any => ({
   ...order.params
 });
-
-// const toRawErc1155Order = (order: Order): any => ({
-//   ...order.params,
-//   erc1155Token: order.params.nft,
-//   erc1155TokenId: order.params.nftId,
-//   erc1155TokenProperties: order.params.nftProperties,
-//   erc1155TokenAmount: order.params.nftAmount,
-// });
 
 const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
   // Perform some normalization operations on the order:

@@ -41,8 +41,6 @@ export abstract class BaseBuilder {
 
   protected defaultInitialize(params: BaseBuildParams) {
     params.fees = params.fees ?? [];
-    // params.expiry = params.expiry ?? getCurrentTimestamp(365 * 24 * 60 * 60);
-    // params.nonce = params.nonce ?? getRandomBytes();
     params.signatureType = params.signatureType ?? 2;
     params.v = params.v ?? 0;
     params.r = params.r ?? HashZero;

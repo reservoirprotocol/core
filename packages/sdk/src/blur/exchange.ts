@@ -5,7 +5,7 @@ import { Provider } from "@ethersproject/abstract-provider";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { BytesEmpty, TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -16,11 +16,10 @@ export class Exchange {
 
   constructor(chainId: number) {
     this.chainId = chainId;
-    console.log('contract', Addresses.Exchange[this.chainId])
     this.contract = new Contract(Addresses.Exchange[this.chainId], ExchangeAbi);
   }
 
-  // // --- Fill order ---
+  // --- Fill order ---
 
   public async fillOrder(
     taker: Signer,
@@ -54,17 +53,19 @@ export class Exchange {
     let data: string;
     let value: BigNumber | undefined;
 
-    console.log("fillOrderTx", [
+    const isBuy = order.params.side === Types.TradeDirection.BUY
+    const executeArgs = isBuy ? [
+      matchOrder,
+      order.getRaw(),
+    ] : [
       order.getRaw(),
       matchOrder
-    ])
+    ]
 
-    data = this.contract.interface.encodeFunctionData("execute", [
-      order.getRaw(),
-      matchOrder
-    ]);
+    // console.log("executeArgs", executeArgs)
+    data = this.contract.interface.encodeFunctionData("execute", executeArgs);
 
-    value = bn(order.params.price);
+    if (!isBuy) value = bn(order.params.price);
 
     return {
       from: taker,
