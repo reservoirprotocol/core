@@ -21,6 +21,7 @@ import LooksRareModuleAbi from "./abis/LooksRareModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
+import SudoswapModuleAbi from "./abis/SudoswapModule.json";
 
 // Router execution info
 type ExecutionInfo = {
@@ -65,6 +66,11 @@ export class Router {
       zeroExV4Module: new Contract(
         Addresses.ZeroExV4Module[chainId] ?? AddressZero,
         ZeroExV4ModuleAbi,
+        provider
+      ),
+      sudoswapModule: new Contract(
+        Addresses.SudoswapModule[chainId] ?? AddressZero,
+        SudoswapModuleAbi,
         provider
       ),
     };
@@ -252,6 +258,7 @@ export class Router {
     } & ListingDetails;
 
     // Split all listings by their kind
+    const sudoswapDetails: ListingDetailsExtracted[] = [];
     const foundationDetails: ListingDetailsExtracted[] = [];
     const looksRareDetails: ListingDetailsExtracted[] = [];
     const seaportDetails: ListingDetailsExtracted[] = [];
@@ -263,6 +270,10 @@ export class Router {
 
       let detailsRef: ListingDetailsExtracted[];
       switch (kind) {
+        case "sudoswap":
+          detailsRef = sudoswapDetails;
+          break;
+
         case "foundation":
           detailsRef = foundationDetails;
           break;
@@ -824,18 +835,6 @@ export class Router {
       };
     }
 
-    // TODO: Add Sudoswap router module
-    if (detail.kind === "sudoswap") {
-      const order = detail.order as Sdk.Sudoswap.Order;
-      const exchange = new Sdk.Sudoswap.Router(this.chainId);
-      return {
-        txData: exchange.fillBuyOrderTx(taker, order, detail.tokenId, {
-          source: options?.source,
-        }),
-        direct: true,
-      };
-    }
-
     // X2Y2 bids can only be filled directly (at least their centralized API has this restriction)
     if (detail.kind === "x2y2") {
       const order = detail.order as Sdk.X2Y2.Order;
@@ -852,12 +851,47 @@ export class Router {
       };
     }
 
+
+  //   const module = new Contract(addressModule, ModuleAbi);
+  //   let txnData = module.interface.encodeFunctionData("swapETHForSpecificNFTs", [
+  //     swapList,
+  //     this.getDeadline(),
+  //     ethListingParams,
+  //     fee
+  //   ]);
+  //   return txnData;
+  // }
+
     // Build module-level transaction data
     let moduleLevelTx: {
       module: string;
       data: string;
     };
     switch (detail.kind) {
+      case "sudoswap": {
+  //   swapList: SwapList[],
+  //   ethListingParams: any,
+  //   fee: any[]
+        const order = detail.order as Sdk.Sudoswap.Order; //TODO: correct params...
+        moduleLevelTx = {
+          module: this.contracts.sudoswapModule.address,
+          data: this.contracts.zeroExV4Module.interface.encodeFunctionData(
+            "swapETHForSpecificNFTs",
+            [
+              order.getRaw(),
+              order.params,
+              {
+                fillTo: taker,
+                refundTo: taker,
+                revertIfIncomplete: true,
+              },
+              detail.tokenId,
+            ]
+          ),
+        };
+
+        break;
+      }
       case "looks-rare": {
         const order = detail.order as Sdk.LooksRare.Order;
         const module = this.contracts.looksRareModule.address;
@@ -1069,4 +1103,5 @@ export class Router {
       };
     }
   }
+
 }
