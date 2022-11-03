@@ -28,10 +28,6 @@ contract SudoswapModule is BaseExchangeModule {
     receive() external payable {}
 
     // --- Single ETH listing ---
-    function sayHelloWorld(uint256 value) public payable returns (string memory) {
-        console.log("value 0x: %s", value);
-        return "Hello World";
-    }
 
     function swapETHForSpecificNFTs(
         ISudoswapRouter.PairSwapSpecific[] calldata swapList,
