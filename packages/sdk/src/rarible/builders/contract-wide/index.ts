@@ -153,7 +153,6 @@ export class ContractWideBuilder extends BaseBuilder {
 
     if (order.data.dataType === ORDER_DATA_TYPES.V2) {
       rightOrder.data.payouts = null;
-      rightOrder.data.isMakeFill = null;
       rightOrder.data.originFees = null;
     }
 

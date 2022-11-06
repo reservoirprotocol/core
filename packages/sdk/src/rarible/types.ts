@@ -149,7 +149,6 @@ export interface IV2OrderData {
   dataType: ORDER_DATA_TYPES;
   payouts: IPart[];
   originFees: IPart[];
-  isMakeFill: boolean;
 }
 export interface IV3OrderSellData {
   "@type"?: string;
@@ -207,7 +206,6 @@ export interface BaseBuildParams {
   payouts?: IPart[];
   originFeeFirst?: IPart;
   originFeeSecond?: IPart;
-  isMakeFill?: boolean;
   marketplaceMarker?: string;
   fee?: number;
   maxFeesBasePoint?: number;

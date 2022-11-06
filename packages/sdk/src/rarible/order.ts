@@ -13,8 +13,7 @@ import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
 import { encodeForMatchOrders, encodeOrderData, hashAssetType } from "./utils";
-import { Constants } from ".";
-import { ORDER_DATA_TYPES, ORDER_TYPES } from "./constants";
+import { ORDER_DATA_TYPES } from "./constants";
 
 export class Order {
   public chainId: number;
@@ -446,10 +445,7 @@ const normalize = (order: Types.Order): Types.Order => {
 
   const side = tokenKind === "contract-wide" || takeTokenId ? "buy" : "sell";
   const salt = order.salt;
-  const start =
-    Math.floor(new Date(order.createdAt || "").getTime() / 1000) ||
-    n(order.start) ||
-    0;
+  const start = n(order.start) || 0;
   const end =
     Math.floor(new Date(order.endedAt || "").getTime() / 1000) ||
     n(order.end) ||
