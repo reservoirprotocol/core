@@ -445,7 +445,15 @@ const normalize = (order: Types.Order): Types.Order => {
     : "single-token";
 
   const side = tokenKind === "contract-wide" || takeTokenId ? "buy" : "sell";
-  const salt = BigNumber.from(order.salt).toString();
+  const salt = order.salt;
+  const start =
+    Math.floor(new Date(order.createdAt || "").getTime() / 1000) ||
+    n(order.start) ||
+    0;
+  const end =
+    Math.floor(new Date(order.endedAt || "").getTime() / 1000) ||
+    n(order.end) ||
+    0;
 
   return {
     kind: tokenKind,
@@ -481,9 +489,9 @@ const normalize = (order: Types.Order): Types.Order => {
       },
       value: s(takeValue),
     },
-    salt: salt,
-    start: n(order.start || 0),
-    end: n(order.end || 0),
+    salt,
+    start,
+    end,
     data: dataInfo,
   };
 };
@@ -515,7 +523,7 @@ function parseAssetData(assetInfo: Types.LocalAsset) {
   const valueIsDecimal = assetInfo.value.includes(".");
   // It's safe to assume for now that 18 will work
   const value = valueIsDecimal
-    ? utils.parseUnits(assetInfo.value, "18")
+    ? utils.parseEther(assetInfo.value)
     : assetInfo.value;
 
   const lazyMintInfo = {

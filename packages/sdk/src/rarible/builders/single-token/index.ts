@@ -50,13 +50,20 @@ export class SingleTokenBuilder extends BaseBuilder {
       const paymentInfo =
         side === "buy" ? order.params.make : order.params.take;
 
+      let dataType = order.params.data.dataType;
+      let data = JSON.parse(JSON.stringify(order.params.data));
+
+      if (!Array.isArray(data.payouts)) {
+        data.payouts = [data.payouts];
+      }
+
       const copyOrder = this.build({
-        maker: order.params.maker,
+        ...order.params,
+        ...data,
+        dataType,
         side,
-        tokenKind:
-          nftInfo.assetType.assetClass === AssetClass.ERC721
-            ? "erc721"
-            : "erc1155",
+        maker: order.params.maker,
+        tokenKind: nftInfo.assetType.assetClass,
         contract: lc(nftInfo.assetType.contract!),
         tokenId: nftInfo.assetType.tokenId!,
         price: paymentInfo.value,
@@ -64,12 +71,7 @@ export class SingleTokenBuilder extends BaseBuilder {
           paymentInfo.assetType.assetClass === AssetClass.ETH
             ? constants.AddressZero
             : lc(paymentInfo.assetType.contract!),
-        salt: order.params.salt,
-        startTime: order.params.start,
-        endTime: order.params.end,
         tokenAmount: n(nftInfo.value),
-        orderType: order.params.type,
-        dataType: order.params.data.dataType,
       });
 
       if (!copyOrder) {

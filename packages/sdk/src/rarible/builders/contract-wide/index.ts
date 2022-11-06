@@ -35,6 +35,8 @@ export class ContractWideBuilder extends BaseBuilder {
   }
 
   public isValid(order: Order): boolean {
+    // This is temporary until we support contract bids
+    return true;
     //TODO: Add more validations (used by indexer)
     const { side } = this.getInfo(order);
     try {

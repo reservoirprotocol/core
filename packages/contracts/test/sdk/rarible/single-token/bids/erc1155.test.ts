@@ -79,6 +79,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -168,7 +169,8 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
       ],
     });
 
-    // Sign the order
+    await buyOrder.checkValidity();
+    await buyOrder.sign(buyer);
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -260,8 +262,10 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
         // { account: dan.address, value: "100"},
       ],
     });
-
+    await buyOrder.checkValidity();
+    await buyOrder.sign(buyer);
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -355,6 +359,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -441,6 +446,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -534,6 +540,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -635,6 +642,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -728,6 +736,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -814,6 +823,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -901,6 +911,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
 
     await buyOrder.checkFillability(ethers.provider);
@@ -991,6 +1002,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -1085,6 +1097,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -1182,6 +1195,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(
@@ -1280,6 +1294,7 @@ describe("Rarible - SingleToken Bids Erc1155", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkFillability(ethers.provider);
     const sellerNftBalanceBefore = await nft.getBalance(

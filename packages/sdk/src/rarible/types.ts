@@ -88,6 +88,8 @@ export type Order = {
     | IV3OrderBuyData;
   signature?: string;
   side?: string;
+  createdAt?: string;
+  endedAt?: string;
 };
 
 export type Purchase = {
@@ -189,7 +191,7 @@ export interface BaseBuildParams {
   orderType: ORDER_TYPES;
   maker: string;
   side: "buy" | "sell";
-  tokenKind: "erc721" | "erc1155";
+  tokenKind: "erc721" | "erc1155" | "erc721_lazy" | "erc1155_lazy";
   contract: string;
   tokenAmount?: number;
   price: string;
