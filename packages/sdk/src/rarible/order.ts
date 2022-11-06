@@ -519,21 +519,26 @@ function parseAssetData(assetInfo: Types.LocalAsset) {
     : assetInfo.value;
 
   const lazyMintInfo = {
-    ...(assetInfo.type?.uri && { uri: assetInfo.type?.uri || "" }),
-    ...(assetInfo.type?.creators && {
-      creators: (assetInfo.type?.creators || []).map((l: Types.IPart) =>
-        normalizePartData(l)
+    ...((assetInfo.assetType?.uri || assetInfo.type?.uri) && {
+      uri: assetInfo.assetType?.uri || assetInfo.type?.uri,
+    }),
+    ...((assetInfo.assetType?.supply || assetInfo.type?.supply) && {
+      supply: assetInfo.assetType?.supply || assetInfo.type?.supply,
+    }),
+    ...((assetInfo.assetType?.creators || assetInfo.type?.creators) && {
+      creators: (assetInfo.assetType?.creators || assetInfo.type?.creators).map(
+        (l: Types.IPart) => normalizePartData(l)
       ),
     }),
-    ...(assetInfo.type?.royalties && {
-      royalties: (assetInfo.type?.royalties || []).map((l: Types.IPart) =>
-        normalizePartData(l)
-      ),
+    ...((assetInfo.assetType?.royalties || assetInfo.type?.royalties) && {
+      royalties: (
+        assetInfo.assetType?.royalties || assetInfo.type?.royalties
+      ).map((l: Types.IPart) => normalizePartData(l)),
     }),
-    ...(assetInfo.type?.signatures && {
-      signatures: (assetInfo.type?.signatures || []).map((l: string) =>
-        extractAddressFromChain(l)
-      ),
+    ...((assetInfo.assetType?.signatures || assetInfo.type?.signatures) && {
+      signatures: (
+        assetInfo.assetType?.signatures || assetInfo.type?.signatures
+      ).map((l: string) => extractAddressFromChain(l)),
     }),
   };
 
