@@ -52,6 +52,11 @@ export class SingleTokenBuilder extends BaseBuilder {
             ? constants.AddressZero
             : lc(paymentInfo.assetType.contract!),
         tokenAmount: n(nftInfo.value),
+        uri: nftInfo.assetType.uri,
+        supply: nftInfo.assetType.supply,
+        royalties: nftInfo.assetType.royalties,
+        signatures: nftInfo.assetType.signatures,
+        creators: nftInfo.assetType.creators,
       });
 
       if (!copyOrder) {
@@ -75,6 +80,11 @@ export class SingleTokenBuilder extends BaseBuilder {
         assetClass: params.tokenKind.toUpperCase(),
         contract: lc(params.contract),
         tokenId: params.tokenId,
+        ...(params.uri ? { uri: params.uri } : {}),
+        ...(params.supply ? { supply: params.supply } : {}),
+        ...(params.creators ? { creators: params.creators } : {}),
+        ...(params.signatures ? { signatures: params.signatures } : {}),
+        ...(params.royalties ? { royalties: params.royalties } : {}),
       },
       value: s(params.tokenAmount || 1),
     };
