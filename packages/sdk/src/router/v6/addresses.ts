@@ -32,3 +32,7 @@ export const X2Y2Module: ChainIdToAddress = {
 export const ZeroExV4Module: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x0e01862920bd5ef73ed1a5dccd2ecad56c3e051f",
 };
+
+export let SudoswapModule: ChainIdToAddress = { //TODO: set once deployed
+  [Network.Ethereum]: "0x0000000000000000000000000000000000000000",
+};
