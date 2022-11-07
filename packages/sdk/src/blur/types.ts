@@ -25,8 +25,9 @@ export type BaseOrder = {
   }[];
   salt: string;
   extraParams: string;
+  extraSignature: string;
 
-  signatureType?: number;
+  signatureVersion?: number;
   v?: number;
   r?: string;
   s?: string;

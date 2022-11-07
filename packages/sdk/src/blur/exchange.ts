@@ -9,7 +9,6 @@ import { TxData, bn, generateReferrerBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
-
 export class Exchange {
   public chainId: number;
   public contract: Contract;
@@ -62,7 +61,6 @@ export class Exchange {
       matchOrder
     ]
 
-    // console.log("executeArgs", executeArgs)
     data = this.contract.interface.encodeFunctionData("execute", executeArgs);
 
     if (!isBuy) value = bn(order.params.price);
@@ -75,123 +73,28 @@ export class Exchange {
     };
   }
 
-  // // --- Batch fill listings ---
+  // --- Cancel order ---
 
-  // public async batchBuy(
-  //   taker: Signer,
-  //   orders: Order[],
-  //   matchParams: Types.MatchParams[],
-  //   options?: {
-  //     referrer?: string;
-  //   }
-  // ): Promise<ContractTransaction> {
-  //   const tx = this.batchBuyTx(
-  //     await taker.getAddress(),
-  //     orders,
-  //     matchParams,
-  //     options
-  //   );
-  //   return taker.sendTransaction(tx);
-  // }
+  public async cancelOrder(
+    maker: Signer,
+    order: Order
+  ): Promise<ContractTransaction> {
+    const tx = this.cancelOrderTx(await maker.getAddress(), order);
+    return maker.sendTransaction(tx);
+  }
 
-  // public batchBuyTx(
-  //   taker: string,
-  //   orders: Order[],
-  //   matchParams: Types.MatchParams[],
-  //   options?: {
-  //     referrer?: string;
-  //   }
-  // ): TxData {
-  //   const sellOrders: any[] = [];
-  //   const signatures: any[] = [];
-  //   const fillAmounts: string[] = [];
-  //   const callbackData: string[] = [];
+  public cancelOrderTx(maker: string, order: Order): TxData {
+    const data: string = this.contract.interface.encodeFunctionData("cancelOrder", [
+      order.getRaw().order,
+    ]);
+    return {
+      from: maker,
+      to: this.contract.address,
+      data,
+    };
+  }
 
-  //   const tokenKind = orders[0].params.kind?.split("-")[0];
-  //   if (!tokenKind) {
-  //     throw new Error("Could not detect token kind");
-  //   }
-
-  //   let value = bn(0);
-  //   for (let i = 0; i < Math.min(orders.length, matchParams.length); i++) {
-  //     if (orders[i].params.direction !== Types.TradeDirection.SELL) {
-  //       throw new Error("Invalid side");
-  //     }
-  //     if (orders[i].params.kind?.split("-")[0] !== tokenKind) {
-  //       throw new Error("Invalid kind");
-  //     }
-
-  //     const feeAmount = orders[i].getFeeAmount();
-  //     value = value.add(
-  //       bn(matchParams[i].nftAmount!)
-  //         .mul(orders[i].params.erc20TokenAmount)
-  //         .add(orders[i].params.nftAmount!)
-  //         .sub(1)
-  //         .div(orders[i].params.nftAmount!)
-  //         // Buyer pays the fees
-  //         .add(
-  //           feeAmount
-  //             .mul(matchParams[i].nftAmount!)
-  //             .div(orders[i].params.nftAmount!)
-  //         )
-  //     );
-
-  //     sellOrders.push(orders[i].getRaw());
-  //     signatures.push(orders[i].getRaw());
-  //     fillAmounts.push(matchParams[i].nftAmount!);
-  //     callbackData.push(BytesEmpty);
-  //   }
-
-  //   return {
-  //     from: taker,
-  //     to: this.contract.address,
-  //     data:
-  //       (tokenKind === "erc1155"
-  //         ? this.contract.interface.encodeFunctionData("batchBuyERC1155s", [
-  //             sellOrders,
-  //             signatures,
-  //             fillAmounts,
-  //             false,
-  //           ])
-  //         : this.contract.interface.encodeFunctionData("batchBuyERC721s", [
-  //             sellOrders,
-  //             signatures,
-  //             false,
-  //           ])) + generateReferrerBytes(options?.referrer),
-  //     value: value && bn(value).toHexString(),
-  //   };
-  // }
-
-  // // --- Cancel order ---
-
-  // public async cancelOrder(
-  //   maker: Signer,
-  //   order: Order
-  // ): Promise<ContractTransaction> {
-  //   const tx = this.cancelOrderTx(await maker.getAddress(), order);
-  //   return maker.sendTransaction(tx);
-  // }
-
-  // public cancelOrderTx(maker: string, order: Order): TxData {
-  //   let data: string;
-  //   if (order.params.kind?.startsWith("erc721")) {
-  //     data = this.contract.interface.encodeFunctionData("cancelERC721Order", [
-  //       order.params.nonce,
-  //     ]);
-  //   } else {
-  //     data = this.contract.interface.encodeFunctionData("cancelERC1155Order", [
-  //       order.params.nonce,
-  //     ]);
-  //   }
-
-  //   return {
-  //     from: maker,
-  //     to: this.contract.address,
-  //     data,
-  //   };
-  // }
-
-  // // --- Get hashNonce ---
+  // --- Get hashNonce ---
   public async getNonce(
     provider: Provider,
     user: string
@@ -200,41 +103,21 @@ export class Exchange {
   }
   
 
-  // // --- Increase nonce ---
+  // --- Increase nonce ---
 
-  // public async incrementHashNonce(
-  //   maker: Signer
-  // ): Promise<ContractTransaction> {
-  //   const tx = this.incrementHashNonceTx(await maker.getAddress());
-  //   return maker.sendTransaction(tx);
-  // }
+  public async incrementHashNonce(
+    maker: Signer
+  ): Promise<ContractTransaction> {
+    const tx = this.incrementHashNonceTx(await maker.getAddress());
+    return maker.sendTransaction(tx);
+  }
 
-  // public incrementHashNonceTx(maker: string): TxData {
-  //   const data: string = this.contract.interface.encodeFunctionData("incrementHashNonce", []);
-  //   return {
-  //     from: maker,
-  //     to: this.contract.address,
-  //     data,
-  //   };
-  // }
-
-  // public async getOrderHash(
-  //   provider: Provider,
-  //   order: Order
-  // ): Promise<BigNumber> {
-  //   const isSell = order.params.direction === Types.TradeDirection.SELL;
-  //   if (!order.params.nftAmount) {
-  //     if (isSell) {
-  //       return this.contract.connect(provider).getERC721SellOrderHash(order.getRaw());
-  //     } else {
-  //       return this.contract.connect(provider).getERC721BuyOrderHash(order.getRaw());
-  //     }
-  //   } else {
-  //     if (isSell) {
-  //       return this.contract.connect(provider).getERC1155SellOrderHash(order.getRaw());
-  //     } else {
-  //       return this.contract.connect(provider).getERC1155BuyOrderHash(order.getRaw());
-  //     }
-  //   }
-  // }
+  public incrementHashNonceTx(maker: string): TxData {
+    const data: string = this.contract.interface.encodeFunctionData("incrementNonce", []);
+    return {
+      from: maker,
+      to: this.contract.address,
+      data,
+    };
+  }
 }

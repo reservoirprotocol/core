@@ -1,6 +1,5 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
-import { BigNumber } from "@ethersproject/bignumber";
 import { splitSignature } from "@ethersproject/bytes";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
@@ -14,6 +13,8 @@ import * as Types from "./types";
 import * as Common from "../common";
 import { bn, lc, n, s, BytesEmpty } from "../utils";
 import ExchangeAbi from "./abis/Exchange.json";
+import { MerkleTree } from 'merkletreejs';
+import { keccak256, defaultAbiCoder } from "ethers/lib/utils";
 
 export class Order {
   public chainId: number;
@@ -40,8 +41,8 @@ export class Order {
       v: this.params.v,
       r: this.params.r ?? "",
       s: this.params.s ?? "",
-      extraSignature: BytesEmpty,
-      signatureVersion: 0,
+      extraSignature:this.params.extraSignature ?? BytesEmpty,
+      signatureVersion: this.params.signatureVersion ?? 0,
       blockNumber: 0
     }
   }
@@ -60,11 +61,39 @@ export class Order {
 
     this.params = {
       ...this.params,
-      signatureType: 2,
+      signatureVersion: 0,
       v,
       r,
       s,
     };
+  }
+
+  static async signBulk(orders: Order[], signer: TypedDataSigner) {
+    const { tree, root } = await getOrderTreeRoot(orders);
+    const firstOrder = orders[0];
+    const { v, r, s } = splitSignature(
+      await signer._signTypedData(EIP712_DOMAIN(firstOrder.chainId), 
+      {
+        Root: [{ name: 'root', type: 'bytes32' }],
+      }, {
+        root: root
+      })
+    );
+
+    // sign each order
+    for (let index = 0; index < orders.length; index++) {
+      const order = orders[index];
+      const orderHash = order.hash();
+      const extraSignature = defaultAbiCoder.encode(
+        ['bytes32[]'],
+        [tree.getHexProof(orderHash)],
+      )
+      order.params.extraSignature = extraSignature;
+      order.params.signatureVersion = 1;
+      order.params.r = r;
+      order.params.v = v;
+      order.params.s = s;
+    }
   }
 
   public getSignatureData() {
@@ -235,6 +264,21 @@ const toRawOrder = (order: Order): any => ({
   ...order.params
 });
 
+function getMerkleProof(leaves: string[]) {
+  const tree = new MerkleTree(leaves, keccak256, { sort: true });
+  const root = tree.getHexRoot();
+  return { root, tree};
+}
+
+async function getOrderTreeRoot(orders: Order[]) {
+  const leaves = await Promise.all(
+    orders.map(async (order) => {
+      return order.hash();
+    }),
+  );
+  return getMerkleProof(leaves);
+}
+
 const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
   // Perform some normalization operations on the order:
   // - convert bignumbers to strings where needed
@@ -259,7 +303,8 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
     expirationTime: s(order.expirationTime),
     extraParams: order.extraParams,
     salt: s(order.salt),
-    signatureType: order.signatureType ?? 1,
+    signatureVersion: order.signatureVersion ?? 1,
+    extraSignature: order.extraSignature ?? BytesEmpty,
     v: order.v ?? 0,
     r: order.r ?? HashZero,
     s: order.s ?? HashZero,

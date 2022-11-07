@@ -23,8 +23,9 @@ export interface BaseBuildParams {
   }[];
   salt?: BigNumberish;
   extraParams?: string;
+  extraSignature?: string;
 
-  signatureType?: number;
+  signatureVersion?: number;
   v?: number;
   r?: string;
   s?: string;
@@ -41,7 +42,7 @@ export abstract class BaseBuilder {
 
   protected defaultInitialize(params: BaseBuildParams) {
     params.fees = params.fees ?? [];
-    params.signatureType = params.signatureType ?? 2;
+    params.signatureVersion = params.signatureVersion ?? 0;
     params.v = params.v ?? 0;
     params.r = params.r ?? HashZero;
     params.s = params.s ?? HashZero;

@@ -5,6 +5,8 @@ import * as Blur from "@reservoir0x/sdk/src/blur";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { utils } from "ethers";
+import { MerkleTree } from 'merkletreejs';
 
 import { getChainId, getCurrentTimestamp, reset, setupNFTs } from "../../utils";
 
@@ -104,8 +106,8 @@ describe("Blur - SingleToken Erc721", () => {
     const exchange = new Blur.Exchange(chainId);
     const builder = new Blur.Builders.SingleToken(chainId);
     const inputData = exchange.contract.interface.decodeFunctionData("execute", rawData);
+   
 
-    console.log('inputData', inputData.sell[0])
     function getOrder(sellOrder: any) {
       console.log('sellOrder', sellOrder)
       return {
@@ -136,17 +138,73 @@ describe("Blur - SingleToken Erc721", () => {
       }
     }
 
-    console.log('rawOrder', inputData.sell[0])
-    const sellOrder = getOrder(inputData.sell[0]);
-    const buyOrder = builder.build(sellOrder as any);
+    // console.log('rawOrder', inputData.sell[0])
+    const sellOrderRaw = getOrder(inputData.sell[0]);
+    const sellOrder = builder.build(sellOrderRaw as any);
 
-    console.log('orderHash', buyOrder.hash())
-    console.log('order', buyOrder.params)
+    const sellOrderHash = sellOrder.hash();
+    console.log('orderHash', sellOrderHash)
+
+    const abiDecorder = new utils.AbiCoder();
+    const sellInput = inputData.sell;
+    const merklePath = abiDecorder.decode(
+      ['bytes32[]'],
+      sellInput.extraSignature
+    )
+    console.log('sellInput', sellInput.extraSignature, merklePath)
+
+    function computeRoot(leaf: string, proof: string[]) {
+      let computedHash = leaf;
+      for (let i = 0; i < proof.length; i++) {
+          const proofElement = proof[i];
+          console.log({
+            proofElement,
+            computedHash
+          })
+          if (computedHash <= proofElement) {
+              computedHash = utils.solidityKeccak256(['byte32', 'byte32'],[computedHash, proofElement]);
+          } else {
+              computedHash = utils.solidityKeccak256(['byte32', 'byte32'], [proofElement, computedHash]);
+          }
+      }
+      return computedHash;
+    }
+
+    // const tree = new MerkleTree([]);
+    // tree.addLeaf(MerkleTree.bufferify(sellOrderHash));
+    const root = computeRoot(sellOrderHash, merklePath[0]);
+    console.log("root", root)
+    return;
+
+    console.log('sellOrder', sellOrder)
     const tx = await ethers.provider.getTransactionReceipt('0x7cf6dffef7b3ecc095835264512bf3a16aab9589abb337e5500f9617509739d3');
     const eventData = exchange.contract.interface.decodeEventLog('OrdersMatched', tx.logs[1].data);
 
-    console.log("OrdersMatched", eventData.sellHash)
+    // const tx2 = await ethers.provider.getTransactionReceipt('0x9e4e8ba883e49c296c16f7c06b7f68244c5b916085afee05d24be6d2f02716ca');
+    // const args = exchange.contract.interface.decodeEventLog('OrdersMatched', tx2.logs[2].data, tx2.logs[2].topics);
 
-    buyOrder.checkSignature();
+    console.log('eventData', eventData);
+
+    // const sellHash = args.sellHash.toLowerCase();
+    // const buyHash = args.buyHash.toLowerCase();
+    // const sell = args.sell;
+    // const buy = args.buy;
+
+    // console.log("OrdersMatched", {
+    //   current: {
+    //     maker: args.maker,
+    //     taker: args.taker
+    //   },
+    //   sellHash,
+    //   buyHash,
+    //   newType: {
+    //     sellSig: buy.signature,
+    //     buySig: buy.v,
+    //     maker: sell.trader,
+    //     taker: buy.trader
+    //   }
+    // })
+
+    // buyOrder.checkSignature();
   })
 });
