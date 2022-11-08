@@ -1,7 +1,6 @@
 export type OrderParams = {
+  pair: string;
   price: string;
-  swapList: SwapList;
-  deadline: number;
 };
 
 export type SwapList = {

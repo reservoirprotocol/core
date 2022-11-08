@@ -89,11 +89,21 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
 
     //^^^this has got to become part of the _order_
 
+    // let sellOrder: Sdk.Sudoswap.Order = {
+    //     chainId: chainId, 
+    //     swapList: swapList,
+    //     deadline: Math.floor(Date.now() / 1000) + 10 * 60,
+    //     price: value
+    // };
+
+    let orderParams: Sdk.Sudoswap.OrderParams = { 
+      pair: addresPoolPDB,
+      price: value
+    };
+
     let sellOrder: Sdk.Sudoswap.Order = {
-        chainId: chainId, 
-        swapList: swapList,
-        deadline: Math.floor(Date.now() / 1000) + 10 * 60,
-        price: value
+        chainId: chainId,
+        params: orderParams
     };
 
     const feesOnTop = [
@@ -102,8 +112,6 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
           amount: parseEther("0.03"),
         },
     ];
-
-    console.log("addresPoolPDB: " + addresPoolPDB);
 
     const sellOrders: ListingDetails[] = [];
     sellOrders.push({
