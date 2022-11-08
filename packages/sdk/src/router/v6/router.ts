@@ -818,7 +818,7 @@ export class Router {
         txData: await exchange.fillOrderTx(taker, order, {
           tokenId: detail.tokenId,
           assetClass: detail.contractKind.toUpperCase(),
-          amount: Number(detail.extraArgs.amount),
+          amount: Number(detail.amount),
         }),
         direct: true,
       };
