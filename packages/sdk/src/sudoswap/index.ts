@@ -2,6 +2,6 @@ import * as Addresses from "./addresses";
 import { Router } from "./router";
 import { Order } from "./order";
 import { Exchange } from "./exchange";
-import { SwapList, OrderParams } from "./types";
+import { OrderParams } from "./types";
 
-export { Addresses, Router, Order, Exchange, SwapList, OrderParams };
+export { Addresses, Router, Order, Exchange, OrderParams };
