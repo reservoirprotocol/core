@@ -49,52 +49,34 @@ export class Exchange {
       source?: string;
     }
   ): TxData {
-    if (order.params.side === Types.Side.LISTING) {
+    if (order.params.kind === "single-token") {
       return {
         from: taker,
         to: this.contract.address,
         data:
-          this.contract.interface.encodeFunctionData("fillListing", [
+          this.contract.interface.encodeFunctionData("fillBid", [
             {
               order: order.params,
               signature: order.params.signature!,
               fillAmount: matchParams.fillAmount,
             },
           ]) + generateSourceBytes(options?.source),
-        value: bn(order.params.unitPrice)
-          .mul(matchParams.fillAmount)
-          .toHexString(),
       };
     } else {
-      if (order.params.kind === "single-token") {
-        return {
-          from: taker,
-          to: this.contract.address,
-          data:
-            this.contract.interface.encodeFunctionData("fillBid", [
-              {
-                order: order.params,
-                signature: order.params.signature!,
-                fillAmount: matchParams.fillAmount,
-              },
-            ]) + generateSourceBytes(options?.source),
-        };
-      } else {
-        return {
-          from: taker,
-          to: this.contract.address,
-          data:
-            this.contract.interface.encodeFunctionData("fillBidWithCriteria", [
-              {
-                order: order.params,
-                signature: order.params.signature!,
-                fillAmount: matchParams.fillAmount,
-              },
-              matchParams.tokenId!,
-              matchParams.criteriaProof!,
-            ]) + generateSourceBytes(options?.source),
-        };
-      }
+      return {
+        from: taker,
+        to: this.contract.address,
+        data:
+          this.contract.interface.encodeFunctionData("fillBidWithCriteria", [
+            {
+              order: order.params,
+              signature: order.params.signature!,
+              fillAmount: matchParams.fillAmount,
+            },
+            matchParams.tokenId!,
+            matchParams.criteriaProof!,
+          ]) + generateSourceBytes(options?.source),
+      };
     }
   }
 
@@ -115,6 +97,21 @@ export class Exchange {
       data: this.contract.interface.encodeFunctionData("cancel", [
         [order.params],
       ]),
+    };
+  }
+
+  // --- Create vault ---
+
+  public async createVault(owner: Signer): Promise<TransactionResponse> {
+    const tx = this.createVaultTx(await owner.getAddress());
+    return owner.sendTransaction(tx);
+  }
+
+  public createVaultTx(owner: string): TxData {
+    return {
+      from: owner,
+      to: this.contract.address,
+      data: this.contract.interface.encodeFunctionData("createVault"),
     };
   }
 

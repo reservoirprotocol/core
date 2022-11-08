@@ -100,27 +100,23 @@ export class Order {
       throw new Error("filled");
     }
 
-    if (this.params.side === Types.Side.BID) {
-      // Check balance
-      const erc20 = new Common.Helpers.Erc20(
-        provider,
-        Common.Addresses.Weth[this.chainId]
-      );
-      const balance = await erc20.getBalance(this.params.maker);
-      if (bn(balance).lt(bn(this.params.unitPrice).mul(this.params.amount))) {
-        throw new Error("no-balance");
-      }
+    // Check balance
+    const erc20 = new Common.Helpers.Erc20(
+      provider,
+      Common.Addresses.Weth[this.chainId]
+    );
+    const balance = await erc20.getBalance(this.params.maker);
+    if (bn(balance).lt(bn(this.params.unitPrice).mul(this.params.amount))) {
+      throw new Error("no-balance");
+    }
 
-      // Check allowance
-      const allowance = await erc20.getAllowance(
-        this.params.maker,
-        exchange.address
-      );
-      if (bn(allowance).lt(bn(this.params.unitPrice).mul(this.params.amount))) {
-        throw new Error("no-approval");
-      }
-    } else {
-      // TODO: Add support for checking the fillability of listings
+    // Check allowance
+    const allowance = await erc20.getAllowance(
+      this.params.maker,
+      exchange.address
+    );
+    if (bn(allowance).lt(bn(this.params.unitPrice).mul(this.params.amount))) {
+      throw new Error("no-approval");
     }
   }
 
@@ -184,7 +180,6 @@ const EIP712_DOMAIN = (chainId: number) => ({
 
 export const ORDER_EIP712_TYPES = {
   Order: [
-    { name: "side", type: "uint8" },
     { name: "itemKind", type: "uint8" },
     { name: "maker", type: "address" },
     { name: "token", type: "address" },
@@ -205,7 +200,6 @@ const normalize = (order: Types.Order): Types.Order => {
 
   return {
     kind: order.kind,
-    side: n(order.side),
     itemKind: n(order.itemKind),
     maker: lc(order.maker),
     token: lc(order.token),

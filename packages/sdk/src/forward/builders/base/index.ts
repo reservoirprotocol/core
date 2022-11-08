@@ -6,7 +6,6 @@ import { getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
 export interface BaseBuildParams {
   maker: string;
-  side: "buy" | "sell";
   tokenKind: "erc721" | "erc1155";
   contract: string;
   unitPrice: BigNumberish;

@@ -19,9 +19,8 @@ export class TokenListBuilder extends BaseBuilder {
     try {
       const copyOrder = this.build({
         ...order.params,
-        side: "buy",
         tokenKind:
-          order.params.itemKind === Types.ItemKind.ERC721_CRITERIA_OR_EXTERNAL
+          order.params.itemKind === Types.ItemKind.ERC721_WITH_CRITERIA
             ? "erc721"
             : "erc1155",
         contract: order.params.token,
@@ -43,10 +42,6 @@ export class TokenListBuilder extends BaseBuilder {
   }
 
   public build(params: BuildParams) {
-    if (params.side !== "buy") {
-      throw new Error("Invalid side");
-    }
-
     this.defaultInitialize(params);
 
     const merkleRoot =
@@ -54,11 +49,10 @@ export class TokenListBuilder extends BaseBuilder {
 
     return new Order(this.chainId, {
       kind: "token-list",
-      side: Types.Side.BID,
       itemKind:
         params.tokenKind === "erc721"
-          ? Types.ItemKind.ERC721_CRITERIA_OR_EXTERNAL
-          : Types.ItemKind.ERC1155_CRITERIA_OR_EXTERNAL,
+          ? Types.ItemKind.ERC721_WITH_CRITERIA
+          : Types.ItemKind.ERC1155_WITH_CRITERIA,
       maker: params.maker,
       token: params.contract,
       identifierOrCriteria: s(merkleRoot),
