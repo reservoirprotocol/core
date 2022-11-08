@@ -8,7 +8,7 @@ import { ethers } from "hardhat";
 
 import { getChainId, getCurrentTimestamp, reset, setupNFTs } from "../../utils";
 
-describe("Blur - SingleToken Erc721 - Bulk Sign", () => {
+describe("Blur - Bulk Sign - SingleToken Erc721", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -26,77 +26,6 @@ describe("Blur - SingleToken Erc721 - Bulk Sign", () => {
 
   afterEach(reset);
 
-  // it("Build and fill buy order", async () => {
-  //   const buyer = alice;
-  //   const seller = bob;
-  //   const price = parseEther("1");
-  //   const boughtTokenId = 0;
-
-  //   const weth = new Common.Helpers.Weth(ethers.provider, chainId);
-
-  //   // Mint weth to buyer
-  //   await weth.deposit(buyer, price);
-
-  //   // Approve the exchange contract for the buyer
-  //   await weth.approve(buyer, Blur.Addresses.ExecutionDelegate[chainId]);
-
-  //   // Mint erc721 to seller
-  //   await erc721.connect(seller).mint(boughtTokenId);
-
-  //   const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
-
-  //   const exchange = new Blur.Exchange(chainId);
-
-  //   const builder = new Blur.Builders.SingleToken(chainId);
-
-  //   // Build buy order
-  //   const buyOrder = builder.build({
-  //     side: "buy",
-  //     trader: buyer.address,
-  //     matchingPolicy: Blur.Addresses.StandardPolicyERC721[chainId],
-  //     collection: erc721.address,
-  //     tokenId: boughtTokenId,
-  //     nonce: 0,
-  //     amount: "1",
-  //     paymentToken: Common.Addresses.Weth[chainId],
-  //     price,
-  //     listingTime: await getCurrentTimestamp(ethers.provider),
-  //     expirationTime: (await getCurrentTimestamp(ethers.provider)) + 86400,
-  //     fees: [],
-  //     extraParams: "0x",
-  //     salt: 0,
-  //   });
-
-  //   // Sign the order
-  //   await buyOrder.sign(buyer);
-
-  //   // Approve the exchange for escrowing.
-  //   await erc721
-  //     .connect(seller)
-  //     .setApprovalForAll(Blur.Addresses.ExecutionDelegate[chainId], true);
-
-  //   // Create matching sell order
-  //   const sellOrder = buyOrder.buildMatching({
-  //     trader: seller.address,
-  //   });
-
-  //   await buyOrder.checkFillability(ethers.provider);
-
-  //   const buyerBalanceBefore = await weth.getBalance(buyer.address);
-  //   const ownerBefore = await nft.getOwner(boughtTokenId);
-
-  //   expect(buyerBalanceBefore).to.eq(price);
-  //   expect(ownerBefore).to.eq(seller.address);
-
-  //   // Match orders
-  //   await exchange.fillOrder(seller, buyOrder, sellOrder);
-
-  //   const buyerBalanceAfter = await weth.getBalance(buyer.address);
-  //   const ownerAfter = await nft.getOwner(boughtTokenId);
-
-  //   expect(buyerBalanceAfter).to.eq(0);
-  //   expect(ownerAfter).to.eq(buyer.address);
-  // });
 
   it("Build and fill sell order", async () => {
     const buyer = alice;
@@ -162,14 +91,11 @@ describe("Blur - SingleToken Erc721 - Bulk Sign", () => {
       extraParams: '0x'
     });
 
+    // Sign the order
     await Blur.Order.signBulk([
       sellOrder,
       sellOrder2
     ], seller);
-
-    // return;
-    // Sign the order
-    // await sellOrder.sign(seller);
 
     // Approve the exchange for escrowing.
     await erc721
@@ -222,194 +148,118 @@ describe("Blur - SingleToken Erc721 - Bulk Sign", () => {
     expect(ownerAfter2).to.eq(buyer.address);
   });
 
-  // it("Build and fill buy order with fees", async () => {
-  //   const buyer = alice;
-  //   const seller = bob;
-  //   const price = parseEther("1");
-  //   const boughtTokenId = 0;
 
-  //   const weth = new Common.Helpers.Weth(ethers.provider, chainId);
+  it("Build and cancel sell order", async () => {
+    const buyer = alice;
+    const seller = bob;
+    const price = parseEther("1");
+    const soldTokenId = 0;
+    const soldTokenId2 = 1;
 
-  //   // Mint weth to buyer
-  //   await weth.deposit(buyer, price.add(parseEther("0.15")));
+    const weth = new Common.Helpers.Weth(ethers.provider, chainId);
 
-  //   // Approve the exchange contract for the buyer
-  //   await weth.approve(buyer, Blur.Addresses.ExecutionDelegate[chainId]);
+    // Mint weth to buyer
+    await weth.deposit(buyer, price);
 
-  //   // Mint erc721 to seller
-  //   await erc721.connect(seller).mint(boughtTokenId);
+    // Approve the exchange contract for the buyer
+    await weth.approve(buyer, Blur.Addresses.Exchange[chainId]);
 
-  //   const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
+    // Mint erc721 to seller
+    await erc721.connect(seller).mint(soldTokenId);
 
-  //   const exchange = new Blur.Exchange(chainId);
+    await erc721.connect(seller).mint(soldTokenId2);
 
-  //   const builder = new Blur.Builders.SingleToken(chainId);
+    const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
 
-  //   // Build buy order
-  //   const buyOrder = builder.build({
-  //     side: "buy",
-  //     trader: buyer.address,
-  //     matchingPolicy: Blur.Addresses.StandardPolicyERC721[chainId],
-  //     collection: erc721.address,
-  //     tokenId: boughtTokenId,
-  //     nonce: 0,
-  //     amount: "1",
-  //     paymentToken: Common.Addresses.Weth[chainId],
-  //     price,
-  //     listingTime: await getCurrentTimestamp(ethers.provider),
-  //     expirationTime: (await getCurrentTimestamp(ethers.provider)) + 86400,
-  //     extraParams: "0x",
-  //     salt: 0,
-  //     fees: [
-  //       {
-  //         recipient: carol.address,
-  //         rate: 100, // 100/10000 = 0.01
-  //       },
-  //       {
-  //         recipient: ted.address,
-  //         rate: 200, // 200/10000 = 0.02
-  //       },
-  //     ],
-  //   });
+    // Approve the exchange
+    await nft.approve(seller, Blur.Addresses.ExecutionDelegate[chainId]);
 
-  //   // Sign the order
-  //   await buyOrder.sign(buyer);
+    const exchange = new Blur.Exchange(chainId);
 
-  //   // Approve the exchange for escrowing.
-  //   await erc721
-  //     .connect(seller)
-  //     .setApprovalForAll(Blur.Addresses.ExecutionDelegate[chainId], true);
+    const builder = new Blur.Builders.SingleToken(chainId);
 
-  //   // Create matching sell order
-  //   const sellOrder = buyOrder.buildMatching({
-  //     trader: seller.address
-  //   });
+    // Build sell order
+    const sellOrder = builder.build({
+      side: "sell",
+      trader: seller.address,
+      collection: erc721.address,
+      tokenId: soldTokenId,
+      amount: 1,
+      paymentToken: Common.Addresses.Eth[chainId],
+      price,
+      listingTime: await getCurrentTimestamp(ethers.provider),
+      matchingPolicy: Blur.Addresses.StandardPolicyERC721[chainId],
+      nonce: 0,
+      expirationTime: await getCurrentTimestamp(ethers.provider) + 86400,
+      fees: [],
+      salt: 0,
+      extraParams: '0x'
+    });
 
-  //   await buyOrder.checkFillability(ethers.provider);
+    const sellOrder2 = builder.build({
+      side: "sell",
+      trader: seller.address,
+      collection: erc721.address,
+      tokenId: soldTokenId2,
+      amount: 1,
+      paymentToken: Common.Addresses.Eth[chainId],
+      price,
+      listingTime: await getCurrentTimestamp(ethers.provider),
+      matchingPolicy: Blur.Addresses.StandardPolicyERC721[chainId],
+      nonce: 0,
+      expirationTime: await getCurrentTimestamp(ethers.provider) + 86400,
+      fees: [],
+      salt: 0,
+      extraParams: '0x'
+    });
 
-  //   const buyerBalanceBefore = await weth.getBalance(buyer.address);
-  //   const ownerBefore = await nft.getOwner(boughtTokenId);
+    // Sign the order
+    await Blur.Order.signBulk([
+      sellOrder,
+      sellOrder2
+    ], seller);
 
-  //   expect(buyerBalanceBefore).to.eq(price.add(parseEther("0.15")));
-  //   expect(ownerBefore).to.eq(seller.address);
+    // Approve the exchange for escrowing.
+    await erc721
+      .connect(seller)
+      .setApprovalForAll(Blur.Addresses.ExecutionDelegate[chainId], true);
 
-  //   // Match orders
-  //   await exchange.fillOrder(seller, buyOrder, sellOrder);
+    // Create matching buy order
+    const buyOrder = sellOrder.buildMatching({
+      trader: buyer.address
+    });
 
-  //   const buyerBalanceAfter = await weth.getBalance(buyer.address);
-  //   const carolBalanceAfter = await weth.getBalance(carol.address);
-  //   const tedBalanceAfter = await weth.getBalance(ted.address);
-  //   const ownerAfter = await nft.getOwner(boughtTokenId);
+    const buyOrder2 = sellOrder2.buildMatching({
+      trader: buyer.address
+    });
 
-  //   expect(buyerBalanceAfter).to.eq(parseEther("0.15"));
-  //   expect(carolBalanceAfter).to.eq(parseEther("0.01"));
-  //   expect(tedBalanceAfter).to.eq(parseEther("0.02"));
-  //   expect(ownerAfter).to.eq(buyer.address);
-  // });
+    await exchange.cancelOrder(seller, sellOrder);
 
-  // it("Build and fill sell order with fees", async () => {
-  //   const buyer = alice;
-  //   const seller = bob;
-  //   const price = parseEther("1");
-  //   const soldTokenId = 0;
+    let error = null;
+    try {
 
-  //   // Mint erc721 to seller
-  //   await erc721.connect(seller).mint(soldTokenId);
+      await sellOrder.checkFillability(ethers.provider);
+    } catch(e: any) {
+      error = e.toString();
+    }
 
-  //   const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
+    expect(error).eq("Error: not-fillable");
 
-  //   // Approve the exchange
-  //   await nft.approve(seller, Blur.Addresses.ExecutionDelegate[chainId]);
+    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceBefore = await ethers.provider.getBalance(
+      seller.address
+    );
 
-  //   const exchange = new Blur.Exchange(chainId);
+    // Match orders
+    await exchange.fillOrder(buyer, sellOrder2, buyOrder2);
 
-  //   const builder = new Blur.Builders.SingleToken(chainId);
+    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+    const ownerAfter2 = await nft.getOwner(soldTokenId2);
 
-  //   // Build sell order
-  //   const sellOrder = builder.build({
-  //     side: "sell",
-  //     trader: seller.address,
-  //     collection: erc721.address,
-  //     tokenId: soldTokenId,
-  //     amount: 1,
-  //     paymentToken: Common.Addresses.Eth[chainId],
-  //     price,
-  //     listingTime: await getCurrentTimestamp(ethers.provider),
-  //     matchingPolicy: Blur.Addresses.StandardPolicyERC721[chainId],
-  //     nonce: 0,
-  //     expirationTime: await getCurrentTimestamp(ethers.provider) + 86400,
-  //     salt: 0,
-  //     extraParams: '0x',
-  //     fees: [
-  //       {
-  //         recipient: carol.address,
-  //         rate: 100
-  //       },
-  //       {
-  //         recipient: ted.address,
-  //         rate: 200
-  //       },
-  //     ],
-  //   });
+    expect(buyerBalanceBefore.sub(buyerBalanceAfter)).to.be.gt(price);
+    expect(sellerBalanceAfter).to.eq(sellerBalanceBefore.add(price));
+    expect(ownerAfter2).to.eq(buyer.address);
+  });
 
-  //   // Sign the order
-  //   await sellOrder.sign(seller);
-
-  //   // Approve the exchange for escrowing.
-  //   await erc721
-  //     .connect(seller)
-  //     .setApprovalForAll(Blur.Addresses.ExecutionDelegate[chainId], true);
-
-  //   // Create matching buy order
-  //   const buyOrder = sellOrder.buildMatching({
-  //     trader: buyer.address
-  //   });
-
-  //   await sellOrder.checkFillability(ethers.provider);
-
-  //   const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
-  //   const sellerBalanceBefore = await ethers.provider.getBalance(
-  //     seller.address
-  //   );
-  //   const carolBalanceBefore = await ethers.provider.getBalance(carol.address);
-  //   const tedBalanceBefore = await ethers.provider.getBalance(ted.address);
-  //   const ownerBefore = await nft.getOwner(soldTokenId);
-
-  //   expect(ownerBefore).to.eq(seller.address);
-
-  //   // Match orders
-  //   await exchange.fillOrder(buyer, sellOrder, buyOrder, {
-  //     referrer: "reservoir.market",
-  //   });
-
-  //   const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
-  //   const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
-  //   const carolBalanceAfter = await ethers.provider.getBalance(carol.address);
-  //   const tedBalanceAfter = await ethers.provider.getBalance(ted.address);
-  //   const ownerAfter = await nft.getOwner(soldTokenId);
-
-  //   // console.log({
-  //   //   buyerBalanceAfter: buyerBalanceAfter.toString(),
-  //   //   spend: buyerBalanceBefore.sub(buyerBalanceAfter).toString(),
-  //   //   buyerBalanceBefore: buyerBalanceBefore.toString(),
-  //   //   carolBalanceAfter: carolBalanceAfter.toString(),
-  //   //   tedBalanceAfter: tedBalanceAfter.toString(),
-  //   //   sellerBalanceBefore: sellerBalanceBefore.toString(),
-  //   //   sellerBalanceAfter: sellerBalanceAfter.toString(),
-  //   //   ownerAfter
-  //   // })
-
-  //   expect(buyerBalanceBefore.sub(buyerBalanceAfter)).to.be.gte(
-  //     price
-  //   );
-
-  //   expect(carolBalanceAfter.sub(carolBalanceBefore)).to.eq(parseEther("0.01"));
-  //   expect(tedBalanceAfter.sub(tedBalanceBefore)).to.eq(parseEther("0.02"));
-  //   expect(sellerBalanceAfter).to.eq(
-  //     sellerBalanceBefore.add(
-  //       price.sub(parseEther("0.01")).sub(parseEther("0.02"))
-  //     )
-  //   );
-  //   expect(ownerAfter).to.eq(buyer.address);
-  // });
 });
