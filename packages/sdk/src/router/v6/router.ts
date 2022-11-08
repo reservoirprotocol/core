@@ -323,13 +323,6 @@ export class Router {
         amount: bn(amount).mul(sudoswapDetails.length).div(details.length),
       }));
 
-      console.log(" .   orders[0].params.pair: " + orders[0].params.pair);
-      console.log("sudoswapDetails[0].tokenId: " + sudoswapDetails[0].tokenId);
-      console.log(JSON.stringify(sudoswapDetails.map((x) => [(x.order as Sdk.Sudoswap.Order).params.pair, [x.tokenId]])));
-      console.log("---");
-      console.log(JSON.stringify([[orders[0].params.pair, [sudoswapDetails[0].tokenId]]]));
-      console.log("---");
-
       const totalPrice = orders
         .map((order) => bn(order.params.price))
         .reduce((a, b) => a.add(b), bn(0));
