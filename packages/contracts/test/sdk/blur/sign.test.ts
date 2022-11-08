@@ -1,16 +1,13 @@
-import { Contract } from "@ethersproject/contracts";
-import { parseEther } from "@ethersproject/units";
-import * as Common from "@reservoir0x/sdk/src/common";
+import { defaultAbiCoder } from "@ethersproject/abi";
+import { keccak256 } from "@ethersproject/solidity";
+import { verifyTypedData } from "@ethersproject/wallet";
 import * as Blur from "@reservoir0x/sdk/src/blur";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { utils } from "ethers";
 import { MerkleTree } from "merkletreejs";
-import { verifyTypedData } from "@ethersproject/wallet";
-import { keccak256, defaultAbiCoder } from "ethers/lib/utils";
 
-import { getChainId, getCurrentTimestamp, reset, setupNFTs } from "../../utils";
+import { getChainId, reset } from "../../utils";
 
 describe("Blur - signature check", () => {
   const chainId = getChainId();
@@ -21,11 +18,8 @@ describe("Blur - signature check", () => {
   let carol: SignerWithAddress;
   let ted: SignerWithAddress;
 
-  let erc721: Contract;
-
   beforeEach(async () => {
     [deployer, alice, bob, carol, ted] = await ethers.getSigners();
-    ({ erc721 } = await setupNFTs(deployer));
   });
 
   afterEach(reset);
