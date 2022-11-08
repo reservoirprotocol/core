@@ -7,8 +7,6 @@ import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {ISudoswapRouter} from "../../../interfaces/ISudoswapRouter.sol";
 
-import "hardhat/console.sol";
-
 contract SudoswapModule is BaseExchangeModule {
 
     // --- Fields ---
