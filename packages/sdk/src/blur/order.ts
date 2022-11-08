@@ -43,7 +43,7 @@ export class Order {
       s: this.params.s ?? "",
       extraSignature:this.params.extraSignature ?? BytesEmpty,
       signatureVersion: this.params.signatureVersion ?? 0,
-      blockNumber: 0
+      blockNumber: this.params.blockNumber ?? 0
     }
   }
 
@@ -73,9 +73,7 @@ export class Order {
     const firstOrder = orders[0];
     const { v, r, s } = splitSignature(
       await signer._signTypedData(EIP712_DOMAIN(firstOrder.chainId), 
-      {
-        Root: [{ name: 'root', type: 'bytes32' }],
-      }, {
+      ORDER_ROOT_EIP712_TYPES, {
         root: root
       })
     );
@@ -89,6 +87,7 @@ export class Order {
         [tree.getHexProof(orderHash)],
       )
       order.params.extraSignature = extraSignature;
+      // bulk
       order.params.signatureVersion = 1;
       order.params.r = r;
       order.params.v = v;
@@ -108,12 +107,26 @@ export class Order {
 
   public checkSignature() {
     const [types, value] = this.getEip712TypesAndValue();
-
-    const signer = verifyTypedData(EIP712_DOMAIN(this.chainId), types, value, {
+    let signer: string | null;
+    const signature = {
       v: this.params.v,
       r: this.params.r ?? "",
       s: this.params.s ?? "",
-    });
+    }
+
+    // bulk sign
+    if (this.params.signatureVersion === 1) {
+      const proof = defaultAbiCoder.decode(['bytes32[]'], this.params.extraSignature)[0];
+      const tree = new MerkleTree([], keccak256, {
+        sort: true 
+      });
+      const treeRoot = computedRoot(tree, proof, this.hash());
+      signer = verifyTypedData(EIP712_DOMAIN(this.chainId), ORDER_ROOT_EIP712_TYPES, {
+        root: treeRoot
+      }, signature)
+    } else {
+      signer = verifyTypedData(EIP712_DOMAIN(this.chainId), types, value, signature);
+    }
 
     if (lc(this.params.trader) !== lc(signer)) {
       throw new Error("Invalid signature");
@@ -125,10 +138,6 @@ export class Order {
       throw new Error("Invalid order");
     }
   }
-
-  // public getInfo(): BaseOrderInfo | undefined {
-  //   return this.getBuilder().getInfo(this);
-  // }
 
   public async checkFillability(provider: Provider) {
     const chainId = await provider.getNetwork().then((n) => n.chainId);
@@ -212,6 +221,7 @@ export class Order {
   }
 
   private getEip712TypesAndValue() {
+    // bulk-sign
     return [ORDER_EIP712_TYPES, toRawOrder(this), "Order"];
   }
 
@@ -223,7 +233,6 @@ export class Order {
     if (this.params.matchingPolicy === Addresses.StandardPolicyERC721[this.chainId]) {
       return 'erc721-single-token'
     }
-
     throw new Error(
       "Could not detect order kind (order might have unsupported params/calldata)"
     );
@@ -260,6 +269,11 @@ const ORDER_EIP712_TYPES = {
   ]
 };
 
+
+const ORDER_ROOT_EIP712_TYPES = {
+  Root: [{ name: 'root', type: 'bytes32' }],
+}
+
 const toRawOrder = (order: Order): any => ({
   ...order.params
 });
@@ -277,6 +291,32 @@ async function getOrderTreeRoot(orders: Order[]) {
     }),
   );
   return getMerkleProof(leaves);
+}
+
+function computedRoot(tree: MerkleTree, proof: string[], targetNode: string) {
+  const hashFn = tree.bufferifyFn(keccak256);
+  let hash = tree.bufferify(targetNode);
+  for (let i = 0; i < proof.length; i++) {
+      const node = proof[i];
+      let data = null;
+      let isLeftNode = null;
+      if (typeof node === 'string') {
+          data = tree.bufferify(node);
+          isLeftNode = true;
+      } else {
+        throw new Error('Expected node to be of type string or object');
+      }
+      const buffers = [];
+      if (Buffer.compare(hash, data) === -1) {
+        buffers.push(hash, data);
+        hash = hashFn(Buffer.concat(buffers));
+      }
+      else {
+        buffers.push(data, hash);
+        hash = hashFn(Buffer.concat(buffers));
+      }
+  }
+  return tree.bufferToHex(hash)
 }
 
 const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
@@ -305,6 +345,7 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
     salt: s(order.salt),
     signatureVersion: order.signatureVersion ?? 1,
     extraSignature: order.extraSignature ?? BytesEmpty,
+    blockNumber: order.blockNumber ?? 0,
     v: order.v ?? 0,
     r: order.r ?? HashZero,
     s: order.s ?? HashZero,

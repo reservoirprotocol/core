@@ -8,9 +8,6 @@ import { BytesEmpty, lc, s, n } from "../../../utils";
 export const ZERO_BYTES32 =
   '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-interface BuildParams extends BaseBuildParams {
-  tokenId: BigNumberish;
-}
 
 export class SingleTokenBuilder extends BaseBuilder {
   public isValid(order: Order): boolean {
@@ -34,7 +31,7 @@ export class SingleTokenBuilder extends BaseBuilder {
     return true;
   }
 
-  public build(params: BuildParams) {
+  public build(params: BaseBuildParams) {
     this.defaultInitialize(params);
 
     return new Order(this.chainId, {
@@ -60,6 +57,7 @@ export class SingleTokenBuilder extends BaseBuilder {
       extraParams: params.extraParams ? s(params.extraParams) : BytesEmpty,
       signatureVersion: params.signatureVersion,
       extraSignature: params.extraSignature ?? BytesEmpty,
+      blockNumber: params.blockNumber ?? 0,
       v: params.v,
       r: params.r,
       s: params.s,

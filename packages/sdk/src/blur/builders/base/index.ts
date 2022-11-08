@@ -2,8 +2,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
-import { BaseOrder, OrderInput } from "../../types";
-import { getCurrentTimestamp, getRandomBytes } from "../../../utils";
+import { OrderInput } from "../../types";
 
 export interface BaseBuildParams {
   side: "sell" | "buy";
@@ -25,6 +24,7 @@ export interface BaseBuildParams {
   extraParams?: string;
   extraSignature?: string;
 
+  blockNumber?: number;
   signatureVersion?: number;
   v?: number;
   r?: string;

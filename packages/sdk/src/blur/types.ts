@@ -28,6 +28,7 @@ export type BaseOrder = {
   extraSignature: string;
 
   signatureVersion?: number;
+  blockNumber: number;
   v?: number;
   r?: string;
   s?: string;
