@@ -50,51 +50,23 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
 
     // Setup
 
+    const buyer = alice;
+
     const contractPDB = await setupSudoswapTestContract();
 
     const tokenId: number = 6113; //example token
 
-    const owner00 = await contractPDB.ownerOf(tokenId);
+    const seller = await contractPDB.ownerOf(tokenId);
     
     const pairFactory = new Sdk.Sudoswap.Exchange(chainId); //selling/deposit 
     
-    const impersonatedSigner = await ethers.getImpersonatedSigner(owner00);
+    const impersonatedSigner = await ethers.getImpersonatedSigner(seller);
     
     // List nft
     
     await pairFactory.depositNFTs(impersonatedSigner, addresTokenPDB, [tokenId], addresPoolPDB);
 
-    let refundTo_balance_00 = await ethers.provider.getBalance(carol.address);
-
     let value = parseEther("1.0").toString();
-    let swapListNftIds: number[] = [tokenId];
-    let swapList = [addresPoolPDB, swapListNftIds];
-        let fillTo = alice.address;
-        let refundTo = carol.address;
-        let revertIfIncomplete = false;
-        let amount00 = value;
-    let ethListingParams = [fillTo, refundTo, revertIfIncomplete, amount00];
-        let recipient = "0x0000000000000000000000000000000000000000";
-        let amount01 = 0;
-    let fee = [recipient, amount01];
-
-    //const sudoswapRouter = new Sdk.Sudoswap.Router(chainId);
-    //let txnData = sudoswapRouter.swapETHForSpecificNFTsTxData(
-      //sudoswapModule.address,
-      //[swapList],
-      //ethListingParams,
-      //[fee]
-    //);
-    //let execution: ExecutionInfo[] = [{module: sudoswapModule.address, data: txnData, value: value}];
-
-    //^^^this has got to become part of the _order_
-
-    // let sellOrder: Sdk.Sudoswap.Order = {
-    //     chainId: chainId, 
-    //     swapList: swapList,
-    //     deadline: Math.floor(Date.now() / 1000) + 10 * 60,
-    //     price: value
-    // };
 
     let orderParams: Sdk.Sudoswap.OrderParams = { 
       pair: addresPoolPDB,
@@ -106,11 +78,12 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
         params: orderParams
     };
 
+    let feeRecipient = emilio;
     const feesOnTop = [
-        {
-          recipient: emilio.address,
-          amount: parseEther("0.03"),
-        },
+      {
+        recipient: feeRecipient.address,
+        amount: parseEther("0.03"),
+      }
     ];
 
     const sellOrders: ListingDetails[] = [];
@@ -126,14 +99,16 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
 
     const router = new Sdk.RouterV6.Router(chainId, ethers.provider);
     router.contracts.sudoswapModule = new Contract(
-        sudoswapModule.address,
+        sudoswapModule.address, 
         SudoswapModuleAbi,
         ethers.provider
-      )
+    )
+    //TODO: ^remove once mainnet deployed
+
 
     const { txData } = await router.fillListingsTx(
       sellOrders,
-      alice.address,
+      buyer.address,
       Sdk.Common.Addresses.Eth[chainId],
       {
         source: "reservoir.market",
@@ -141,6 +116,45 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
       }
     );
     await alice.sendTransaction(txData);
+
+    const feeRecipientEthBalanceAfter = await feeRecipient.getBalance();
+    const sellerEthBalanceAfter = await seller.getBalance();
+    const tokenOwnerAfter = await contractPDB.ownerOf(tokenId);
+    
+    expect(feeRecipientEthBalanceAfter.sub(feeRecipientEthBalanceBefore)).to.eq(
+      feesOnTop.map(({ amount }) => bn(amount)).reduce((a, b) => a.add(b))
+    );
+    expect(seller1EthBalanceAfter.sub(seller1EthBalanceBefore)).to.eq(
+      price1.sub(price1.mul(fee1).div(10000))
+    );
+    expect(seller2WethBalanceAfter.sub(seller2WethBalanceBefore)).to.eq(
+      price2.sub(price2.mul(fee2).div(10000))
+    );
+    expect(seller3EthBalanceAfter.sub(seller3EthBalanceBefore)).to.eq(
+      price3
+        .mul(amount3)
+        .add(totalAmount3 + 1)
+        .div(totalAmount3)
+    );
+    expect(tokenOwnerAfter).to.eq(buyer.address);
+    expect(token2OwnerAfter).to.eq(buyer.address);
+    expect(token3BuyerBalanceAfter).to.eq(amount3);
+
+    // Router is stateless (it shouldn't keep any funds)
+    expect(
+      await ethers.provider.getBalance(router.contracts.router.address)
+    ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.looksRareModule.address)
+    ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.seaportModule.address)
+    ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(router.contracts.zeroExV4Module.address)
+    ).to.eq(0);
+
+
   });
 
 });

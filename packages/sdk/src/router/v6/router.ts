@@ -44,7 +44,7 @@ export class Router {
       router: new Contract(Addresses.Router[chainId], RouterAbi, provider),
       // Initialize modules
       sudoswapModule: new Contract(
-        Addresses.SudoswapModule[chainId] ?? AddressZero, //TODO: set in test
+        Addresses.SudoswapModule[chainId] ?? AddressZero,
         SudoswapModuleAbi,
         provider
       ),
