@@ -29,7 +29,6 @@ export const buildOrderData = (
         dataType: ORDER_DATA_TYPES.V2,
         payouts: params.payouts!,
         originFees: params.originFees!,
-        isMakeFill: params.isMakeFill!,
       };
       return v2Data;
     case ORDER_DATA_TYPES.V3_SELL:

@@ -75,6 +75,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -163,6 +164,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -242,6 +244,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -306,6 +309,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
       payouts: [{ account: seller.address, value: "10000" }],
     });
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -378,6 +382,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
       marketplaceMarker: "rarible",
     });
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -463,6 +468,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -570,6 +576,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -663,6 +670,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -754,6 +762,8 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -848,6 +858,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -927,6 +938,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -1028,6 +1040,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -1106,6 +1119,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -1187,6 +1201,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -1274,6 +1289,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);
@@ -1355,6 +1371,7 @@ describe("Rarible - SingleToken Listings Erc721", () => {
     });
 
     // Sign the order
+    await sellOrder.checkValidity();
     await sellOrder.sign(seller);
     await sellOrder.checkSignature();
     await sellOrder.checkFillability(ethers.provider);

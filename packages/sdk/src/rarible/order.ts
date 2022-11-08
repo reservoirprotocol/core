@@ -13,8 +13,7 @@ import Erc721Abi from "../common/abis/Erc721.json";
 import Erc20Abi from "../common/abis/Erc20.json";
 import Erc1155Abi from "../common/abis/Erc1155.json";
 import { encodeForMatchOrders, encodeOrderData, hashAssetType } from "./utils";
-import { Constants } from ".";
-import { ORDER_DATA_TYPES, ORDER_TYPES } from "./constants";
+import { ORDER_DATA_TYPES } from "./constants";
 
 export class Order {
   public chainId: number;
@@ -445,7 +444,12 @@ const normalize = (order: Types.Order): Types.Order => {
     : "single-token";
 
   const side = tokenKind === "contract-wide" || takeTokenId ? "buy" : "sell";
-  const salt = BigNumber.from(order.salt).toString();
+  const salt = order.salt;
+  const start = n(order.start) || 0;
+  const end =
+    Math.floor(new Date(order.endedAt || "").getTime() / 1000) ||
+    n(order.end) ||
+    0;
 
   return {
     kind: tokenKind,
@@ -481,9 +485,9 @@ const normalize = (order: Types.Order): Types.Order => {
       },
       value: s(takeValue),
     },
-    salt: salt,
-    start: n(order.start || 0),
-    end: n(order.end || 0),
+    salt,
+    start,
+    end,
     data: dataInfo,
   };
 };
@@ -515,25 +519,30 @@ function parseAssetData(assetInfo: Types.LocalAsset) {
   const valueIsDecimal = assetInfo.value.includes(".");
   // It's safe to assume for now that 18 will work
   const value = valueIsDecimal
-    ? utils.parseUnits(assetInfo.value, "18")
+    ? utils.parseEther(assetInfo.value)
     : assetInfo.value;
 
   const lazyMintInfo = {
-    ...(assetInfo.type?.uri && { uri: assetInfo.type?.uri || "" }),
-    ...(assetInfo.type?.creators && {
-      creators: (assetInfo.type?.creators || []).map((l: Types.IPart) =>
-        normalizePartData(l)
+    ...((assetInfo.assetType?.uri || assetInfo.type?.uri) && {
+      uri: assetInfo.assetType?.uri || assetInfo.type?.uri,
+    }),
+    ...((assetInfo.assetType?.supply || assetInfo.type?.supply) && {
+      supply: assetInfo.assetType?.supply || assetInfo.type?.supply,
+    }),
+    ...((assetInfo.assetType?.creators || assetInfo.type?.creators) && {
+      creators: (assetInfo.assetType?.creators || assetInfo.type?.creators).map(
+        (l: Types.IPart) => normalizePartData(l)
       ),
     }),
-    ...(assetInfo.type?.royalties && {
-      royalties: (assetInfo.type?.royalties || []).map((l: Types.IPart) =>
-        normalizePartData(l)
-      ),
+    ...((assetInfo.assetType?.royalties || assetInfo.type?.royalties) && {
+      royalties: (
+        assetInfo.assetType?.royalties || assetInfo.type?.royalties
+      ).map((l: Types.IPart) => normalizePartData(l)),
     }),
-    ...(assetInfo.type?.signatures && {
-      signatures: (assetInfo.type?.signatures || []).map((l: string) =>
-        extractAddressFromChain(l)
-      ),
+    ...((assetInfo.assetType?.signatures || assetInfo.type?.signatures) && {
+      signatures: (
+        assetInfo.assetType?.signatures || assetInfo.type?.signatures
+      ).map((l: string) => extractAddressFromChain(l)),
     }),
   };
 

@@ -2,6 +2,7 @@ import { constants, utils } from "ethers";
 import { Constants, Types } from "..";
 import { ORDER_DATA_TYPES } from "../constants";
 import { AssetClass, IPart, LocalAssetType } from "../types";
+import { getOrderSide } from "./order-info";
 
 export const encodeAssetData = (assetType: LocalAssetType) => {
   switch (assetType.assetClass) {
@@ -112,6 +113,13 @@ export const encodeOrderData = (
     case Constants.ORDER_DATA_TYPES.V2:
     case Constants.ORDER_DATA_TYPES.API_V2:
       const v2Data = order.data as Types.IV2OrderData;
+      const side = getOrderSide(
+        order.make.assetType.assetClass,
+        order.take.assetType.assetClass
+      );
+
+      const isMakeFill = side === "buy" ? 0 : 1;
+
       encodedOrderData = utils.defaultAbiCoder.encode(
         [
           "tuple(tuple(address account,uint96 value)[] payouts, tuple(address account,uint96 value)[] originFees, bool isMakeFill)",
@@ -120,7 +128,7 @@ export const encodeOrderData = (
           {
             payouts: encodeV2OrderData(v2Data.payouts),
             originFees: encodeV2OrderData(v2Data.originFees),
-            isMakeFill: v2Data.isMakeFill || true,
+            isMakeFill: isMakeFill,
           },
         ]
       );

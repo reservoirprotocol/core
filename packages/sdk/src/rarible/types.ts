@@ -88,6 +88,8 @@ export type Order = {
     | IV3OrderBuyData;
   signature?: string;
   side?: string;
+  createdAt?: string;
+  endedAt?: string;
 };
 
 export type Purchase = {
@@ -147,7 +149,6 @@ export interface IV2OrderData {
   dataType: ORDER_DATA_TYPES;
   payouts: IPart[];
   originFees: IPart[];
-  isMakeFill: boolean;
 }
 export interface IV3OrderSellData {
   "@type"?: string;
@@ -189,7 +190,7 @@ export interface BaseBuildParams {
   orderType: ORDER_TYPES;
   maker: string;
   side: "buy" | "sell";
-  tokenKind: "erc721" | "erc1155";
+  tokenKind: "erc721" | "erc1155" | "erc721_lazy" | "erc1155_lazy";
   contract: string;
   tokenAmount?: number;
   price: string;
@@ -198,6 +199,13 @@ export interface BaseBuildParams {
   startTime: number;
   endTime: number;
   dataType: ORDER_DATA_TYPES;
+
+  // Lazy mint options
+  uri?: string;
+  supply?: string;
+  creators?: IPart[];
+  royalties?: IPart[];
+  signatures?: string[];
   // Fields below should be based on the data type of the order
   // They are optional currently and we assume they're passed correctly
   // TODO: Validation should be added to ensure correct all params exist and are passed correctly
@@ -205,7 +213,6 @@ export interface BaseBuildParams {
   payouts?: IPart[];
   originFeeFirst?: IPart;
   originFeeSecond?: IPart;
-  isMakeFill?: boolean;
   marketplaceMarker?: string;
   fee?: number;
   maxFeesBasePoint?: number;

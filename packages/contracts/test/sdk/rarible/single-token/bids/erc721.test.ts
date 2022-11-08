@@ -82,6 +82,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
@@ -160,6 +161,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
@@ -236,6 +238,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
@@ -317,6 +320,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
@@ -393,6 +397,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
@@ -462,6 +467,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
@@ -536,6 +542,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);
@@ -620,6 +627,7 @@ describe("Rarible - SingleToken Bids Erc721", () => {
     });
 
     // Sign the order
+    await buyOrder.checkValidity();
     await buyOrder.sign(buyer);
     await buyOrder.checkSignature();
     await buyOrder.checkFillability(ethers.provider);

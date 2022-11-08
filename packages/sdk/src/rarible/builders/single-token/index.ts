@@ -6,37 +6,17 @@ import { BigNumber, constants } from "ethers/lib/ethers";
 import { AssetClass } from "../../types";
 import { ORDER_DATA_TYPES } from "../../constants";
 import { buildOrderData } from "../utils";
+import { getOrderSide } from "../../utils";
 interface BuildParams extends Types.BaseBuildParams {
   tokenId: string;
 }
 
 export class SingleTokenBuilder extends BaseBuilder {
   public getInfo(order: Order): BaseOrderInfo {
-    let side: "sell" | "buy";
-    const makeAssetClass = order.params.make.assetType.assetClass;
-    const takeAssetClass = order.params.take.assetType.assetClass;
-    //TODO: Can be rewriten to be more readable
-    if (
-      (makeAssetClass === Types.AssetClass.ERC721 ||
-        makeAssetClass === Types.AssetClass.ERC721_LAZY ||
-        makeAssetClass === Types.AssetClass.ERC1155 ||
-        makeAssetClass === Types.AssetClass.ERC1155_LAZY) &&
-      (takeAssetClass === Types.AssetClass.ERC20 ||
-        takeAssetClass === Types.AssetClass.ETH)
-    ) {
-      side = "sell";
-    } else if (
-      makeAssetClass === Types.AssetClass.COLLECTION ||
-      (makeAssetClass === Types.AssetClass.ERC20 &&
-        (takeAssetClass === Types.AssetClass.ERC721 ||
-          takeAssetClass === Types.AssetClass.ERC721_LAZY ||
-          takeAssetClass === Types.AssetClass.ERC1155 ||
-          takeAssetClass === Types.AssetClass.ERC1155_LAZY))
-    ) {
-      side = "buy";
-    } else {
-      throw new Error("Invalid asset class");
-    }
+    const side = getOrderSide(
+      order.params.make.assetType.assetClass,
+      order.params.take.assetType.assetClass
+    );
     return {
       side,
     };
@@ -50,13 +30,20 @@ export class SingleTokenBuilder extends BaseBuilder {
       const paymentInfo =
         side === "buy" ? order.params.make : order.params.take;
 
+      let dataType = order.params.data.dataType;
+      let data = JSON.parse(JSON.stringify(order.params.data));
+
+      if (!Array.isArray(data.payouts)) {
+        data.payouts = [data.payouts];
+      }
+
       const copyOrder = this.build({
-        maker: order.params.maker,
+        ...order.params,
+        ...data,
+        dataType,
         side,
-        tokenKind:
-          nftInfo.assetType.assetClass === AssetClass.ERC721
-            ? "erc721"
-            : "erc1155",
+        maker: order.params.maker,
+        tokenKind: nftInfo.assetType.assetClass,
         contract: lc(nftInfo.assetType.contract!),
         tokenId: nftInfo.assetType.tokenId!,
         price: paymentInfo.value,
@@ -64,12 +51,12 @@ export class SingleTokenBuilder extends BaseBuilder {
           paymentInfo.assetType.assetClass === AssetClass.ETH
             ? constants.AddressZero
             : lc(paymentInfo.assetType.contract!),
-        salt: order.params.salt,
-        startTime: order.params.start,
-        endTime: order.params.end,
         tokenAmount: n(nftInfo.value),
-        orderType: order.params.type,
-        dataType: order.params.data.dataType,
+        uri: nftInfo.assetType.uri,
+        supply: nftInfo.assetType.supply,
+        royalties: nftInfo.assetType.royalties,
+        signatures: nftInfo.assetType.signatures,
+        creators: nftInfo.assetType.creators,
       });
 
       if (!copyOrder) {
@@ -93,6 +80,11 @@ export class SingleTokenBuilder extends BaseBuilder {
         assetClass: params.tokenKind.toUpperCase(),
         contract: lc(params.contract),
         tokenId: params.tokenId,
+        ...(params.uri ? { uri: params.uri } : {}),
+        ...(params.supply ? { supply: params.supply } : {}),
+        ...(params.creators ? { creators: params.creators } : {}),
+        ...(params.signatures ? { signatures: params.signatures } : {}),
+        ...(params.royalties ? { royalties: params.royalties } : {}),
       },
       value: s(params.tokenAmount || 1),
     };
@@ -145,7 +137,6 @@ export class SingleTokenBuilder extends BaseBuilder {
 
     if (order.data.dataType === ORDER_DATA_TYPES.V2) {
       rightOrder.data.payouts = null;
-      rightOrder.data.isMakeFill = null;
       rightOrder.data.originFees = null;
     }
 
