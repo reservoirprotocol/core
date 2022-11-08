@@ -38,6 +38,7 @@ contract SudoswapModule is BaseExchangeModule {
         external
         payable
         nonReentrant
+        refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
         // Execute fill
