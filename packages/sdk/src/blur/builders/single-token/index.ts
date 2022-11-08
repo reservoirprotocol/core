@@ -4,10 +4,7 @@ import { BaseBuildParams, BaseBuilder } from "../base";
 import { Order } from "../../order";
 import * as Types from "../../types";
 import { BytesEmpty, lc, s, n } from "../../../utils";
-
-export const ZERO_BYTES32 =
-  '0x0000000000000000000000000000000000000000000000000000000000000000';
-
+import { HashZero } from "@ethersproject/constants";
 
 export class SingleTokenBuilder extends BaseBuilder {
   public isValid(order: Order): boolean {
@@ -78,8 +75,8 @@ export class SingleTokenBuilder extends BaseBuilder {
         amount: data?.amount ? s(data.amount) : "1",
       },
       v: 0,
-      r: ZERO_BYTES32,
-      s: ZERO_BYTES32,
+      r: HashZero,
+      s: HashZero,
       extraSignature: BytesEmpty,
       signatureVersion: 0,
       blockNumber: data?.blockNumber ?? 0
