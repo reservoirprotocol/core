@@ -2,10 +2,11 @@ import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/abstract-provider";
+
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -47,19 +48,14 @@ export class Exchange {
       referrer?: string;
     }
   ): TxData {
-
     let to = this.contract.address;
     let data: string;
     let value: BigNumber | undefined;
 
-    const isBuy = order.params.side === Types.TradeDirection.BUY
-    const executeArgs = isBuy ? [
-      matchOrder,
-      order.getRaw(),
-    ] : [
-      order.getRaw(),
-      matchOrder
-    ]
+    const isBuy = order.params.side === Types.TradeDirection.BUY;
+    const executeArgs = isBuy
+      ? [matchOrder, order.getRaw()]
+      : [order.getRaw(), matchOrder];
 
     data = this.contract.interface.encodeFunctionData("execute", executeArgs);
 
@@ -68,7 +64,7 @@ export class Exchange {
     return {
       from: taker,
       to,
-      data: data + generateReferrerBytes(options?.referrer),
+      data: data + generateSourceBytes(options?.referrer),
       value: value && bn(value).toHexString(),
     };
   }
@@ -84,9 +80,10 @@ export class Exchange {
   }
 
   public cancelOrderTx(maker: string, order: Order): TxData {
-    const data: string = this.contract.interface.encodeFunctionData("cancelOrder", [
-      order.getRaw().order,
-    ]);
+    const data: string = this.contract.interface.encodeFunctionData(
+      "cancelOrder",
+      [order.getRaw().order]
+    );
     return {
       from: maker,
       to: this.contract.address,
@@ -95,25 +92,22 @@ export class Exchange {
   }
 
   // --- Get hashNonce ---
-  public async getNonce(
-    provider: Provider,
-    user: string
-  ): Promise<BigNumber> {
+  public async getNonce(provider: Provider, user: string): Promise<BigNumber> {
     return this.contract.connect(provider).nonces(user);
   }
-  
 
   // --- Increase nonce ---
 
-  public async incrementHashNonce(
-    maker: Signer
-  ): Promise<ContractTransaction> {
+  public async incrementHashNonce(maker: Signer): Promise<ContractTransaction> {
     const tx = this.incrementHashNonceTx(await maker.getAddress());
     return maker.sendTransaction(tx);
   }
 
   public incrementHashNonceTx(maker: string): TxData {
-    const data: string = this.contract.interface.encodeFunctionData("incrementNonce", []);
+    const data: string = this.contract.interface.encodeFunctionData(
+      "incrementNonce",
+      []
+    );
     return {
       from: maker,
       to: this.contract.address,
