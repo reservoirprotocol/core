@@ -324,7 +324,7 @@ export class Router {
           }));
     
           const totalPrice = orders
-            .map((order) => bn(order.params.price))
+            .map((order) => bn(order.price))
             .reduce((a, b) => a.add(b), bn(0));
           const totalFees = fees
             .map(({ amount }) => bn(amount))
@@ -336,7 +336,8 @@ export class Router {
               this.contracts.sudoswapModule.interface.encodeFunctionData(
                   "swapETHForSpecificNFTs",
                   [
-                    orders.map((order) => order.params),
+                    orders[0].swapList,
+                    orders[0].deadline,
                     {
                       fillTo: taker,
                       refundTo: taker,

@@ -1,4 +1,5 @@
 export type OrderParams = {
+  price: string;
   swapList: SwapList;
   deadline: number;
 };
