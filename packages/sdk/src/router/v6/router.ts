@@ -336,7 +336,7 @@ export class Router {
           this.contracts.sudoswapModule.interface.encodeFunctionData(
               "swapETHForSpecificNFTs",
               [
-                sudoswapDetails.map((x) => [(x.order as Sdk.Sudoswap.Order).params.pair, [x.tokenId]]),
+                sudoswapDetails.map((d) => [(d.order as Sdk.Sudoswap.Order).params.pair, [d.tokenId]]),
                 Math.floor(Date.now() / 1000) + 10 * 60,
                 {
                   fillTo: taker,
