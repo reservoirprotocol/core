@@ -631,6 +631,16 @@ export class Router {
         (d) => d.order as Sdk.ZeroExV4.Order
       );
 
+      for (const order of orders) {
+        // Retrieve the order's signature
+        if (order.params.cbOrderId) {
+          await new Sdk.ZeroExV4.Exchange(
+            this.chainId,
+            String(process.env.CB_API_KEY)
+          ).releaseOrder(taker, order);
+        }
+      }
+
       const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
         recipient,
         // The fees are averaged over the number of listings to fill
@@ -698,6 +708,16 @@ export class Router {
       const orders = zeroexV4Erc1155Details.map(
         (d) => d.order as Sdk.ZeroExV4.Order
       );
+
+      for (const order of orders) {
+        // Retrieve the order's signature
+        if (order.params.cbOrderId) {
+          await new Sdk.ZeroExV4.Exchange(
+            this.chainId,
+            String(process.env.CB_API_KEY)
+          ).releaseOrder(taker, order);
+        }
+      }
 
       const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
         recipient,
@@ -976,6 +996,14 @@ export class Router {
 
       case "zeroex-v4": {
         const order = detail.order as Sdk.ZeroExV4.Order;
+
+        // Retrieve the order's signature
+        if (order.params.cbOrderId) {
+          await new Sdk.ZeroExV4.Exchange(
+            this.chainId,
+            String(process.env.CB_API_KEY)
+          ).releaseOrder(taker, order);
+        }
 
         if (detail.contractKind === "erc721") {
           moduleLevelTx = {

@@ -197,7 +197,7 @@ export class Router {
 
     if (zeroexV4Erc721Details.length > 1) {
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
-      const tx = exchange.batchBuyTx(
+      const tx = await exchange.batchBuyTx(
         taker,
         zeroexV4Erc1155Details.map(
           (detail) => detail.order as Sdk.ZeroExV4.Order
@@ -236,7 +236,7 @@ export class Router {
     }
     if (zeroexV4Erc1155Details.length > 1) {
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
-      const tx = exchange.batchBuyTx(
+      const tx = await exchange.batchBuyTx(
         taker,
         zeroexV4Erc1155Details.map(
           (detail) => detail.order as Sdk.ZeroExV4.Order
@@ -559,7 +559,11 @@ export class Router {
 
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
+        tx: await exchange.fillOrderTx(
+          this.contract.address,
+          order,
+          matchParams
+        ),
         exchangeKind: ExchangeKind.ZEROEX_V4,
         maker: order.params.maker,
       };
@@ -657,7 +661,7 @@ export class Router {
 
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(filler, order, matchParams, {
+        tx: await exchange.fillOrderTx(filler, order, matchParams, {
           // Do not use the `onReceived` hook filling to be compatible with the router
           noDirectTransfer: true,
         }),
