@@ -17,6 +17,7 @@ export enum TradeDirection {
 
 export type BaseOrder = {
   kind?: OrderKind;
+  cbOrderId?: string;
   direction: TradeDirection;
   maker: string;
   taker: string;
