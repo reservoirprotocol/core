@@ -16,6 +16,7 @@ import ERC1155Abi from "../../common/abis/Erc1155.json";
 // Router
 import RouterAbi from "./abis/ReservoirV6_0_0.json";
 // Modules
+import SudoswapModuleAbi from "./abis/SudoswapModule.json";
 import FoundationModuleAbi from "./abis/FoundationModule.json";
 import LooksRareModuleAbi from "./abis/LooksRareModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
@@ -42,6 +43,11 @@ export class Router {
       // Initialize router
       router: new Contract(Addresses.Router[chainId], RouterAbi, provider),
       // Initialize modules
+      sudoswapModule: new Contract(
+        Addresses.SudoswapModule[chainId] ?? AddressZero,
+        SudoswapModuleAbi,
+        provider
+      ),
       foundationModule: new Contract(
         Addresses.FoundationModule[chainId] ?? AddressZero,
         FoundationModuleAbi,
@@ -252,6 +258,7 @@ export class Router {
     } & ListingDetails;
 
     // Split all listings by their kind
+    const sudoswapDetails: ListingDetailsExtracted[] = [];
     const foundationDetails: ListingDetailsExtracted[] = [];
     const looksRareDetails: ListingDetailsExtracted[] = [];
     const seaportDetails: ListingDetailsExtracted[] = [];
@@ -263,6 +270,10 @@ export class Router {
 
       let detailsRef: ListingDetailsExtracted[];
       switch (kind) {
+        case "sudoswap":
+          detailsRef = sudoswapDetails;
+          break;
+
         case "foundation":
           detailsRef = foundationDetails;
           break;
@@ -299,6 +310,51 @@ export class Router {
 
     // TODO: When splitting the fees across executions, also take into
     // account the quantity filled (only relevant for ERC1155 listings)
+
+    // Handle Sudoswap listings
+    if (sudoswapDetails.length) {
+      const orders = sudoswapDetails.map(
+        (d) => d.order as Sdk.Sudoswap.Order
+      );
+
+      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
+        recipient,
+        // The fees are averaged over the number of listings to fill
+        amount: bn(amount).mul(sudoswapDetails.length).div(details.length),
+      }));
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.price))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module: this.contracts.sudoswapModule.address,
+        data:
+          this.contracts.sudoswapModule.interface.encodeFunctionData(
+              "swapETHForSpecificNFTs",
+              [
+                sudoswapDetails.map((d) => [(d.order as Sdk.Sudoswap.Order).params.pair, [d.tokenId]]),
+                Math.floor(Date.now() / 1000) + 10 * 60,
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                  amount: totalPrice,
+                },
+                fees,
+              ]
+            ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of sudoswapDetails) {
+        success[originalIndex] = true;
+      }
+    }
 
     // Handle Foundation listings
     if (foundationDetails.length) {

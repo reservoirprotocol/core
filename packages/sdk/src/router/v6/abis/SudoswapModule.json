@@ -1,0 +1,76 @@
+[
+    {
+        "inputs": [
+        {
+            "components": [
+            {
+                "internalType": "address",
+                "name": "pair",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "nftIds",
+                "type": "uint256[]"
+            }
+            ],
+            "internalType": "structISudoswapRouter.PairSwapSpecific[]",
+            "name": "swapList",
+            "type": "tuple[]"
+        },
+        {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+        },
+        {
+            "components": [
+            {
+                "internalType": "address",
+                "name": "fillTo",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "refundTo",
+                "type": "address"
+            },
+            {
+                "internalType": "bool",
+                "name": "revertIfIncomplete",
+                "type": "bool"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+            ],
+            "internalType": "structBaseExchangeModule.ETHListingParams",
+            "name": "params",
+            "type": "tuple"
+        },
+        {
+            "components": [
+            {
+                "internalType": "address",
+                "name": "recipient",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+            ],
+            "internalType": "structBaseExchangeModule.Fee[]",
+            "name": "fees",
+            "type": "tuple[]"
+        }
+        ],
+        "name": "swapETHForSpecificNFTs",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    }
+]
