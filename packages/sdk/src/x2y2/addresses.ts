@@ -2,12 +2,12 @@ import { ChainIdToAddress, Network } from "../utils";
 
 export const Exchange: ChainIdToAddress = {
   [Network.Ethereum]: "0x74312363e45dcaba76c59ec49a7aa8a65a67eed3",
-  [Network.EthereumGoerli]: "0x1891EcD5F7b1E751151d857265D6e6D08ae8989e",
+  [Network.EthereumGoerli]: "0x1891ecd5f7b1e751151d857265d6e6d08ae8989e",
 };
 
 export const Erc721Delegate: ChainIdToAddress = {
   [Network.Ethereum]: "0xf849de01b080adc3a814fabe1e2087475cf2e354",
-  [Network.EthereumGoerli]: "0x095be13D86000260852E4F92eA48dc333fa35249",
+  [Network.EthereumGoerli]: "0x095be13d86000260852e4f92ea48dc333fa35249",
 };
 
 export const FeeManager: ChainIdToAddress = {
