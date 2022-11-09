@@ -14,7 +14,6 @@ export class Exchange {
     this.chainId = chainId;
     this.contract = new Contract(
       Addresses.PairFactory[this.chainId],
-      // @ts-ignore
       PairFactoryAbi
     );
   }
