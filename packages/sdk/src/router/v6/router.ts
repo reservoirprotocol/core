@@ -135,7 +135,7 @@ export class Router {
       }
     }
 
-    //TODO: Add Rarible router module
+    // TODO: Add Rarible router module
     if (details.some(({ kind }) => kind === "rarible")) {
       if (details.length > 1) {
         throw new Error("Rarible sweeping is not supported");

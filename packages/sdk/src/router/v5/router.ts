@@ -689,6 +689,29 @@ export class Router {
         ),
         exchangeKind: ExchangeKind.SEAPORT,
       };
+    } else if (kind === "seaport-partial") {
+      order = order as Sdk.Seaport.Types.PartialOrder;
+      const result = await axios.get(
+        `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}`
+      );
+
+      const fullOrder = new Sdk.Seaport.Order(this.chainId, result.data.order);
+
+      const exchange = new Sdk.Seaport.Exchange(this.chainId);
+      return {
+        tx: exchange.fillOrderTx(
+          filler,
+          fullOrder,
+          {
+            criteriaResolvers: result.data.criteriaResolvers ?? [],
+          },
+          // Force using `fulfillAdvancedOrder` to pass router selector whitelist
+          {
+            recipient: filler,
+          }
+        ),
+        exchangeKind: ExchangeKind.SEAPORT,
+      };
     } else if (kind === "x2y2") {
       order = order as Sdk.X2Y2.Order;
 
