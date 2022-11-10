@@ -167,6 +167,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
 
     // Prepare executions
 
+    const tokenKind = listings[0].nft.kind.toUpperCase();
     const executions: ExecutionInfo[] = [
       ...(useUsdc
         ? [
@@ -251,12 +252,13 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         ? {
             module: zeroExV4Module.address,
             data: zeroExV4Module.interface.encodeFunctionData(
-              `accept${
-                useUsdc ? "ERC20" : "ETH"
-              }Listings${listings[0].nft.kind.toUpperCase()}`,
+              `accept${useUsdc ? "ERC20" : "ETH"}Listings${tokenKind}`,
               [
                 listings.map((listing) => listing.order!.getRaw()),
                 listings.map((listing) => listing.order!.getRaw()),
+                tokenKind === "ERC1155"
+                  ? listings.map((listing) => listing.nft.amount ?? "1")
+                  : undefined,
                 {
                   fillTo: carol.address,
                   refundTo: carol.address,
@@ -271,7 +273,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
                     amount,
                   })),
                 ],
-              ]
+              ].filter(Boolean)
             ),
             value: useUsdc
               ? 0
@@ -285,12 +287,13 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
         : {
             module: zeroExV4Module.address,
             data: zeroExV4Module.interface.encodeFunctionData(
-              `accept${
-                useUsdc ? "ERC20" : "ETH"
-              }Listing${listings[0].nft.kind.toUpperCase()}`,
+              `accept${useUsdc ? "ERC20" : "ETH"}Listing${tokenKind}`,
               [
                 listings[0].order!.getRaw(),
                 listings[0].order!.getRaw(),
+                tokenKind === "ERC1155"
+                  ? listings[0].nft.amount ?? "1"
+                  : undefined,
                 {
                   fillTo: carol.address,
                   refundTo: carol.address,
@@ -305,7 +308,7 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
                       amount,
                     }))
                   : [],
-              ]
+              ].filter(Boolean)
             ),
             value: useUsdc
               ? 0
