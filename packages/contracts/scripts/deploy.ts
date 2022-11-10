@@ -46,7 +46,7 @@ const main = async () => {
   const deploymentHelper = await DeploymentHelper.getInstance();
 
   // await deploymentHelper.deploy(
-  //   "X2Y2Module",
+  //   "ZeroExV4Module",
   //   [deploymentHelper.deployer.address, router.address],
   //   { verifyOnEtherscan: true }
   // );
