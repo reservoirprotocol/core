@@ -313,9 +313,7 @@ export class Router {
 
     // Handle Sudoswap listings
     if (sudoswapDetails.length) {
-      const orders = sudoswapDetails.map(
-        (d) => d.order as Sdk.Sudoswap.Order
-      );
+      const orders = sudoswapDetails.map((d) => d.order as Sdk.Sudoswap.Order);
 
       const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
         recipient,
@@ -332,21 +330,23 @@ export class Router {
 
       executions.push({
         module: this.contracts.sudoswapModule.address,
-        data:
-          this.contracts.sudoswapModule.interface.encodeFunctionData(
-              "swapETHForSpecificNFTs",
-              [
-                sudoswapDetails.map((d) => [(d.order as Sdk.Sudoswap.Order).params.pair, [d.tokenId]]),
-                Math.floor(Date.now() / 1000) + 10 * 60,
-                {
-                  fillTo: taker,
-                  refundTo: taker,
-                  revertIfIncomplete: Boolean(!options?.partial),
-                  amount: totalPrice,
-                },
-                fees,
-              ]
-            ),
+        data: this.contracts.sudoswapModule.interface.encodeFunctionData(
+          "swapETHForSpecificNFTs",
+          [
+            sudoswapDetails.map((d) => [
+              (d.order as Sdk.Sudoswap.Order).params.pair,
+              [d.tokenId],
+            ]),
+            Math.floor(Date.now() / 1000) + 10 * 60,
+            {
+              fillTo: taker,
+              refundTo: taker,
+              revertIfIncomplete: Boolean(!options?.partial),
+              amount: totalPrice,
+            },
+            fees,
+          ]
+        ),
         value: totalPrice.add(totalFees),
       });
 
@@ -887,6 +887,7 @@ export class Router {
       };
     }
 
+    // TODO: Add Rarible router module
     if (detail.kind === "rarible") {
       const order = detail.order as Sdk.Rarible.Order;
       const exchange = new Sdk.Rarible.Exchange(this.chainId);
@@ -912,7 +913,26 @@ export class Router {
       };
     }
 
-    // X2Y2 bids can only be filled directly (at least their centralized API has this restriction)
+    // TODO: Add Forward router module
+    if (detail.kind === "forward") {
+      const order = detail.order as Sdk.Forward.Order;
+
+      const matchParams = order.buildMatching({
+        tokenId: detail.tokenId,
+        amount: detail.amount ?? 1,
+        ...(detail.extraArgs ?? {}),
+      });
+
+      const exchange = new Sdk.Forward.Exchange(this.chainId);
+      return {
+        txData: exchange.fillOrderTx(taker, order, matchParams, {
+          source: options?.source,
+        }),
+        direct: true,
+      };
+    }
+
+    // TODO: Support filling X2Y2 bids through the router
     if (detail.kind === "x2y2") {
       const order = detail.order as Sdk.X2Y2.Order;
       const exchange = new Sdk.X2Y2.Exchange(
@@ -939,7 +959,7 @@ export class Router {
         const module = this.contracts.looksRareModule.address;
 
         const matchParams = order.buildMatching(
-          // For X2Y2, the module acts as the taker proxy
+          // For LooksRare, the module acts as the taker proxy
           module,
           {
             tokenId: detail.tokenId,
