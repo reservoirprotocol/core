@@ -1,6 +1,6 @@
 import * as Types from "./types";
 import { Provider } from "@ethersproject/abstract-provider";
-import { bn, getCurrentTimestamp } from "../utils";
+import { bn, getCurrentTimestamp, lc } from "../utils";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
 import {
   keccak256,
@@ -15,6 +15,9 @@ import * as CommonAddresses from "../common/addresses";
 import { Addresses } from ".";
 import ExchangeAbi from "./abis/Exchange.json";
 import ComplicationAbi from "./abis/Complication.json";
+
+import { Builders } from ".";
+import { Common } from "..";
 
 export class Order extends OrderParams {
   constructor(chainId: number, params: Types.OrderInput) {
@@ -34,11 +37,25 @@ export class Order extends OrderParams {
   }
 
   public checkValidity() {
+    if (!this.getBuilder().isValid(this)) {
+      throw new Error("Invalid order");
+    }
+  }
+
+  public checkBaseValid() {
     if (
       !this.isSellOrder &&
       this.currency === CommonAddresses.Eth[this.chainId]
     ) {
       throw new Error("Offers cannot be made in ETH");
+    }
+
+    if (this.isSellOrder) {
+      for (const nft of this.nfts) {
+        if (!nft.tokens || nft.tokens.length === 0) {
+          throw new Error("Listings must specify token ids");
+        }
+      }
     }
 
     const complicationValid =
@@ -65,10 +82,95 @@ export class Order extends OrderParams {
     );
 
     const isNonceValid = await exchange.isNonceValid(this.signer, this.nonce);
-
     if (!isNonceValid) {
       throw new Error("not-fillable");
     }
+
+    if (this.currency !== CommonAddresses.Eth[chainId]) {
+      const isCurrencyValid = await complication.isValidCurrency(this.currency);
+      if (!isCurrencyValid) {
+        throw new Error("not-fillable");
+      }
+    }
+
+    if (this.isSellOrder) {
+      const { balance } = await this.getFillableTokens(provider);
+      /**
+       * the maker of the order only needs to have enough tokens
+       * to fill the order
+       */
+      if (balance < this.numItems) {
+        throw new Error("no-balance");
+      }
+    } else {
+      // the order is an offer
+      const erc20 = new Common.Helpers.Erc20(provider, this.currency);
+      const balance = await erc20.getBalance(this.signer);
+      const currentPrice = this.getPrice(Date.now());
+      if (bn(balance).lt(currentPrice)) {
+        throw new Error("no-balance");
+      }
+
+      const allowance = await erc20.getAllowance(
+        this.signer,
+        Addresses.Exchange[chainId]
+      );
+      if (bn(allowance).lt(currentPrice)) {
+        throw new Error("no-approval");
+      }
+    }
+  }
+
+  public async getFillableTokens(provider: Provider) {
+    type NftsWithOwnershipData = {
+      collection: string;
+      isApproved: boolean;
+      tokens: { tokenId: string; numTokens: number; isOwner: boolean }[];
+    };
+    const nfts: NftsWithOwnershipData[] = [];
+    const ownedAndApprovedNfts: NftsWithOwnershipData[] = [];
+
+    for (const { collection, tokens } of this.nfts) {
+      const erc721 = new Common.Helpers.Erc721(provider, collection);
+      const isApproved = await erc721.isApproved(
+        this.signer,
+        Addresses.Exchange[this.chainId]
+      );
+      const collectionNfts: NftsWithOwnershipData = {
+        collection,
+        isApproved,
+        tokens: [],
+      };
+
+      for (const { tokenId, numTokens } of tokens) {
+        const owner = await erc721.getOwner(tokenId);
+        const isOwner = lc(owner) === this.signer;
+        collectionNfts.tokens.push({
+          isOwner,
+          tokenId,
+          numTokens,
+        });
+      }
+
+      nfts.push(collectionNfts);
+
+      if(isApproved) {
+        const ownedTokens = collectionNfts.tokens.filter((item) => item.isOwner);
+        if(ownedTokens.length > 0) {
+          ownedAndApprovedNfts.push({ collection, isApproved, tokens: ownedTokens });
+        }
+      }
+    }
+
+    const balance = ownedAndApprovedNfts.reduce((acc, { tokens }) => {
+      return acc + tokens.reduce((acc, { numTokens }) => acc + numTokens, 0);
+    }, 0);
+
+    return {
+      balance, 
+      tokens: nfts,
+      fillableTokens: ownedAndApprovedNfts
+    };
   }
 
   public getMatchingPrice(timestampOverride?: number): BigNumberish {
@@ -84,6 +186,19 @@ export class Order extends OrderParams {
     }
     // price is constant
     return this.getPrice(timestampOverride ?? getCurrentTimestamp());
+  }
+
+  protected getBuilder() {
+    switch (this.kind) {
+      case "single-token":
+        return new Builders.SingleToken(this.chainId);
+      case "contract-wide":
+        return new Builders.ContractWide(this.chainId);
+      case "complex":
+        return new Builders.Complex(this.chainId);
+      default:
+        throw new Error("Unknown order kind");
+    }
   }
 
   protected getPrice(timestamp: number, precision = 4): BigNumberish {

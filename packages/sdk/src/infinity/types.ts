@@ -5,6 +5,8 @@ export type OrderNFTs = {
   tokens: { tokenId: string; numTokens: number }[];
 };
 
+export type OrderKind = "contract-wide" | "single-token" | "complex";
+
 export interface OrderInput {
   isSellOrder: boolean;
   signer: string;

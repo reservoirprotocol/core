@@ -18,6 +18,15 @@ export class OrderParams implements Types.OrderInput {
     };
   }
 
+  get kind(): Types.OrderKind {
+    if(this._isSingleToken) {
+      return "single-token";
+    } else if(this._isContractWide) {
+      return "contract-wide";
+    }
+    return "complex";
+  }
+
   get chainId() {
     return this._chainId;
   }
@@ -166,6 +175,14 @@ export class OrderParams implements Types.OrderInput {
       }
       throw new Error(`Invalid params: ${JSON.stringify(err)}`);
     }
+  }
+
+  protected get _isSingleToken() {
+    return this.numItems === 1 && this.nfts.length === 1 && this.nfts[0]?.tokens?.length === 1;
+  }
+
+  protected get _isContractWide() {
+    return this.nfts.length === 1 && this.nfts[0]?.tokens?.length === 0;
   }
 
   protected _verifySig(encodedSignature: string) {
