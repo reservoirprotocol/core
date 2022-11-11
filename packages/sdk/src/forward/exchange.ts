@@ -9,7 +9,7 @@ import { Contract } from "@ethersproject/contracts";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -29,7 +29,7 @@ export class Exchange {
     order: Order,
     matchParams: Types.MatchParams,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<TransactionResponse> {
     const tx = this.fillOrderTx(
@@ -46,55 +46,37 @@ export class Exchange {
     order: Order,
     matchParams: Types.MatchParams,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
-    if (order.params.side === Types.Side.LISTING) {
+    if (order.params.kind === "single-token") {
       return {
         from: taker,
         to: this.contract.address,
         data:
-          this.contract.interface.encodeFunctionData("fillListing", [
+          this.contract.interface.encodeFunctionData("fillBid", [
             {
               order: order.params,
               signature: order.params.signature!,
               fillAmount: matchParams.fillAmount,
             },
-          ]) + generateReferrerBytes(options?.referrer),
-        value: bn(order.params.unitPrice)
-          .mul(matchParams.fillAmount)
-          .toHexString(),
+          ]) + generateSourceBytes(options?.source),
       };
     } else {
-      if (order.params.kind === "single-token") {
-        return {
-          from: taker,
-          to: this.contract.address,
-          data:
-            this.contract.interface.encodeFunctionData("fillBid", [
-              {
-                order: order.params,
-                signature: order.params.signature!,
-                fillAmount: matchParams.fillAmount,
-              },
-            ]) + generateReferrerBytes(options?.referrer),
-        };
-      } else {
-        return {
-          from: taker,
-          to: this.contract.address,
-          data:
-            this.contract.interface.encodeFunctionData("fillBidWithCriteria", [
-              {
-                order: order.params,
-                signature: order.params.signature!,
-                fillAmount: matchParams.fillAmount,
-              },
-              matchParams.tokenId!,
-              matchParams.criteriaProof!,
-            ]) + generateReferrerBytes(options?.referrer),
-        };
-      }
+      return {
+        from: taker,
+        to: this.contract.address,
+        data:
+          this.contract.interface.encodeFunctionData("fillBidWithCriteria", [
+            {
+              order: order.params,
+              signature: order.params.signature!,
+              fillAmount: matchParams.fillAmount,
+            },
+            matchParams.tokenId!,
+            matchParams.criteriaProof!,
+          ]) + generateSourceBytes(options?.source),
+      };
     }
   }
 
@@ -115,6 +97,21 @@ export class Exchange {
       data: this.contract.interface.encodeFunctionData("cancel", [
         [order.params],
       ]),
+    };
+  }
+
+  // --- Create vault ---
+
+  public async createVault(owner: Signer): Promise<TransactionResponse> {
+    const tx = this.createVaultTx(await owner.getAddress());
+    return owner.sendTransaction(tx);
+  }
+
+  public createVaultTx(owner: string): TxData {
+    return {
+      from: owner,
+      to: this.contract.address,
+      data: this.contract.interface.encodeFunctionData("createVault"),
     };
   }
 

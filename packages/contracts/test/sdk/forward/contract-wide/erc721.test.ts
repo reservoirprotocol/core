@@ -40,6 +40,9 @@ describe("Forward - ContractWide Erc721", () => {
 
     const exchange = new Forward.Exchange(chainId);
 
+    // Create vault
+    await exchange.createVault(buyer);
+
     // Mint erc721 to seller
     await erc721.connect(seller).mint(boughtTokenId);
     const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
@@ -54,7 +57,6 @@ describe("Forward - ContractWide Erc721", () => {
     // Build bid
     const bid = builder.build({
       tokenKind: "erc721",
-      side: "buy",
       maker: buyer.address,
       contract: erc721.address,
       unitPrice,
@@ -77,7 +79,7 @@ describe("Forward - ContractWide Erc721", () => {
 
     // Match orders
     await exchange.fillOrder(seller, bid, matchParams, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerWethBalanceAfter = await weth.getBalance(buyer.address);
@@ -91,7 +93,9 @@ describe("Forward - ContractWide Erc721", () => {
       sellerWethBalanceBefore.add(unitPrice)
     );
     expect(ownerAfter.toLowerCase()).to.eq(
-      exchange.contract.address.toLowerCase()
+      (
+        await exchange.contract.connect(ethers.provider).vaults(buyer.address)
+      ).toLowerCase()
     );
   });
 });

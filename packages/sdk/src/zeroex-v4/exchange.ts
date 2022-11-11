@@ -2,11 +2,12 @@ import { defaultAbiCoder } from "@ethersproject/abi";
 import { Signer } from "@ethersproject/abstract-signer";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
+import axios from "axios";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { BytesEmpty, TxData, bn, generateReferrerBytes } from "../utils";
+import { BytesEmpty, TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 import Erc721Abi from "../common/abis/Erc721.json";
@@ -15,10 +16,12 @@ import Erc1155Abi from "../common/abis/Erc1155.json";
 export class Exchange {
   public chainId: number;
   public contract: Contract;
+  public cbApiKey: string | undefined;
 
-  constructor(chainId: number) {
+  constructor(chainId: number, cbApiKey?: string) {
     this.chainId = chainId;
     this.contract = new Contract(Addresses.Exchange[this.chainId], ExchangeAbi);
+    this.cbApiKey = cbApiKey;
   }
 
   // --- Fill order ---
@@ -29,10 +32,10 @@ export class Exchange {
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
-    const tx = this.fillOrderTx(
+    const tx = await this.fillOrderTx(
       await taker.getAddress(),
       order,
       matchParams,
@@ -41,16 +44,21 @@ export class Exchange {
     return taker.sendTransaction(tx);
   }
 
-  public fillOrderTx(
+  public async fillOrderTx(
     taker: string,
     order: Order,
     matchParams: Types.MatchParams,
     options?: {
       noDirectTransfer?: boolean;
-      referrer?: string;
+      source?: string;
     }
-  ): TxData {
+  ): Promise<TxData> {
     const feeAmount = order.getFeeAmount();
+
+    // If the order is a Coinbase NFT one, fetch the signature
+    if (order.params.cbOrderId) {
+      await this.releaseOrder(taker, order);
+    }
 
     let to = this.contract.address;
     let data: string;
@@ -144,7 +152,7 @@ export class Exchange {
     return {
       from: taker,
       to,
-      data: data + generateReferrerBytes(options?.referrer),
+      data: data + generateSourceBytes(options?.source),
       value: value && bn(value).toHexString(),
     };
   }
@@ -156,10 +164,10 @@ export class Exchange {
     orders: Order[],
     matchParams: Types.MatchParams[],
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
-    const tx = this.batchBuyTx(
+    const tx = await this.batchBuyTx(
       await taker.getAddress(),
       orders,
       matchParams,
@@ -168,18 +176,25 @@ export class Exchange {
     return taker.sendTransaction(tx);
   }
 
-  public batchBuyTx(
+  public async batchBuyTx(
     taker: string,
     orders: Order[],
     matchParams: Types.MatchParams[],
     options?: {
-      referrer?: string;
+      source?: string;
     }
-  ): TxData {
+  ): Promise<TxData> {
     const sellOrders: any[] = [];
     const signatures: any[] = [];
     const fillAmounts: string[] = [];
     const callbackData: string[] = [];
+
+    for (const order of orders) {
+      // If the order is a Coinbase NFT one, fetch the signature
+      if (order.params.cbOrderId) {
+        await this.releaseOrder(taker, order);
+      }
+    }
 
     const tokenKind = orders[0].params.kind?.split("-")[0];
     if (!tokenKind) {
@@ -233,7 +248,7 @@ export class Exchange {
               signatures,
               callbackData,
               false,
-            ])) + generateReferrerBytes(options?.referrer),
+            ])) + generateSourceBytes(options?.source),
       value: value && bn(value).toHexString(),
     };
   }
@@ -265,6 +280,31 @@ export class Exchange {
       to: this.contract.address,
       data,
     };
+  }
+
+  // --- Release order ---
+
+  public async releaseOrder(taker: string, order: Order) {
+    const response = await axios.post(
+      "https://nft-api.coinbase.com/api/nft/marketplaceorderbook/v1/releaseorder",
+      {
+        order_id: order.params.cbOrderId,
+        wallet_address: taker,
+        ip_address: "127.0.0.1",
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Cb-Nft-Api-Token": this.cbApiKey!,
+        },
+      }
+    );
+
+    const signature = response.data.listing.signatureV4;
+    order.params.signatureType = 2;
+    order.params.v = signature.v;
+    order.params.r = signature.r;
+    order.params.s = signature.s;
   }
 }
 

@@ -3,7 +3,7 @@ import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -83,7 +83,7 @@ export class Exchange {
     taker: Signer,
     order: Order,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillListingTx(await taker.getAddress(), order, options);
@@ -94,7 +94,7 @@ export class Exchange {
     taker: string,
     order: Order,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     return {
@@ -103,7 +103,7 @@ export class Exchange {
       data:
         this.contract.interface.encodeFunctionData("buyPunk", [
           order.params.tokenId,
-        ]) + generateReferrerBytes(options?.referrer),
+        ]) + generateSourceBytes(options?.source),
       value: bn(order.params.price).toHexString(),
     };
   }
@@ -163,7 +163,7 @@ export class Exchange {
     taker: Signer,
     order: Order,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillBidTx(await taker.getAddress(), order, options);
@@ -174,7 +174,7 @@ export class Exchange {
     taker: string,
     order: Order,
     options?: {
-      referrer?: string;
+      source?: string;
     }
   ): TxData {
     return {
@@ -184,7 +184,7 @@ export class Exchange {
         this.contract.interface.encodeFunctionData("acceptBidForPunk", [
           order.params.tokenId,
           order.params.price,
-        ]) + generateReferrerBytes(options?.referrer),
+        ]) + generateSourceBytes(options?.source),
     };
   }
 }

@@ -4,11 +4,8 @@ import { ChainIdToAddress, ChainIdToAddressMap, Network } from "../utils";
 
 export const Eth: ChainIdToAddress = {
   [Network.Ethereum]: AddressZero,
-  [Network.EthereumRinkeby]: AddressZero,
   [Network.EthereumGoerli]: AddressZero,
   [Network.Optimism]: AddressZero,
-  [Network.EthereumKovan]: AddressZero,
-  [Network.OptimismKovan]: AddressZero,
   [Network.Gnosis]: AddressZero,
   [Network.Polygon]: AddressZero,
   [Network.Arbitrum]: AddressZero,
@@ -19,11 +16,8 @@ export const Eth: ChainIdToAddress = {
 
 export const Weth: ChainIdToAddress = {
   [Network.Ethereum]: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-  [Network.EthereumRinkeby]: "0xc778417e063141139fce010982780140aa0cd5ab",
   [Network.EthereumGoerli]: "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6",
-  [Network.EthereumKovan]: "0xd0a1e359811322d97991e03f863a0c30c2cf029c",
   [Network.Optimism]: "0x4200000000000000000000000000000000000006",
-  [Network.OptimismKovan]: "0x4200000000000000000000000000000000000006",
   [Network.Gnosis]: "0x6a023ccd1ff6f2045c3309768ead9e68f978f6e1",
   [Network.Arbitrum]: "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
   // Polygon: Wrapped MATIC
@@ -37,7 +31,6 @@ export const Weth: ChainIdToAddress = {
 // TODO: Include addresses across all supported chains
 export const Usdc: ChainIdToAddress = {
   [Network.Ethereum]: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-  [Network.EthereumKovan]: "0xb7a4f3e9097c08da09517b5ab877f7a917224ede",
   [Network.Optimism]: "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
 };
 
@@ -69,26 +62,28 @@ export const Routers: ChainIdToAddressMap = {
     // Rarity Garden
     "0x603d022611bfe6a101dcdab207d96c527f1d4d8e": "rarity.garden",
     "0x39b6862c4783db2651d64bc160349dc9a15f1fb7": "rarity.garden",
-    // Reservoir
+    // Reservoir (routers)
     "0xc52b521b284792498c1036d4c2ed4b73387b3859": "reservoir.tools",
     "0x5aa9ca240174a54af6d9bfc69214b2ed948de86d": "reservoir.tools",
     "0x7c9733b19e14f37aca367fbd78922c098c55c874": "reservoir.tools",
     "0x8005488ff4f8982d2d8c1d602e6d747b1428dd41": "reservoir.tools",
     "0x9ebfb53fa8526906738856848a27cb11b0285c3f": "reservoir.tools",
+    "0x178a86d36d89c7fdebea90b739605da7b131ff6a": "reservoir.tools",
+    // Reservoir (modules)
+    "0x920692834f93258b71221c58edf870ae013e2f9b": "reservoir.tools",
+    "0xef21d6b43ac0bb4608ca05628b05403a47310a3b": "reservoir.tools",
+    "0xff78f7c6e23187fd4bdb2f7f35359a42d56878dd": "reservoir.tools",
     // X2Y2
     "0x56dd5bbede9bfdb10a2845c4d70d4a2950163044": "x2y2.io",
   },
-  [Network.EthereumRinkeby]: {
-    // Reservoir
-    "0xa5c0c6c024460b039b917a77eb564da5817c55e2": "reservoir.tools",
-    "0x060ef49d2f5d7038cc7397936641feb7c5ae3679": "reservoir.tools",
-    "0xf2418e0c7118df2468fa786606c3e5b68088adbc": "reservoir.tools",
-    "0xc226bb0a5ebb944df0b18e85e9800d463c5afe3f": "reservoir.tools",
-    "0x0857cc569a239c4e2f7abb5168408d92fb8d63ae": "reservoir.tools",
-  },
   [Network.EthereumGoerli]: {
-    // Reservoir
+    // Reservoir (routers)
     "0xf44caa746d184e6fba3071e8adbf9c041620fe44": "reservoir.tools",
+    "0xb35d22a4553ab9d2b85e2a606cbae55f844df50c": "reservoir.tools",
+    // Reservoir (modules)
+    "0xe4c1c635f257348205ebca78fc9b342dd7813e2b": "reservoir.tools",
+    "0x037d39e603b803651acc7b36ff25e52f8680aa2f": "reservoir.tools",
+    "0x0e01862920bd5ef73ed1a5dccd2ecad56c3e051f": "reservoir.tools",
   },
 };
 

@@ -8,7 +8,7 @@ import axios from "axios";
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, generateReferrerBytes } from "../utils";
+import { TxData, bn, generateSourceBytes } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
 
@@ -105,12 +105,18 @@ export class Exchange {
       isCollection: order.dataMask !== "0x",
     };
 
-    return axios.post("https://api.x2y2.org/api/orders/add", orderPayload, {
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "X-Api-Key": this.apiKey,
-      },
-    });
+    return axios.post(
+      `https://${
+        this.chainId === 5 ? "goerli-" : ""
+      }api.x2y2.org/api/orders/add`,
+      orderPayload,
+      {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "X-Api-Key": this.apiKey,
+        },
+      }
+    );
   }
 
   // --- Fill order ---
@@ -118,7 +124,7 @@ export class Exchange {
   public async fillOrder(
     taker: Signer,
     order: Order,
-    options?: { referrer?: string }
+    options?: { source?: string; tokenId?: string }
   ) {
     const tx = await this.fillOrderTx(await taker.getAddress(), order, options);
     return taker.sendTransaction(tx);
@@ -127,50 +133,13 @@ export class Exchange {
   public async fillOrderTx(
     taker: string,
     order: Order,
-    options?: { referrer?: string; tokenId?: string }
+    options?: { source?: string; tokenId?: string }
   ): Promise<TxData> {
-    if (order.params.type === "buy" && !options?.tokenId) {
-      throw new Error("When filling buy orders, `tokenId` must be specified");
-    }
-
-    const response = await axios.post(
-      "https://api.x2y2.org/api/orders/sign",
-      {
-        caller: taker,
-        op:
-          order.params.type === "sell"
-            ? Types.Op.COMPLETE_SELL_OFFER
-            : Types.Op.COMPLETE_BUY_OFFER,
-        amountToEth: "0",
-        amountToWeth: "0",
-        items: [
-          {
-            orderId: order.params.id,
-            currency: order.params.currency,
-            price: order.params.price,
-            tokenId: order.params.type === "buy" ? options?.tokenId : undefined,
-          },
-        ],
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-Api-Key": this.apiKey,
-          ...(options?.referrer
-            ? {
-                "X-Api-Used-By": options?.referrer,
-              }
-            : {}),
-        },
-      }
-    );
+    const input = await this.fetchInput(taker, order, options);
 
     return {
       from: taker,
-      data:
-        this.contract.interface.getSighash("run") +
-        response.data.data[0].input.slice(2) +
-        generateReferrerBytes(options?.referrer),
+      data: input + generateSourceBytes(options?.source),
       to: this.contract.address,
       value: bn(order.params.price).toHexString(),
     };
@@ -188,7 +157,9 @@ export class Exchange {
     const sign = await maker.signMessage(arrayify(signMessage));
 
     const response = await axios.post(
-      "https://api.x2y2.org/api/orders/cancel",
+      `https://${
+        this.chainId === 5 ? "goerli-" : ""
+      }api.x2y2.org/api/orders/cancel`,
       {
         caller: maker,
         // CANCEL_OFFER
@@ -223,5 +194,56 @@ export class Exchange {
       ]),
       to: this.contract.address,
     };
+  }
+
+  // --- Sign order ---
+
+  public async fetchInput(
+    taker: string,
+    order: Order,
+    options?: { source?: string; tokenId?: string }
+  ): Promise<string> {
+    if (order.params.type === "buy" && !options?.tokenId) {
+      throw new Error("When filling buy orders, `tokenId` must be specified");
+    }
+
+    const response = await axios.post(
+      `https://${
+        this.chainId === 5 ? "goerli-" : ""
+      }api.x2y2.org/api/orders/sign`,
+      {
+        caller: taker,
+        op:
+          order.params.type === "sell"
+            ? Types.Op.COMPLETE_SELL_OFFER
+            : Types.Op.COMPLETE_BUY_OFFER,
+        amountToEth: "0",
+        amountToWeth: "0",
+        items: [
+          {
+            orderId: order.params.id,
+            currency: order.params.currency,
+            price: order.params.price,
+            tokenId: order.params.type === "buy" ? options?.tokenId : undefined,
+          },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": this.apiKey,
+          ...(options?.source
+            ? {
+                "X-Api-Used-By": options?.source,
+              }
+            : {}),
+        },
+      }
+    );
+
+    return (
+      this.contract.interface.getSighash("run") +
+      response.data.data[0].input.slice(2)
+    );
   }
 }

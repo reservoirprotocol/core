@@ -37,8 +37,8 @@ export class Order {
 
   public getRaw() {
     const raw = this.params.kind?.startsWith("erc721")
-    ? toRawErc721Order(this)
-    : toRawErc1155Order(this);
+      ? toRawErc721Order(this)
+      : toRawErc1155Order(this);
     return raw;
   }
 
@@ -107,18 +107,15 @@ export class Order {
 
     let status: number | undefined;
     if (this.params.kind?.startsWith("erc721")) {
-      status = this.params.direction === Types.TradeDirection.SELL 
-        ? await exchange.getERC721SellOrderStatus(toRawErc721Order(this)) : 
-        await exchange.getERC721BuyOrderStatus(toRawErc721Order(this));
+      status =
+        this.params.direction === Types.TradeDirection.SELL
+          ? await exchange.getERC721SellOrderStatus(toRawErc721Order(this))
+          : await exchange.getERC721BuyOrderStatus(toRawErc721Order(this));
     } else {
-      ({ status } = this.params.direction === Types.TradeDirection.SELL ?
-        await exchange.getERC1155SellOrderInfo(
-          toRawErc1155Order(this)
-        )
-        : await exchange.getERC1155BuyOrderInfo(
-          toRawErc1155Order(this)
-        )
-      );
+      ({ status } =
+        this.params.direction === Types.TradeDirection.SELL
+          ? await exchange.getERC1155SellOrderInfo(toRawErc1155Order(this))
+          : await exchange.getERC1155BuyOrderInfo(toRawErc1155Order(this)));
     }
 
     if (status !== 1) {
@@ -203,15 +200,31 @@ export class Order {
     const isSell = this.params.direction === Types.TradeDirection.SELL;
     if (!this.params.nftAmount) {
       if (isSell) {
-        return [NFT_SELL_ORDER_EIP712_TYPES, toRawErc721Order(this), "NFTSellOrder"]
+        return [
+          NFT_SELL_ORDER_EIP712_TYPES,
+          toRawErc721Order(this),
+          "NFTSellOrder",
+        ];
       } else {
-        return [NFT_BUY_ORDER_EIP712_TYPES, toRawErc721Order(this), "NFTBuyOrder"]
+        return [
+          NFT_BUY_ORDER_EIP712_TYPES,
+          toRawErc721Order(this),
+          "NFTBuyOrder",
+        ];
       }
     } else {
       if (isSell) {
-        return [ERC1155_SELL_ORDER_EIP712_TYPES, toRawErc1155Order(this), "ERC1155SellOrder"];
+        return [
+          ERC1155_SELL_ORDER_EIP712_TYPES,
+          toRawErc1155Order(this),
+          "ERC1155SellOrder",
+        ];
       } else {
-        return [ERC1155_BUY_ORDER_EIP712_TYPES, toRawErc1155Order(this), "ERC1155BuyOrder"];
+        return [
+          ERC1155_BUY_ORDER_EIP712_TYPES,
+          toRawErc1155Order(this),
+          "ERC1155BuyOrder",
+        ];
       }
     }
   }
@@ -226,21 +239,6 @@ export class Order {
       case "erc721-single-token":
       case "erc1155-single-token": {
         return new Builders.SingleToken(this.chainId);
-      }
-
-      case "erc721-token-range":
-      case "erc1155-token-range": {
-        return new Builders.TokenRange(this.chainId);
-      }
-
-      case "erc721-token-list-bit-vector":
-      case "erc1155-token-list-bit-vector": {
-        return new Builders.TokenList.BitVector(this.chainId);
-      }
-
-      case "erc721-token-list-packed-list":
-      case "erc1155-token-list-packed-list": {
-        return new Builders.TokenList.PackedList(this.chainId);
       }
 
       default: {
@@ -270,34 +268,6 @@ export class Order {
       }
     }
 
-    // token-range
-    {
-      const builder = new Builders.TokenRange(this.chainId);
-      if (builder.isValid(this)) {
-        return this.params.nftAmount
-          ? "erc1155-token-range"
-          : "erc721-token-range";
-      }
-    }
-
-    // token-list
-    {
-      const builder = new Builders.TokenList.BitVector(this.chainId);
-      if (builder.isValid(this)) {
-        return this.params.nftAmount
-          ? "erc1155-token-list-bit-vector"
-          : "erc721-token-list-bit-vector";
-      }
-    }
-    {
-      const builder = new Builders.TokenList.PackedList(this.chainId);
-      if (builder.isValid(this)) {
-        return this.params.nftAmount
-          ? "erc1155-token-list-packed-list"
-          : "erc721-token-list-packed-list";
-      }
-    }
-
     throw new Error(
       "Could not detect order kind (order might have unsupported params/calldata)"
     );
@@ -310,7 +280,7 @@ const EIP712_DOMAIN = (chainId: number) => ({
   chainId,
   verifyingContract: Addresses.Exchange[chainId],
 });
-    
+
 const NFT_BUY_ORDER_EIP712_TYPES = {
   Fee: [
     { name: "recipient", type: "address" },
@@ -322,38 +292,38 @@ const NFT_BUY_ORDER_EIP712_TYPES = {
     { name: "propertyData", type: "bytes" },
   ],
   NFTBuyOrder: [
-    { type: "address", name: "maker" }, 
-    { type: "address", name: "taker" }, 
-    { type: "uint256", name: "expiry" }, 
-    { type: "uint256", name: "nonce" }, 
-    { type: "address",  name: "erc20Token" }, 
-    { type: "uint256", name: "erc20TokenAmount" }, 
-    { type: "Fee[]", name: "fees" }, 
+    { type: "address", name: "maker" },
+    { type: "address", name: "taker" },
+    { type: "uint256", name: "expiry" },
+    { type: "uint256", name: "nonce" },
+    { type: "address", name: "erc20Token" },
+    { type: "uint256", name: "erc20TokenAmount" },
+    { type: "Fee[]", name: "fees" },
     { type: "address", name: "nft" },
-    { type: "uint256", name: "nftId" }, 
-    { type: "Property[]",  name: "nftProperties" },
-    { type: "uint256", name: "hashNonce" }
-  ]
-}
+    { type: "uint256", name: "nftId" },
+    { type: "Property[]", name: "nftProperties" },
+    { type: "uint256", name: "hashNonce" },
+  ],
+};
 
 const NFT_SELL_ORDER_EIP712_TYPES = {
   NFTSellOrder: [
-    { type: "address", name: "maker" }, 
-    { type: "address", name: "taker" }, 
-    { type: "uint256", name: "expiry" }, 
-    { type: "uint256",  name: "nonce" }, 
-    { type: "address",  name: "erc20Token" }, 
-    { type: "uint256", name: "erc20TokenAmount"}, 
-    { type: "Fee[]",   name: "fees"  }, 
-    { type: "address", name: "nft" }, 
-    { type: "uint256",  name: "nftId" }, 
-    { type: "uint256", name: "hashNonce" }
+    { type: "address", name: "maker" },
+    { type: "address", name: "taker" },
+    { type: "uint256", name: "expiry" },
+    { type: "uint256", name: "nonce" },
+    { type: "address", name: "erc20Token" },
+    { type: "uint256", name: "erc20TokenAmount" },
+    { type: "Fee[]", name: "fees" },
+    { type: "address", name: "nft" },
+    { type: "uint256", name: "nftId" },
+    { type: "uint256", name: "hashNonce" },
   ],
   Fee: [
     { name: "recipient", type: "address" },
     { name: "amount", type: "uint256" },
     { name: "feeData", type: "bytes" },
-  ]
+  ],
 };
 
 const ERC1155_BUY_ORDER_EIP712_TYPES = {
@@ -368,7 +338,7 @@ const ERC1155_BUY_ORDER_EIP712_TYPES = {
     { name: "erc1155Token", type: "address" },
     { name: "erc1155TokenId", type: "uint256" },
     { name: "erc1155TokenProperties", type: "Property[]" },
-    { name: "erc1155TokenAmount", type: "uint128" }, 
+    { name: "erc1155TokenAmount", type: "uint128" },
     { type: "uint256", name: "hashNonce" },
   ],
   Fee: [
@@ -394,13 +364,13 @@ const ERC1155_SELL_ORDER_EIP712_TYPES = {
     { name: "erc1155Token", type: "address" },
     { name: "erc1155TokenId", type: "uint256" },
     { name: "erc1155TokenAmount", type: "uint128" },
-    { name: "hashNonce", type: "uint256",},
+    { name: "hashNonce", type: "uint256" },
   ],
   Fee: [
     { name: "recipient", type: "address" },
     { name: "amount", type: "uint256" },
     { name: "feeData", type: "bytes" },
-  ]
+  ],
 };
 
 const toRawErc721Order = (order: Order): any => ({

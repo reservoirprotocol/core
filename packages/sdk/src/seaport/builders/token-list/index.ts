@@ -147,12 +147,8 @@ export class TokenListBuilder extends BaseBuilder {
                 : Types.ItemType.ERC1155),
             token: params.contract,
             identifierOrCriteria: lc(merkleRoot.toString()),
-            startAmount: s(
-              params.tokenKind === "erc1155" ? params.amount ?? 1 : 1
-            ),
-            endAmount: s(
-              params.tokenKind === "erc1155" ? params.amount ?? 1 : 1
-            ),
+            startAmount: s(params.amount ?? 1),
+            endAmount: s(params.amount ?? 1),
             recipient: params.offerer,
           },
           ...(params.fees || []).map(({ amount, recipient }) => ({

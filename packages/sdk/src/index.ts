@@ -19,7 +19,8 @@ import * as X2Y2 from "./x2y2";
 import * as ZeroExV4 from "./zeroex-v4";
 import * as Zora from "./zora";
 
-import * as Router from "./router";
+import * as RouterV5 from "./router/v5";
+import * as RouterV6 from "./router/v6";
 
 export {
   Common,
@@ -42,5 +43,6 @@ export {
   X2Y2,
   ZeroExV4,
   Zora,
-  Router,
+  RouterV5,
+  RouterV6,
 };

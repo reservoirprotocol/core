@@ -88,7 +88,7 @@ describe("Seaport - SingleToken Erc721", () => {
 
     // Match orders
     await exchange.fillOrder(buyer, sellOrder, matchParams, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerEthBalanceAfter = await ethers.provider.getBalance(
@@ -159,7 +159,7 @@ describe("Seaport - SingleToken Erc721", () => {
 
     // Match orders
     await exchange.fillOrder(buyer, sellOrder, matchParams, {
-      referrer: "reservoir.market",
+      source: "reservoir.market",
     });
 
     const buyerErc20BalanceAfter = await erc20.balanceOf(buyer.address);

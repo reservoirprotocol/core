@@ -1,14 +1,13 @@
 [
   {
     "inputs": [
-      { "internalType": "address", "name": "_blacklist", "type": "address" },
+      { "internalType": "address", "name": "_optOutList", "type": "address" },
       { "internalType": "address", "name": "_priceOracle", "type": "address" },
       { "internalType": "address", "name": "_royaltyEngine", "type": "address" }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
-  { "inputs": [], "name": "Blacklisted", "type": "error" },
   { "inputs": [], "name": "InsufficientAmountAvailable", "type": "error" },
   { "inputs": [], "name": "InvalidCriteriaProof", "type": "error" },
   { "inputs": [], "name": "InvalidFillAmount", "type": "error" },
@@ -17,30 +16,9 @@
   { "inputs": [], "name": "OrderIsCancelled", "type": "error" },
   { "inputs": [], "name": "OrderIsExpired", "type": "error" },
   { "inputs": [], "name": "OrderIsInvalid", "type": "error" },
-  { "inputs": [], "name": "PaymentFailed", "type": "error" },
-  { "inputs": [], "name": "SeaportListingIsInvalid", "type": "error" },
-  { "inputs": [], "name": "SeaportListingIsNotFillable", "type": "error" },
-  { "inputs": [], "name": "SeaportListingIsUnderpriced", "type": "error" },
-  {
-    "inputs": [],
-    "name": "SeaportListingRoyaltiesAreIncorrect",
-    "type": "error"
-  },
   { "inputs": [], "name": "Unauthorized", "type": "error" },
-  { "inputs": [], "name": "ZeroMigrateTo", "type": "error" },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "blacklist",
-        "type": "address"
-      }
-    ],
-    "name": "BlacklistUpdated",
-    "type": "event"
-  },
+  { "inputs": [], "name": "VaultAlreadyExists", "type": "error" },
+  { "inputs": [], "name": "VaultIsMissing", "type": "error" },
   {
     "anonymous": false,
     "inputs": [
@@ -65,12 +43,12 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "address",
-        "name": "newMigrateTo",
-        "type": "address"
+        "internalType": "uint256",
+        "name": "newListTimeLimit",
+        "type": "uint256"
       }
     ],
-    "name": "MigrateToUpdated",
+    "name": "ListTimeLimitUpdated",
     "type": "event"
   },
   {
@@ -91,14 +69,27 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "address",
+        "name": "newOptOutList",
+        "type": "address"
+      }
+    ],
+    "name": "OptOutListUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "uint256",
-        "name": "newWithdrawMaxAge",
+        "name": "newListMaxAge",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "newListMaxAge",
+        "name": "newWithdrawMaxAge",
         "type": "uint256"
       }
     ],
@@ -129,18 +120,6 @@
       },
       {
         "indexed": false,
-        "internalType": "enum Forward.Side",
-        "name": "side",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum Forward.ItemKind",
-        "name": "itemKind",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
         "internalType": "address",
         "name": "maker",
         "type": "address"
@@ -165,15 +144,15 @@
       },
       {
         "indexed": false,
-        "internalType": "uint256",
-        "name": "unitPrice",
-        "type": "uint256"
+        "internalType": "uint128",
+        "name": "filledAmount",
+        "type": "uint128"
       },
       {
         "indexed": false,
-        "internalType": "uint128",
-        "name": "amount",
-        "type": "uint128"
+        "internalType": "uint256",
+        "name": "unitPrice",
+        "type": "uint256"
       }
     ],
     "name": "OrderFilled",
@@ -238,6 +217,38 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "VaultCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "newWithdrawValidator",
+        "type": "address"
+      }
+    ],
+    "name": "WithdrawValidatorUpdated",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "CONDUIT_CONTROLLER",
     "outputs": [
@@ -266,22 +277,6 @@
   },
   {
     "inputs": [],
-    "name": "SEAPORT",
-    "outputs": [
-      { "internalType": "contract ISeaport", "name": "", "type": "address" }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "SEAPORT_DOMAIN_SEPARATOR",
-    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "WETH",
     "outputs": [
       { "internalType": "contract IERC20", "name": "", "type": "address" }
@@ -290,23 +285,9 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "blacklist",
-    "outputs": [
-      { "internalType": "contract IBlacklist", "name": "", "type": "address" }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "components": [
-          {
-            "internalType": "enum Forward.Side",
-            "name": "side",
-            "type": "uint8"
-          },
           {
             "internalType": "enum Forward.ItemKind",
             "name": "itemKind",
@@ -342,64 +323,12 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "contract IERC1155",
-            "name": "token",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "identifier",
-            "type": "uint256"
-          },
-          { "internalType": "uint128", "name": "amount", "type": "uint128" }
-        ],
-        "internalType": "struct Forward.ERC1155Item[]",
-        "name": "items",
-        "type": "tuple[]"
-      }
+    "inputs": [],
+    "name": "createVault",
+    "outputs": [
+      { "internalType": "contract Vault", "name": "vault", "type": "address" }
     ],
-    "name": "depositERC1155s",
-    "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "contract IERC721",
-            "name": "token",
-            "type": "address"
-          },
-          { "internalType": "uint256", "name": "identifier", "type": "uint256" }
-        ],
-        "internalType": "struct Forward.ERC721Item[]",
-        "name": "items",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "depositERC721s",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
-    "name": "erc1155Amounts",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
-    "name": "erc721Owners",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -408,11 +337,6 @@
         "components": [
           {
             "components": [
-              {
-                "internalType": "enum Forward.Side",
-                "name": "side",
-                "type": "uint8"
-              },
               {
                 "internalType": "enum Forward.ItemKind",
                 "name": "itemKind",
@@ -465,11 +389,6 @@
         "components": [
           {
             "components": [
-              {
-                "internalType": "enum Forward.Side",
-                "name": "side",
-                "type": "uint8"
-              },
               {
                 "internalType": "enum Forward.ItemKind",
                 "name": "itemKind",
@@ -527,68 +446,6 @@
       {
         "components": [
           {
-            "components": [
-              {
-                "internalType": "enum Forward.Side",
-                "name": "side",
-                "type": "uint8"
-              },
-              {
-                "internalType": "enum Forward.ItemKind",
-                "name": "itemKind",
-                "type": "uint8"
-              },
-              { "internalType": "address", "name": "maker", "type": "address" },
-              { "internalType": "address", "name": "token", "type": "address" },
-              {
-                "internalType": "uint256",
-                "name": "identifierOrCriteria",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "unitPrice",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint128",
-                "name": "amount",
-                "type": "uint128"
-              },
-              { "internalType": "uint256", "name": "salt", "type": "uint256" },
-              {
-                "internalType": "uint256",
-                "name": "expiration",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct Forward.Order",
-            "name": "order",
-            "type": "tuple"
-          },
-          { "internalType": "bytes", "name": "signature", "type": "bytes" },
-          { "internalType": "uint128", "name": "fillAmount", "type": "uint128" }
-        ],
-        "internalType": "struct Forward.FillDetails",
-        "name": "details",
-        "type": "tuple"
-      }
-    ],
-    "name": "fillListing",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "enum Forward.Side",
-            "name": "side",
-            "type": "uint8"
-          },
-          {
             "internalType": "enum Forward.ItemKind",
             "name": "itemKind",
             "type": "uint8"
@@ -625,68 +482,9 @@
     "type": "function"
   },
   {
-    "inputs": [
-      { "internalType": "bytes32", "name": "digest", "type": "bytes32" },
-      { "internalType": "bytes", "name": "signature", "type": "bytes" }
-    ],
-    "name": "isValidSignature",
-    "outputs": [{ "internalType": "bytes4", "name": "", "type": "bytes4" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "contract IERC1155",
-            "name": "token",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "identifier",
-            "type": "uint256"
-          },
-          { "internalType": "uint128", "name": "amount", "type": "uint128" }
-        ],
-        "internalType": "struct Forward.ERC1155Item[]",
-        "name": "items",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "migrateERC1155s",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "contract IERC721",
-            "name": "token",
-            "type": "address"
-          },
-          { "internalType": "uint256", "name": "identifier", "type": "uint256" }
-        ],
-        "internalType": "struct Forward.ERC721Item[]",
-        "name": "items",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "migrateERC721s",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
-    "name": "migrateTo",
-    "outputs": [
-      { "internalType": "contract IMigrateTo", "name": "", "type": "address" }
-    ],
+    "name": "listTimeLimit",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   },
@@ -698,27 +496,11 @@
     "type": "function"
   },
   {
-    "inputs": [
-      { "internalType": "address", "name": "operator", "type": "address" },
-      { "internalType": "address", "name": "", "type": "address" },
-      { "internalType": "uint256", "name": "", "type": "uint256" },
-      { "internalType": "uint256", "name": "", "type": "uint256" },
-      { "internalType": "bytes", "name": "", "type": "bytes" }
+    "inputs": [],
+    "name": "optOutList",
+    "outputs": [
+      { "internalType": "contract IOptOutList", "name": "", "type": "address" }
     ],
-    "name": "onERC1155Received",
-    "outputs": [{ "internalType": "bytes4", "name": "", "type": "bytes4" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "operator", "type": "address" },
-      { "internalType": "address", "name": "", "type": "address" },
-      { "internalType": "uint256", "name": "", "type": "uint256" },
-      { "internalType": "bytes", "name": "", "type": "bytes" }
-    ],
-    "name": "onERC721Received",
-    "outputs": [{ "internalType": "bytes4", "name": "", "type": "bytes4" }],
     "stateMutability": "view",
     "type": "function"
   },
@@ -807,18 +589,13 @@
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "newBlacklist", "type": "address" }
+      {
+        "internalType": "uint256",
+        "name": "newListTimeLimit",
+        "type": "uint256"
+      }
     ],
-    "name": "updateBlacklist",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "newMigrateTo", "type": "address" }
-    ],
-    "name": "updateMigrateTo",
+    "name": "updateListTimeLimit",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -834,12 +611,21 @@
   },
   {
     "inputs": [
+      { "internalType": "address", "name": "newOptOutList", "type": "address" }
+    ],
+    "name": "updateOptOutList",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "newListMaxAge", "type": "uint256" },
       {
         "internalType": "uint256",
         "name": "newWithdrawMaxAge",
         "type": "uint256"
-      },
-      { "internalType": "uint256", "name": "newListMaxAge", "type": "uint256" }
+      }
     ],
     "name": "updateOraclePriceMaxAge",
     "outputs": [],
@@ -884,52 +670,45 @@
   {
     "inputs": [
       {
-        "components": [
-          {
-            "internalType": "contract IERC1155",
-            "name": "token",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "identifier",
-            "type": "uint256"
-          },
-          { "internalType": "uint128", "name": "amount", "type": "uint128" }
-        ],
-        "internalType": "struct Forward.ERC1155Item[]",
-        "name": "items",
-        "type": "tuple[]"
-      },
-      { "internalType": "bytes[]", "name": "data", "type": "bytes[]" },
-      { "internalType": "address", "name": "recipient", "type": "address" }
+        "internalType": "address",
+        "name": "newWithdrawValidator",
+        "type": "address"
+      }
     ],
-    "name": "withdrawERC1155s",
+    "name": "updateWithdrawValidator",
     "outputs": [],
-    "stateMutability": "payable",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "contract IERC721",
-            "name": "token",
-            "type": "address"
-          },
-          { "internalType": "uint256", "name": "identifier", "type": "uint256" }
-        ],
-        "internalType": "struct Forward.ERC721Item[]",
-        "name": "items",
-        "type": "tuple[]"
-      },
-      { "internalType": "bytes[]", "name": "data", "type": "bytes[]" },
-      { "internalType": "address", "name": "recipient", "type": "address" }
+    "inputs": [],
+    "name": "vaultImplementation",
+    "outputs": [
+      { "internalType": "contract Vault", "name": "", "type": "address" }
     ],
-    "name": "withdrawERC721s",
-    "outputs": [],
-    "stateMutability": "payable",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "name": "vaults",
+    "outputs": [
+      { "internalType": "contract Vault", "name": "", "type": "address" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawValidator",
+    "outputs": [
+      {
+        "internalType": "contract IWithdrawValidator",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   }
 ]

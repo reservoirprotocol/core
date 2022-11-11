@@ -6,15 +6,46 @@ import { HardhatUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
-import "@tenderly/hardhat-tenderly";
 import "hardhat-gas-reporter";
+
+const getNetworkConfig = (chainId?: number) => {
+  if (!chainId) {
+    chainId = Number(process.env.CHAIN_ID ?? 1);
+  }
+
+  let url: string;
+  switch (chainId) {
+    case 1:
+      url = `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
+      break;
+    case 5:
+      url = `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
+      break;
+    case 10:
+      url = `https://opt-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
+      break;
+    case 137:
+      url = `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
+      break;
+    default:
+      throw new Error("Unsupported chain id");
+  }
+
+  return {
+    chainId,
+    url,
+    accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
+  };
+};
+const networkConfig = getNetworkConfig();
 
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: "0.8.9",
+        version: "0.8.17",
         settings: {
+          viaIR: true,
           optimizer: {
             enabled: true,
             runs: 200,
@@ -26,12 +57,13 @@ const config: HardhatUserConfig = {
   networks: {
     // Development
     hardhat: {
-      chainId: process.env.GOERLI ? 5 : 1,
+      chainId: networkConfig.chainId,
       forking: {
-        url: String(process.env.RPC_URL),
+        url: networkConfig.url,
         blockNumber: Number(process.env.BLOCK_NUMBER),
       },
       accounts: {
+        // Custom mnemonic so that the wallets have no initial state
         mnemonic:
           "void forward involve old phone resource sentence fall friend wait strike copper urge reduce chapter",
       },
@@ -40,37 +72,17 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:8545",
     },
     // Testnets
-    rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
-    },
-    goerli: {
-      url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
-    },
+    goerli: getNetworkConfig(5),
     // Mainnets
-    mainnet: {
-      url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
-    },
-    optimism: {
-      url: `https://opt-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
-    },
-    polygon: {
-      url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : undefined,
-    },
+    mainnet: getNetworkConfig(1),
+    optimism: getNetworkConfig(10),
+    polygon: getNetworkConfig(137),
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
   gasReporter: {
     enabled: Boolean(Number(process.env.REPORT_GAS)),
-  },
-  tenderly: {
-    username: String(process.env.TENDERLY_USERNAME),
-    project: String(process.env.TENDERLY_PROJECT),
   },
   mocha: {
     timeout: 60000 * 10,

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
@@ -9,14 +11,17 @@ import {IX2Y2} from "../../../interfaces/IX2Y2.sol";
 
 // Notes on the X2Y2 module:
 // - supports filling listings (only ERC721 and ETH-denominated)
-// - TODO: support ERC1155 listings
-// - TODO: support bids
 
 contract X2Y2Module is BaseExchangeModule {
+    using SafeERC20 for IERC20;
+
     // --- Fields ---
 
     IX2Y2 public constant EXCHANGE =
         IX2Y2(0x74312363e45DCaBA76c59ec49a7Aa8A65a67EeD3);
+
+    address public constant ERC721_DELEGATE =
+        0xF849de01B080aDC3A814FaBE1E2087475cF2E354;
 
     // --- Constructor ---
 
@@ -132,6 +137,9 @@ contract X2Y2Module is BaseExchangeModule {
         IX2Y2.OrderItem calldata orderItem = input
             .orders[detail.orderIdx]
             .items[detail.itemIdx];
+        if (detail.op != IX2Y2.Op.COMPLETE_SELL_OFFER) {
+            revert WrongParams();
+        }
         IX2Y2.Pair[] memory pairs = abi.decode(orderItem.data, (IX2Y2.Pair[]));
         if (pairs.length != 1) {
             revert WrongParams();

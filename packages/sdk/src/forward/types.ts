@@ -8,13 +8,12 @@ export enum Side {
 export enum ItemKind {
   ERC721,
   ERC1155,
-  ERC721_CRITERIA_OR_EXTERNAL,
-  ERC1155_CRITERIA_OR_EXTERNAL,
+  ERC721_WITH_CRITERIA,
+  ERC1155_WITH_CRITERIA,
 }
 
 export type Order = {
   kind?: OrderKind;
-  side: Side;
   itemKind: ItemKind;
   maker: string;
   token: string;
