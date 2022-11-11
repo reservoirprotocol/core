@@ -21,6 +21,11 @@ export interface OrderInput {
   complication: string;
   extraParams: string;
   currency: string;
+  signature?: string | {
+    r: string;
+    s: string;
+    v: number;
+  }
 }
 
 export type InternalOrder = {

@@ -4,6 +4,8 @@ import { lc, s } from "../utils";
 import { Signature, TypedDataField } from "ethers";
 import { SignatureLike } from "@ethersproject/bytes";
 import { defaultAbiCoder, verifyTypedData } from "ethers/lib/utils";
+import { AddressZero } from "@ethersproject/constants";
+
 
 export class OrderParams implements Types.OrderInput {
   protected _params: Types.InternalOrder;
@@ -52,6 +54,10 @@ export class OrderParams implements Types.OrderInput {
   set signer(signer: Types.OrderInput["signer"]) {
     const formattedSigner = lc(signer);
     this._params.signer = formattedSigner;
+  }
+
+  get taker(): string {
+    return AddressZero; // taker is not currently supported
   }
 
   get numItems(): Types.OrderInput["numItems"] {
@@ -154,7 +160,7 @@ export class OrderParams implements Types.OrderInput {
     return this._sig;
   }
 
-  set sig(signature: string | Signature) {
+  set sig(signature: string | Signature | { v: number; r: string; s: string }) {
     let encodedSignature: string;
     if (typeof signature === "string") {
       encodedSignature = signature;
@@ -165,10 +171,32 @@ export class OrderParams implements Types.OrderInput {
     this._sig = encodedSignature;
   }
 
+  get params(): Types.OrderInput {
+    return {
+      isSellOrder: this.isSellOrder,
+      signer: this.signer,
+      numItems: this.numItems,
+      startPrice: this.startPrice,
+      endPrice: this.endPrice,
+      startTime: this.startTime,
+      endTime: this.endTime,
+      nonce: this.nonce,
+      maxGasPrice: this.maxGasPrice,
+      nfts: this.nfts,
+      complication: this.complication,
+      extraParams: this.extraParams,
+      currency: this.currency,
+      signature: this._sig
+    }
+  }
+
   constructor(protected _chainId: number, params: Types.OrderInput) {
     try {
       const normalizedParams = normalize(params);
       this._params = this.getInternalOrder(normalizedParams);
+      if(params.signature) {
+        this.sig = params.signature;
+      }
     } catch (err) {
       if (err instanceof Errors.InvalidOrderError) {
         throw new Error(`Invalid params: ${err.message}`);
@@ -235,7 +263,7 @@ export class OrderParams implements Types.OrderInput {
 
   }
 
-  protected _getEncodedSig(signature: Signature): string {
+  protected _getEncodedSig(signature: Signature | { v: number; r: string; s: string }): string {
     const encodedSig = defaultAbiCoder.encode(
       ["bytes32", "bytes32", "uint8"],
       [signature.r, signature.s, signature.v]
