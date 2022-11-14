@@ -63,7 +63,7 @@ export class SingleTokenBuilder extends BaseBuilder {
 
   public buildMatching(
     order: Order,
-    data?: { amount?: BigNumberish, trader: string, blockNumber?: number }
+    data?: { amount?: BigNumberish, trader: string, blockNumber?: number, listingTime?: number, expirationTime?: number }
   ) {
     const isSell = order.params.side === Types.TradeDirection.SELL
     const matchSide = isSell ? Types.TradeDirection.BUY : Types.TradeDirection.SELL
@@ -73,6 +73,8 @@ export class SingleTokenBuilder extends BaseBuilder {
         trader: data?.trader ?? order.params.trader,
         side: matchSide,
         amount: data?.amount ? s(data.amount) : "1",
+        listingTime: data?.listingTime ? s(data?.listingTime ) : order.params.listingTime,
+        expirationTime: data?.expirationTime ? s(data?.expirationTime) : order.params.expirationTime
       },
       v: 0,
       r: HashZero,
