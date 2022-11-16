@@ -23,21 +23,28 @@ import SeaportModuleAbi from "./abis/SeaportModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 
-// Router execution info
 type ExecutionInfo = {
   module: string;
   data: string;
   value: BigNumberish;
 };
 
+type SetupOptions = {
+  x2y2ApiKey?: string;
+  cbApiKey?: string;
+};
+
 export class Router {
   public chainId: number;
   public provider: Provider;
+  public options?: SetupOptions;
+
   public contracts: { [name: string]: Contract };
 
-  constructor(chainId: number, provider: Provider) {
+  constructor(chainId: number, provider: Provider, options?: SetupOptions) {
     this.chainId = chainId;
     this.provider = provider;
+    this.options = options;
 
     this.contracts = {
       // Initialize router
@@ -593,7 +600,7 @@ export class Router {
 
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
-        process.env.X2Y2_API_KEY!
+        String(this.options?.x2y2ApiKey)
       );
       executions.push({
         module,
@@ -674,7 +681,7 @@ export class Router {
         if (order.params.cbOrderId) {
           await new Sdk.ZeroExV4.Exchange(
             this.chainId,
-            String(process.env.CB_API_KEY)
+            String(this.options?.cbApiKey!)
           ).releaseOrder(taker, order);
         }
       }
@@ -746,7 +753,7 @@ export class Router {
         if (order.params.cbOrderId) {
           await new Sdk.ZeroExV4.Exchange(
             this.chainId,
-            String(process.env.CB_API_KEY)
+            String(this.options?.cbApiKey!)
           ).releaseOrder(taker, order);
         }
       }
@@ -906,7 +913,7 @@ export class Router {
       const order = detail.order as Sdk.X2Y2.Order;
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
-        String(process.env.X2Y2_API_KEY)
+        String(this.options?.x2y2ApiKey)
       );
       return {
         txData: await exchange.fillOrderTx(taker, order, {
@@ -1046,7 +1053,7 @@ export class Router {
         if (order.params.cbOrderId) {
           await new Sdk.ZeroExV4.Exchange(
             this.chainId,
-            String(process.env.CB_API_KEY)
+            String(this.options?.cbApiKey!)
           ).releaseOrder(taker, order);
         }
 

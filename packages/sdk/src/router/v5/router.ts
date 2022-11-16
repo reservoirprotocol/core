@@ -13,12 +13,17 @@ import Erc721Abi from "../../common/abis/Erc721.json";
 import Erc1155Abi from "../../common/abis/Erc1155.json";
 import RouterAbi from "./abis/ReservoirV5_0_0.json";
 
+type SetupOptions = {
+  x2y2ApiKey?: string;
+};
+
 export class Router {
   public chainId: number;
   public contract: Contract;
   public provider: Provider;
+  public options?: SetupOptions;
 
-  constructor(chainId: number, provider: Provider) {
+  constructor(chainId: number, provider: Provider, options?: SetupOptions) {
     this.chainId = chainId;
     this.contract = new Contract(
       Addresses.Router[chainId],
@@ -26,6 +31,7 @@ export class Router {
       provider
     );
     this.provider = provider;
+    this.options = options;
   }
 
   public async fillListingsTx(
@@ -543,8 +549,7 @@ export class Router {
       // X2Y2 requires an API key to fill
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
-        // TODO: The SDK should not rely on environment variables
-        String(process.env.X2Y2_API_KEY)
+        String(this.options?.x2y2ApiKey)
       );
       return {
         tx: await exchange.fillOrderTx(this.contract.address, order, options),
@@ -717,8 +722,7 @@ export class Router {
 
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
-        // TODO: The SDK should not rely on environment variables
-        String(process.env.X2Y2_API_KEY)
+        String(this.options?.x2y2ApiKey)
       );
       return {
         tx: await exchange.fillOrderTx(taker, order, {
