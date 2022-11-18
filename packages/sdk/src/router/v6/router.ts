@@ -888,6 +888,19 @@ export class Router {
     }
 
     // TODO: Add Rarible router module
+    if (detail.kind === "blur") {
+      const order = detail.order as Sdk.Blur.Order;
+      const exchange = new Sdk.Blur.Exchange(this.chainId);
+      const matchOrder = order.buildMatching({
+        trader: taker
+      })
+      return {
+        txData: await exchange.fillOrderTx(taker, order, matchOrder),
+        direct: true,
+      };
+    }
+
+    // TODO: Add Rarible router module
     if (detail.kind === "rarible") {
       const order = detail.order as Sdk.Rarible.Order;
       const exchange = new Sdk.Rarible.Exchange(this.chainId);
