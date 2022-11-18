@@ -850,6 +850,19 @@ export class Router {
   }> {
     // Assume the bid details are consistent with the underlying order object
 
+    // TODO: Add Blur router module
+    if (detail.kind === "blur") {
+      const order = detail.order as Sdk.Blur.Order;
+      const exchange = new Sdk.Blur.Exchange(this.chainId);
+      const matchOrder = order.buildMatching({
+        trader: taker
+      })
+      return {
+        txData: await exchange.fillOrderTx(taker, order, matchOrder),
+        direct: true,
+      };
+    }
+
     // TODO: Add Universe router module
     if (detail.kind === "universe") {
       const order = detail.order as Sdk.Universe.Order;
@@ -859,19 +872,6 @@ export class Router {
           amount: Number(detail.amount ?? 1),
           source: options?.source,
         }),
-        direct: true,
-      };
-    }
-
-    // TODO: Add Rarible router module
-    if (detail.kind === "blur") {
-      const order = detail.order as Sdk.Blur.Order;
-      const exchange = new Sdk.Blur.Exchange(this.chainId);
-      const matchOrder = order.buildMatching({
-        trader: taker
-      })
-      return {
-        txData: await exchange.fillOrderTx(taker, order, matchOrder),
         direct: true,
       };
     }
