@@ -6,7 +6,7 @@ import { Contract } from "@ethersproject/contracts";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
-import { BidDetails, Fee, ListingDetails } from "./types";
+import { BidDetails, Fee, ListingDetails, ListingFillDetails } from "./types";
 import * as Sdk from "../../index";
 import { TxData, bn, generateSourceBytes } from "../../utils";
 
@@ -23,21 +23,28 @@ import SeaportModuleAbi from "./abis/SeaportModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 
-// Router execution info
 type ExecutionInfo = {
   module: string;
   data: string;
   value: BigNumberish;
 };
 
+type SetupOptions = {
+  x2y2ApiKey?: string;
+  cbApiKey?: string;
+};
+
 export class Router {
   public chainId: number;
   public provider: Provider;
+  public options?: SetupOptions;
+
   public contracts: { [name: string]: Contract };
 
-  constructor(chainId: number, provider: Provider) {
+  constructor(chainId: number, provider: Provider, options?: SetupOptions) {
     this.chainId = chainId;
     this.provider = provider;
+    this.options = options;
 
     this.contracts = {
       // Initialize router
@@ -252,6 +259,19 @@ export class Router {
       throw new Error("Mismatched currencies");
     }
 
+    const getFees = (ownDetails: ListingFillDetails[]) => [
+      // Global fees
+      ...(options?.globalFees ?? []).map(({ recipient, amount }) => ({
+        recipient,
+        // The fees are averaged over the number of listings to fill
+        // TODO: Also take into account the quantity filled for ERC1155
+        amount: bn(amount).mul(ownDetails.length).div(details.length),
+      })),
+      // Local fees
+      // TODO: Should not split the local fees among all executions
+      ...ownDetails.flatMap(({ fees }) => fees ?? []),
+    ];
+
     // For keeping track of the listing's position in the original array
     type ListingDetailsExtracted = {
       originalIndex: number;
@@ -308,18 +328,10 @@ export class Router {
     const executions: ExecutionInfo[] = [];
     const success: boolean[] = details.map(() => false);
 
-    // TODO: When splitting the fees across executions, also take into
-    // account the quantity filled (only relevant for ERC1155 listings)
-
     // Handle Sudoswap listings
     if (sudoswapDetails.length) {
       const orders = sudoswapDetails.map((d) => d.order as Sdk.Sudoswap.Order);
-
-      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
-        recipient,
-        // The fees are averaged over the number of listings to fill
-        amount: bn(amount).mul(sudoswapDetails.length).div(details.length),
-      }));
+      const fees = getFees(sudoswapDetails);
 
       const totalPrice = orders
         .map((order) => bn(order.params.price))
@@ -361,12 +373,7 @@ export class Router {
       const orders = foundationDetails.map(
         (d) => d.order as Sdk.Foundation.Order
       );
-
-      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
-        recipient,
-        // The fees are averaged over the number of listings to fill
-        amount: bn(amount).mul(foundationDetails.length).div(details.length),
-      }));
+      const fees = getFees(foundationDetails);
 
       const totalPrice = orders
         .map((order) => bn(order.params.price))
@@ -421,17 +428,7 @@ export class Router {
       );
       const module = this.contracts.looksRareModule.address;
 
-      const fees = [
-        // Global fees
-        ...(options?.globalFees ?? []).map(({ recipient, amount }) => ({
-          recipient,
-          // The fees are averaged over the number of listings to fill
-          amount: bn(amount).mul(looksRareDetails.length).div(details.length),
-        })),
-        // Local fees
-        // TODO: Should not split the local fees among all executions
-        ...looksRareDetails.flatMap(({ fees }) => fees ?? []),
-      ];
+      const fees = getFees(looksRareDetails);
 
       const totalPrice = orders
         .map((order) => bn(order.params.price))
@@ -493,11 +490,7 @@ export class Router {
     if (seaportDetails.length) {
       const orders = seaportDetails.map((d) => d.order as Sdk.Seaport.Order);
 
-      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
-        recipient,
-        // The fees are averaged over the number of listings to fill
-        amount: bn(amount).mul(seaportDetails.length).div(details.length),
-      }));
+      const fees = getFees(seaportDetails);
 
       const totalPrice = orders
         .map((order, i) =>
@@ -596,11 +589,7 @@ export class Router {
       const orders = x2y2Details.map((d) => d.order as Sdk.X2Y2.Order);
       const module = this.contracts.x2y2Module.address;
 
-      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
-        recipient,
-        // The fees are averaged over the number of listings to fill
-        amount: bn(amount).mul(x2y2Details.length).div(details.length),
-      }));
+      const fees = getFees(x2y2Details);
 
       const totalPrice = orders
         .map((order) => bn(order.params.price))
@@ -611,7 +600,7 @@ export class Router {
 
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
-        process.env.X2Y2_API_KEY!
+        String(this.options?.x2y2ApiKey)
       );
       executions.push({
         module,
@@ -692,18 +681,12 @@ export class Router {
         if (order.params.cbOrderId) {
           await new Sdk.ZeroExV4.Exchange(
             this.chainId,
-            String(process.env.CB_API_KEY)
+            String(this.options?.cbApiKey!)
           ).releaseOrder(taker, order);
         }
       }
 
-      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
-        recipient,
-        // The fees are averaged over the number of listings to fill
-        amount: bn(amount)
-          .mul(zeroexV4Erc721Details.length)
-          .div(details.length),
-      }));
+      const fees = getFees(zeroexV4Erc721Details);
 
       const totalPrice = orders
         .map((order) =>
@@ -770,19 +753,12 @@ export class Router {
         if (order.params.cbOrderId) {
           await new Sdk.ZeroExV4.Exchange(
             this.chainId,
-            String(process.env.CB_API_KEY)
+            String(this.options?.cbApiKey!)
           ).releaseOrder(taker, order);
         }
       }
 
-      const fees = (options?.globalFees ?? []).map(({ recipient, amount }) => ({
-        recipient,
-        // The fees are averaged over the number of listings to fill
-        // TODO: Take into account the amount filled as well (relevant for ERC1155)
-        amount: bn(amount)
-          .mul(zeroexV4Erc1155Details.length)
-          .div(details.length),
-      }));
+      const fees = getFees(zeroexV4Erc1155Details);
 
       const totalPrice = orders
         .map((order, i) =>
@@ -950,7 +926,7 @@ export class Router {
       const order = detail.order as Sdk.X2Y2.Order;
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
-        String(process.env.X2Y2_API_KEY)
+        String(this.options?.x2y2ApiKey)
       );
       return {
         txData: await exchange.fillOrderTx(taker, order, {
@@ -1090,7 +1066,7 @@ export class Router {
         if (order.params.cbOrderId) {
           await new Sdk.ZeroExV4.Exchange(
             this.chainId,
-            String(process.env.CB_API_KEY)
+            String(this.options?.cbApiKey!)
           ).releaseOrder(taker, order);
         }
 

@@ -38,6 +38,7 @@ export type Order = {
     token: string;
     tokenId?: string;
   };
+  royalty_fee: number;
 };
 
 export type LocalOrder = {

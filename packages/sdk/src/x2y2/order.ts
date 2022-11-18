@@ -48,6 +48,7 @@ export class Order {
       // The fields below are mocked (they are only available on upstream orders)
       id: 0,
       itemHash: HashZero,
+      royalty_fee: 0,
     });
   }
 }
@@ -73,5 +74,6 @@ const normalize = (order: Types.Order): Types.Order => {
       tokenId:
         order.nft.tokenId !== undefined ? s(order.nft.tokenId) : undefined,
     },
+    royalty_fee: order.royalty_fee ? n(order.royalty_fee) : 0,
   };
 };

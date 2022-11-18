@@ -69,7 +69,7 @@ export class Order {
     };
   }
 
-  public checkSignature(provider?: Provider) {
+  public async checkSignature(provider?: Provider) {
     try {
       const signer = verifyTypedData(
         EIP712_DOMAIN(this.chainId),
@@ -86,15 +86,21 @@ export class Order {
         throw new Error("Invalid signature");
       }
 
+      const eip712Hash = _TypedDataEncoder.hash(
+        EIP712_DOMAIN(this.chainId),
+        ORDER_EIP712_TYPES,
+        this.params
+      );
+
       const iface = new Interface([
         "function isValidSignature(bytes32 digest, bytes signature) view returns (bytes4)",
       ]);
 
-      const result = new Contract(
+      const result = await new Contract(
         this.params.offerer,
         iface,
         provider
-      ).isValidSignature(this.hash(), this.params.signature!);
+      ).isValidSignature(eip712Hash, this.params.signature!);
       if (result !== iface.getSighash("isValidSignature")) {
         throw new Error("Invalid signature");
       }
