@@ -59,7 +59,11 @@ export type GenericOrder =
   | {
       kind: "forward";
       order: Sdk.Forward.Order;
-    };
+    }
+  | {
+    kind: "blur";
+    order: Sdk.Blur.Order;
+  };
 
 export type ListingFillDetails = {
   contractKind: "erc721" | "erc1155";
