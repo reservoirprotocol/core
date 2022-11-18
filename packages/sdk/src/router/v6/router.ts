@@ -166,6 +166,23 @@ export class Router {
       }
     }
 
+    // TODO: Add Blur router module
+    if (details.some(({ kind }) => kind === "blur")) {
+      if (details.length > 1) {
+        throw new Error("Blur sweeping is not supported");
+      } else {
+        const order = details[0].order as Sdk.Blur.Order;
+        const exchange = new Sdk.Blur.Exchange(this.chainId);
+        const matchOrder = order.buildMatching({
+          trader: taker
+        })
+        return {
+          txData: await exchange.fillOrderTx(taker, order, matchOrder),
+          success: [true],
+        };
+      }
+    }
+
     // TODO: Add Cryptopunks router module
     if (details.some(({ kind }) => kind === "cryptopunks")) {
       if (details.length > 1) {
