@@ -55,7 +55,11 @@ export type GenericOrder =
   | {
       kind: "rarible";
       order: Sdk.Rarible.Order;
-    };
+    } 
+  | {
+    kind: "infinity";
+    order: Sdk.Infinity.Order;
+  };
 
 export type ListingFillDetails = {
   contractKind: "erc721" | "erc1155";
