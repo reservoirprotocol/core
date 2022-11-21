@@ -249,17 +249,27 @@ contract ZeroExV4Module is BaseExchangeModule {
         IZeroExV4.ERC721Order calldata order,
         IZeroExV4.Signature calldata signature,
         OfferParams calldata params,
-        uint256 tokenId
+        uint256 tokenId,
+        Fee[] calldata fees
     ) external nonReentrant {
         // Approve the exchange if needed
         _approveERC721IfNeeded(order.erc721Token, address(EXCHANGE));
 
         // Execute fill
         try EXCHANGE.sellERC721(order, signature, tokenId, false, "") {
-            order.erc20Token.safeTransfer(
-                params.fillTo,
-                order.erc20TokenAmount
-            );
+            // Pay fees
+            uint256 feesLength = fees.length;
+            for (uint256 i; i < feesLength; ) {
+                Fee memory fee = fees[i];
+                _sendERC20(fee.recipient, fee.amount, order.erc20Token);
+
+                unchecked {
+                    ++i;
+                }
+            }
+
+            // Forward any left payment to the specified receiver
+            _sendAllERC20(params.fillTo, order.erc20Token);
         } catch {
             // Revert if specified
             if (params.revertIfIncomplete) {
@@ -278,17 +288,27 @@ contract ZeroExV4Module is BaseExchangeModule {
         IZeroExV4.Signature calldata signature,
         uint128 amount,
         OfferParams calldata params,
-        uint256 tokenId
+        uint256 tokenId,
+        Fee[] calldata fees
     ) external nonReentrant {
         // Approve the exchange if needed
         _approveERC1155IfNeeded(order.erc1155Token, address(EXCHANGE));
 
         // Execute fill
         try EXCHANGE.sellERC1155(order, signature, tokenId, amount, false, "") {
-            order.erc20Token.safeTransfer(
-                params.fillTo,
-                (order.erc20TokenAmount * order.erc1155TokenAmount) / amount
-            );
+            // Pay fees
+            uint256 feesLength = fees.length;
+            for (uint256 i; i < feesLength; ) {
+                Fee memory fee = fees[i];
+                _sendERC20(fee.recipient, fee.amount, order.erc20Token);
+
+                unchecked {
+                    ++i;
+                }
+            }
+
+            // Forward any left payment to the specified receiver
+            _sendAllERC20(params.fillTo, order.erc20Token);
         } catch {
             // Revert if specified
             if (params.revertIfIncomplete) {

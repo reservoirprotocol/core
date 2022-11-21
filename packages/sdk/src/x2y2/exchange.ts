@@ -105,12 +105,18 @@ export class Exchange {
       isCollection: order.dataMask !== "0x",
     };
 
-    return axios.post("https://api.x2y2.org/api/orders/add", orderPayload, {
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "X-Api-Key": this.apiKey,
-      },
-    });
+    return axios.post(
+      `https://${
+        this.chainId === 5 ? "goerli-" : ""
+      }api.x2y2.org/api/orders/add`,
+      orderPayload,
+      {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "X-Api-Key": this.apiKey,
+        },
+      }
+    );
   }
 
   // --- Fill order ---
@@ -151,7 +157,9 @@ export class Exchange {
     const sign = await maker.signMessage(arrayify(signMessage));
 
     const response = await axios.post(
-      "https://api.x2y2.org/api/orders/cancel",
+      `https://${
+        this.chainId === 5 ? "goerli-" : ""
+      }api.x2y2.org/api/orders/cancel`,
       {
         caller: maker,
         // CANCEL_OFFER
@@ -200,7 +208,9 @@ export class Exchange {
     }
 
     const response = await axios.post(
-      "https://api.x2y2.org/api/orders/sign",
+      `https://${
+        this.chainId === 5 ? "goerli-" : ""
+      }api.x2y2.org/api/orders/sign`,
       {
         caller: taker,
         op:

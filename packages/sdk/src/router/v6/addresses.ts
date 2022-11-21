@@ -27,8 +27,15 @@ export const SeaportModule: ChainIdToAddress = {
 
 export const X2Y2Module: ChainIdToAddress = {
   [Network.Ethereum]: "0xff78f7c6e23187fd4bdb2f7f35359a42d56878dd",
+  [Network.EthereumGoerli]: "0x3b74ec4005617ce2adf46d812039ea3562a4eaf5",
 };
 
 export const ZeroExV4Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0xca0aedd0dde85d059e41e2c4aed711732b5df844",
   [Network.EthereumGoerli]: "0x0e01862920bd5ef73ed1a5dccd2ecad56c3e051f",
+};
+
+export let SudoswapModule: ChainIdToAddress = {
+  // TODO: set once deployed
+  [Network.Ethereum]: "0x0000000000000000000000000000000000000000",
 };

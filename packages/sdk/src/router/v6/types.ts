@@ -59,6 +59,14 @@ export type GenericOrder =
   | {
     kind: "infinity";
     order: Sdk.Infinity.Order;
+    }
+  | {
+      kind: "forward";
+      order: Sdk.Forward.Order;
+    }
+  | {
+    kind: "blur";
+    order: Sdk.Blur.Order;
   };
 
 export type ListingFillDetails = {

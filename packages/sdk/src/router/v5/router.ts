@@ -13,12 +13,17 @@ import Erc721Abi from "../../common/abis/Erc721.json";
 import Erc1155Abi from "../../common/abis/Erc1155.json";
 import RouterAbi from "./abis/ReservoirV5_0_0.json";
 
+type SetupOptions = {
+  x2y2ApiKey?: string;
+};
+
 export class Router {
   public chainId: number;
   public contract: Contract;
   public provider: Provider;
+  public options?: SetupOptions;
 
-  constructor(chainId: number, provider: Provider) {
+  constructor(chainId: number, provider: Provider, options?: SetupOptions) {
     this.chainId = chainId;
     this.contract = new Contract(
       Addresses.Router[chainId],
@@ -26,6 +31,7 @@ export class Router {
       provider
     );
     this.provider = provider;
+    this.options = options;
   }
 
   public async fillListingsTx(
@@ -197,7 +203,7 @@ export class Router {
 
     if (zeroexV4Erc721Details.length > 1) {
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
-      const tx = exchange.batchBuyTx(
+      const tx = await exchange.batchBuyTx(
         taker,
         zeroexV4Erc1155Details.map(
           (detail) => detail.order as Sdk.ZeroExV4.Order
@@ -236,7 +242,7 @@ export class Router {
     }
     if (zeroexV4Erc1155Details.length > 1) {
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
-      const tx = exchange.batchBuyTx(
+      const tx = await exchange.batchBuyTx(
         taker,
         zeroexV4Erc1155Details.map(
           (detail) => detail.order as Sdk.ZeroExV4.Order
@@ -543,8 +549,7 @@ export class Router {
       // X2Y2 requires an API key to fill
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
-        // TODO: The SDK should not rely on environment variables
-        String(process.env.X2Y2_API_KEY)
+        String(this.options?.x2y2ApiKey)
       );
       return {
         tx: await exchange.fillOrderTx(this.contract.address, order, options),
@@ -559,7 +564,11 @@ export class Router {
 
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(this.contract.address, order, matchParams),
+        tx: await exchange.fillOrderTx(
+          this.contract.address,
+          order,
+          matchParams
+        ),
         exchangeKind: ExchangeKind.ZEROEX_V4,
         maker: order.params.maker,
       };
@@ -657,7 +666,7 @@ export class Router {
 
       const exchange = new Sdk.ZeroExV4.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(filler, order, matchParams, {
+        tx: await exchange.fillOrderTx(filler, order, matchParams, {
           // Do not use the `onReceived` hook filling to be compatible with the router
           noDirectTransfer: true,
         }),
@@ -685,13 +694,35 @@ export class Router {
         ),
         exchangeKind: ExchangeKind.SEAPORT,
       };
+    } else if (kind === "seaport-partial") {
+      order = order as Sdk.Seaport.Types.PartialOrder;
+      const result = await axios.get(
+        `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}`
+      );
+
+      const fullOrder = new Sdk.Seaport.Order(this.chainId, result.data.order);
+
+      const exchange = new Sdk.Seaport.Exchange(this.chainId);
+      return {
+        tx: exchange.fillOrderTx(
+          filler,
+          fullOrder,
+          {
+            criteriaResolvers: result.data.criteriaResolvers ?? [],
+          },
+          // Force using `fulfillAdvancedOrder` to pass router selector whitelist
+          {
+            recipient: filler,
+          }
+        ),
+        exchangeKind: ExchangeKind.SEAPORT,
+      };
     } else if (kind === "x2y2") {
       order = order as Sdk.X2Y2.Order;
 
       const exchange = new Sdk.X2Y2.Exchange(
         this.chainId,
-        // TODO: The SDK should not rely on environment variables
-        String(process.env.X2Y2_API_KEY)
+        String(this.options?.x2y2ApiKey)
       );
       return {
         tx: await exchange.fillOrderTx(taker, order, {

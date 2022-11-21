@@ -24,7 +24,7 @@ export class TokenListBuilder extends BaseBuilder {
             ? "erc721"
             : "erc1155",
         contract: order.params.token,
-        markleRoot: order.params.identifierOrCriteria,
+        merkleRoot: order.params.identifierOrCriteria,
       } as any);
 
       if (!copyOrder) {

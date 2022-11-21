@@ -367,6 +367,7 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
 
   return {
     kind: order.kind,
+    cbOrderId: order.cbOrderId,
     direction: order.direction,
     maker: lc(order.maker),
     taker: lc(order.taker),

@@ -153,6 +153,16 @@ abstract contract BaseExchangeModule is BaseModule {
 
     // --- Helpers ---
 
+    function _sendERC20(
+        address to,
+        uint256 amount,
+        IERC20 token
+    ) internal {
+        if (amount > 0) {
+            token.safeTransfer(to, amount);
+        }
+    }
+
     function _sendAllERC20(address to, IERC20 token) internal {
         uint256 balance = token.balanceOf(address(this));
         if (balance > 0) {
