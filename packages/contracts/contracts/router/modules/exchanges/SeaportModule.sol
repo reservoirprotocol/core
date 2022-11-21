@@ -172,7 +172,8 @@ contract SeaportModule is BaseExchangeModule {
         ISeaport.AdvancedOrder calldata order,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         ISeaport.CriteriaResolver[] memory criteriaResolvers,
-        OfferParams calldata params
+        OfferParams calldata params,
+        Fee[] calldata fees
     ) external nonReentrant {
         // Extract the ERC721 token from the consideration items
         ISeaport.ConsiderationItem calldata nftItem = order
@@ -208,10 +209,24 @@ contract SeaportModule is BaseExchangeModule {
             ? nftItem.identifierOrCriteria
             : criteriaResolvers[0].identifier;
 
+        // Pay fees
+        if (nftToken.ownerOf(identifier) != address(this)) {
+            // Only pay fees if the fill was successful
+            uint256 feesLength = fees.length;
+            for (uint256 i; i < feesLength; ) {
+                Fee memory fee = fees[i];
+                _sendERC20(fee.recipient, fee.amount, paymentToken);
+
+                unchecked {
+                    ++i;
+                }
+            }
+        }
+
         // Refund any ERC721 leftover
         _sendAllERC721(params.refundTo, nftToken, identifier);
 
-        // Forward any payment to the specified receiver
+        // Forward any left payment to the specified receiver
         _sendAllERC20(params.fillTo, paymentToken);
     }
 
@@ -221,7 +236,8 @@ contract SeaportModule is BaseExchangeModule {
         ISeaport.AdvancedOrder calldata order,
         // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
         ISeaport.CriteriaResolver[] memory criteriaResolvers,
-        OfferParams calldata params
+        OfferParams calldata params,
+        Fee[] calldata fees
     ) external nonReentrant {
         // Extract the ERC1155 token from the consideration items
         ISeaport.ConsiderationItem calldata nftItem = order
@@ -243,6 +259,12 @@ contract SeaportModule is BaseExchangeModule {
         _approveERC1155IfNeeded(nftToken, EXCHANGE);
         _approveERC20IfNeeded(paymentToken, EXCHANGE, type(uint256).max);
 
+        uint256 identifier = nftItem.itemType == ISeaport.ItemType.ERC1155
+            ? nftItem.identifierOrCriteria
+            : criteriaResolvers[0].identifier;
+
+        uint256 balanceBefore = nftToken.balanceOf(address(this), identifier);
+
         // Execute the fill
         params.revertIfIncomplete
             ? _fillSingleOrderWithRevertIfIncomplete(
@@ -253,14 +275,31 @@ contract SeaportModule is BaseExchangeModule {
             )
             : _fillSingleOrder(order, criteriaResolvers, address(this), 0);
 
-        uint256 identifier = nftItem.itemType == ISeaport.ItemType.ERC1155
-            ? nftItem.identifierOrCriteria
-            : criteriaResolvers[0].identifier;
+        uint256 balanceAfter = nftToken.balanceOf(address(this), identifier);
+
+        // Pay fees
+        uint256 amountFilled = balanceBefore - balanceAfter;
+        if (amountFilled > 0) {
+            uint256 feesLength = fees.length;
+            for (uint256 i; i < feesLength; ) {
+                Fee memory fee = fees[i];
+                _sendERC20(
+                    fee.recipient,
+                    // Only pay fees for the amount that was actually filled
+                    (fee.amount * amountFilled) / order.numerator,
+                    paymentToken
+                );
+
+                unchecked {
+                    ++i;
+                }
+            }
+        }
 
         // Refund any ERC1155 leftover
         _sendAllERC1155(params.refundTo, nftToken, identifier);
 
-        // Forward any payment to the specified receiver
+        // Forward any left payment to the specified receiver
         _sendAllERC20(params.fillTo, paymentToken);
     }
 

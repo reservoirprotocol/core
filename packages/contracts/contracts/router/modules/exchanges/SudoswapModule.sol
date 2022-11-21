@@ -8,18 +8,14 @@ import {BaseModule} from "../BaseModule.sol";
 import {ISudoswapRouter} from "../../../interfaces/ISudoswapRouter.sol";
 
 contract SudoswapModule is BaseExchangeModule {
-
     // --- Fields ---
 
-    ISudoswapRouter public constant SUDOSWAP_ROUTER = 
+    ISudoswapRouter public constant SUDOSWAP_ROUTER =
         ISudoswapRouter(0x2B2e8cDA09bBA9660dCA5cB6233787738Ad68329);
 
     // --- Constructor ---
 
-    constructor(address owner)
-        BaseModule(owner)
-        BaseExchangeModule(router) {
-    }
+    constructor(address owner) BaseModule(owner) BaseExchangeModule(router) {}
 
     // --- Fallback ---
 
@@ -40,7 +36,14 @@ contract SudoswapModule is BaseExchangeModule {
         chargeETHFees(fees, params.amount)
     {
         // Execute fill
-        _buy(swapList, params.refundTo, params.fillTo, deadline, params.revertIfIncomplete, params.amount);
+        _buy(
+            swapList,
+            params.refundTo,
+            params.fillTo,
+            deadline,
+            params.revertIfIncomplete,
+            params.amount
+        );
     }
 
     // --- Internal ---
@@ -52,12 +55,16 @@ contract SudoswapModule is BaseExchangeModule {
         uint256 deadline,
         bool revertIfIncomplete,
         uint256 value
-    ) 
-        internal 
-    {
+    ) internal {
         // Execute fill
-        try SUDOSWAP_ROUTER.swapETHForSpecificNFTs{value: value}(swapList, payable(ethRecipient), nftRecipient, deadline) {
-        } catch {
+        try
+            SUDOSWAP_ROUTER.swapETHForSpecificNFTs{value: value}(
+                swapList,
+                payable(ethRecipient),
+                nftRecipient,
+                deadline
+            )
+        {} catch {
             if (revertIfIncomplete) {
                 revert UnsuccessfulFill();
             }
