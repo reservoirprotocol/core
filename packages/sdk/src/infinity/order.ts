@@ -22,6 +22,7 @@ import { Common } from "..";
 export class Order extends OrderParams {
   constructor(chainId: number, params: Types.OrderInput) {
     super(chainId, params);
+    this.checkBaseValid();
   }
 
   public async sign(signer: TypedDataSigner) {

@@ -6,7 +6,6 @@ import { SignatureLike } from "@ethersproject/bytes";
 import { defaultAbiCoder, verifyTypedData } from "ethers/lib/utils";
 import { AddressZero } from "@ethersproject/constants";
 
-
 export class OrderParams implements Types.OrderInput {
   protected _params: Types.InternalOrder;
   protected _sig?: string;
@@ -21,9 +20,9 @@ export class OrderParams implements Types.OrderInput {
   }
 
   get kind(): Types.OrderKind {
-    if(this._isSingleToken) {
+    if (this._isSingleToken) {
       return "single-token";
-    } else if(this._isContractWide) {
+    } else if (this._isContractWide) {
       return "contract-wide";
     }
     return "complex";
@@ -42,8 +41,8 @@ export class OrderParams implements Types.OrderInput {
   }
 
   set isSellOrder(isSellOrder: Types.OrderInput["isSellOrder"]) {
-    if(this.isSellOrder !== isSellOrder) {
-        this._params.isSellOrder = isSellOrder;
+    if (this.isSellOrder !== isSellOrder) {
+      this._params.isSellOrder = isSellOrder;
     }
   }
 
@@ -66,7 +65,7 @@ export class OrderParams implements Types.OrderInput {
 
   set numItems(numItems: Types.OrderInput["numItems"]) {
     const formattedNumItems = s(numItems);
-      this._params.constraints[0] = formattedNumItems;
+    this._params.constraints[0] = formattedNumItems;
   }
 
   get startPrice(): Types.OrderInput["startPrice"] {
@@ -74,7 +73,7 @@ export class OrderParams implements Types.OrderInput {
   }
 
   set startPrice(startPrice: Types.OrderInput["startPrice"]) {
-      this._params.constraints[1] = startPrice;
+    this._params.constraints[1] = startPrice;
   }
 
   get endPrice(): Types.OrderInput["endPrice"] {
@@ -82,7 +81,7 @@ export class OrderParams implements Types.OrderInput {
   }
 
   set endPrice(endPrice: Types.OrderInput["endPrice"]) {
-      this._params.constraints[2] = endPrice;
+    this._params.constraints[2] = endPrice;
   }
 
   get startTime(): Types.OrderInput["startTime"] {
@@ -91,7 +90,7 @@ export class OrderParams implements Types.OrderInput {
 
   set startTime(startTime: Types.OrderInput["startTime"]) {
     const formattedStartTime = s(startTime);
-      this._params.constraints[3] = formattedStartTime;
+    this._params.constraints[3] = formattedStartTime;
   }
 
   get endTime(): Types.OrderInput["endTime"] {
@@ -100,7 +99,7 @@ export class OrderParams implements Types.OrderInput {
 
   set endTime(endTime: Types.OrderInput["endTime"]) {
     const formattedEndTime = s(endTime);
-      this._params.constraints[4] = formattedEndTime;
+    this._params.constraints[4] = formattedEndTime;
   }
 
   get nonce(): Types.OrderInput["nonce"] {
@@ -108,7 +107,7 @@ export class OrderParams implements Types.OrderInput {
   }
 
   set nonce(nonce: Types.OrderInput["nonce"]) {
-      this._params.constraints[5] = nonce;
+    this._params.constraints[5] = nonce;
   }
 
   get maxGasPrice(): Types.OrderInput["maxGasPrice"] {
@@ -116,7 +115,7 @@ export class OrderParams implements Types.OrderInput {
   }
 
   set maxGasPrice(maxGasPrice: Types.OrderInput["maxGasPrice"]) {
-      this._params.constraints[6] = maxGasPrice;
+    this._params.constraints[6] = maxGasPrice;
   }
 
   get nfts(): Types.OrderInput["nfts"] {
@@ -133,7 +132,7 @@ export class OrderParams implements Types.OrderInput {
 
   set complication(complication: Types.OrderInput["complication"]) {
     const formattedComplication = lc(complication);
-      this._params.execParams[0] = formattedComplication;
+    this._params.execParams[0] = formattedComplication;
   }
 
   get extraParams(): Types.OrderInput["extraParams"] {
@@ -141,7 +140,7 @@ export class OrderParams implements Types.OrderInput {
   }
 
   set extraParams(extraParams: Types.OrderInput["extraParams"]) {
-      this._params.extraParams = extraParams;
+    this._params.extraParams = extraParams;
   }
 
   get currency(): Types.OrderInput["currency"] {
@@ -150,12 +149,12 @@ export class OrderParams implements Types.OrderInput {
 
   set currency(currency: Types.OrderInput["currency"]) {
     const formattedCurrency = lc(currency);
-      this._params.execParams[1] = formattedCurrency;
+    this._params.execParams[1] = formattedCurrency;
   }
 
   get sig(): string {
-    if(!this._sig) {
-        throw new Error("Order is not signed");
+    if (!this._sig) {
+      throw new Error("Order is not signed");
     }
     return this._sig;
   }
@@ -186,15 +185,15 @@ export class OrderParams implements Types.OrderInput {
       complication: this.complication,
       extraParams: this.extraParams,
       currency: this.currency,
-      signature: this._sig
-    }
+      signature: this._sig,
+    };
   }
 
   constructor(protected _chainId: number, params: Types.OrderInput) {
     try {
       const normalizedParams = normalize(params);
       this._params = this.getInternalOrder(normalizedParams);
-      if(params.signature) {
+      if (params.signature) {
         this.sig = params.signature;
       }
     } catch (err) {
@@ -206,7 +205,11 @@ export class OrderParams implements Types.OrderInput {
   }
 
   protected get _isSingleToken() {
-    return this.numItems === 1 && this.nfts.length === 1 && this.nfts[0]?.tokens?.length === 1;
+    return (
+      this.numItems === 1 &&
+      this.nfts.length === 1 &&
+      this.nfts[0]?.tokens?.length === 1
+    );
   }
 
   protected get _isContractWide() {
@@ -214,17 +217,17 @@ export class OrderParams implements Types.OrderInput {
   }
 
   protected _verifySig(encodedSignature: string) {
-    if(!encodedSignature) {
-        throw new Error("Order has not been signed");
+    if (!encodedSignature) {
+      throw new Error("Order has not been signed");
     }
 
     const decodedSig = this._getDecodedSig(encodedSignature);
     const [types, value] = this._getEip712TypesAndValue();
-    
+
     const signer = verifyTypedData(this._domain, types, value, decodedSig);
 
-    if(lc(signer) !== this.signer) {
-        throw new Error("Invalid signature");
+    if (lc(signer) !== this.signer) {
+      throw new Error("Invalid signature");
     }
   }
 
@@ -260,10 +263,11 @@ export class OrderParams implements Types.OrderInput {
     };
 
     return d;
-
   }
 
-  protected _getEncodedSig(signature: Signature | { v: number; r: string; s: string }): string {
+  protected _getEncodedSig(
+    signature: Signature | { v: number; r: string; s: string }
+  ): string {
     const encodedSig = defaultAbiCoder.encode(
       ["bytes32", "bytes32", "uint8"],
       [signature.r, signature.s, signature.v]

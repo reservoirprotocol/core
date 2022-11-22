@@ -41,23 +41,26 @@ export class Exchange {
   }
 
   public takeOrdersTx(taker: string, orders: Types.TakeOrderParams[]): TxData {
-    this.checkOrders(taker, orders.map((item) => item.order));
+    this.checkOrders(
+      taker,
+      orders.map((item) => item.order)
+    );
+
+    const orderData = [
+      orders.map((item) => item.order.getSignedOrder()),
+      orders.map((item) => item.tokens),
+    ];
 
     const commonTxData = {
       from: taker,
       to: this.contract.address,
-      data: this.contract.interface.encodeFunctionData("takeOrders", [
-        orders.map((item) => item.order.getInternalOrder(item.order)),
-        orders.map((item) => item.tokens),
-      ]),
+      data: this.contract.interface.encodeFunctionData("takeOrders", orderData),
     };
 
     if (orders[0].order.currency === CommonAddresses.Eth[this.chainId]) {
       const value = orders.reduce((acc, { order }) => {
         return acc.add(order.getMatchingPrice());
       }, bn(0));
-
-
 
       return {
         ...commonTxData,
@@ -168,22 +171,22 @@ export class Exchange {
 
   protected checkOrders(taker: string, orders: Order[]) {
     const sameSide = orders.every(
-      (order ) => order.isSellOrder === orders[0].isSellOrder
+      (order) => order.isSellOrder === orders[0].isSellOrder
     );
     if (!sameSide) {
       throw new Error("All orders must be of the same side");
     }
 
     const sameCurrency = orders.every(
-      ( order ) => order.currency === orders[0].currency
+      (order) => order.currency === orders[0].currency
     );
     if (!sameCurrency) {
       throw new Error("All orders must be of the same currency");
     }
 
     const differentAccounts = orders.every((order) => order.signer !== taker);
-    if(!differentAccounts) { 
-        throw new Error("No dogfooding")
+    if (!differentAccounts) {
+      throw new Error("No dogfooding");
     }
   }
 }
