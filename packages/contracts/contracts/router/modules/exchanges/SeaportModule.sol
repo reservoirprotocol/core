@@ -24,8 +24,8 @@ contract SeaportModule is BaseExchangeModule {
 
     // --- Fields ---
 
-    address public constant EXCHANGE =
-        0x00000000006c3852cbEf3e08E8dF289169EdE581;
+    ISeaport public constant EXCHANGE =
+        ISeaport(0x00000000006c3852cbEf3e08E8dF289169EdE581);
 
     // --- Constructor ---
 
@@ -80,7 +80,7 @@ contract SeaportModule is BaseExchangeModule {
         chargeERC20Fees(fees, params.token, params.amount)
     {
         // Approve the exchange if needed
-        _approveERC20IfNeeded(params.token, EXCHANGE, params.amount);
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
 
         // Execute the fill
         params.revertIfIncomplete
@@ -146,7 +146,7 @@ contract SeaportModule is BaseExchangeModule {
         chargeERC20Fees(fees, params.token, params.amount)
     {
         // Approve the exchange if needed
-        _approveERC20IfNeeded(params.token, EXCHANGE, params.amount);
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
 
         // Execute the fill
         params.revertIfIncomplete
@@ -192,8 +192,12 @@ contract SeaportModule is BaseExchangeModule {
         IERC20 paymentToken = IERC20(paymentItem.token);
 
         // Approve the exchange if needed
-        _approveERC721IfNeeded(nftToken, EXCHANGE);
-        _approveERC20IfNeeded(paymentToken, EXCHANGE, type(uint256).max);
+        _approveERC721IfNeeded(nftToken, address(EXCHANGE));
+        _approveERC20IfNeeded(
+            paymentToken,
+            address(EXCHANGE),
+            type(uint256).max
+        );
 
         // Execute the fill
         params.revertIfIncomplete
@@ -256,8 +260,12 @@ contract SeaportModule is BaseExchangeModule {
         IERC20 paymentToken = IERC20(paymentItem.token);
 
         // Approve the exchange if needed
-        _approveERC1155IfNeeded(nftToken, EXCHANGE);
-        _approveERC20IfNeeded(paymentToken, EXCHANGE, type(uint256).max);
+        _approveERC1155IfNeeded(nftToken, address(EXCHANGE));
+        _approveERC20IfNeeded(
+            paymentToken,
+            address(EXCHANGE),
+            type(uint256).max
+        );
 
         uint256 identifier = nftItem.itemType == ISeaport.ItemType.ERC1155
             ? nftItem.identifierOrCriteria
@@ -312,7 +320,7 @@ contract SeaportModule is BaseExchangeModule {
         // We don't perform any kind of input or return value validation,
         // so this function should be used with precaution - the official
         // way to use it is only for Seaport-based approvals
-        ISeaport(EXCHANGE).matchOrders(orders, fulfillments);
+        EXCHANGE.matchOrders(orders, fulfillments);
     }
 
     // --- ERC721 / ERC1155 hooks ---
@@ -374,7 +382,7 @@ contract SeaportModule is BaseExchangeModule {
     ) internal {
         // Execute the fill
         try
-            ISeaport(EXCHANGE).fulfillAdvancedOrder{value: value}(
+            EXCHANGE.fulfillAdvancedOrder{value: value}(
                 order,
                 criteriaResolvers,
                 bytes32(0),
@@ -399,7 +407,7 @@ contract SeaportModule is BaseExchangeModule {
         // Execute the fill
         bool success;
         try
-            ISeaport(EXCHANGE).fulfillAdvancedOrder{value: value}(
+            EXCHANGE.fulfillAdvancedOrder{value: value}(
                 order,
                 criteriaResolvers,
                 bytes32(0),
@@ -433,7 +441,7 @@ contract SeaportModule is BaseExchangeModule {
         uint256 value
     ) internal {
         // Execute the fill
-        ISeaport(EXCHANGE).fulfillAvailableAdvancedOrders{value: value}(
+        EXCHANGE.fulfillAvailableAdvancedOrders{value: value}(
             orders,
             criteriaResolvers,
             fulfillments.offer,
@@ -471,8 +479,9 @@ contract SeaportModule is BaseExchangeModule {
         }
 
         // Execute the fill
-        (bool[] memory fulfilled, ) = ISeaport(EXCHANGE)
-            .fulfillAvailableAdvancedOrders{value: value}(
+        (bool[] memory fulfilled, ) = EXCHANGE.fulfillAvailableAdvancedOrders{
+            value: value
+        }(
             orders,
             criteriaResolvers,
             fulfillments.offer,
@@ -518,11 +527,9 @@ contract SeaportModule is BaseExchangeModule {
         assembly {
             orderComponents := orderParameters
         }
-        orderComponents.counter = ISeaport(EXCHANGE).getCounter(
-            orderParameters.offerer
-        );
+        orderComponents.counter = EXCHANGE.getCounter(orderParameters.offerer);
 
-        orderHash = ISeaport(EXCHANGE).getOrderHash(orderComponents);
+        orderHash = EXCHANGE.getOrderHash(orderComponents);
     }
 
     function _getFilledAmount(bytes32 orderHash)
@@ -530,6 +537,6 @@ contract SeaportModule is BaseExchangeModule {
         view
         returns (uint256 totalFilled)
     {
-        (, , totalFilled, ) = ISeaport(EXCHANGE).getOrderStatus(orderHash);
+        (, , totalFilled, ) = EXCHANGE.getOrderStatus(orderHash);
     }
 }

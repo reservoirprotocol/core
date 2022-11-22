@@ -13,8 +13,8 @@ contract UniswapV3Module is BaseExchangeModule {
 
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    address public constant SWAP_ROUTER =
-        0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    IUniswapV3Router public constant SWAP_ROUTER =
+        IUniswapV3Router(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     // --- Constructor ---
 
@@ -41,12 +41,10 @@ contract UniswapV3Module is BaseExchangeModule {
         }
 
         // Execute the swap
-        IUniswapV3Router(SWAP_ROUTER).exactOutputSingle{value: msg.value}(
-            params
-        );
+        SWAP_ROUTER.exactOutputSingle{value: msg.value}(params);
 
         // Refund any ETH stucked in the router
-        IUniswapV3Router(SWAP_ROUTER).refundETH();
+        SWAP_ROUTER.refundETH();
     }
 
     function erc20ToExactOutput(
@@ -56,11 +54,11 @@ contract UniswapV3Module is BaseExchangeModule {
         // Approve the router if needed
         _approveERC20IfNeeded(
             params.tokenIn,
-            SWAP_ROUTER,
+            address(SWAP_ROUTER),
             params.amountInMaximum
         );
 
         // Execute the swap
-        IUniswapV3Router(SWAP_ROUTER).exactOutputSingle(params);
+        SWAP_ROUTER.exactOutputSingle(params);
     }
 }
