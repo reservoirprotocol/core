@@ -164,7 +164,6 @@ contract SudoswapModule is BaseExchangeModule {
             )
         {
             ISudoswapPair.PairVariant variant = pair.pairVariant();
-            IERC20 token = pair.token();
 
             // Pay fees
             uint256 feesLength = fees.length;
@@ -172,7 +171,7 @@ contract SudoswapModule is BaseExchangeModule {
                 Fee memory fee = fees[i];
                 uint8(variant) < 2
                     ? _sendETH(fee.recipient, fee.amount)
-                    : _sendERC20(fee.recipient, fee.amount, token);
+                    : _sendERC20(fee.recipient, fee.amount, pair.token());
 
                 unchecked {
                     ++i;
@@ -182,7 +181,7 @@ contract SudoswapModule is BaseExchangeModule {
             // Forward any left payment to the specified receiver
             uint8(variant) < 2
                 ? _sendAllETH(params.fillTo)
-                : _sendAllERC20(params.fillTo, token);
+                : _sendAllERC20(params.fillTo, pair.token());
         } catch {
             if (params.revertIfIncomplete) {
                 revert UnsuccessfulFill();

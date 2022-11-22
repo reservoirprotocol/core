@@ -70,3 +70,60 @@ export const setupSudoswapListings = async (listings: SudoswapListing[]) => {
     });
   }
 };
+
+// --- Offers ---
+
+export type SudoswapOffer = {
+  buyer: SignerWithAddress;
+  nft: {
+    contract: Contract;
+    id: number;
+  };
+  price: BigNumberish;
+  // Whether the order is to be cancelled
+  isCancelled?: boolean;
+  order?: Sdk.Sudoswap.Order;
+};
+
+export const setupSudoswapOffers = async (offers: SudoswapOffer[]) => {
+  const chainId = getChainId();
+
+  const factory = new Contract(
+    Sdk.Sudoswap.Addresses.PairFactory[chainId],
+    FactoryAbi,
+    ethers.provider
+  );
+  for (const offer of offers) {
+    const { buyer, nft, price, isCancelled } = offer;
+
+    // Get the pair address by making a static call to the deploy method
+    const pair = await factory.connect(buyer).callStatic.createPairETH(
+      nft.contract.address,
+      Sdk.Sudoswap.Addresses.LinearCurve[chainId],
+      buyer.address,
+      0, // TOKEN
+      0,
+      0,
+      price,
+      []
+    );
+
+    // Actually deploy the pair
+    await factory.connect(buyer).createPairETH(
+      nft.contract.address,
+      Sdk.Sudoswap.Addresses.LinearCurve[chainId],
+      buyer.address,
+      0, // TOKEN
+      0,
+      0,
+      price,
+      [],
+      { value: isCancelled ? bn(0) : price }
+    );
+
+    offer.order = new Sdk.Sudoswap.Order(chainId, {
+      pair,
+      price: price.toString(),
+    });
+  }
+};
