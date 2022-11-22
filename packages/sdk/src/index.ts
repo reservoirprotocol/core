@@ -4,6 +4,7 @@ import * as CryptoPunks from "./cryptopunks";
 import * as Element from "./element";
 import * as Forward from "./forward";
 import * as Foundation from "./foundation";
+import * as Infinity from "./infinity";
 import * as LooksRare from "./looks-rare";
 import * as Nftx from "./nftx";
 import * as Nouns from "./nouns";
@@ -30,6 +31,7 @@ export {
   Forward,
   Foundation,
   LooksRare,
+  Infinity,
   Nftx,
   Nouns,
   Quixotic,

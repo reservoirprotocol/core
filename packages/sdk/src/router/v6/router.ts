@@ -79,7 +79,7 @@ export class Router {
         Addresses.ZeroExV4Module[chainId] ?? AddressZero,
         ZeroExV4ModuleAbi,
         provider
-      ),
+      )
     };
   }
 
@@ -196,6 +196,34 @@ export class Router {
         const exchange = new Sdk.CryptoPunks.Exchange(this.chainId);
         return {
           txData: exchange.fillListingTx(taker, order, options),
+          success: [true],
+        };
+      }
+    }
+
+    // TODO: Add Infinity router module
+    if (details.some(({ kind }) => kind === "infinity")) {
+      if (details.length > 1) {
+        throw new Error("Infinity sweeping is not supported");
+      } else {
+        if (options?.globalFees?.length) {
+          throw new Error("Fees not supported");
+        }
+
+        const order = details[0].order as Sdk.Infinity.Order;
+        const exchange = new Sdk.Infinity.Exchange(this.chainId);
+
+        if(options?.directFillingData) {
+          return {
+            txData: exchange.takeOrdersTx(taker, [{
+              order,
+              tokens: options.directFillingData
+            }]),
+            success: [true],
+          }
+        }
+        return {
+          txData: exchange.takeMultipleOneOrdersTx(taker, [order]),
           success: [true],
         };
       }

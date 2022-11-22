@@ -55,6 +55,10 @@ export type GenericOrder =
   | {
       kind: "rarible";
       order: Sdk.Rarible.Order;
+    } 
+  | {
+    kind: "infinity";
+    order: Sdk.Infinity.Order;
     }
   | {
       kind: "forward";
