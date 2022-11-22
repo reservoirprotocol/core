@@ -1,17 +1,72 @@
+import { BigNumberish } from "@ethersproject/bignumber";
+import { AddressZero } from "@ethersproject/constants";
+import { Contract } from "@ethersproject/contracts";
+import * as Sdk from "@reservoir0x/sdk/src";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { ethers } from "hardhat";
+
+import { bn, getChainId } from "../../../utils";
+
+import FactoryAbi from "@reservoir0x/sdk/src/sudoswap/abis/Factory.json";
 
 // --- Listings ---
 
-export const addresPoolPDB: string = "0x7794C476806731b74ba2049ccd413218248135DA"; //Mainnet PDB pool
+export type SudoswapListing = {
+  seller: SignerWithAddress;
+  nft: {
+    contract: Contract;
+    id: number;
+  };
+  price: BigNumberish;
+  // Whether the order is to be cancelled
+  isCancelled?: boolean;
+  order?: Sdk.Sudoswap.Order;
+};
 
-export const addresTokenPDB: string = "0xaCd1423E1e7D45DD0F3AE63C5dB959D49FeADd3F"; //example project
+export const setupSudoswapListings = async (listings: SudoswapListing[]) => {
+  const chainId = getChainId();
 
-const abiOwnerOf: string = 
-    '[{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}]';
+  const factory = new Contract(
+    Sdk.Sudoswap.Addresses.PairFactory[chainId],
+    FactoryAbi,
+    ethers.provider
+  );
+  for (const listing of listings) {
+    const { seller, nft, price, isCancelled } = listing;
 
-export const setupSudoswapTestContract = async () => {
+    // Approve the factory contract
+    await nft.contract.connect(seller).mint(nft.id);
+    await nft.contract
+      .connect(seller)
+      .setApprovalForAll(Sdk.Sudoswap.Addresses.PairFactory[chainId], true);
 
-  const contractPDB = new ethers.Contract(addresTokenPDB, abiOwnerOf, ethers.provider);
+    // Get the pair address by making a static call to the deploy method
+    const pair = await factory.connect(seller).callStatic.createPairETH(
+      nft.contract.address,
+      Sdk.Sudoswap.Addresses.LinearCurve[chainId],
+      seller.address,
+      1, // NFT
+      0,
+      0,
+      price,
+      isCancelled ? [] : [nft.id]
+    );
 
-  return contractPDB;
+    // Actually deploy the pair
+    await factory.connect(seller).createPairETH(
+      nft.contract.address,
+      Sdk.Sudoswap.Addresses.LinearCurve[chainId],
+      seller.address,
+      1, // NFT
+      0,
+      0,
+      price,
+      isCancelled ? [] : [nft.id]
+    );
+
+    listing.order = new Sdk.Sudoswap.Order(chainId, {
+      pair,
+      price: price.toString(),
+    });
+  }
 };
