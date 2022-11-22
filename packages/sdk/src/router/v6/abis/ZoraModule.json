@@ -94,7 +94,7 @@
     "name": "EXCHANGE",
     "outputs": [
       {
-        "internalType": "contract IFoundation",
+        "internalType": "contract IZora",
         "name": "",
         "type": "address"
       }
@@ -108,7 +108,7 @@
         "components": [
           {
             "internalType": "contract IERC721",
-            "name": "token",
+            "name": "collection",
             "type": "address"
           },
           {
@@ -117,13 +117,201 @@
             "type": "uint256"
           },
           {
+            "internalType": "address",
+            "name": "currency",
+            "type": "address"
+          },
+          {
             "internalType": "uint256",
-            "name": "price",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "finder",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct ZoraModule.Ask",
+        "name": "ask",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "fillTo",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "refundTo",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "revertIfIncomplete",
+            "type": "bool"
+          },
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
             "type": "uint256"
           }
         ],
-        "internalType": "struct FoundationModule.Listing",
-        "name": "listing",
+        "internalType": "struct BaseExchangeModule.ERC20ListingParams",
+        "name": "params",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.Fee[]",
+        "name": "fees",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "acceptERC20Listing",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC721",
+            "name": "collection",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "currency",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "finder",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct ZoraModule.Ask[]",
+        "name": "asks",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "fillTo",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "refundTo",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "revertIfIncomplete",
+            "type": "bool"
+          },
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.ERC20ListingParams",
+        "name": "params",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.Fee[]",
+        "name": "fees",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "acceptERC20Listings",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC721",
+            "name": "collection",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "currency",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "finder",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct ZoraModule.Ask",
+        "name": "ask",
         "type": "tuple"
       },
       {
@@ -182,7 +370,7 @@
         "components": [
           {
             "internalType": "contract IERC721",
-            "name": "token",
+            "name": "collection",
             "type": "address"
           },
           {
@@ -191,13 +379,23 @@
             "type": "uint256"
           },
           {
+            "internalType": "address",
+            "name": "currency",
+            "type": "address"
+          },
+          {
             "internalType": "uint256",
-            "name": "price",
+            "name": "amount",
             "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "finder",
+            "type": "address"
           }
         ],
-        "internalType": "struct FoundationModule.Listing[]",
-        "name": "listings",
+        "internalType": "struct ZoraModule.Ask[]",
+        "name": "asks",
         "type": "tuple[]"
       },
       {

@@ -258,6 +258,23 @@
         "internalType": "uint256",
         "name": "tokenId",
         "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.Fee[]",
+        "name": "fees",
+        "type": "tuple[]"
       }
     ],
     "name": "acceptERC1155Offer",
@@ -1131,6 +1148,23 @@
         "internalType": "uint256",
         "name": "tokenId",
         "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BaseExchangeModule.Fee[]",
+        "name": "fees",
+        "type": "tuple[]"
       }
     ],
     "name": "acceptERC721Offer",

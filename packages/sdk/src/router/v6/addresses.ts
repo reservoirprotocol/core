@@ -11,7 +11,7 @@ export const BalanceAssertModule: ChainIdToAddress = {};
 
 export const UnwrapWETHModule: ChainIdToAddress = {};
 
-// Exchange / marketplace modules
+// Exchange modules
 
 export const FoundationModule: ChainIdToAddress = {};
 
@@ -25,6 +25,8 @@ export const SeaportModule: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x037d39e603b803651acc7b36ff25e52f8680aa2f",
 };
 
+export const SudoswapModule: ChainIdToAddress = {};
+
 export const X2Y2Module: ChainIdToAddress = {
   [Network.Ethereum]: "0xff78f7c6e23187fd4bdb2f7f35359a42d56878dd",
   [Network.EthereumGoerli]: "0x3b74ec4005617ce2adf46d812039ea3562a4eaf5",
@@ -35,7 +37,4 @@ export const ZeroExV4Module: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x0e01862920bd5ef73ed1a5dccd2ecad56c3e051f",
 };
 
-export let SudoswapModule: ChainIdToAddress = {
-  // TODO: set once deployed
-  [Network.Ethereum]: "0x0000000000000000000000000000000000000000",
-};
+export const ZoraModule: ChainIdToAddress = {};
