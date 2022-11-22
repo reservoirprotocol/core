@@ -7,10 +7,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../helpers/router";
-import {
-  LooksRareListing,
-  setupLooksRareListings,
-} from "../helpers/looks-rare";
+import { SudoswapListing, setupSudoswapListings } from "../helpers/sudoswap";
 import {
   bn,
   getChainId,
@@ -21,7 +18,7 @@ import {
   setupNFTs,
 } from "../../../utils";
 
-describe("[ReservoirV6_0_0] LooksRare listings", () => {
+describe("[ReservoirV6_0_0] Sudoswap listings", () => {
   const chainId = getChainId();
 
   let deployer: SignerWithAddress;
@@ -31,21 +28,20 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
   let david: SignerWithAddress;
   let emilio: SignerWithAddress;
 
-  let erc1155: Contract;
   let erc721: Contract;
   let router: Contract;
-  let looksRareModule: Contract;
+  let sudoswapModule: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
 
-    ({ erc721, erc1155 } = await setupNFTs(deployer));
+    ({ erc721 } = await setupNFTs(deployer));
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
-    looksRareModule = (await ethers
-      .getContractFactory("LooksRareModule", deployer)
+    sudoswapModule = (await ethers
+      .getContractFactory("SudoswapModule", deployer)
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
@@ -60,8 +56,8 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
         david: await ethers.provider.getBalance(david.address),
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
-        looksRareModule: await ethers.provider.getBalance(
-          looksRareModule.address
+        sudoswapModule: await ethers.provider.getBalance(
+          sudoswapModule.address
         ),
       };
     } else {
@@ -73,7 +69,7 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
         david: await contract.getBalance(david.address),
         emilio: await contract.getBalance(emilio.address),
         router: await contract.getBalance(router.address),
-        looksRareModule: await contract.getBalance(looksRareModule.address),
+        sudoswapModule: await contract.getBalance(sudoswapModule.address),
       };
     }
   };
@@ -96,92 +92,61 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
     // Taker: Carol
     // Fee recipient: Emilio
 
-    const listings: LooksRareListing[] = [];
+    const listings: SudoswapListing[] = [];
     const feesOnTop: BigNumber[] = [];
     for (let i = 0; i < listingsCount; i++) {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
-          ...(getRandomBoolean()
-            ? { kind: "erc721", contract: erc721 }
-            : { kind: "erc1155", contract: erc1155 }),
+          contract: erc721,
           id: getRandomInteger(1, 10000),
         },
         price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
         isCancelled: partial && getRandomBoolean(),
       });
+
       if (chargeFees) {
         feesOnTop.push(parseEther(getRandomFloat(0.0001, 0.1).toFixed(6)));
       }
     }
-    await setupLooksRareListings(listings);
+    await setupSudoswapListings(listings);
 
     // Prepare executions
 
     const totalPrice = bn(
-      listings.map(({ price }) => price).reduce((a, b) => bn(a).add(b), bn(0))
+      listings
+        .map(({ price }) =>
+          // The protocol fee should be paid on top of the price
+          bn(price).add(bn(price).mul(50).div(10000))
+        )
+        .reduce((a, b) => bn(a).add(b), bn(0))
     );
     const executions: ExecutionInfo[] = [
       // 1. Fill listings
-      listingsCount > 1
-        ? {
-            module: looksRareModule.address,
-            data: looksRareModule.interface.encodeFunctionData(
-              "acceptETHListings",
-              [
-                listings.map((listing) =>
-                  listing.order!.buildMatching(looksRareModule.address)
-                ),
-                listings.map((listing) => listing.order!.params),
-                {
-                  fillTo: carol.address,
-                  refundTo: carol.address,
-                  revertIfIncomplete,
-                  amount: totalPrice,
-                },
-                [
-                  ...feesOnTop.map((amount) => ({
-                    recipient: emilio.address,
-                    amount,
-                  })),
-                ],
-              ]
-            ),
-            value: totalPrice.add(
-              // Anything on top should be refunded
-              feesOnTop
-                .reduce((a, b) => bn(a).add(b), bn(0))
-                .add(parseEther("0.1"))
-            ),
-          }
-        : {
-            module: looksRareModule.address,
-            data: looksRareModule.interface.encodeFunctionData(
-              "acceptETHListing",
-              [
-                listings[0].order!.buildMatching(looksRareModule.address),
-                listings[0].order!.params,
-                {
-                  fillTo: carol.address,
-                  refundTo: carol.address,
-                  revertIfIncomplete,
-                  amount: totalPrice,
-                },
-                chargeFees
-                  ? feesOnTop.map((amount) => ({
-                      recipient: emilio.address,
-                      amount,
-                    }))
-                  : [],
-              ]
-            ),
-            value: totalPrice.add(
-              // Anything on top should be refunded
-              feesOnTop
-                .reduce((a, b) => bn(a).add(b), bn(0))
-                .add(parseEther("0.1"))
-            ),
+      {
+        module: sudoswapModule.address,
+        data: sudoswapModule.interface.encodeFunctionData("buyWithETH", [
+          listings.map((listing) => listing.order!.params.pair),
+          listings.map((listing) => listing.nft.id),
+          Math.floor(Date.now() / 1000),
+          {
+            fillTo: carol.address,
+            refundTo: carol.address,
+            revertIfIncomplete,
+            amount: totalPrice,
           },
+          [
+            ...feesOnTop.map((amount) => ({
+              recipient: emilio.address,
+              amount,
+            })),
+          ],
+        ]),
+        value: totalPrice.add(
+          // Anything on top should be refunded
+          feesOnTop.reduce((a, b) => bn(a).add(b), bn(0)).add(parseEther("0.1"))
+        ),
+      },
     ];
 
     // Checks
@@ -212,9 +177,6 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
     const ethBalancesBefore = await getBalances(
       Sdk.Common.Addresses.Eth[chainId]
     );
-    const wethBalancesBefore = await getBalances(
-      Sdk.Common.Addresses.Weth[chainId]
-    );
 
     // Execute
 
@@ -229,40 +191,27 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
     const ethBalancesAfter = await getBalances(
       Sdk.Common.Addresses.Eth[chainId]
     );
-    const wethBalancesAfter = await getBalances(
-      Sdk.Common.Addresses.Weth[chainId]
-    );
 
     // Checks
 
     // Alice got the payment
-    expect(wethBalancesAfter.alice.sub(wethBalancesBefore.alice)).to.eq(
+    expect(ethBalancesAfter.alice.sub(ethBalancesBefore.alice)).to.eq(
       listings
         .filter(
           ({ seller, isCancelled }) =>
             !isCancelled && seller.address === alice.address
         )
-        .map(({ price }) =>
-          bn(price).sub(
-            // Take into consideration the protocol fee
-            bn(price).mul(150).div(10000)
-          )
-        )
+        .map(({ price }) => price)
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
     // Bob got the payment
-    expect(wethBalancesAfter.bob.sub(wethBalancesBefore.bob)).to.eq(
+    expect(ethBalancesAfter.bob.sub(ethBalancesBefore.bob)).to.eq(
       listings
         .filter(
           ({ seller, isCancelled }) =>
             !isCancelled && seller.address === bob.address
         )
-        .map(({ price }) =>
-          bn(price).sub(
-            // Take into consideration the protocol fee
-            bn(price).mul(150).div(10000)
-          )
-        )
+        .map(({ price }) => price)
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
@@ -273,7 +222,7 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
       // amount that was actually paid (eg. prices of filled orders)
       const actualPaid = listings
         .filter(({ isCancelled }) => !isCancelled)
-        .map(({ price }) => price)
+        .map(({ price }) => bn(price).add(bn(price).mul(50).div(10000)))
         .reduce((a, b) => bn(a).add(b), bn(0));
       expect(ethBalancesAfter.emilio.sub(ethBalancesBefore.emilio)).to.eq(
         listings
@@ -286,29 +235,17 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
     for (let i = 0; i < listings.length; i++) {
       const nft = listings[i].nft;
       if (!listings[i].isCancelled) {
-        if (nft.kind === "erc721") {
-          expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
-        } else {
-          expect(await nft.contract.balanceOf(carol.address, nft.id)).to.eq(1);
-        }
+        expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
       } else {
-        if (nft.kind === "erc721") {
-          expect(await nft.contract.ownerOf(nft.id)).to.eq(
-            listings[i].seller.address
-          );
-        } else {
-          expect(
-            await nft.contract.balanceOf(listings[i].seller.address, nft.id)
-          ).to.eq(1);
-        }
+        expect(await nft.contract.ownerOf(nft.id)).to.eq(
+          listings[i].seller.address
+        );
       }
     }
 
     // Router is stateless
-    expect(wethBalancesAfter.router).to.eq(0);
-    expect(wethBalancesAfter.looksRareModule).to.eq(0);
     expect(ethBalancesAfter.router).to.eq(0);
-    expect(ethBalancesAfter.looksRareModule).to.eq(0);
+    expect(ethBalancesAfter.sudoswapModule).to.eq(0);
   };
 
   for (let multiple of [false, true]) {

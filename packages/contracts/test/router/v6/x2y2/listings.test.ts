@@ -1,3 +1,4 @@
+import { Interface } from "@ethersproject/abi";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
@@ -15,7 +16,6 @@ import {
   getRandomInteger,
   reset,
 } from "../../../utils";
-import { Interface } from "ethers/lib/utils";
 
 describe("[ReservoirV6_0_0] X2Y2 listings", () => {
   const chainId = getChainId();
@@ -114,6 +114,7 @@ describe("[ReservoirV6_0_0] X2Y2 listings", () => {
           token: orderData.nft.token,
           tokenId: orderData.nft.token_id,
         },
+        royalty_fee: 0,
       });
       listings.push(order);
 
