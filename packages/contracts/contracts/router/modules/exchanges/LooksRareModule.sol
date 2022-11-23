@@ -101,7 +101,8 @@ contract LooksRareModule is BaseExchangeModule {
     function acceptERC721Offer(
         ILooksRare.TakerOrder calldata takerAsk,
         ILooksRare.MakerOrder calldata makerBid,
-        OfferParams calldata params
+        OfferParams calldata params,
+        Fee[] calldata fees
     ) external nonReentrant {
         IERC721 collection = IERC721(address(makerBid.collection));
 
@@ -109,7 +110,13 @@ contract LooksRareModule is BaseExchangeModule {
         _approveERC721IfNeeded(collection, ERC721_TRANSFER_MANAGER);
 
         // Execute the fill
-        _sell(takerAsk, makerBid, params.fillTo, params.revertIfIncomplete);
+        _sell(
+            takerAsk,
+            makerBid,
+            params.fillTo,
+            params.revertIfIncomplete,
+            fees
+        );
 
         // Refund any ERC721 leftover
         _sendAllERC721(params.refundTo, collection, takerAsk.tokenId);
@@ -120,7 +127,8 @@ contract LooksRareModule is BaseExchangeModule {
     function acceptERC1155Offer(
         ILooksRare.TakerOrder calldata takerAsk,
         ILooksRare.MakerOrder calldata makerBid,
-        OfferParams calldata params
+        OfferParams calldata params,
+        Fee[] calldata fees
     ) external nonReentrant {
         IERC1155 collection = IERC1155(address(makerBid.collection));
 
@@ -128,7 +136,13 @@ contract LooksRareModule is BaseExchangeModule {
         _approveERC1155IfNeeded(collection, ERC1155_TRANSFER_MANAGER);
 
         // Execute the fill
-        _sell(takerAsk, makerBid, params.fillTo, params.revertIfIncomplete);
+        _sell(
+            takerAsk,
+            makerBid,
+            params.fillTo,
+            params.revertIfIncomplete,
+            fees
+        );
 
         // Refund any ERC1155 leftover
         _sendAllERC1155(params.refundTo, collection, takerAsk.tokenId);
@@ -225,12 +239,24 @@ contract LooksRareModule is BaseExchangeModule {
         ILooksRare.TakerOrder calldata takerAsk,
         ILooksRare.MakerOrder calldata makerBid,
         address receiver,
-        bool revertIfIncomplete
+        bool revertIfIncomplete,
+        Fee[] calldata fees
     ) internal {
         // Execute the fill
         try EXCHANGE.matchBidWithTakerAsk(takerAsk, makerBid) {
-            // Forward any payment to the specified receiver
-            makerBid.currency.safeTransfer(receiver, takerAsk.price);
+            // Pay fees
+            uint256 feesLength = fees.length;
+            for (uint256 i; i < feesLength; ) {
+                Fee memory fee = fees[i];
+                _sendERC20(fee.recipient, fee.amount, makerBid.currency);
+
+                unchecked {
+                    ++i;
+                }
+            }
+
+            // Forward any left payment to the specified receiver
+            _sendAllERC20(receiver, makerBid.currency);
         } catch {
             // Revert if specified
             if (revertIfIncomplete) {

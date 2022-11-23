@@ -33,17 +33,6 @@ yarn test ./test/router/v6/seaport/listings.test.ts
 
 The [Reservoir router](../contracts/contracts/router/ReservoirV6_0_0.sol) is a singular immutable smart contract which acts as an execution layer on top of multiple [pluggable module contracts](../contracts/contracts/router/modules/). A module contract acts as a wrapper for a specific piece of funtionality (eg. filling Seaport/LooksRare/X2Y2 orders, swapping tokens on Uniswap V3). Modules can be registered by the owner of the router contract and once added they can never be revoked (thus ensuring there is no way to break backwards-compatibility).
 
-The following modules are available at the moment:
-
-- [`FoundationModule`](../contracts/contracts/router/modules/exchanges/FoundationModule.sol): fill Foundation orders
-- [`LooksRareModule`](../contracts/contracts/router/modules/exchanges/LooksRareModule.sol): fill LooksRare orders
-- [`SeaportModule`](../contracts/contracts/router/modules/exchanges/SeaportModule.sol): fill Seaport orders
-- [`UniswapV3Module`](../contracts/contracts/router/modules/exchanges/UniswapV3Module.sol): swap tokens on UniswapV3
-- [`X2Y2Module`](../contracts/contracts/router/modules/exchanges/X2Y2Module.sol): fill X2Y2 orders
-- [`ZeroExV4Module`](../contracts/contracts/router/modules/exchanges/ZeroExV4Module.sol): fill ZeroExV4 orders
-- [`BalanceAssertModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): assert ownership/balance
-- [`UnwrapWETHModule`](../contracts/contracts/router/modules/BalanceAssertModule.sol): unwrap WETH
-
 #### No state
 
 One of the main goals of the router is to be completely stateless, holding no funds and requiring no approvals on the router/module contracts (in order to reduce the risk surface and allow easy upgradeability). This means that the risk is limited to a per-transaction basis (eg. making sure no funds get lost as part of filling through the router) rather than globally (eg. funds that can be stolen from the router). Due to this, filling orders that require anything other than ETH can be tricky (since ERC20/ERC721/ERC1155 all require approvals to be able to transfer on someone's behalf). We overcome this via two methods:

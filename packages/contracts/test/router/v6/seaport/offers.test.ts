@@ -1,3 +1,4 @@
+import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
@@ -93,6 +94,8 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
   afterEach(reset);
 
   const testAcceptOffers = async (
+    // Whether to charge fees on the received amount
+    chargeFees: boolean,
     // Whether to revert or not in case of any failures
     revertIfIncomplete: boolean,
     // Whether to cancel some orders in order to trigger partial filling
@@ -106,6 +109,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
     // Taker: Carol
 
     const offers: SeaportOffer[] = [];
+    const fees: BigNumber[][] = [];
     for (let i = 0; i < offersCount; i++) {
       offers.push({
         buyer: getRandomBoolean() ? alice : bob,
@@ -114,7 +118,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
           contract: erc721,
           id: getRandomInteger(1, 10000),
         },
-        price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
+        price: parseEther(getRandomFloat(0.2, 2).toFixed(6)),
         fees: [
           {
             recipient: david.address,
@@ -123,6 +127,11 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
         ],
         isCancelled: partial && getRandomBoolean(),
       });
+      if (chargeFees) {
+        fees.push([parseEther(getRandomFloat(0.0001, 0.1).toFixed(6))]);
+      } else {
+        fees.push([]);
+      }
     }
     await setupSeaportOffers(offers);
 
@@ -194,7 +203,7 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
         value: 0,
       },
       // 2. Fill offers with the received NFTs
-      ...offers.map((offer) => ({
+      ...offers.map((offer, i) => ({
         module: seaportModule.address,
         data: seaportModule.interface.encodeFunctionData("acceptERC721Offer", [
           {
@@ -214,6 +223,12 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
             refundTo: carol.address,
             revertIfIncomplete,
           },
+          [
+            ...fees[i].map((amount) => ({
+              recipient: emilio.address,
+              amount,
+            })),
+          ],
         ]),
         value: 0,
       })),
@@ -265,15 +280,31 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
     // Carol got the payment
     expect(balancesAfter.carol.sub(balancesBefore.carol)).to.eq(
       offers
-        .filter(({ isCancelled }) => !isCancelled)
-        .map(({ price, fees }) =>
-          bn(price).sub(
-            fees?.map(({ amount }) => bn(amount)).reduce((a, b) => a.add(b)) ??
-              0
-          )
+        .map((offer, i) =>
+          offer.isCancelled
+            ? bn(0)
+            : bn(offer.price)
+                .sub(
+                  offer.fees
+                    ?.map(({ amount }) => bn(amount))
+                    .reduce((a, b) => a.add(b)) ?? 0
+                )
+                .sub(fees[i].reduce((a, b) => bn(a).add(b), bn(0)))
         )
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
+
+    // Emilio got the fee payments
+    if (chargeFees) {
+      expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
+        offers
+          .map((_, i) => (offers[i].isCancelled ? [] : fees[i]))
+          .map((executionFees) =>
+            executionFees.reduce((a, b) => bn(a).add(b), bn(0))
+          )
+          .reduce((a, b) => bn(a).add(b), bn(0))
+      );
+    }
 
     // Alice and Bob got the NFTs of the filled orders
     for (const { buyer, nft, isCancelled } of offers) {
@@ -294,18 +325,22 @@ describe("[ReservoirV6_0_0] Seaport offers", () => {
 
   for (let multiple of [false, true]) {
     for (let partial of [false, true]) {
-      for (let revertIfIncomplete of [false, true]) {
-        it(
-          `${multiple ? "[multiple-orders]" : "[single-order]"}` +
-            `${partial ? "[partial]" : "[full]"}` +
-            `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
-          async () =>
-            testAcceptOffers(
-              revertIfIncomplete,
-              partial,
-              getRandomInteger(1, 4)
-            )
-        );
+      for (let chargeFees of [false, true]) {
+        for (let revertIfIncomplete of [false, true]) {
+          it(
+            `${multiple ? "[multiple-orders]" : "[single-order]"}` +
+              `${partial ? "[partial]" : "[full]"}` +
+              `${chargeFees ? "[fees]" : "[no-fees]"}` +
+              `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
+            async () =>
+              testAcceptOffers(
+                chargeFees,
+                revertIfIncomplete,
+                partial,
+                multiple ? getRandomInteger(2, 4) : 1
+              )
+          );
+        }
       }
     }
   }

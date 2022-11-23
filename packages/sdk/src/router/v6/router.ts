@@ -22,6 +22,7 @@ import LooksRareModuleAbi from "./abis/LooksRareModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
+import ZoraModuleAbi from "./abis/ZoraModule.json";
 import BlurModuleAbi from "./abis/BlurModule.json";
 
 type ExecutionInfo = {
@@ -51,11 +52,6 @@ export class Router {
       // Initialize router
       router: new Contract(Addresses.Router[chainId], RouterAbi, provider),
       // Initialize modules
-      sudoswapModule: new Contract(
-        Addresses.SudoswapModule[chainId] ?? AddressZero,
-        SudoswapModuleAbi,
-        provider
-      ),
       foundationModule: new Contract(
         Addresses.FoundationModule[chainId] ?? AddressZero,
         FoundationModuleAbi,
@@ -71,6 +67,11 @@ export class Router {
         SeaportModuleAbi,
         provider
       ),
+      sudoswapModule: new Contract(
+        Addresses.SudoswapModule[chainId] ?? AddressZero,
+        SudoswapModuleAbi,
+        provider
+      ),
       x2y2Module: new Contract(
         Addresses.X2Y2Module[chainId] ?? AddressZero,
         X2Y2ModuleAbi,
@@ -79,6 +80,11 @@ export class Router {
       zeroExV4Module: new Contract(
         Addresses.ZeroExV4Module[chainId] ?? AddressZero,
         ZeroExV4ModuleAbi,
+        provider
+      ),
+      zoraModule: new Contract(
+        Addresses.ZoraModule[chainId] ?? AddressZero,
+        ZoraModuleAbi,
         provider
       ),
       blurModule: new Contract(
@@ -114,24 +120,6 @@ export class Router {
     // TODO: Add support for balance assertions
     if (options?.assertBalances) {
       throw new Error("Balance assertions not yet implemented");
-    }
-
-    // TODO: Add Zora router module
-    if (details.some(({ kind }) => kind === "zora")) {
-      if (details.length > 1) {
-        throw new Error("Zora sweeping is not supported");
-      } else {
-        if (options?.globalFees?.length) {
-          throw new Error("Fees not supported");
-        }
-
-        const order = details[0].order as Sdk.Zora.Order;
-        const exchange = new Sdk.Zora.Exchange(this.chainId);
-        return {
-          txData: exchange.fillOrderTx(taker, order),
-          success: [true],
-        };
-      }
     }
 
     // TODO: Add Universe router module
@@ -172,23 +160,6 @@ export class Router {
       }
     }
 
-    // TODO: Add Blur router module
-    // if (details.some(({ kind }) => kind === "blur")) {
-    //   if (details.length > 1) {
-    //     throw new Error("Blur sweeping is not supported");
-    //   } else {
-    //     const order = details[0].order as Sdk.Blur.Order;
-    //     const exchange = new Sdk.Blur.Exchange(this.chainId);
-    //     const matchOrder = order.buildMatching({
-    //       trader: taker
-    //     })
-    //     return {
-    //       txData: await exchange.fillOrderTx(taker, order, matchOrder),
-    //       success: [true],
-    //     };
-    //   }
-    // }
-
     // TODO: Add Cryptopunks router module
     if (details.some(({ kind }) => kind === "cryptopunks")) {
       if (details.length > 1) {
@@ -202,6 +173,36 @@ export class Router {
         const exchange = new Sdk.CryptoPunks.Exchange(this.chainId);
         return {
           txData: exchange.fillListingTx(taker, order, options),
+          success: [true],
+        };
+      }
+    }
+
+    // TODO: Add Infinity router module
+    if (details.some(({ kind }) => kind === "infinity")) {
+      if (details.length > 1) {
+        throw new Error("Infinity sweeping is not supported");
+      } else {
+        if (options?.globalFees?.length) {
+          throw new Error("Fees not supported");
+        }
+
+        const order = details[0].order as Sdk.Infinity.Order;
+        const exchange = new Sdk.Infinity.Exchange(this.chainId);
+
+        if (options?.directFillingData) {
+          return {
+            txData: exchange.takeOrdersTx(taker, [
+              {
+                order,
+                tokens: options.directFillingData,
+              },
+            ]),
+            success: [true],
+          };
+        }
+        return {
+          txData: exchange.takeMultipleOneOrdersTx(taker, [order]),
           success: [true],
         };
       }
@@ -235,8 +236,7 @@ export class Router {
     // If all orders are Seaport, then fill on Seaport directly
     // TODO: Directly fill for other exchanges as well
     if (
-      details.every(({ kind }) => kind === "seaport") &&
-      // TODO: Look into using consideration tips for fees when filling directly
+      details.every(({ kind, fees }) => kind === "seaport" && !fees?.length) &&
       !options?.globalFees?.length &&
       !options?.forceRouter
     ) {
@@ -308,7 +308,9 @@ export class Router {
     const x2y2Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
+    const zoraDetails: ListingDetailsExtracted[] = [];
     const blurDetails: ListingDetailsExtracted[] = [];
+
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind } = details[i];
 
@@ -344,6 +346,14 @@ export class Router {
         case "blur":
           detailsRef = blurDetails;
 
+        case "zora":
+          detailsRef = zoraDetails;
+          break;
+        
+        case "blur":
+          detailsRef = blurDetails;
+          break;
+
         default:
           throw new Error("Unsupported exchange kind");
       }
@@ -354,46 +364,6 @@ export class Router {
     // Generate router executions
     const executions: ExecutionInfo[] = [];
     const success: boolean[] = details.map(() => false);
-
-    // Handle Sudoswap listings
-    if (sudoswapDetails.length) {
-      const orders = sudoswapDetails.map((d) => d.order as Sdk.Sudoswap.Order);
-      const fees = getFees(sudoswapDetails);
-
-      const totalPrice = orders
-        .map((order) => bn(order.params.price))
-        .reduce((a, b) => a.add(b), bn(0));
-      const totalFees = fees
-        .map(({ amount }) => bn(amount))
-        .reduce((a, b) => a.add(b), bn(0));
-
-      executions.push({
-        module: this.contracts.sudoswapModule.address,
-        data: this.contracts.sudoswapModule.interface.encodeFunctionData(
-          "swapETHForSpecificNFTs",
-          [
-            sudoswapDetails.map((d) => [
-              (d.order as Sdk.Sudoswap.Order).params.pair,
-              [d.tokenId],
-            ]),
-            Math.floor(Date.now() / 1000) + 10 * 60,
-            {
-              fillTo: taker,
-              refundTo: taker,
-              revertIfIncomplete: Boolean(!options?.partial),
-              amount: totalPrice,
-            },
-            fees,
-          ]
-        ),
-        value: totalPrice.add(totalFees),
-      });
-
-      // Mark the listings as successfully handled
-      for (const { originalIndex } of sudoswapDetails) {
-        success[originalIndex] = true;
-      }
-    }
 
     // Handle Foundation listings
     if (foundationDetails.length) {
@@ -607,6 +577,46 @@ export class Router {
 
       // Mark the listings as successfully handled
       for (const { originalIndex } of seaportDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
+    // Handle Sudoswap listings
+    if (sudoswapDetails.length) {
+      const orders = sudoswapDetails.map((d) => d.order as Sdk.Sudoswap.Order);
+      const fees = getFees(sudoswapDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.price))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module: this.contracts.sudoswapModule.address,
+        data: this.contracts.sudoswapModule.interface.encodeFunctionData(
+          "buyWithETH",
+          [
+            sudoswapDetails.map(
+              (d) => (d.order as Sdk.Sudoswap.Order).params.pair
+            ),
+            sudoswapDetails.map((d) => d.tokenId),
+            Math.floor(Date.now() / 1000) + 10 * 60,
+            {
+              fillTo: taker,
+              refundTo: taker,
+              revertIfIncomplete: Boolean(!options?.partial),
+              amount: totalPrice,
+            },
+            fees,
+          ]
+        ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of sudoswapDetails) {
         success[originalIndex] = true;
       }
     }
@@ -847,9 +857,59 @@ export class Router {
       }
     }
 
+    // Handle Zora listings
+    if (zoraDetails.length) {
+      const orders = zoraDetails.map((d) => d.order as Sdk.Zora.Order);
+      const fees = getFees(zoraDetails);
 
-     // Handle Blur listings
-     if (blurDetails.length) {
+      const totalPrice = orders
+        .map((order) => bn(order.params.askPrice))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module: this.contracts.zoraModule.address,
+        data:
+          orders.length === 1
+            ? this.contracts.zoraModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  orders[0].params,
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.foundationModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => order.params),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of zoraDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
+    // Handle Blur listings
+    if (blurDetails.length) {
       const orders = blurDetails.map(
         (d) => d.order as Sdk.Blur.Order
       );
@@ -946,10 +1006,11 @@ export class Router {
       const order = detail.order as Sdk.Blur.Order;
       const exchange = new Sdk.Blur.Exchange(this.chainId);
       const matchOrder = order.buildMatching({
-        trader: taker
-      })
+        trader: taker,
+      });
+
       return {
-        txData: await exchange.fillOrderTx(taker, order, matchOrder),
+        txData: exchange.fillOrderTx(taker, order, matchOrder),
         direct: true,
       };
     }
@@ -981,18 +1042,6 @@ export class Router {
       };
     }
 
-    // TODO: Add Sudoswap router module
-    if (detail.kind === "sudoswap") {
-      const order = detail.order as Sdk.Sudoswap.Order;
-      const exchange = new Sdk.Sudoswap.Router(this.chainId);
-      return {
-        txData: exchange.fillBuyOrderTx(taker, order, detail.tokenId, {
-          source: options?.source,
-        }),
-        direct: true,
-      };
-    }
-
     // TODO: Add Forward router module
     if (detail.kind === "forward") {
       const order = detail.order as Sdk.Forward.Order;
@@ -1006,22 +1055,6 @@ export class Router {
       const exchange = new Sdk.Forward.Exchange(this.chainId);
       return {
         txData: exchange.fillOrderTx(taker, order, matchParams, {
-          source: options?.source,
-        }),
-        direct: true,
-      };
-    }
-
-    // TODO: Support filling X2Y2 bids through the router
-    if (detail.kind === "x2y2") {
-      const order = detail.order as Sdk.X2Y2.Order;
-      const exchange = new Sdk.X2Y2.Exchange(
-        this.chainId,
-        String(this.options?.x2y2ApiKey)
-      );
-      return {
-        txData: await exchange.fillOrderTx(taker, order, {
-          tokenId: detail.tokenId,
           source: options?.source,
         }),
         direct: true,
@@ -1061,6 +1094,7 @@ export class Router {
                 refundTo: taker,
                 revertIfIncomplete: true,
               },
+              [],
             ]
           ),
         };
@@ -1101,6 +1135,7 @@ export class Router {
                 refundTo: taker,
                 revertIfIncomplete: true,
               },
+              [],
             ]
           ),
         };
@@ -1143,6 +1178,75 @@ export class Router {
                 refundTo: taker,
                 revertIfIncomplete: true,
               },
+              [],
+            ]
+          ),
+        };
+
+        break;
+      }
+
+      case "sudoswap": {
+        const order = detail.order as Sdk.Sudoswap.Order;
+
+        moduleLevelTx = {
+          module: this.contracts.sudoswapModule.address,
+          data: this.contracts.sudoswapModule.interface.encodeFunctionData(
+            "sell",
+            [
+              order.params.pair,
+              detail.tokenId,
+              bn(order.params.price).sub(
+                // Take into account the protocol fee of 0.5%
+                bn(order.params.price).mul(50).div(10000)
+              ),
+              Math.floor(Date.now() / 1000),
+              {
+                fillTo: taker,
+                refundTo: taker,
+                revertIfIncomplete: true,
+              },
+              [],
+            ]
+          ),
+        };
+
+        break;
+      }
+
+      case "x2y2": {
+        const order = detail.order as Sdk.X2Y2.Order;
+        const exchange = new Sdk.X2Y2.Exchange(
+          this.chainId,
+          String(this.options?.x2y2ApiKey)
+        );
+
+        moduleLevelTx = {
+          module: this.contracts.x2y2Module.address,
+          data: this.contracts.x2y2Module.interface.encodeFunctionData(
+            detail.contractKind === "erc721"
+              ? "acceptERC721Offer"
+              : "acceptERC1155Offer",
+            [
+              exchange.contract.interface.decodeFunctionData(
+                "run",
+                await exchange.fetchInput(
+                  // For X2Y2, the module acts as the taker proxy
+                  this.contracts.x2y2Module.address,
+                  order,
+                  {
+                    tokenId: detail.tokenId,
+                    source: options?.source,
+                  }
+                )
+              ).input,
+              order.params,
+              {
+                fillTo: taker,
+                refundTo: taker,
+                revertIfIncomplete: true,
+              },
+              [],
             ]
           ),
         };
@@ -1175,6 +1279,7 @@ export class Router {
                   revertIfIncomplete: true,
                 },
                 detail.tokenId,
+                [],
               ]
             ),
           };
@@ -1193,6 +1298,7 @@ export class Router {
                   revertIfIncomplete: true,
                 },
                 detail.tokenId,
+                [],
               ]
             ),
           };

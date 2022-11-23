@@ -182,6 +182,7 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
             // Execute atomically
             revertIfIncomplete: true,
           },
+          [],
         ]),
         value: 0,
       },
@@ -373,6 +374,7 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
             refundTo: bob.address,
             revertIfIncomplete: true,
           },
+          [],
         ]),
         value: 0,
       },
@@ -455,6 +457,7 @@ describe("[ReservoirV6_0_0] Various edge-cases", () => {
             refundTo: bob.address,
             revertIfIncomplete: true,
           },
+          [],
         ]),
         value: 0,
       },

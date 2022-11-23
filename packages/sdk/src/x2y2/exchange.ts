@@ -219,6 +219,8 @@ export class Exchange {
             : Types.Op.COMPLETE_BUY_OFFER,
         amountToEth: "0",
         amountToWeth: "0",
+        // Do not check taker's balance (for filling through router contracts)
+        check: false,
         items: [
           {
             orderId: order.params.id,

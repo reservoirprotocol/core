@@ -35,7 +35,6 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
   let erc721: Contract;
   let router: Contract;
   let looksRareModule: Contract;
-  let seaportModule: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
@@ -47,11 +46,6 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
       .then((factory) => factory.deploy())) as any;
     looksRareModule = (await ethers
       .getContractFactory("LooksRareModule", deployer)
-      .then((factory) =>
-        factory.deploy(router.address, router.address)
-      )) as any;
-    seaportModule = (await ethers
-      .getContractFactory("SeaportModule", deployer)
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
@@ -317,7 +311,7 @@ describe("[ReservoirV6_0_0] LooksRare listings", () => {
     expect(ethBalancesAfter.looksRareModule).to.eq(0);
   };
 
-  for (let multiple of [false]) {
+  for (let multiple of [false, true]) {
     for (let partial of [false, true]) {
       for (let chargeFees of [false, true]) {
         for (let revertIfIncomplete of [false, true]) {

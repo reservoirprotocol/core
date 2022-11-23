@@ -2,6 +2,8 @@
 pragma solidity ^0.8.9;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {TwoStepOwnable} from "../../misc/TwoStepOwnable.sol";
 
@@ -9,6 +11,8 @@ import {TwoStepOwnable} from "../../misc/TwoStepOwnable.sol";
 // - includes common helpers useful for all modules
 
 abstract contract BaseModule is TwoStepOwnable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     // --- Events ---
 
     event CallExecuted(address target, bytes data, uint256 value);
@@ -48,9 +52,21 @@ abstract contract BaseModule is TwoStepOwnable, ReentrancyGuard {
     // --- Helpers ---
 
     function _sendETH(address to, uint256 amount) internal {
-        (bool success, ) = payable(to).call{value: amount}("");
-        if (!success) {
-            revert UnsuccessfulPayment();
+        if (amount > 0) {
+            (bool success, ) = payable(to).call{value: amount}("");
+            if (!success) {
+                revert UnsuccessfulPayment();
+            }
+        }
+    }
+
+    function _sendERC20(
+        address to,
+        uint256 amount,
+        IERC20 token
+    ) internal {
+        if (amount > 0) {
+            token.safeTransfer(to, amount);
         }
     }
 

@@ -236,7 +236,8 @@ export type SeaportERC721Approval = {
 };
 
 export const setupSeaportERC721Approvals = async (
-  approvals: SeaportERC721Approval[]
+  approvals: SeaportERC721Approval[],
+  skipMint?: boolean
 ) => {
   const chainId = getChainId();
 
@@ -245,12 +246,16 @@ export const setupSeaportERC721Approvals = async (
 
     // Approve the exchange contract
     if (nft.kind === "erc721") {
-      await nft.contract.connect(giver).mint(nft.id);
+      if (!skipMint) {
+        await nft.contract.connect(giver).mint(nft.id);
+      }
       await nft.contract
         .connect(giver)
         .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
     } else {
-      await nft.contract.connect(giver).mintMany(nft.id, nft.amount ?? 1);
+      if (!skipMint) {
+        await nft.contract.connect(giver).mintMany(nft.id, nft.amount ?? 1);
+      }
       await nft.contract
         .connect(giver)
         .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
