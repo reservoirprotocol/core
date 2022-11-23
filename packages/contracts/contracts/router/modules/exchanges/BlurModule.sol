@@ -91,7 +91,7 @@ contract BlurModule is BaseExchangeModule {
         }
     }
 
-    // --- ERC721 / ERC1155 hooks ---
+    // --- ERC721 hooks ---
 
     // Single token offer acceptance can be done approval-less by using the
     // standard `safeTransferFrom` method together with specifying data for
