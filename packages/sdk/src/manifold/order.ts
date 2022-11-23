@@ -32,7 +32,6 @@ const normalize = (order: Types.ApiListing): Types.ContractListing => {
   // - convert strings to numbers where needed
   // - lowercase all strings
 
-  //TODO: Verify which params can be undefined and handle accordingly
   return {
     id: order.id,
     seller: lc(order.seller),

@@ -88,7 +88,4 @@ export class Exchange {
       value: bn(price).toHexString(),
     };
   }
-
-  // --- Cancel order ---
-  //TODO
 }
