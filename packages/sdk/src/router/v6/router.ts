@@ -947,7 +947,6 @@ export class Router {
       const matchOrder = order.buildMatching({
         trader: taker,
       });
-
       return {
         txData: exchange.fillOrderTx(taker, order, matchOrder),
         direct: true,
@@ -1179,7 +1178,6 @@ export class Router {
                   }
                 )
               ).input,
-              order.params,
               {
                 fillTo: taker,
                 refundTo: taker,
