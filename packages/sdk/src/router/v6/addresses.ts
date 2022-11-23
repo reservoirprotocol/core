@@ -39,3 +39,8 @@ export let SudoswapModule: ChainIdToAddress = {
   // TODO: set once deployed
   [Network.Ethereum]: "0x0000000000000000000000000000000000000000",
 };
+
+export const BlurModule: ChainIdToAddress = {
+  [Network.Ethereum]: "0x0000000000000000000000000000000000000000",
+  [Network.EthereumGoerli]: "0x0000000000000000000000000000000000000000",
+};

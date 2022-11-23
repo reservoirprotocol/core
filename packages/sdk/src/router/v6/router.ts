@@ -22,6 +22,7 @@ import LooksRareModuleAbi from "./abis/LooksRareModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
+import BlurModuleAbi from "./abis/BlurModule.json";
 
 type ExecutionInfo = {
   module: string;
@@ -78,6 +79,11 @@ export class Router {
       zeroExV4Module: new Contract(
         Addresses.ZeroExV4Module[chainId] ?? AddressZero,
         ZeroExV4ModuleAbi,
+        provider
+      ),
+      blurModule: new Contract(
+        Addresses.BlurModule[chainId] ?? AddressZero,
+        BlurModuleAbi,
         provider
       ),
     };
@@ -167,21 +173,21 @@ export class Router {
     }
 
     // TODO: Add Blur router module
-    if (details.some(({ kind }) => kind === "blur")) {
-      if (details.length > 1) {
-        throw new Error("Blur sweeping is not supported");
-      } else {
-        const order = details[0].order as Sdk.Blur.Order;
-        const exchange = new Sdk.Blur.Exchange(this.chainId);
-        const matchOrder = order.buildMatching({
-          trader: taker
-        })
-        return {
-          txData: await exchange.fillOrderTx(taker, order, matchOrder),
-          success: [true],
-        };
-      }
-    }
+    // if (details.some(({ kind }) => kind === "blur")) {
+    //   if (details.length > 1) {
+    //     throw new Error("Blur sweeping is not supported");
+    //   } else {
+    //     const order = details[0].order as Sdk.Blur.Order;
+    //     const exchange = new Sdk.Blur.Exchange(this.chainId);
+    //     const matchOrder = order.buildMatching({
+    //       trader: taker
+    //     })
+    //     return {
+    //       txData: await exchange.fillOrderTx(taker, order, matchOrder),
+    //       success: [true],
+    //     };
+    //   }
+    // }
 
     // TODO: Add Cryptopunks router module
     if (details.some(({ kind }) => kind === "cryptopunks")) {
@@ -302,6 +308,7 @@ export class Router {
     const x2y2Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
+    const blurDetails: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind } = details[i];
 
@@ -333,6 +340,9 @@ export class Router {
               ? zeroexV4Erc721Details
               : zeroexV4Erc1155Details;
           break;
+        
+        case "blur":
+          detailsRef = blurDetails;
 
         default:
           throw new Error("Unsupported exchange kind");
@@ -833,6 +843,70 @@ export class Router {
 
       // Mark the listings as successfully handled
       for (const { originalIndex } of zeroexV4Erc1155Details) {
+        success[originalIndex] = true;
+      }
+    }
+
+
+     // Handle Blur listings
+     if (blurDetails.length) {
+      const orders = blurDetails.map(
+        (d) => d.order as Sdk.Blur.Order
+      );
+      const module = this.contracts.blurModule.address;
+
+      const fees = getFees(blurDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.price))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module,
+        data:
+          orders.length === 1
+            ? this.contracts.blurModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  orders[0].getRaw(),
+                  orders[0].buildMatching({
+                    trader: module
+                  }),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.blurModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => order.getRaw()),
+                  orders.map((order) =>
+                    order.buildMatching({
+                      trader: module
+                    })
+                  ),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of blurDetails) {
         success[originalIndex] = true;
       }
     }
