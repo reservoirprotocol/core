@@ -29,7 +29,7 @@ export class DeploymentHelper {
 
     if (options?.verifyOnEtherscan) {
       // Wait for the deployment tx to get propagated
-      await new Promise((resolve) => setTimeout(resolve, 60 * 1000));
+      await new Promise((resolve) => setTimeout(resolve, 90 * 1000));
 
       await hre.run("verify:verify", {
         address: contract.address,
