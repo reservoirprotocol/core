@@ -19,6 +19,7 @@ import * as WyvernV23 from "./wyvern-v2.3";
 import * as X2Y2 from "./x2y2";
 import * as ZeroExV4 from "./zeroex-v4";
 import * as Zora from "./zora";
+import * as Manifold from "./manifold";
 
 import * as RouterV5 from "./router/v5";
 import * as RouterV6 from "./router/v6";
@@ -47,4 +48,5 @@ export {
   Zora,
   RouterV5,
   RouterV6,
+  Manifold,
 };

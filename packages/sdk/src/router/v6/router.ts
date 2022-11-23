@@ -219,6 +219,26 @@ export class Router {
       }
     }
 
+    if (details.some(({ kind }) => kind === "manifold")) {
+      if (details.length > 1) {
+        throw new Error("Manifold sweeping is not supported");
+      } else {
+        const detail = details[0];
+        const order = detail.order as Sdk.Manifold.Order;
+        const exchange = new Sdk.Manifold.Exchange(this.chainId);
+        return {
+          txData: await exchange.fillOrderTx(
+            taker,
+            Number(order.params.id),
+            Number(detail.amount) ?? 1,
+            order.params.details.initialAmount,
+            options
+          ),
+          success: [true],
+        };
+      }
+    }
+
     // Handle partial seaport orders:
     // - fetch the full order data for each partial order (concurrently)
     // - remove any partial order from the details
