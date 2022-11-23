@@ -5,10 +5,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { getChainId, reset, setupNFTs } from "../../../utils";
-import { Flags, ListingType, Spec } from "@reservoir0x/sdk/src/manifold/types";
-import * as Common from "@reservoir0x/sdk/src/common";
-import { BigNumber, constants, utils } from "ethers";
+import { bn, getChainId, reset, setupNFTs } from "../../../utils";
 
 describe("Manifold - SingleToken Erc721", () => {
   const chainId = getChainId();
@@ -28,9 +25,8 @@ describe("Manifold - SingleToken Erc721", () => {
 
   afterEach(reset);
 
-  it("Manifold - Fill sell order", async () => {
+  it("Manifold - Fill ETH order", async () => {
     const seller = alice;
-    const buyer = bob;
     const referrer = carol;
     const tokenId = 99;
     const price = parseEther("1");
@@ -51,39 +47,39 @@ describe("Manifold - SingleToken Erc721", () => {
 
     // Create sell order.
     const order = new Manifold.Order(chainId, {
-      address: seller.address,
-      flags: Flags.FLAG_MASK_TOKEN_CREATOR,
-      totalSold: 0,
-      marketplaceBPS: 0,
-      referrerBPS: 0,
-      listingDetails: {
-        initialAmount: price.toString(),
-        type_: ListingType.FIXED_PRICE,
-        totalAvailable: 1,
-        totalPerSale: 1,
+      id: "10",
+      seller: seller.address,
+      details: {
+        type_: 2,
+        initialAmount: {
+          type: "BigNumber",
+          hex: bn(price).toHexString(),
+        },
+        totalAvailable: "1",
+        totalPerSale: "1",
+        erc20: null,
+        identityVerifier: null,
         extensionInterval: 0,
-        minIncrementBPS: 0,
-        erc20: constants.AddressZero,
-        identityVerifier: constants.AddressZero,
         startTime: 0,
-        endTime: Math.floor(Date.now() / 1000) + 36000,
+        endTime: 1668861821,
       },
-      tokenDetails: {
-        id: tokenId,
-        address_: contract,
-        spec: Spec.ERC721,
+      token: {
+        spec: "erc721",
+        address_: erc721.address,
+        id: {
+          type: "BigNumber",
+          hex: bn(tokenId).toHexString(),
+        },
         lazy: false,
       },
-      listingReceivers: [],
-      bid: null,
-      deliveryFees: {
-        deliverBPS: 0,
-        deliverFixed: 0,
+      fees: {
+        deliverFixed: null,
       },
     });
+
     const tx = await exchange.createOrder(seller, order);
     const receipt = await tx.wait();
-
+    const id = bn(receipt.logs[2].topics[1]).toNumber();
     // Manifold escrows the NFT when creating sell orders.
     expect(await erc721.ownerOf(tokenId), exchange.contract.address);
 
@@ -97,9 +93,9 @@ describe("Manifold - SingleToken Erc721", () => {
     // Fill sell order.
     const tx2 = await exchange.fillOrder(
       referrer,
-      596,
-      order.params.listingDetails.totalAvailable,
-      order.params.listingDetails.initialAmount,
+      id,
+      order.params.details.totalAvailable,
+      order.params.details.initialAmount,
       {
         source: "reservoir.market",
         nativeReferrerAddress: referrer.address,

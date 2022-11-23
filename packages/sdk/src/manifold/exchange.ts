@@ -1,5 +1,4 @@
 import { Signer } from "@ethersproject/abstract-signer";
-import { AddressZero } from "@ethersproject/constants";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
@@ -33,13 +32,13 @@ export class Exchange {
 
   public createOrderTx(order: Order): TxData {
     return {
-      from: order.params.address,
+      from: order.params.seller,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("createListing", [
-        order.params.listingDetails,
-        order.params.tokenDetails,
-        order.params.deliveryFees,
-        order.params.listingReceivers,
+        order.params.details,
+        order.params.token,
+        order.params.fees,
+        [],
         null,
         [],
       ]),

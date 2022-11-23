@@ -1,10 +1,3 @@
-export type OrderParams = {
-  maker: string;
-  contract: string;
-  tokenId: string;
-  price: string;
-};
-
 export enum ListingType {
   INVALID,
   INDIVIDUAL_AUCTION,
@@ -19,67 +12,70 @@ export enum Spec {
   ERC1155,
 }
 
-export enum Flags {
-  FLAG_MASK_HAS_BID = "0x1",
-  FLAG_MASK_FINALIZED = "0x2",
-  FLAG_MASK_TOKEN_CREATOR = "0x4",
-}
-
-export type Listing = {
-  address: string;
-  flags: Flags;
-  totalSold: number;
-  marketplaceBPS: number;
-  referrerBPS: number;
-  listingDetails: ListingDetails;
-  tokenDetails: TokenDetails;
-  listingReceivers: ListingReceiver[];
-  bid: Bid | null;
-  deliveryFees: DeliveryFees | [];
+export type BNHex = {
+  type: string;
+  hex: string;
 };
 
-export type ListingDetails = {
-  initialAmount: string;
+type BaseListing = {
+  id: string;
+  seller: string;
+  fees: DeliveryFees;
+};
+
+export type DeliveryFees = {
+  deliverFixed: number | null;
+  deliverBPS?: number;
+};
+
+// FROM API
+export type ApiListing = BaseListing & {
+  details: ApiListingDetails;
+  token: ApiListingTokenDetails;
+};
+
+// FOR CONTRACT
+export type ContractListing = BaseListing & {
+  details: ListingDetails;
+  token: ListingTokenDetails;
+};
+
+type BaseDetails = {
   type_: ListingType;
-  totalAvailable: number;
-  totalPerSale: number;
   extensionInterval: number;
-  minIncrementBPS: number;
-  erc20: string;
-  identityVerifier: string;
   startTime: number;
   endTime: number;
 };
 
-export type ListingReceiver = {
-  receiver: string;
-  receiverBPS: number;
+export type ApiListingDetails = BaseDetails & {
+  initialAmount: BNHex;
+  totalAvailable: string;
+  totalPerSale: string;
+  minIncrementBPS?: string;
+  erc20: string | null;
+  identityVerifier: string | null;
 };
 
-export type Bid = {
-  amount: number;
-  bidder: string;
-  delivered: boolean;
-  settled: boolean;
-  refunded: boolean;
-  timestamp: number;
-  referrer: string;
+export type ListingDetails = BaseDetails & {
+  initialAmount: string;
+  totalAvailable: number;
+  totalPerSale: number;
+  minIncrementBPS: number;
+  erc20: string;
+  identityVerifier: string;
 };
 
-export type DeliveryFees = {
-  deliverBPS: number;
-  deliverFixed: number;
-};
-
-export type TokenDetails = {
-  id: number;
+type BaseTokenDetails = {
   address_: string;
-  spec: Spec;
   lazy: boolean;
 };
 
-export type PurchaseDetails = {
-  referrer: string;
-  listingId: number;
-  amount: number | 1;
+export type ListingTokenDetails = BaseTokenDetails & {
+  id: string;
+  spec: Spec;
+};
+
+export type ApiListingTokenDetails = BaseTokenDetails & {
+  id: BNHex;
+  spec: string;
 };
