@@ -35,12 +35,12 @@ export class Exchange {
       from: order.params.seller,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("createListing", [
-        order.params.details,
-        order.params.token,
-        order.params.fees,
-        [],
-        null,
-        [],
+        order.params.details, //listingDetails
+        order.params.token, // tokenDetails
+        order.params.fees, // deliveryFees
+        [], // listingReceivers
+        order.params.referrerBPS > 0, // enableReferrer
+        [], // data
       ]),
     };
   }
@@ -54,7 +54,6 @@ export class Exchange {
     price: string,
     options?: {
       source?: string;
-      nativeReferrerAddress?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = this.fillOrderTx(
@@ -74,7 +73,6 @@ export class Exchange {
     price: string,
     options?: {
       source?: string;
-      nativeReferrerAddress?: string;
     }
   ): TxData {
     return {

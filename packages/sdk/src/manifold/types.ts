@@ -12,70 +12,35 @@ export enum Spec {
   ERC1155,
 }
 
-export type BNHex = {
-  type: string;
-  hex: string;
-};
-
-type BaseListing = {
+export type Order = {
   id: string;
   seller: string;
+  marketplaceBPS: number;
+  referrerBPS: number;
+  details: Details;
+  token: TokenDetails;
   fees: DeliveryFees;
 };
-
-export type DeliveryFees = {
-  deliverFixed: number | null;
-  deliverBPS?: number;
-};
-
-// FROM API
-export type ApiListing = BaseListing & {
-  details: ApiListingDetails;
-  token: ApiListingTokenDetails;
-};
-
-// FOR CONTRACT
-export type ContractListing = BaseListing & {
-  details: ListingDetails;
-  token: ListingTokenDetails;
-};
-
-type BaseDetails = {
-  type_: ListingType;
-  extensionInterval: number;
-  startTime: number;
-  endTime: number;
-};
-
-export type ApiListingDetails = BaseDetails & {
-  initialAmount: BNHex;
-  totalAvailable: string;
-  totalPerSale: string;
-  minIncrementBPS?: string;
-  erc20: string | null;
-  identityVerifier: string | null;
-};
-
-export type ListingDetails = BaseDetails & {
+export type Details = {
   initialAmount: string;
+  type_: ListingType;
   totalAvailable: number;
   totalPerSale: number;
+  extensionInterval: number;
   minIncrementBPS: number;
   erc20: string;
   identityVerifier: string;
+  startTime: number;
+  endTime: number;
+};
+export type DeliveryFees = {
+  deliverFixed: number;
+  deliverBPS: number;
 };
 
-type BaseTokenDetails = {
-  address_: string;
-  lazy: boolean;
-};
-
-export type ListingTokenDetails = BaseTokenDetails & {
+export type TokenDetails = {
   id: string;
+  address_: string;
   spec: Spec;
-};
-
-export type ApiListingTokenDetails = BaseTokenDetails & {
-  id: BNHex;
-  spec: string;
+  lazy: boolean;
 };

@@ -6,6 +6,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { bn, getChainId, reset, setupNFTs } from "../../../utils";
+import { constants } from "ethers";
 
 describe("Manifold - SingleToken Erc721", () => {
   const chainId = getChainId();
@@ -49,31 +50,29 @@ describe("Manifold - SingleToken Erc721", () => {
     const order = new Manifold.Order(chainId, {
       id: "10",
       seller: seller.address,
+      marketplaceBPS: 0,
+      referrerBPS: 0,
       details: {
+        initialAmount: price.toString(),
         type_: 2,
-        initialAmount: {
-          type: "BigNumber",
-          hex: bn(price).toHexString(),
-        },
-        totalAvailable: "1",
-        totalPerSale: "1",
-        erc20: null,
-        identityVerifier: null,
+        totalAvailable: 1,
+        totalPerSale: 1,
         extensionInterval: 0,
+        minIncrementBPS: 0,
+        erc20: constants.AddressZero,
+        identityVerifier: constants.AddressZero,
         startTime: 0,
         endTime: 1668861821,
       },
       token: {
-        spec: "erc721",
+        spec: 1,
         address_: erc721.address,
-        id: {
-          type: "BigNumber",
-          hex: bn(tokenId).toHexString(),
-        },
+        id: tokenId.toString(),
         lazy: false,
       },
       fees: {
-        deliverFixed: null,
+        deliverFixed: 0,
+        deliverBPS: 0,
       },
     });
 
@@ -98,7 +97,6 @@ describe("Manifold - SingleToken Erc721", () => {
       order.params.details.initialAmount,
       {
         source: "reservoir.market",
-        nativeReferrerAddress: referrer.address,
       }
     );
     const tx2Receipt = await tx2.wait();

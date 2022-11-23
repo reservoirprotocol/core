@@ -1,12 +1,12 @@
 import { constants } from "ethers";
-import { bn, lc, n } from "../utils";
+import { lc, n } from "../utils";
 import * as Types from "./types";
 
 export class Order {
   public chainId: number;
-  public params: Types.ContractListing;
+  public params: Types.Order;
 
-  constructor(chainId: number, params: Types.ApiListing) {
+  constructor(chainId: number, params: Types.Order) {
     this.chainId = chainId;
 
     try {
@@ -22,22 +22,20 @@ export class Order {
   }
 }
 
-const bnHexToString = (bnHex: Types.BNHex) => {
-  return bn(bnHex.hex).toString();
-};
-
-const normalize = (order: Types.ApiListing): Types.ContractListing => {
+const normalize = (order: Types.Order): Types.Order => {
   // Perform some normalization operations on the order:
   // - convert bignumbers to strings where needed
   // - convert strings to numbers where needed
   // - lowercase all strings
 
   return {
+    ...order,
     id: order.id,
     seller: lc(order.seller),
+    marketplaceBPS: n(order.marketplaceBPS || 0),
+    referrerBPS: n(order.referrerBPS || 0),
     details: {
       ...order.details,
-      initialAmount: bnHexToString(order.details.initialAmount),
       erc20: lc(order.details.erc20 || constants.AddressZero),
       identityVerifier: lc(
         order.details.identityVerifier || constants.AddressZero
@@ -48,14 +46,7 @@ const normalize = (order: Types.ApiListing): Types.ContractListing => {
     },
     token: {
       ...order.token,
-      id: bnHexToString(order.token.id),
       address_: lc(order.token.address_),
-      spec:
-        order.token.spec.toLowerCase() === "erc721"
-          ? Types.Spec.ERC721
-          : order.token.spec.toLowerCase() === "erc1155"
-          ? Types.Spec.ERC1155
-          : Types.Spec.NONE,
     },
     fees: {
       deliverFixed: order.fees.deliverFixed || 0,
