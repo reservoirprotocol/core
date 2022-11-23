@@ -1032,7 +1032,7 @@ export class Router {
                 refundTo: taker,
                 revertIfIncomplete: true,
               },
-              [],
+              detail.fees ?? [],
             ]
           ),
         };
@@ -1073,7 +1073,7 @@ export class Router {
                 refundTo: taker,
                 revertIfIncomplete: true,
               },
-              [],
+              detail.fees ?? [],
             ]
           ),
         };
@@ -1116,7 +1116,7 @@ export class Router {
                 refundTo: taker,
                 revertIfIncomplete: true,
               },
-              [],
+              detail.fees ?? [],
             ]
           ),
         };
@@ -1144,7 +1144,7 @@ export class Router {
                 refundTo: taker,
                 revertIfIncomplete: true,
               },
-              [],
+              detail.fees ?? [],
             ]
           ),
         };
@@ -1183,7 +1183,7 @@ export class Router {
                 refundTo: taker,
                 revertIfIncomplete: true,
               },
-              [],
+              detail.fees ?? [],
             ]
           ),
         };
@@ -1216,7 +1216,7 @@ export class Router {
                   revertIfIncomplete: true,
                 },
                 detail.tokenId,
-                [],
+                detail.fees ?? [],
               ]
             ),
           };
@@ -1235,7 +1235,7 @@ export class Router {
                   revertIfIncomplete: true,
                 },
                 detail.tokenId,
-                [],
+                detail.fees ?? [],
               ]
             ),
           };
