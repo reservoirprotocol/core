@@ -37,6 +37,16 @@ export class Order extends OrderParams {
     return orderHash(this.getInternalOrder(this));
   }
 
+  public getSignatureData() {
+    const [types, value] = this._getEip712TypesAndValue();
+    return {
+      signatureKind: "eip712",
+      domain: this._domain,
+      types,
+      value,
+    };
+  }
+
   public checkValidity() {
     if (!this.getBuilder().isValid(this)) {
       throw new Error("Invalid order");
