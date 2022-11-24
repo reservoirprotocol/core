@@ -3,7 +3,7 @@ import { AddressZero, HashZero } from "@ethersproject/constants";
 
 import { Order } from "../../order";
 import * as Types from "../../types";
-import { getCurrentTimestamp, getRandomBytes } from "../../../utils";
+import { bn, getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
 export interface BaseBuildParams {
   offerer: string;

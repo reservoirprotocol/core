@@ -108,6 +108,15 @@ export class Order {
   }
 
   public checkValidity() {
+    const info = this.getInfo();
+    if (!info) {
+      throw new Error("Could not extract order info");
+    }
+
+    if (!bn(info.price).div(info.amount).mul(info.amount).eq(info.price)) {
+      throw new Error("Price not evenly divisible to the amount");
+    }
+
     if (!this.getBuilder().isValid(this)) {
       throw new Error("Invalid order");
     }
