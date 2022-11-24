@@ -1,4 +1,5 @@
 import { constants } from "ethers";
+
 import { lc, n } from "../utils";
 import * as Types from "./types";
 
@@ -11,8 +12,7 @@ export class Order {
 
     try {
       this.params = normalize(params);
-    } catch (err) {
-      console.log(err);
+    } catch {
       throw new Error("Invalid params");
     }
 

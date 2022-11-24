@@ -219,6 +219,7 @@ export class Router {
       }
     }
 
+    // TODO: Add Manifold router module
     if (details.some(({ kind }) => kind === "manifold")) {
       if (details.length > 1) {
         throw new Error("Manifold sweeping is not supported");
@@ -227,7 +228,7 @@ export class Router {
         const order = detail.order as Sdk.Manifold.Order;
         const exchange = new Sdk.Manifold.Exchange(this.chainId);
         return {
-          txData: await exchange.fillOrderTx(
+          txData: exchange.fillOrderTx(
             taker,
             Number(order.params.id),
             Number(detail.amount) ?? 1,

@@ -21,6 +21,7 @@ export type Order = {
   token: TokenDetails;
   fees: DeliveryFees;
 };
+
 export type Details = {
   initialAmount: string;
   type_: ListingType;
@@ -33,6 +34,7 @@ export type Details = {
   startTime: number;
   endTime: number;
 };
+
 export type DeliveryFees = {
   deliverFixed: number;
   deliverBPS: number;

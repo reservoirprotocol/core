@@ -35,7 +35,7 @@ export class Exchange {
       from: order.params.seller,
       to: this.contract.address,
       data: this.contract.interface.encodeFunctionData("createListing", [
-        order.params.details, //listingDetails
+        order.params.details, // listingDetails
         order.params.token, // tokenDetails
         order.params.fees, // deliveryFees
         [], // listingReceivers
