@@ -169,9 +169,22 @@
         "type": "address"
       }
     ],
-    "name": "unwrapWETH",
+    "name": "unwrap",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      }
+    ],
+    "name": "wrap",
+    "outputs": [],
+    "stateMutability": "payable",
     "type": "function"
   },
   {
