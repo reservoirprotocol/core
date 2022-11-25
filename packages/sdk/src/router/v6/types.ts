@@ -55,19 +55,20 @@ export type GenericOrder =
   | {
       kind: "rarible";
       order: Sdk.Rarible.Order;
-    } 
+    }
   | {
-    kind: "infinity";
-    order: Sdk.Infinity.Order;
+      kind: "infinity";
+      order: Sdk.Infinity.Order;
     }
   | {
       kind: "forward";
       order: Sdk.Forward.Order;
     }
   | {
-    kind: "blur";
-    order: Sdk.Blur.Order;
-  };
+      kind: "blur";
+      order: Sdk.Blur.Order;
+    }
+  | { kind: "manifold"; order: Sdk.Manifold.Order };
 
 export type ListingFillDetails = {
   contractKind: "erc721" | "erc1155";
@@ -87,6 +88,7 @@ export type BidFillDetails = {
   amount?: number | string;
   // Relevant for merkle orders
   extraArgs?: any;
+  fees?: Fee[];
 };
 
 export type ListingDetails = GenericOrder & ListingFillDetails;

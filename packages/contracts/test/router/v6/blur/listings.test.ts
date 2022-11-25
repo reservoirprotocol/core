@@ -108,10 +108,9 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
-          // ...(getRandomBoolean()
-          //   ? { kind: "erc721", contract: erc721 }
-          //   : { kind: "erc1155", contract: erc1155 }),
-          ...{ kind: "erc721", contract: erc721 },
+          ...(getRandomBoolean()
+            ? { kind: "erc721", contract: erc721 }
+            : { kind: "erc1155", contract: erc1155 }),
           id: getRandomInteger(1, 10000),
         },
         price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
@@ -252,10 +251,6 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
 
     const aliceOrderSum = aliceOrderList.map(({ price }) =>
         bn(price)
-        // .sub(
-        //   // Take into consideration the protocol fee
-        //   bn(price).mul(150).div(10000)
-        // )
       )
       .reduce((a, b) => bn(a).add(b), bn(0));
 
@@ -267,26 +262,22 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
   
     const bobOrderSum = bobOrderList.map(({ price }) =>
         bn(price)
-        // .sub(
-        //   // Take into consideration the protocol fee
-        //   bn(price).mul(150).div(10000)
-        // )
       )
       .reduce((a, b) => bn(a).add(b), bn(0))
 
-    // console.log('bob', {
-    //   received: formatEther(ethBalancesAfter.bob.sub(ethBalancesBefore.bob)),
-    //   orders: bobOrderList.map(_ => {
-    //     return formatEther(_.price);
-    //   })
-    // });
+    console.log('bob', {
+      received: formatEther(ethBalancesAfter.bob.sub(ethBalancesBefore.bob)),
+      orders: bobOrderList.map(_ => {
+        return formatEther(_.price);
+      })
+    });
     
-    // console.log("alice", {
-    //   received: formatEther(ethBalancesAfter.alice.sub(ethBalancesBefore.alice)),
-    //   orders: aliceOrderList.map(_ => {
-    //     return formatEther(_.price);
-    //   })
-    // })
+    console.log("alice", {
+      received: formatEther(ethBalancesAfter.alice.sub(ethBalancesBefore.alice)),
+      orders: aliceOrderList.map(_ => {
+        return formatEther(_.price);
+      })
+    })
 
     // Checks
     const aliceBalance = ethBalancesAfter.alice.sub(ethBalancesBefore.alice);

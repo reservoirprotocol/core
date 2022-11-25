@@ -12,7 +12,7 @@ import {BaseModule} from "../BaseModule.sol";
 import {IBlur} from "../../../interfaces/IBlur.sol";
 
 // Notes:
-// - supports filling listings (ERC721)
+// - supports filling listings (both ERC721/ERC1155 but only ETH-denominated)
 
 contract BlurModule is BaseExchangeModule {
     using SafeERC20 for IERC20;
@@ -26,6 +26,7 @@ contract BlurModule is BaseExchangeModule {
         0x00000000000111AbE46ff893f3B2fdF1F759a8A8;
 
     bytes4 public constant ERC721_INTERFACE = 0x80ac58cd;
+    bytes4 public constant ERC1155_INTERFACE = 0xd9b67a26;
 
     // --- Constructor ---
 
@@ -116,6 +117,20 @@ contract BlurModule is BaseExchangeModule {
         return this.onERC721Received.selector;
     }
 
+    function onERC1155Received(
+        address, // operator
+        address, // from
+        uint256, // tokenId
+        uint256, // amount
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
+        }
+
+        return this.onERC1155Received.selector;
+    }
+
     // --- Internal ---
 
     function _buy(
@@ -142,6 +157,19 @@ contract BlurModule is BaseExchangeModule {
                     receiver,
                     sell.order.tokenId
                 );
+            } else {
+                bool isERC1155 = collection.supportsInterface(
+                    ERC1155_INTERFACE
+                );
+                if (isERC1155) {
+                    IERC1155(address(collection)).safeTransferFrom(
+                        address(this),
+                        receiver,
+                        sell.order.tokenId,
+                        sell.order.amount,
+                        ""
+                    );
+                }
             }
         } catch {
             // Revert if specified
