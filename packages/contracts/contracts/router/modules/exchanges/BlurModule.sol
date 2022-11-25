@@ -141,12 +141,7 @@ contract BlurModule is BaseExchangeModule {
         uint256 value
     ) internal {
         // Execute the fill
-        try
-            EXCHANGE.execute{value: value}(
-                sell,
-                buy
-            )
-        {
+        try EXCHANGE.execute{value: value}(sell, buy) {
             IERC165 collection = sell.order.collection;
 
             // Forward any token to the specified receiver

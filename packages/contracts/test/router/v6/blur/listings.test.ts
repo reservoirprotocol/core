@@ -1,16 +1,13 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
-import { parseEther, formatEther } from "@ethersproject/units";
+import { parseEther } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../helpers/router";
-import {
-  BlurListing,
-  setupBlurListings,
-} from "../helpers/blur";
+import { BlurListing, setupBlurListings } from "../helpers/blur";
 import {
   bn,
   getChainId,
@@ -66,9 +63,7 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
         david: await ethers.provider.getBalance(david.address),
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
-        blurModule: await ethers.provider.getBalance(
-          blurModule.address
-        ),
+        blurModule: await ethers.provider.getBalance(blurModule.address),
       };
     } else {
       const contract = new Sdk.Common.Helpers.Erc20(ethers.provider, token);
@@ -133,29 +128,26 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
       listingsCount > 1
         ? {
             module: blurModule.address,
-            data: blurModule.interface.encodeFunctionData(
-              "acceptETHListings",
+            data: blurModule.interface.encodeFunctionData("acceptETHListings", [
+              listings.map((listing) => listing.order!.getRaw()),
+              listings.map((listing) =>
+                listing.order!.buildMatching({
+                  trader: blurModule.address,
+                })
+              ),
+              {
+                fillTo: carol.address,
+                refundTo: carol.address,
+                revertIfIncomplete,
+                amount: totalPrice,
+              },
               [
-                listings.map((listing) => listing.order!.getRaw()),
-                listings.map((listing) =>
-                  listing.order!.buildMatching({
-                    trader: blurModule.address
-                  })
-                ),
-                {
-                  fillTo: carol.address,
-                  refundTo: carol.address,
-                  revertIfIncomplete,
-                  amount: totalPrice,
-                },
-                [
-                  ...feesOnTop.map((amount) => ({
-                    recipient: emilio.address,
-                    amount,
-                  })),
-                ],
-              ]
-            ),
+                ...feesOnTop.map((amount) => ({
+                  recipient: emilio.address,
+                  amount,
+                })),
+              ],
+            ]),
             value: totalPrice.add(
               // Anything on top should be refunded
               feesOnTop
@@ -165,27 +157,24 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
           }
         : {
             module: blurModule.address,
-            data: blurModule.interface.encodeFunctionData(
-              "acceptETHListing",
-              [
-                listings[0].order!.getRaw(),
-                listings[0].order!.buildMatching({
-                  trader: blurModule.address
-                }),
-                {
-                  fillTo: carol.address,
-                  refundTo: carol.address,
-                  revertIfIncomplete,
-                  amount: totalPrice,
-                },
-                chargeFees
-                  ? feesOnTop.map((amount) => ({
-                      recipient: emilio.address,
-                      amount,
-                    }))
-                  : [],
-              ]
-            ),
+            data: blurModule.interface.encodeFunctionData("acceptETHListing", [
+              listings[0].order!.getRaw(),
+              listings[0].order!.buildMatching({
+                trader: blurModule.address,
+              }),
+              {
+                fillTo: carol.address,
+                refundTo: carol.address,
+                revertIfIncomplete,
+                amount: totalPrice,
+              },
+              chargeFees
+                ? feesOnTop.map((amount) => ({
+                    recipient: emilio.address,
+                    amount,
+                  }))
+                : [],
+            ]),
             value: totalPrice.add(
               // Anything on top should be refunded
               feesOnTop
@@ -223,9 +212,6 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
     const ethBalancesBefore = await getBalances(
       Sdk.Common.Addresses.Eth[chainId]
     );
-    const wethBalancesBefore = await getBalances(
-      Sdk.Common.Addresses.Weth[chainId]
-    );
 
     // Execute
     await router.connect(carol).execute(executions, {
@@ -245,25 +231,22 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
     );
 
     const aliceOrderList = listings.filter(
-        ({ seller, isCancelled }) =>
-          !isCancelled && seller.address === alice.address
-      );
+      ({ seller, isCancelled }) =>
+        !isCancelled && seller.address === alice.address
+    );
 
-    const aliceOrderSum = aliceOrderList.map(({ price }) =>
-        bn(price)
-      )
+    const aliceOrderSum = aliceOrderList
+      .map(({ price }) => bn(price))
       .reduce((a, b) => bn(a).add(b), bn(0));
 
-    const bobOrderList = listings
-      .filter(
-        ({ seller, isCancelled }) =>
-          !isCancelled && seller.address === bob.address
-      );
-  
-    const bobOrderSum = bobOrderList.map(({ price }) =>
-        bn(price)
-      )
-      .reduce((a, b) => bn(a).add(b), bn(0))
+    const bobOrderList = listings.filter(
+      ({ seller, isCancelled }) =>
+        !isCancelled && seller.address === bob.address
+    );
+
+    const bobOrderSum = bobOrderList
+      .map(({ price }) => bn(price))
+      .reduce((a, b) => bn(a).add(b), bn(0));
 
     // Checks
     const aliceBalance = ethBalancesAfter.alice.sub(ethBalancesBefore.alice);
@@ -285,10 +268,10 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
         .filter(({ isCancelled }) => !isCancelled)
         .map(({ price }) => price)
         .reduce((a, b) => bn(a).add(b), bn(0));
-      
+
       const chargeFeeSum = listings
         .map((_, i) => feesOnTop[i].mul(actualPaid).div(totalPrice))
-        .reduce((a, b) => bn(a).add(b), bn(0))
+        .reduce((a, b) => bn(a).add(b), bn(0));
 
       expect(emilioBalance).to.eq(chargeFeeSum);
     }

@@ -349,8 +349,8 @@ export class Router {
 
       let detailsRef: ListingDetailsExtracted[];
       switch (kind) {
-        case "sudoswap":
-          detailsRef = sudoswapDetails;
+        case "blur":
+          detailsRef = blurDetails;
           break;
 
         case "foundation":
@@ -365,6 +365,10 @@ export class Router {
           detailsRef = seaportDetails;
           break;
 
+        case "sudoswap":
+          detailsRef = sudoswapDetails;
+          break;
+
         case "x2y2":
           detailsRef = x2y2Details;
           break;
@@ -375,13 +379,9 @@ export class Router {
               ? zeroexV4Erc721Details
               : zeroexV4Erc1155Details;
           break;
-        
+
         case "zora":
           detailsRef = zoraDetails;
-          break;
-        
-        case "blur":
-          detailsRef = blurDetails;
           break;
 
         default:
@@ -940,9 +940,7 @@ export class Router {
 
     // Handle Blur listings
     if (blurDetails.length) {
-      const orders = blurDetails.map(
-        (d) => d.order as Sdk.Blur.Order
-      );
+      const orders = blurDetails.map((d) => d.order as Sdk.Blur.Order);
       const module = this.contracts.blurModule.address;
 
       const fees = getFees(blurDetails);
@@ -963,7 +961,7 @@ export class Router {
                 [
                   orders[0].getRaw(),
                   orders[0].buildMatching({
-                    trader: module
+                    trader: module,
                   }),
                   {
                     fillTo: taker,
@@ -980,7 +978,7 @@ export class Router {
                   orders.map((order) => order.getRaw()),
                   orders.map((order) =>
                     order.buildMatching({
-                      trader: module
+                      trader: module,
                     })
                   ),
                   {

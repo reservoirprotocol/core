@@ -13,6 +13,8 @@ export const UnwrapWETHModule: ChainIdToAddress = {};
 
 // Exchange modules
 
+export const BlurModule: ChainIdToAddress = {};
+
 export const FoundationModule: ChainIdToAddress = {
   [Network.Ethereum]: "0x5c8a351d4ff680203e05af56cb9d748898c7b39a",
 };
@@ -43,7 +45,4 @@ export const ZeroExV4Module: ChainIdToAddress = {
 
 export const ZoraModule: ChainIdToAddress = {
   [Network.Ethereum]: "0x982b49de82a3ea5b8c42895482d9dd9bfefadf82",
-};
-
-export const BlurModule: ChainIdToAddress = {
 };

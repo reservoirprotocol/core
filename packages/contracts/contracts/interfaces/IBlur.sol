@@ -5,10 +5,20 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface IBlur {
-    
-    enum Side { Buy, Sell }
-    enum SignatureVersion { Single, Bulk }
-    enum AssetType { ERC721, ERC1155 }
+    enum Side {
+        Buy,
+        Sell
+    }
+
+    enum AssetType {
+        ERC721,
+        ERC1155
+    }
+
+    enum SignatureVersion {
+        Single,
+        Bulk
+    }
 
     struct Fee {
         uint16 rate;
@@ -25,7 +35,6 @@ interface IBlur {
         address paymentToken;
         uint256 price;
         uint256 listingTime;
-        /* Order expiration timestamp - 0 for oracle cancellations. */
         uint256 expirationTime;
         Fee[] fees;
         uint256 salt;
@@ -42,17 +51,5 @@ interface IBlur {
         uint256 blockNumber;
     }
 
-    function nonces(address) external view returns (uint256);
-
-    function close() external;
-
-    function cancelOrder(Order calldata order) external;
-
-    function cancelOrders(Order[] calldata orders) external;
-
-    function incrementNonce() external;
-
-    function execute(Input calldata sell, Input calldata buy)
-        external
-        payable;
+    function execute(Input calldata sell, Input calldata buy) external payable;
 }
