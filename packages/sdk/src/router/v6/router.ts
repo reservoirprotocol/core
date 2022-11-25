@@ -23,6 +23,7 @@ import SeaportModuleAbi from "./abis/SeaportModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
+import BlurModuleAbi from "./abis/BlurModule.json";
 
 type ExecutionInfo = {
   module: string;
@@ -84,6 +85,11 @@ export class Router {
       zoraModule: new Contract(
         Addresses.ZoraModule[chainId] ?? AddressZero,
         ZoraModuleAbi,
+        provider
+      ),
+      blurModule: new Contract(
+        Addresses.BlurModule[chainId] ?? AddressZero,
+        BlurModuleAbi,
         provider
       ),
     };
@@ -149,23 +155,6 @@ export class Router {
             assetClass: details[0].contractKind.toUpperCase(),
             amount: Number(details[0].amount),
           }),
-          success: [true],
-        };
-      }
-    }
-
-    // TODO: Add Blur router module
-    if (details.some(({ kind }) => kind === "blur")) {
-      if (details.length > 1) {
-        throw new Error("Blur sweeping is not supported");
-      } else {
-        const order = details[0].order as Sdk.Blur.Order;
-        const exchange = new Sdk.Blur.Exchange(this.chainId);
-        const matchOrder = order.buildMatching({
-          trader: taker,
-        });
-        return {
-          txData: await exchange.fillOrderTx(taker, order, matchOrder),
           success: [true],
         };
       }
@@ -353,6 +342,8 @@ export class Router {
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
+    const blurDetails: ListingDetailsExtracted[] = [];
+
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind } = details[i];
 
@@ -384,9 +375,13 @@ export class Router {
               ? zeroexV4Erc721Details
               : zeroexV4Erc1155Details;
           break;
-
+        
         case "zora":
           detailsRef = zoraDetails;
+          break;
+        
+        case "blur":
+          detailsRef = blurDetails;
           break;
 
         default:
@@ -939,6 +934,69 @@ export class Router {
 
       // Mark the listings as successfully handled
       for (const { originalIndex } of zoraDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
+    // Handle Blur listings
+    if (blurDetails.length) {
+      const orders = blurDetails.map(
+        (d) => d.order as Sdk.Blur.Order
+      );
+      const module = this.contracts.blurModule.address;
+
+      const fees = getFees(blurDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.price))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module,
+        data:
+          orders.length === 1
+            ? this.contracts.blurModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  orders[0].getRaw(),
+                  orders[0].buildMatching({
+                    trader: module
+                  }),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.blurModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => order.getRaw()),
+                  orders.map((order) =>
+                    order.buildMatching({
+                      trader: module
+                    })
+                  ),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of blurDetails) {
         success[originalIndex] = true;
       }
     }

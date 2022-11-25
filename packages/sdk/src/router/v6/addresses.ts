@@ -44,3 +44,6 @@ export const ZeroExV4Module: ChainIdToAddress = {
 export const ZoraModule: ChainIdToAddress = {
   [Network.Ethereum]: "0x982b49de82a3ea5b8c42895482d9dd9bfefadf82",
 };
+
+export const BlurModule: ChainIdToAddress = {
+};
