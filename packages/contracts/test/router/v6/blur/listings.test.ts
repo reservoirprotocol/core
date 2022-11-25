@@ -265,20 +265,6 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
       )
       .reduce((a, b) => bn(a).add(b), bn(0))
 
-    console.log('bob', {
-      received: formatEther(ethBalancesAfter.bob.sub(ethBalancesBefore.bob)),
-      orders: bobOrderList.map(_ => {
-        return formatEther(_.price);
-      })
-    });
-    
-    console.log("alice", {
-      received: formatEther(ethBalancesAfter.alice.sub(ethBalancesBefore.alice)),
-      orders: aliceOrderList.map(_ => {
-        return formatEther(_.price);
-      })
-    })
-
     // Checks
     const aliceBalance = ethBalancesAfter.alice.sub(ethBalancesBefore.alice);
     const bobBalance = ethBalancesAfter.bob.sub(ethBalancesBefore.bob);
