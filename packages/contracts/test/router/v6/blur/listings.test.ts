@@ -103,9 +103,8 @@ describe("[ReservoirV6_0_0] Blur listings", () => {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
-          ...(getRandomBoolean()
-            ? { kind: "erc721", contract: erc721 }
-            : { kind: "erc1155", contract: erc1155 }),
+          // TODO: Add support for ERC1155
+          ...{ kind: "erc721", contract: erc721 },
           id: getRandomInteger(1, 10000),
         },
         price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),

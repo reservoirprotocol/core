@@ -11,6 +11,7 @@ import { getChainId, getCurrentTimestamp } from "../../../utils";
 export type BlurListing = {
   seller: SignerWithAddress;
   nft: {
+    // TODO: Add support for ERC1155 once Blur integrates it
     kind: "erc721" | "erc1155";
     contract: Contract;
     id: number;
@@ -37,18 +38,12 @@ export const setupBlurListings = async (listings: BlurListing[]) => {
       await nft.contract.connect(seller).mint(nft.id);
       await nft.contract
         .connect(seller)
-        .setApprovalForAll(
-          Sdk.Blur.Addresses.ExecutionDelegate[chainId],
-          true
-        );
+        .setApprovalForAll(Sdk.Blur.Addresses.ExecutionDelegate[chainId], true);
     } else {
       await nft.contract.connect(seller).mint(nft.id);
       await nft.contract
         .connect(seller)
-        .setApprovalForAll(
-          Sdk.Blur.Addresses.ExecutionDelegate[chainId],
-          true
-        );
+        .setApprovalForAll(Sdk.Blur.Addresses.ExecutionDelegate[chainId], true);
     }
 
     // Build and sign the order
@@ -66,8 +61,8 @@ export const setupBlurListings = async (listings: BlurListing[]) => {
       nonce: 0,
       expirationTime: (await getCurrentTimestamp(ethers.provider)) + 60,
       salt: 0,
-      extraParams: '0x',
-      fees: []
+      extraParams: "0x",
+      fees: [],
     });
     await order.sign(seller);
 
