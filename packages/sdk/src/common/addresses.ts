@@ -36,6 +36,8 @@ export const Usdc: ChainIdToAddress = {
 
 export const Routers: ChainIdToAddressMap = {
   [Network.Ethereum]: {
+    // Alphasharks
+    "0x552b16d19dbad7af2786fe5a40d96d2a5c09428c": "alphasharks.io",
     // Blur
     "0x39da41747a83aee658334415666f3ef92dd0d541": "blur.io",
     // Element
@@ -47,6 +49,7 @@ export const Routers: ChainIdToAddressMap = {
     "0x0000000035634b55f3d99b071b5a354f48e10bef": "gem.xyz",
     "0x00000000a50bb64b4bbeceb18715748dface08af": "gem.xyz",
     "0xae9c73fd0fd237c1c6f66fe009d24ce969e98704": "gem.xyz",
+    "0x539ea5d6ec0093ff6401dbcd14d049c37a77151b": "gem.xyz",
     // Genie
     "0x0a267cf51ef038fc00e71801f5a524aec06e4f07": "genie.xyz",
     "0x2af4b707e1dce8fc345f38cfeeaa2421e54976d5": "genie.xyz",
@@ -59,6 +62,7 @@ export const Routers: ChainIdToAddressMap = {
     "0x92701d42e1504ef9fce6d66a2054218b048dda43": "okx.com",
     // Rarible
     "0x2a7251d1e7d708c507b1b0d3ff328007beecce5d": "rarible.com",
+    "0x7f19564c35c681099c0c857a7141836cf7edaa53": "rarible.com",
     // Rarity Garden
     "0x603d022611bfe6a101dcdab207d96c527f1d4d8e": "rarity.garden",
     "0x39b6862c4783db2651d64bc160349dc9a15f1fb7": "rarity.garden",
@@ -73,6 +77,13 @@ export const Routers: ChainIdToAddressMap = {
     "0x920692834f93258b71221c58edf870ae013e2f9b": "reservoir.tools",
     "0xef21d6b43ac0bb4608ca05628b05403a47310a3b": "reservoir.tools",
     "0xff78f7c6e23187fd4bdb2f7f35359a42d56878dd": "reservoir.tools",
+    "0x5c8a351d4ff680203e05af56cb9d748898c7b39a": "reservoir.tools",
+    "0x385df8cbc196f5f780367f3cdc96af072a916f7e": "reservoir.tools",
+    "0x3729014ef28f01b3ddcf7f980d925e0b71b1f847": "reservoir.tools",
+    "0xecd3184bc21172ea96061afeefaa136e5b3761b6": "reservoir.tools",
+    "0x613d3c588f6b8f89302b463f8f19f7241b2857e2": "reservoir.tools",
+    "0x8162beec776442afd262b672730bb5d0d8af16a1": "reservoir.tools",
+    "0x982b49de82a3ea5b8c42895482d9dd9bfefadf82": "reservoir.tools",
     // X2Y2
     "0x56dd5bbede9bfdb10a2845c4d70d4a2950163044": "x2y2.io",
   },
@@ -84,6 +95,10 @@ export const Routers: ChainIdToAddressMap = {
     "0xe4c1c635f257348205ebca78fc9b342dd7813e2b": "reservoir.tools",
     "0x037d39e603b803651acc7b36ff25e52f8680aa2f": "reservoir.tools",
     "0x0e01862920bd5ef73ed1a5dccd2ecad56c3e051f": "reservoir.tools",
+    "0x532486bb46581b032134159c1d31962cdab1e6a7": "reservoir.tools",
+    "0x6c460f133c573c21e7f55900d0c68f6f085b91e7": "reservoir.tools",
+    "0x6a789513b2e555f9d3539bf9a053a57d2bfca426": "reservoir.tools",
+    "0x29fcac61d9b2a3c55f3e1149d0278126c31abe74": "reservoir.tools",
   },
 };
 

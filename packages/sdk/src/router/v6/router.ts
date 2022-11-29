@@ -23,6 +23,7 @@ import SeaportModuleAbi from "./abis/SeaportModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
+import BlurModuleAbi from "./abis/BlurModule.json";
 
 type ExecutionInfo = {
   module: string;
@@ -84,6 +85,11 @@ export class Router {
       zoraModule: new Contract(
         Addresses.ZoraModule[chainId] ?? AddressZero,
         ZoraModuleAbi,
+        provider
+      ),
+      blurModule: new Contract(
+        Addresses.BlurModule[chainId] ?? AddressZero,
+        BlurModuleAbi,
         provider
       ),
     };
@@ -154,23 +160,6 @@ export class Router {
       }
     }
 
-    // TODO: Add Blur router module
-    if (details.some(({ kind }) => kind === "blur")) {
-      if (details.length > 1) {
-        throw new Error("Blur sweeping is not supported");
-      } else {
-        const order = details[0].order as Sdk.Blur.Order;
-        const exchange = new Sdk.Blur.Exchange(this.chainId);
-        const matchOrder = order.buildMatching({
-          trader: taker,
-        });
-        return {
-          txData: await exchange.fillOrderTx(taker, order, matchOrder),
-          success: [true],
-        };
-      }
-    }
-
     // TODO: Add Cryptopunks router module
     if (details.some(({ kind }) => kind === "cryptopunks")) {
       if (details.length > 1) {
@@ -214,6 +203,27 @@ export class Router {
         }
         return {
           txData: exchange.takeMultipleOneOrdersTx(taker, [order]),
+          success: [true],
+        };
+      }
+    }
+
+    // TODO: Add Manifold router module
+    if (details.some(({ kind }) => kind === "manifold")) {
+      if (details.length > 1) {
+        throw new Error("Manifold sweeping is not supported");
+      } else {
+        const detail = details[0];
+        const order = detail.order as Sdk.Manifold.Order;
+        const exchange = new Sdk.Manifold.Exchange(this.chainId);
+        return {
+          txData: exchange.fillOrderTx(
+            taker,
+            Number(order.params.id),
+            Number(detail.amount) ?? 1,
+            order.params.details.initialAmount,
+            options
+          ),
           success: [true],
         };
       }
@@ -295,15 +305,27 @@ export class Router {
 
     const getFees = (ownDetails: ListingFillDetails[]) => [
       // Global fees
-      ...(options?.globalFees ?? []).map(({ recipient, amount }) => ({
-        recipient,
-        // The fees are averaged over the number of listings to fill
-        // TODO: Also take into account the quantity filled for ERC1155
-        amount: bn(amount).mul(ownDetails.length).div(details.length),
-      })),
+      ...(options?.globalFees ?? [])
+        .filter(
+          ({ amount, recipient }) =>
+            // Skip zero amounts and/or recipients
+            bn(amount).gt(0) && recipient !== AddressZero
+        )
+        .map(({ recipient, amount }) => ({
+          recipient,
+          // The fees are averaged over the number of listings to fill
+          // TODO: Also take into account the quantity filled for ERC1155
+          amount: bn(amount).mul(ownDetails.length).div(details.length),
+        })),
       // Local fees
       // TODO: Should not split the local fees among all executions
-      ...ownDetails.flatMap(({ fees }) => fees ?? []),
+      ...ownDetails.flatMap(({ fees }) =>
+        (fees ?? []).filter(
+          ({ amount, recipient }) =>
+            // Skip zero amounts and/or recipients
+            bn(amount).gt(0) && recipient !== AddressZero
+        )
+      ),
     ];
 
     // For keeping track of the listing's position in the original array
@@ -320,13 +342,15 @@ export class Router {
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
+    const blurDetails: ListingDetailsExtracted[] = [];
+
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind } = details[i];
 
       let detailsRef: ListingDetailsExtracted[];
       switch (kind) {
-        case "sudoswap":
-          detailsRef = sudoswapDetails;
+        case "blur":
+          detailsRef = blurDetails;
           break;
 
         case "foundation":
@@ -339,6 +363,10 @@ export class Router {
 
         case "seaport":
           detailsRef = seaportDetails;
+          break;
+
+        case "sudoswap":
+          detailsRef = sudoswapDetails;
           break;
 
         case "x2y2":
@@ -906,6 +934,67 @@ export class Router {
 
       // Mark the listings as successfully handled
       for (const { originalIndex } of zoraDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
+    // Handle Blur listings
+    if (blurDetails.length) {
+      const orders = blurDetails.map((d) => d.order as Sdk.Blur.Order);
+      const module = this.contracts.blurModule.address;
+
+      const fees = getFees(blurDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.price))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module,
+        data:
+          orders.length === 1
+            ? this.contracts.blurModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  orders[0].getRaw(),
+                  orders[0].buildMatching({
+                    trader: module,
+                  }),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.blurModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => order.getRaw()),
+                  orders.map((order) =>
+                    order.buildMatching({
+                      trader: module,
+                    })
+                  ),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of blurDetails) {
         success[originalIndex] = true;
       }
     }

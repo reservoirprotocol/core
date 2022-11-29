@@ -4,11 +4,8 @@ pragma solidity ^0.8.9;
 import {BaseModule} from "./BaseModule.sol";
 import {IWETH} from "../../interfaces/IWETH.sol";
 
-// The way we deal with unwrapping WETH as part of accepting an offer is
-// via a custom module. Funds earned from offer acceptance should all be
-// routed to this module, which then takes care of unwrapping (of course,
-// in the end forwarding the unwrapped funds to the specified recipient).
-contract UnwrapWETHModule is BaseModule {
+// Utility module for wrapping/unwrpping ETH/WETH.
+contract WETHModule is BaseModule {
     // --- Fields ---
 
     IWETH public constant WETH =
@@ -22,9 +19,16 @@ contract UnwrapWETHModule is BaseModule {
 
     receive() external payable {}
 
+    // --- Wrap ---
+
+    function wrap(address receiver) external payable nonReentrant {
+        WETH.deposit{value: msg.value}();
+        _sendERC20(receiver, msg.value, WETH);
+    }
+
     // --- Unwrap ---
 
-    function unwrapWETH(address receiver) external nonReentrant {
+    function unwrap(address receiver) external nonReentrant {
         uint256 balance = WETH.balanceOf(address(this));
         WETH.withdraw(balance);
         _sendETH(receiver, balance);
