@@ -2,6 +2,12 @@ import { BigNumberish } from "@ethersproject/bignumber";
 
 import * as Sdk from "../../index";
 
+export type ExecutionInfo = {
+  module: string;
+  data: string;
+  value: BigNumberish;
+};
+
 export type Fee = {
   recipient: string;
   amount: BigNumberish;
@@ -68,7 +74,10 @@ export type GenericOrder =
       kind: "blur";
       order: Sdk.Blur.Order;
     }
-  | { kind: "manifold"; order: Sdk.Manifold.Order };
+  | {
+      kind: "manifold";
+      order: Sdk.Manifold.Order;
+    };
 
 export type ListingFillDetails = {
   contractKind: "erc721" | "erc1155";
@@ -79,6 +88,7 @@ export type ListingFillDetails = {
   amount?: number | string;
   fees?: Fee[];
 };
+export type ListingDetails = GenericOrder & ListingFillDetails;
 
 export type BidFillDetails = {
   contractKind: "erc721" | "erc1155";
@@ -90,6 +100,4 @@ export type BidFillDetails = {
   extraArgs?: any;
   fees?: Fee[];
 };
-
-export type ListingDetails = GenericOrder & ListingFillDetails;
 export type BidDetails = GenericOrder & BidFillDetails;

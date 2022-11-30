@@ -148,11 +148,6 @@
           },
           {
             "internalType": "uint256",
-            "name": "deadline",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
             "name": "amountOut",
             "type": "uint256"
           },
@@ -205,11 +200,6 @@
             "internalType": "address",
             "name": "recipient",
             "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "deadline",
-            "type": "uint256"
           },
           {
             "internalType": "uint256",

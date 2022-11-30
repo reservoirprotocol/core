@@ -9,7 +9,6 @@ interface IUniswapV3Router {
         IERC20 tokenOut;
         uint24 fee;
         address recipient;
-        uint256 deadline;
         uint256 amountOut;
         uint256 amountInMaximum;
         uint160 sqrtPriceLimitX96;

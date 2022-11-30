@@ -1,15 +1,18 @@
 import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
-import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
-import { AlphaRouter, TradeType } from "@uniswap/smart-order-router";
-import { CurrencyAmount } from "@uniswap/sdk-core";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
-import { BidDetails, Fee, ListingDetails, ListingFillDetails } from "./types";
-import { getToken } from "./utils";
+import {
+  BidDetails,
+  ExecutionInfo,
+  Fee,
+  ListingDetails,
+  ListingFillDetails,
+} from "./types";
+import { generateSwapExecution } from "./uniswap";
 import * as Sdk from "../../index";
 import { TxData, bn, generateSourceBytes } from "../../utils";
 
@@ -28,12 +31,6 @@ import UniswapV3ModuleAbi from "./abis/UniswapV3Module.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
-
-type ExecutionInfo = {
-  module: string;
-  data: string;
-  value: BigNumberish;
-};
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -266,7 +263,12 @@ export class Router {
     // If all orders are Seaport, then fill on Seaport directly
     // TODO: Directly fill for other exchanges as well
     if (
-      details.every(({ kind, fees }) => kind === "seaport" && !fees?.length) &&
+      details.every(
+        ({ kind, fees, currency }) =>
+          kind === "seaport" &&
+          currency === details[0].currency &&
+          !fees?.length
+      ) &&
       !options?.globalFees?.length &&
       !options?.forceRouter
     ) {
@@ -547,32 +549,28 @@ export class Router {
 
         const isETH = currency === Sdk.Common.Addresses.Eth[this.chainId];
         if (!isETH) {
-          const router = new AlphaRouter({
-            chainId: this.chainId,
-            provider: this.provider as any,
-          });
-
-          const fromToken = await getToken(
-            this.chainId,
-            this.provider,
-            buyInCurrency === Sdk.Common.Addresses.Eth[this.chainId]
-              ? Sdk.Common.Addresses.Weth[this.chainId]
-              : buyInCurrency
-          );
-          const toToken = await getToken(this.chainId, this.provider, currency);
-
-          const route = await router.route(CurrencyAmount.fromRawAmount(toToken, totalPayment.toString()), fromToken, TradeType.EXACT_INPUT, {
-            recipient: myAddress,
-            slippageTolerance: new Percent(5, 100),
-            deadline: Math.floor(Date.now() / 1000 + 1800),
-            {}
-          })
-          executions.push({
-            module: this.contracts.uniswapV3Module.address,
-            data: "",
-            value: 0,
-          });
+          try {
+            executions.push(
+              await generateSwapExecution(
+                this.chainId,
+                this.provider,
+                buyInCurrency,
+                currency,
+                totalPayment,
+                this.contracts.uniswapV3Module,
+                this.contracts.seaportModule.address,
+                taker
+              )
+            );
+          } catch {
+            if (options?.skipErrors) {
+              continue;
+            } else {
+              throw new Error("Could not generate swap execution");
+            }
+          }
         }
+
         executions.push({
           module: this.contracts.seaportModule.address,
           data:

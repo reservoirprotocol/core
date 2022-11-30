@@ -160,7 +160,6 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
                     fee: 500,
                     // Send USDC to the Seaport module
                     recipient: seaportModule.address,
-                    deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
                     amountOut: listings
                       .map(({ price }, i) =>
                         bn(price).add(chargeFees ? feesOnTop[i] : 0)
@@ -451,7 +450,6 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
             tokenOut: Sdk.Common.Addresses.Usdc[chainId],
             fee: 500,
             recipient: seaportModule.address,
-            deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
             amountOut: bn(listing.price).add(
               // Anything on top should be refunded
               parseUnits("500", 6)
@@ -576,7 +574,6 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
             tokenOut: Sdk.Common.Addresses.Usdc[chainId],
             fee: 500,
             recipient: bob.address,
-            deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
             amountOut: bn(listing.price).add(
               // Anything on top should be refunded
               parseUnits("100", 6)

@@ -183,7 +183,6 @@ describe("[ReservoirV6_0_0] ZeroExV4 listings", () => {
                     fee: 500,
                     // Send USDC to the Carol
                     recipient: carol.address,
-                    deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
                     amountOut: listings
                       .map(({ price }, i) =>
                         bn(price).add(chargeFees ? feesOnTop[i] : 0)
