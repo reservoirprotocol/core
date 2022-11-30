@@ -1,12 +1,18 @@
 import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
-import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
-import { BidDetails, Fee, ListingDetails, ListingFillDetails } from "./types";
+import {
+  BidDetails,
+  ExecutionInfo,
+  Fee,
+  ListingDetails,
+  ListingFillDetails,
+} from "./types";
+import { generateSwapExecution } from "./uniswap";
 import * as Sdk from "../../index";
 import { TxData, bn, generateSourceBytes } from "../../utils";
 
@@ -16,20 +22,15 @@ import ERC1155Abi from "../../common/abis/Erc1155.json";
 // Router
 import RouterAbi from "./abis/ReservoirV6_0_0.json";
 // Modules
-import SudoswapModuleAbi from "./abis/SudoswapModule.json";
+import BlurModuleAbi from "./abis/BlurModule.json";
 import FoundationModuleAbi from "./abis/FoundationModule.json";
 import LooksRareModuleAbi from "./abis/LooksRareModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
+import SudoswapModuleAbi from "./abis/SudoswapModule.json";
+import UniswapV3ModuleAbi from "./abis/UniswapV3Module.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
-import BlurModuleAbi from "./abis/BlurModule.json";
-
-type ExecutionInfo = {
-  module: string;
-  data: string;
-  value: BigNumberish;
-};
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -52,6 +53,11 @@ export class Router {
       // Initialize router
       router: new Contract(Addresses.Router[chainId], RouterAbi, provider),
       // Initialize modules
+      blurModule: new Contract(
+        Addresses.BlurModule[chainId] ?? AddressZero,
+        BlurModuleAbi,
+        provider
+      ),
       foundationModule: new Contract(
         Addresses.FoundationModule[chainId] ?? AddressZero,
         FoundationModuleAbi,
@@ -72,6 +78,11 @@ export class Router {
         SudoswapModuleAbi,
         provider
       ),
+      uniswapV3Module: new Contract(
+        Addresses.UniswapV3Module[chainId] ?? AddressZero,
+        UniswapV3ModuleAbi,
+        provider
+      ),
       x2y2Module: new Contract(
         Addresses.X2Y2Module[chainId] ?? AddressZero,
         X2Y2ModuleAbi,
@@ -87,18 +98,13 @@ export class Router {
         ZoraModuleAbi,
         provider
       ),
-      blurModule: new Contract(
-        Addresses.BlurModule[chainId] ?? AddressZero,
-        BlurModuleAbi,
-        provider
-      ),
     };
   }
 
   public async fillListingsTx(
     details: ListingDetails[],
     taker: string,
-    currency = Sdk.Common.Addresses.Eth[this.chainId],
+    buyInCurrency = Sdk.Common.Addresses.Eth[this.chainId],
     options?: {
       source?: string;
       // Will be split among all listings to get filled
@@ -257,7 +263,12 @@ export class Router {
     // If all orders are Seaport, then fill on Seaport directly
     // TODO: Directly fill for other exchanges as well
     if (
-      details.every(({ kind, fees }) => kind === "seaport" && !fees?.length) &&
+      details.every(
+        ({ kind, fees, currency }) =>
+          kind === "seaport" &&
+          currency === details[0].currency &&
+          !fees?.length
+      ) &&
       !options?.globalFees?.length &&
       !options?.forceRouter
     ) {
@@ -295,12 +306,8 @@ export class Router {
       }
     }
 
-    // TODO: Add support for filling non-ETH orders through the router via Uniswap V3
-    if (currency !== Sdk.Common.Addresses.Eth[this.chainId]) {
-      throw new Error("Non-ETH filling not yet implemented");
-    }
-    if (!details.every((d) => d.currency === currency)) {
-      throw new Error("Mismatched currencies");
+    if (buyInCurrency !== Sdk.Common.Addresses.Eth[this.chainId]) {
+      throw new Error("Unsupported buy-in currency");
     }
 
     const getFees = (ownDetails: ListingFillDetails[]) => [
@@ -328,24 +335,27 @@ export class Router {
       ),
     ];
 
-    // For keeping track of the listing's position in the original array
+    // For keeping track of each listing's position in the original array
     type ListingDetailsExtracted = {
       originalIndex: number;
     } & ListingDetails;
 
+    // For supporting filling listings having different underlying currencies
+    type PerCurrencyDetails = { [currency: string]: ListingDetailsExtracted[] };
+
     // Split all listings by their kind
-    const sudoswapDetails: ListingDetailsExtracted[] = [];
+    const blurDetails: ListingDetailsExtracted[] = [];
     const foundationDetails: ListingDetailsExtracted[] = [];
     const looksRareDetails: ListingDetailsExtracted[] = [];
-    const seaportDetails: ListingDetailsExtracted[] = [];
+    const seaportDetails: PerCurrencyDetails = {};
+    const sudoswapDetails: ListingDetailsExtracted[] = [];
     const x2y2Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
-    const blurDetails: ListingDetailsExtracted[] = [];
 
     for (let i = 0; i < details.length; i++) {
-      const { kind, contractKind } = details[i];
+      const { kind, contractKind, currency } = details[i];
 
       let detailsRef: ListingDetailsExtracted[];
       switch (kind) {
@@ -362,7 +372,10 @@ export class Router {
           break;
 
         case "seaport":
-          detailsRef = seaportDetails;
+          if (!seaportDetails[currency]) {
+            seaportDetails[currency] = [];
+          }
+          detailsRef = seaportDetails[currency];
           break;
 
         case "sudoswap":
@@ -514,100 +527,132 @@ export class Router {
     }
 
     // Handle Seaport listings
-    if (seaportDetails.length) {
-      const orders = seaportDetails.map((d) => d.order as Sdk.Seaport.Order);
+    if (Object.keys(seaportDetails).length) {
+      for (const currency of Object.keys(seaportDetails)) {
+        const currencyDetails = seaportDetails[currency];
 
-      const fees = getFees(seaportDetails);
+        const orders = currencyDetails.map((d) => d.order as Sdk.Seaport.Order);
+        const fees = getFees(currencyDetails);
 
-      const totalPrice = orders
-        .map((order, i) =>
-          // Seaport orders can be partially-fillable
-          bn(order.getMatchingPrice())
-            .mul(seaportDetails[i].amount ?? 1)
-            .div(order.getInfo()!.amount)
-        )
-        .reduce((a, b) => a.add(b), bn(0));
-      const totalFees = fees
-        .map(({ amount }) => bn(amount))
-        .reduce((a, b) => a.add(b), bn(0));
+        const totalPrice = orders
+          .map((order, i) =>
+            // Seaport orders can be partially-fillable
+            bn(order.getMatchingPrice())
+              .mul(currencyDetails[i].amount ?? 1)
+              .div(order.getInfo()!.amount)
+          )
+          .reduce((a, b) => a.add(b), bn(0));
+        const totalFees = fees
+          .map(({ amount }) => bn(amount))
+          .reduce((a, b) => a.add(b), bn(0));
+        const totalPayment = totalPrice.add(totalFees);
 
-      executions.push({
-        module: this.contracts.seaportModule.address,
-        data:
-          orders.length === 1
-            ? this.contracts.seaportModule.interface.encodeFunctionData(
-                "acceptETHListing",
-                [
-                  {
-                    parameters: {
-                      ...orders[0].params,
-                      totalOriginalConsiderationItems:
-                        orders[0].params.consideration.length,
-                    },
-                    numerator: seaportDetails[0].amount ?? 1,
-                    denominator: 1,
-                    signature: orders[0].params.signature,
-                    extraData: "0x",
-                  },
-                  {
-                    fillTo: taker,
-                    refundTo: taker,
-                    revertIfIncomplete: Boolean(!options?.partial),
-                    amount: totalPrice,
-                  },
-                  fees,
-                ]
+        const isETH = currency === Sdk.Common.Addresses.Eth[this.chainId];
+        if (!isETH) {
+          try {
+            executions.push(
+              await generateSwapExecution(
+                this.chainId,
+                this.provider,
+                buyInCurrency,
+                currency,
+                totalPayment,
+                this.contracts.uniswapV3Module,
+                this.contracts.seaportModule.address,
+                taker
               )
-            : this.contracts.seaportModule.interface.encodeFunctionData(
-                "acceptETHListings",
-                [
-                  orders.map((order, i) => ({
-                    parameters: {
-                      ...order.params,
-                      totalOriginalConsiderationItems:
-                        order.params.consideration.length,
-                    },
-                    numerator: seaportDetails[i].amount ?? 1,
-                    denominator: 1,
-                    signature: order.params.signature,
-                    extraData: "0x",
-                  })),
-                  // TODO: Optimize the fulfillments
-                  {
-                    offer: orders
-                      .map((order, i) =>
-                        order.params.offer.map((_, j) => ({
-                          orderIndex: i,
-                          itemIndex: j,
-                        }))
-                      )
-                      .flat()
-                      .map((x) => [x]),
-                    consideration: orders
-                      .map((order, i) =>
-                        order.params.consideration.map((_, j) => ({
-                          orderIndex: i,
-                          itemIndex: j,
-                        }))
-                      )
-                      .flat()
-                      .map((x) => [x]),
-                  },
-                  {
-                    fillTo: taker,
-                    refundTo: taker,
-                    revertIfIncomplete: Boolean(!options?.partial),
-                    amount: totalPrice,
-                  },
-                  fees,
-                ]
-              ),
-        value: totalPrice.add(totalFees),
-      });
+            );
+          } catch {
+            if (options?.skipErrors) {
+              continue;
+            } else {
+              throw new Error("Could not generate swap execution");
+            }
+          }
+        }
 
-      // Mark the listings as successfully handled
-      for (const { originalIndex } of seaportDetails) {
-        success[originalIndex] = true;
+        executions.push({
+          module: this.contracts.seaportModule.address,
+          data:
+            orders.length === 1
+              ? this.contracts.seaportModule.interface.encodeFunctionData(
+                  `accept${isETH ? "ETH" : "ERC20"}Listing`,
+                  [
+                    {
+                      parameters: {
+                        ...orders[0].params,
+                        totalOriginalConsiderationItems:
+                          orders[0].params.consideration.length,
+                      },
+                      numerator: currencyDetails[0].amount ?? 1,
+                      denominator: 1,
+                      signature: orders[0].params.signature,
+                      extraData: "0x",
+                    },
+                    {
+                      fillTo: taker,
+                      refundTo: taker,
+                      revertIfIncomplete: Boolean(!options?.partial),
+                      // Only needed for ERC20 listings
+                      token: currency,
+                      amount: totalPrice,
+                    },
+                    fees,
+                  ]
+                )
+              : this.contracts.seaportModule.interface.encodeFunctionData(
+                  `accept${isETH ? "ETH" : "ERC20"}Listings`,
+                  [
+                    orders.map((order, i) => ({
+                      parameters: {
+                        ...order.params,
+                        totalOriginalConsiderationItems:
+                          order.params.consideration.length,
+                      },
+                      numerator: currencyDetails[i].amount ?? 1,
+                      denominator: 1,
+                      signature: order.params.signature,
+                      extraData: "0x",
+                    })),
+                    // TODO: Optimize the fulfillments
+                    {
+                      offer: orders
+                        .map((order, i) =>
+                          order.params.offer.map((_, j) => ({
+                            orderIndex: i,
+                            itemIndex: j,
+                          }))
+                        )
+                        .flat()
+                        .map((x) => [x]),
+                      consideration: orders
+                        .map((order, i) =>
+                          order.params.consideration.map((_, j) => ({
+                            orderIndex: i,
+                            itemIndex: j,
+                          }))
+                        )
+                        .flat()
+                        .map((x) => [x]),
+                    },
+                    {
+                      fillTo: taker,
+                      refundTo: taker,
+                      revertIfIncomplete: Boolean(!options?.partial),
+                      // Only needed for ERC20 listings
+                      token: currency,
+                      amount: totalPrice,
+                    },
+                    fees,
+                  ]
+                ),
+          value: isETH ? totalPayment : 0,
+        });
+
+        // Mark the listings as successfully handled
+        for (const { originalIndex } of currencyDetails) {
+          success[originalIndex] = true;
+        }
       }
     }
 

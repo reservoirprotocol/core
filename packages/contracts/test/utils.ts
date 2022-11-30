@@ -101,4 +101,10 @@ export const setupRouterWithModules = async (
     .then((factory) => factory.deploy(deployer.address, router.address));
   Sdk.RouterV6.Addresses.ZeroExV4Module[chainId] =
     zeroExV4Module.address.toLowerCase();
+
+  const uniswapV3Module = await ethers
+    .getContractFactory("UniswapV3Module", deployer)
+    .then((factory) => factory.deploy(deployer.address, router.address));
+  Sdk.RouterV6.Addresses.UniswapV3Module[chainId] =
+    uniswapV3Module.address.toLowerCase();
 };

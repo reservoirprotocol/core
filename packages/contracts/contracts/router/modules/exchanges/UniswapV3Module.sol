@@ -14,7 +14,7 @@ contract UniswapV3Module is BaseExchangeModule {
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     IUniswapV3Router public constant SWAP_ROUTER =
-        IUniswapV3Router(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+        IUniswapV3Router(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
 
     // --- Constructor ---
 

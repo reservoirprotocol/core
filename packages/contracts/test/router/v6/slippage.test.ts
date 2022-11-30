@@ -253,7 +253,6 @@ describe("[ReservoirV6_0_0] Router executions with amount checks", () => {
             tokenOut: Sdk.Common.Addresses.Usdc[chainId],
             fee: 500,
             recipient: carol.address,
-            deadline: (await getCurrentTimestamp(ethers.provider)) + 60,
             amountOut: parseUnits("100000", 6),
             amountInMaximum: parseEther("500"),
             sqrtPriceLimitX96: 0,
