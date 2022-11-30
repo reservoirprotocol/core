@@ -33,7 +33,9 @@ export const SudoswapModule: ChainIdToAddress = {
   [Network.Ethereum]: "0xecd3184bc21172ea96061afeefaa136e5b3761b6",
 };
 
-export const UniswapV3Module: ChainIdToAddress = {};
+export const UniswapV3Module: ChainIdToAddress = {
+  [Network.EthereumGoerli]: "0x6748fce2eabad140b36dc7300ad2eb31631410be",
+};
 
 export const X2Y2Module: ChainIdToAddress = {
   [Network.Ethereum]: "0x613d3c588f6b8f89302b463f8f19f7241b2857e2",
