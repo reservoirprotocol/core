@@ -965,7 +965,13 @@ export class Router {
             ? this.contracts.zoraModule.interface.encodeFunctionData(
                 "acceptETHListing",
                 [
-                  orders[0].params,
+                  {
+                    collection: orders[0].params.tokenContract,
+                    tokenId: orders[0].params.tokenId,
+                    currency: orders[0].params.askCurrency,
+                    amount: orders[0].params.askPrice,
+                    finder: taker,
+                  },
                   {
                     fillTo: taker,
                     refundTo: taker,
@@ -978,7 +984,13 @@ export class Router {
             : this.contracts.foundationModule.interface.encodeFunctionData(
                 "acceptETHListings",
                 [
-                  orders.map((order) => order.params),
+                  orders.map((order) => ({
+                    collection: order.params.tokenContract,
+                    tokenId: order.params.tokenId,
+                    currency: order.params.askCurrency,
+                    amount: order.params.askPrice,
+                    finder: taker,
+                  })),
                   {
                     fillTo: taker,
                     refundTo: taker,
