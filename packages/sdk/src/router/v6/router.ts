@@ -13,6 +13,7 @@ import {
   ListingFillDetails,
 } from "./types";
 import { generateSwapExecution } from "./uniswap";
+import { isETH } from "./utils";
 import * as Sdk from "../../index";
 import { TxData, bn, generateSourceBytes } from "../../utils";
 
@@ -28,6 +29,7 @@ import LooksRareModuleAbi from "./abis/LooksRareModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
 import SudoswapModuleAbi from "./abis/SudoswapModule.json";
 import UniswapV3ModuleAbi from "./abis/UniswapV3Module.json";
+import WETHModuleAbi from "./abis/WETHModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
@@ -81,6 +83,11 @@ export class Router {
       uniswapV3Module: new Contract(
         Addresses.UniswapV3Module[chainId] ?? AddressZero,
         UniswapV3ModuleAbi,
+        provider
+      ),
+      wethModule: new Contract(
+        Addresses.WETHModule[chainId] ?? AddressZero,
+        WETHModuleAbi,
         provider
       ),
       x2y2Module: new Contract(
@@ -306,7 +313,7 @@ export class Router {
       }
     }
 
-    if (buyInCurrency !== Sdk.Common.Addresses.Eth[this.chainId]) {
+    if (!isETH(this.chainId, buyInCurrency)) {
       throw new Error("Unsupported buy-in currency");
     }
 
@@ -547,8 +554,7 @@ export class Router {
           .reduce((a, b) => a.add(b), bn(0));
         const totalPayment = totalPrice.add(totalFees);
 
-        const isETH = currency === Sdk.Common.Addresses.Eth[this.chainId];
-        if (!isETH) {
+        if (!isETH(this.chainId, currency)) {
           try {
             executions.push(
               await generateSwapExecution(
@@ -557,9 +563,13 @@ export class Router {
                 buyInCurrency,
                 currency,
                 totalPayment,
-                this.contracts.uniswapV3Module,
-                this.contracts.seaportModule.address,
-                taker
+                {
+                  uniswapV3Module: this.contracts.uniswapV3Module,
+                  wethModule: this.contracts.wethModule,
+                  // Forward any swapped tokens to the Seaport module
+                  recipient: this.contracts.seaportModule.address,
+                  refundTo: taker,
+                }
               )
             );
           } catch {
@@ -576,7 +586,9 @@ export class Router {
           data:
             orders.length === 1
               ? this.contracts.seaportModule.interface.encodeFunctionData(
-                  `accept${isETH ? "ETH" : "ERC20"}Listing`,
+                  `accept${
+                    isETH(this.chainId, currency) ? "ETH" : "ERC20"
+                  }Listing`,
                   [
                     {
                       parameters: {
@@ -601,7 +613,9 @@ export class Router {
                   ]
                 )
               : this.contracts.seaportModule.interface.encodeFunctionData(
-                  `accept${isETH ? "ETH" : "ERC20"}Listings`,
+                  `accept${
+                    isETH(this.chainId, currency) ? "ETH" : "ERC20"
+                  }Listings`,
                   [
                     orders.map((order, i) => ({
                       parameters: {
@@ -646,7 +660,7 @@ export class Router {
                     fees,
                   ]
                 ),
-          value: isETH ? totalPayment : 0,
+          value: isETH(this.chainId, currency) ? totalPayment : 0,
         });
 
         // Mark the listings as successfully handled

@@ -14,7 +14,7 @@ import {
 import { AlphaRouter, SwapType } from "@uniswap/smart-order-router";
 
 import { ExecutionInfo } from "./types";
-import * as Sdk from "../../index";
+import { isETH, isWETH } from "./utils";
 
 const getToken = async (
   chainId: number,
@@ -27,7 +27,7 @@ const getToken = async (
     provider
   );
 
-  return address === Sdk.Common.Addresses.Eth[chainId]
+  return isETH(chainId, address)
     ? Ether.onChain(chainId)
     : new Token(chainId, address, await contract.decimals());
 };
@@ -37,42 +37,68 @@ export const generateSwapExecution = async (
   provider: Provider,
   fromTokenAddress: string,
   toTokenAddress: string,
-  exactToTokenAmount: BigNumberish,
-  uniswapV3Module: Contract,
-  recipient: string,
-  refundTo: string
+  toTokenAmount: BigNumberish,
+  options: {
+    uniswapV3Module: Contract;
+    wethModule: Contract;
+    recipient: string;
+    refundTo: string;
+  }
 ): Promise<ExecutionInfo> => {
   const router = new AlphaRouter({
     chainId: chainId,
     provider: provider as any,
   });
 
-  const fromToken = await getToken(chainId, provider, fromTokenAddress);
-  const toToken = await getToken(chainId, provider, toTokenAddress);
+  if (isETH(chainId, fromTokenAddress) && isWETH(chainId, toTokenAddress)) {
+    // We need to wrap ETH
+    return {
+      module: options.wethModule.address,
+      data: options.wethModule.interface.encodeFunctionData("wrap", [
+        options.recipient,
+      ]),
+      value: toTokenAmount,
+    };
+  } else if (
+    isWETH(chainId, fromTokenAddress) &&
+    isETH(chainId, toTokenAddress)
+  ) {
+    // We need to unwrap WETH
+    return {
+      module: options.wethModule.address,
+      data: options.wethModule.interface.encodeFunctionData("unwrap", [
+        options.recipient,
+      ]),
+      value: 0,
+    };
+  } else {
+    // We need to swap
+    const fromToken = await getToken(chainId, provider, fromTokenAddress);
+    const toToken = await getToken(chainId, provider, toTokenAddress);
 
-  const route = await router.route(
-    CurrencyAmount.fromRawAmount(toToken, exactToTokenAmount.toString()),
-    fromToken,
-    TradeType.EXACT_OUTPUT,
-    {
-      type: SwapType.SWAP_ROUTER_02,
-      recipient: recipient,
-      slippageTolerance: new Percent(5, 100),
-      deadline: Math.floor(Date.now() / 1000 + 1800),
-    },
-    {
-      protocols: [Protocol.V3],
-      maxSwapsPerPath: 1,
+    const route = await router.route(
+      CurrencyAmount.fromRawAmount(toToken, toTokenAmount.toString()),
+      fromToken,
+      TradeType.EXACT_OUTPUT,
+      {
+        type: SwapType.SWAP_ROUTER_02,
+        recipient: options.recipient,
+        slippageTolerance: new Percent(5, 100),
+        deadline: Math.floor(Date.now() / 1000 + 1800),
+      },
+      {
+        protocols: [Protocol.V3],
+        maxSwapsPerPath: 1,
+      }
+    );
+    if (!route) {
+      throw new Error("Could not generate route");
     }
-  );
-  if (!route) {
-    throw new Error("Could not generate route");
-  }
 
-  // Currently, the UniswapV3 module only supports 'exact-output-single' types of swaps
-  const iface = new Interface([
-    `function multicall(uint256 deadline, bytes[] calldata data)`,
-    `
+    // Currently the UniswapV3 module only supports 'exact-output-single' types of swaps
+    const iface = new Interface([
+      `function multicall(uint256 deadline, bytes[] calldata data)`,
+      `
       function exactOutputSingle(
         tuple(
           address tokenIn,
@@ -85,33 +111,37 @@ export const generateSwapExecution = async (
         ) params
       )
     `,
-  ]);
+    ]);
 
-  let params: any;
-  try {
-    // Properly handle multicall-wrapping
-    let calldata = route.methodParameters!.calldata;
-    if (calldata.startsWith(iface.getSighash("multicall"))) {
-      const decodedMulticall = iface.decodeFunctionData("multicall", calldata);
-      for (const data of decodedMulticall.data) {
-        if (data.startsWith(iface.getSighash("exactOutputSingle"))) {
-          calldata = data;
-          break;
+    let params: any;
+    try {
+      // Properly handle multicall-wrapping
+      let calldata = route.methodParameters!.calldata;
+      if (calldata.startsWith(iface.getSighash("multicall"))) {
+        const decodedMulticall = iface.decodeFunctionData(
+          "multicall",
+          calldata
+        );
+        for (const data of decodedMulticall.data) {
+          if (data.startsWith(iface.getSighash("exactOutputSingle"))) {
+            calldata = data;
+            break;
+          }
         }
       }
+
+      params = iface.decodeFunctionData("exactOutputSingle", calldata);
+    } catch {
+      throw new Error("Could not generate compatible route");
     }
 
-    params = iface.decodeFunctionData("exactOutputSingle", calldata);
-  } catch {
-    throw new Error("Could not generate compatible route");
+    return {
+      module: options.uniswapV3Module.address,
+      data: options.uniswapV3Module.interface.encodeFunctionData(
+        "ethToExactOutput",
+        [params.params, options.refundTo]
+      ),
+      value: params.params.amountInMaximum,
+    };
   }
-
-  return {
-    module: uniswapV3Module.address,
-    data: uniswapV3Module.interface.encodeFunctionData("ethToExactOutput", [
-      params.params,
-      refundTo,
-    ]),
-    value: params.params.amountInMaximum,
-  };
 };

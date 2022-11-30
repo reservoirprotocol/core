@@ -9,7 +9,9 @@ export const Router: ChainIdToAddress = {
 
 export const BalanceAssertModule: ChainIdToAddress = {};
 
-export const UnwrapWETHModule: ChainIdToAddress = {};
+export const WETHModule: ChainIdToAddress = {
+  [Network.EthereumGoerli]: "0x5282b9af3f38d4a5d1bb707f5d3acbd951950074",
+};
 
 // Exchange modules
 

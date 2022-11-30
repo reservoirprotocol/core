@@ -692,7 +692,7 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
       });
     }
 
-    // Order 3: Seaport ETH
+    // Order 3: Seaport WETH
     const seller3 = carol;
     const tokenId3 = 2;
     const price3 = parseEther("0.11");
@@ -714,7 +714,7 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
         offerer: seller3.address,
         contract: erc721.address,
         tokenId: tokenId3,
-        paymentToken: Sdk.Common.Addresses.Eth[chainId],
+        paymentToken: Sdk.Common.Addresses.Weth[chainId],
         price: price3.sub(price3.mul(fee3).div(10000)),
         fees: [
           {
@@ -736,7 +736,7 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
         contract: erc721.address,
         tokenId: tokenId3.toString(),
         order: sellOrder,
-        currency: Sdk.Common.Addresses.Eth[chainId],
+        currency: Sdk.Common.Addresses.Weth[chainId],
       });
     }
 
@@ -744,10 +744,11 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
       ethers.provider,
       Sdk.Common.Addresses.Usdc[chainId]
     );
+    const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
 
     const seller1EthBalanceBefore = await seller1.getBalance();
     const seller2UsdcBalanceBefore = await usdc.getBalance(seller2.address);
-    const seller3EthBalanceBefore = await seller3.getBalance();
+    const seller3WethBalanceBefore = await weth.getBalance(seller3.address);
     const token1OwnerBefore = await erc721.ownerOf(tokenId1);
     const token2OwnerBefore = await erc721.ownerOf(tokenId2);
     const token3OwnerBefore = await erc721.ownerOf(tokenId3);
@@ -769,7 +770,7 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
 
     const seller1EthBalanceAfter = await seller1.getBalance();
     const seller2UsdcBalanceAfter = await usdc.getBalance(seller2.address);
-    const seller3EthBalanceAfter = await seller3.getBalance();
+    const seller3WethBalanceAfter = await weth.getBalance(seller3.address);
     const token1OwnerAfter = await erc721.ownerOf(tokenId1);
     const token2OwnerAfter = await erc721.ownerOf(tokenId2);
     const token3OwnerAfter = await erc721.ownerOf(tokenId3);
@@ -780,7 +781,7 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
     expect(seller2UsdcBalanceAfter.sub(seller2UsdcBalanceBefore)).to.eq(
       price2.sub(price2.mul(fee2).div(10000))
     );
-    expect(seller3EthBalanceAfter.sub(seller3EthBalanceBefore)).to.eq(
+    expect(seller3WethBalanceAfter.sub(seller3WethBalanceBefore)).to.eq(
       price3.sub(price3.mul(fee3).div(10000))
     );
     expect(token1OwnerAfter).to.eq(buyer.address);
@@ -797,11 +798,15 @@ describe("[ReservoirV6_0_0] - filling listings via the SDK", () => {
     expect(await usdc.getBalance(router.contracts.seaportModule.address)).to.eq(
       0
     );
+    expect(await weth.getBalance(router.contracts.seaportModule.address)).to.eq(
+      0
+    );
     expect(
       await ethers.provider.getBalance(router.contracts.uniswapV3Module.address)
     ).to.eq(0);
     expect(
       await usdc.getBalance(router.contracts.uniswapV3Module.address)
     ).to.eq(0);
+    expect(await weth.getBalance(router.contracts.wethModule.address)).to.eq(0);
   });
 });
