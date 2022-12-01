@@ -10,6 +10,7 @@ export const Router: ChainIdToAddress = {
 export const BalanceAssertModule: ChainIdToAddress = {};
 
 export const WETHModule: ChainIdToAddress = {
+  [Network.Ethereum]: "0xe2537569b2f5c320db0c5b2510728d8de0da28e0",
   [Network.EthereumGoerli]: "0x5282b9af3f38d4a5d1bb707f5d3acbd951950074",
 };
 
@@ -36,6 +37,7 @@ export const SudoswapModule: ChainIdToAddress = {
 };
 
 export const UniswapV3Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0xe5ee6a6e8d57d1d315d1898c68ea1bc487b6ea92",
   [Network.EthereumGoerli]: "0x6748fce2eabad140b36dc7300ad2eb31631410be",
 };
 
