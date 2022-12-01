@@ -308,7 +308,7 @@ export class Router {
               ...options?.directFillingData,
             }
           ),
-          success: [true],
+          success: orders.map(_ => true),
         };
       }
     }
