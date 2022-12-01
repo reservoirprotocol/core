@@ -274,6 +274,7 @@ export class Router {
         ({ kind, fees, currency }) =>
           kind === "seaport" &&
           currency === details[0].currency &&
+          buyInCurrency === currency &&
           !fees?.length
       ) &&
       !options?.globalFees?.length &&
@@ -308,7 +309,7 @@ export class Router {
               ...options?.directFillingData,
             }
           ),
-          success: orders.map(_ => true),
+          success: orders.map((_) => true),
         };
       }
     }
