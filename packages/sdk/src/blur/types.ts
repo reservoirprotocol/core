@@ -1,5 +1,4 @@
-export type OrderKind =
-  | "erc721-single-token";
+export type OrderKind = "erc721-single-token";
 
 export enum TradeDirection {
   BUY,
@@ -34,7 +33,6 @@ export type BaseOrder = {
   s?: string;
 };
 
-
 export type OrderInput = {
   order: BaseOrder;
   v?: number;
@@ -43,4 +41,4 @@ export type OrderInput = {
   extraSignature: string;
   signatureVersion: number;
   blockNumber: number;
-}
+};
