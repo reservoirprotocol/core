@@ -1,14 +1,16 @@
 import { ChainIdToAddress, Network } from "../utils";
 
+export const NativeEthAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
 export const Exchange: ChainIdToAddress = {
   [Network.Ethereum]: "0x20f780a973856b93f63670377900c1d2a50a77c4",
   [Network.EthereumGoerli]: "0x7fed7ed540c0731088190fed191fcf854ed65efa",
 };
 
 export const Eth: ChainIdToAddress = {
-  [Network.Ethereum]: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-  [Network.EthereumGoerli]: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-  [Network.Optimism]: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  [Network.Ethereum]: NativeEthAddress,
+  [Network.EthereumGoerli]: NativeEthAddress,
+  [Network.Optimism]: NativeEthAddress,
 };
 
 export const TokenRangeValidator: ChainIdToAddress = {

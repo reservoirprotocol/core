@@ -510,94 +510,94 @@ describe("Element - SingleToken Erc1155", () => {
     }
   });
 
-  it("Batch buy", async () => {
-    const buyer = alice;
-    const soldTokenId = 0;
-
-    const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
-
-    const sellOrders: Element.Order[] = [];
-    for (const seller of [bob, carol]) {
-      // Mint erc1155 to seller
-      await erc1155.connect(seller).mint(soldTokenId);
-      await erc1155.connect(seller).mint(soldTokenId);
-
-      // Approve the exchange
-      await nft.approve(seller, Element.Addresses.Exchange[chainId]);
-
-      const builder = new Element.Builders.SingleToken(chainId);
-
-      // Build sell order
-      const sellOrder = builder.build({
-        direction: "sell",
-        maker: seller.address,
-        contract: erc1155.address,
-        tokenId: soldTokenId,
-        amount: 2,
-        hashNonce: 0,
-        paymentToken: Element.Addresses.Eth[chainId],
-        price: parseEther("0.5"),
-        fees: [
-          {
-            recipient: ted.address,
-            amount: parseEther("0.07"),
-          },
-        ],
-        expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
-      });
-
-      // Sign the order
-      await sellOrder.sign(seller);
-
-      // Approve the exchange for escrowing.
-      await erc1155
-      .connect(seller)
-      .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
-
-      await sellOrder.checkFillability(ethers.provider);
-
-      sellOrders.push(sellOrder);
-    }
-
-    const matchParams: Element.Types.MatchParams[] = [];
-    for (const sellOrder of sellOrders) {
-      // Create matching buy order
-      const buyOrder = sellOrder.buildMatching({ amount: 1 });
-
-      matchParams.push(buyOrder);
-    }
-
-    const buyerNftBalanceBefore = await nft.getBalance(
-      buyer.address,
-      soldTokenId
-    );
-    const bobNftBalanceBefore = await nft.getBalance(bob.address, soldTokenId);
-    const carolNftBalanceBefore = await nft.getBalance(
-      carol.address,
-      soldTokenId
-    );
-
-    expect(buyerNftBalanceBefore).to.eq(0);
-    expect(bobNftBalanceBefore).to.eq(2);
-    expect(carolNftBalanceBefore).to.eq(2);
-
-    const exchange = new Element.Exchange(chainId);
-
-    // Match orders
-    await exchange.batchBuy(buyer, sellOrders, matchParams);
-
-    const buyerNftBalanceAfter = await nft.getBalance(
-      buyer.address,
-      soldTokenId
-    );
-    const bobNftBalanceAfter = await nft.getBalance(bob.address, soldTokenId);
-    const carolNftBalanceAfter = await nft.getBalance(
-      carol.address,
-      soldTokenId
-    );
-
-    expect(buyerNftBalanceAfter).to.eq(2);
-    expect(bobNftBalanceAfter).to.eq(1);
-    expect(carolNftBalanceAfter).to.eq(1);
-  });
+  // it("Batch buy", async () => {
+  //   const buyer = alice;
+  //   const soldTokenId = 0;
+  //
+  //   const nft = new Common.Helpers.Erc1155(ethers.provider, erc1155.address);
+  //
+  //   const sellOrders: Element.Order[] = [];
+  //   for (const seller of [bob, carol]) {
+  //     // Mint erc1155 to seller
+  //     await erc1155.connect(seller).mint(soldTokenId);
+  //     await erc1155.connect(seller).mint(soldTokenId);
+  //
+  //     // Approve the exchange
+  //     await nft.approve(seller, Element.Addresses.Exchange[chainId]);
+  //
+  //     const builder = new Element.Builders.SingleToken(chainId);
+  //
+  //     // Build sell order
+  //     const sellOrder = builder.build({
+  //       direction: "sell",
+  //       maker: seller.address,
+  //       contract: erc1155.address,
+  //       tokenId: soldTokenId,
+  //       amount: 2,
+  //       hashNonce: 0,
+  //       paymentToken: Element.Addresses.Eth[chainId],
+  //       price: parseEther("0.5"),
+  //       fees: [
+  //         {
+  //           recipient: ted.address,
+  //           amount: parseEther("0.07"),
+  //         },
+  //       ],
+  //       expiry: (await getCurrentTimestamp(ethers.provider)) + 60,
+  //     });
+  //
+  //     // Sign the order
+  //     await sellOrder.sign(seller);
+  //
+  //     // Approve the exchange for escrowing.
+  //     await erc1155
+  //     .connect(seller)
+  //     .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
+  //
+  //     await sellOrder.checkFillability(ethers.provider);
+  //
+  //     sellOrders.push(sellOrder);
+  //   }
+  //
+  //   const matchParams: Element.Types.MatchParams[] = [];
+  //   for (const sellOrder of sellOrders) {
+  //     // Create matching buy order
+  //     const buyOrder = sellOrder.buildMatching({ amount: 1 });
+  //
+  //     matchParams.push(buyOrder);
+  //   }
+  //
+  //   const buyerNftBalanceBefore = await nft.getBalance(
+  //     buyer.address,
+  //     soldTokenId
+  //   );
+  //   const bobNftBalanceBefore = await nft.getBalance(bob.address, soldTokenId);
+  //   const carolNftBalanceBefore = await nft.getBalance(
+  //     carol.address,
+  //     soldTokenId
+  //   );
+  //
+  //   expect(buyerNftBalanceBefore).to.eq(0);
+  //   expect(bobNftBalanceBefore).to.eq(2);
+  //   expect(carolNftBalanceBefore).to.eq(2);
+  //
+  //   const exchange = new Element.Exchange(chainId);
+  //
+  //   // Match orders
+  //   await exchange.batchBuy(buyer, sellOrders, matchParams);
+  //
+  //   const buyerNftBalanceAfter = await nft.getBalance(
+  //     buyer.address,
+  //     soldTokenId
+  //   );
+  //   const bobNftBalanceAfter = await nft.getBalance(bob.address, soldTokenId);
+  //   const carolNftBalanceAfter = await nft.getBalance(
+  //     carol.address,
+  //     soldTokenId
+  //   );
+  //
+  //   expect(buyerNftBalanceAfter).to.eq(2);
+  //   expect(bobNftBalanceAfter).to.eq(1);
+  //   expect(carolNftBalanceAfter).to.eq(1);
+  // });
 });

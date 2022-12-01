@@ -33,6 +33,7 @@ import WETHModuleAbi from "./abis/WETHModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
+import ElementModuleAbi from "./abis/ElementModule.json";
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -103,6 +104,11 @@ export class Router {
       zoraModule: new Contract(
         Addresses.ZoraModule[chainId] ?? AddressZero,
         ZoraModuleAbi,
+        provider
+      ),
+      elementModule: new Contract(
+        Addresses.ElementModule[chainId] ?? AddressZero,
+        ElementModuleAbi,
         provider
       ),
     };
@@ -360,7 +366,7 @@ export class Router {
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
-
+    const elementDetails: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind, currency } = details[i];
 
@@ -403,7 +409,11 @@ export class Router {
         case "zora":
           detailsRef = zoraDetails;
           break;
-
+  
+        case "element":
+          detailsRef = elementDetails;
+          break;
+  
         default:
           throw new Error("Unsupported exchange kind");
       }
@@ -1069,6 +1079,57 @@ export class Router {
         success[originalIndex] = true;
       }
     }
+    
+    // Handle Element listings
+    if (elementDetails.length) {
+      const module = this.contracts.elementModule;
+      for (const detail of elementDetails) {
+        const order = detail.order as Sdk.Element.Order;
+        const totalPrice = order.getTotalPrice(detail.amount ?? 1);
+        const fees = getFees([detail]);
+        const totalFees = fees
+          .map(({ amount }) => bn(amount))
+          .reduce((a, b) => a.add(b), bn(0));
+      
+        const listingParams = {
+          fillTo: taker,
+          refundTo: taker,
+          revertIfIncomplete: Boolean(!options?.partial),
+          amount: totalPrice,
+        };
+      
+        let data;
+        if (order.isBatchSignedOrder()) {
+          data = module.interface.encodeFunctionData("acceptETHListingERC721V2", [
+            order.getRaw(),
+            listingParams,
+            fees,
+          ]);
+        } else if (detail.contractKind == "erc721") {
+          data = module.interface.encodeFunctionData("acceptETHListingERC721", [
+            order.getRaw(),
+            order.params,
+            listingParams,
+            fees,
+          ]);
+        } else {
+          data = module.interface.encodeFunctionData("acceptETHListingERC1155", [
+            order.getRaw(),
+            order.params,
+            detail.amount ?? 1,
+            listingParams,
+            fees,
+          ]);
+        }
+      
+        executions.push({
+          module: module.address,
+          data: data,
+          value: totalPrice.add(totalFees),
+        });
+        success[detail.originalIndex] = true;
+      }
+    }
 
     return {
       txData: {
@@ -1404,6 +1465,48 @@ export class Router {
         break;
       }
 
+      case "element": {
+        const order = detail.order as Sdk.Element.Order;
+        const module = this.contracts.elementModule;
+  
+        if (detail.contractKind === "erc721") {
+          moduleLevelTx = {
+            module: module.address,
+            data: module.interface.encodeFunctionData("acceptERC721Offer", [
+                order.getRaw(),
+                order.params,
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: true,
+                },
+                detail.tokenId,
+                detail.fees ?? [],
+              ]
+            ),
+          };
+        } else {
+          moduleLevelTx = {
+            module: module.address,
+            data: module.interface.encodeFunctionData("acceptERC1155Offer", [
+                order.getRaw(),
+                order.params,
+                detail.amount ?? 1,
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: true,
+                },
+                detail.tokenId,
+                detail.fees ?? [],
+              ]
+            ),
+          };
+        }
+    
+        break;
+      }
+  
       default: {
         throw new Error("Unsupported exchange kind");
       }
