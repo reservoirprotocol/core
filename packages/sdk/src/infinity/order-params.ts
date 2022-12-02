@@ -1,6 +1,6 @@
 import * as Types from "./types";
 import * as Errors from "./errors";
-import { lc, s } from "../utils";
+import { bn, lc, s } from "../utils";
 import { Signature, TypedDataField } from "ethers";
 import { SignatureLike } from "@ethersproject/bytes";
 import { defaultAbiCoder, verifyTypedData } from "ethers/lib/utils";
@@ -189,12 +189,15 @@ export class OrderParams implements Types.OrderInput {
     };
   }
 
-  constructor(protected _chainId: number, params: Types.OrderInput) {
+  constructor(
+    protected _chainId: number,
+    params: Types.OrderInput | Types.InternalOrder | Types.SignedOrder
+  ) {
     try {
       const normalizedParams = normalize(params);
       this._params = this.getInternalOrder(normalizedParams);
-      if (params.signature) {
-        this.sig = params.signature;
+      if (normalizedParams.signature) {
+        this.sig = normalizedParams.signature;
       }
     } catch (err) {
       if (err instanceof Errors.InvalidOrderError) {
@@ -338,7 +341,40 @@ export const normalizeNfts = (nfts: Types.OrderInput["nfts"]) => {
 
   return deduplicatedNfts;
 };
-export const normalize = (order: Types.OrderInput): Types.OrderInput => {
+export const normalize = (
+  order: Types.OrderInput | Types.InternalOrder | Types.SignedOrder
+): Types.OrderInput => {
+  if ("constraints" in order) {
+    const constraints = order.constraints.map((item) => bn(item).toString());
+    /**
+     * addresses are trimLowerCased in the construction of the extended class
+     * nfts are normalized and de-duplicated in the construction of the extended class
+     */
+    const normalized = {
+      isSellOrder: order.isSellOrder,
+      signer: order.signer,
+      numItems: parseInt(constraints[0], 10),
+      startPrice: constraints[1],
+      endPrice: constraints[2],
+      startTime: parseInt(constraints[3], 10),
+      endTime: parseInt(constraints[4], 10),
+      nonce: constraints[5],
+      maxGasPrice: constraints[6],
+      nfts: order.nfts,
+      complication: order.execParams[0],
+      currency: order.execParams[1],
+      extraParams: order.extraParams,
+    };
+    if ("sig" in order) {
+      return {
+        ...normalized,
+        signature: order.sig,
+      };
+    }
+
+    return normalized;
+  }
+
   return {
     isSellOrder: order.isSellOrder,
     signer: lc(order.signer),

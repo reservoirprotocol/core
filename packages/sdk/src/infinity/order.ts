@@ -20,7 +20,10 @@ import { Builders } from ".";
 import { Common } from "..";
 
 export class Order extends OrderParams {
-  constructor(chainId: number, params: Types.OrderInput) {
+  constructor(
+    chainId: number,
+    params: Types.OrderInput | Types.InternalOrder | Types.SignedOrder
+  ) {
     super(chainId, params);
     this.checkBaseValid();
   }
@@ -165,10 +168,16 @@ export class Order extends OrderParams {
 
       nfts.push(collectionNfts);
 
-      if(isApproved) {
-        const ownedTokens = collectionNfts.tokens.filter((item) => item.isOwner);
-        if(ownedTokens.length > 0) {
-          ownedAndApprovedNfts.push({ collection, isApproved, tokens: ownedTokens });
+      if (isApproved) {
+        const ownedTokens = collectionNfts.tokens.filter(
+          (item) => item.isOwner
+        );
+        if (ownedTokens.length > 0) {
+          ownedAndApprovedNfts.push({
+            collection,
+            isApproved,
+            tokens: ownedTokens,
+          });
         }
       }
     }
@@ -178,9 +187,9 @@ export class Order extends OrderParams {
     }, 0);
 
     return {
-      balance, 
+      balance,
       tokens: nfts,
-      fillableTokens: ownedAndApprovedNfts
+      fillableTokens: ownedAndApprovedNfts,
     };
   }
 
