@@ -677,7 +677,16 @@ export class Router {
       const fees = getFees(sudoswapDetails);
 
       const totalPrice = orders
-        .map((order) => bn(order.params.price))
+        .map((order) =>
+          bn(
+            order.params.extra.prices[
+              // Handle multiple listings from the same pool
+              orders
+                .filter((o) => o.params.pair === order.params.pair)
+                .findIndex((o) => o.params.tokenId === order.params.tokenId)
+            ]
+          )
+        )
         .reduce((a, b) => a.add(b), bn(0));
       const totalFees = fees
         .map(({ amount }) => bn(amount))
@@ -1295,9 +1304,9 @@ export class Router {
             [
               order.params.pair,
               detail.tokenId,
-              bn(order.params.price).sub(
+              bn(order.params.extra.prices[0]).sub(
                 // Take into account the protocol fee of 0.5%
-                bn(order.params.price).mul(50).div(10000)
+                bn(order.params.extra.prices[0]).mul(50).div(10000)
               ),
               Math.floor(Date.now() / 1000),
               {
