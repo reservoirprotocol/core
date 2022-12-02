@@ -1,4 +1,5 @@
 import { Signer } from "@ethersproject/abstract-signer";
+import { Provider } from "@ethersproject/abstract-provider";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
@@ -18,6 +19,12 @@ export class Exchange {
   constructor(chainId: number) {
     this.chainId = chainId;
     this.contract = new Contract(Addresses.Exchange[this.chainId], ExchangeAbi);
+  }
+
+  // --- Get listing ---
+
+  public async getListing(provider: Provider, listingId: number | string) {
+    return this.contract.connect(provider).getListing(listingId);
   }
 
   // --- Create order ---
