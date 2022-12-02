@@ -50,6 +50,8 @@ export const Routers: ChainIdToAddressMap = {
     "0x00000000a50bb64b4bbeceb18715748dface08af": "gem.xyz",
     "0xae9c73fd0fd237c1c6f66fe009d24ce969e98704": "gem.xyz",
     "0x539ea5d6ec0093ff6401dbcd14d049c37a77151b": "gem.xyz",
+    "0x3963fb8c968a744b7a01b13b9fd5362e189f7e1a": "gem.xyz",
+    "0xeda0edeee797f579bdb0d055ae135ecb71709d28": "gem.xyz",
     // Genie
     "0x0a267cf51ef038fc00e71801f5a524aec06e4f07": "genie.xyz",
     "0x2af4b707e1dce8fc345f38cfeeaa2421e54976d5": "genie.xyz",
