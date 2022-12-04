@@ -330,7 +330,7 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
     trader: lc(order.trader),
     matchingPolicy: lc(order.matchingPolicy),
     collection: lc(order.collection),
-    tokenId: n(order.tokenId),
+    tokenId: s(order.tokenId),
     nonce: s(order.nonce),
     amount: s(order.amount),
     paymentToken: lc(order.paymentToken),
