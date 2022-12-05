@@ -229,12 +229,16 @@ export class Router {
         const detail = details[0];
         const order = detail.order as Sdk.Manifold.Order;
         const exchange = new Sdk.Manifold.Exchange(this.chainId);
+        const amountFilled = Number(detail.amount) ?? 1;
+        const orderPrice = bn(order.params.details.initialAmount)
+          .mul(amountFilled)
+          .toString();
         return {
           txData: exchange.fillOrderTx(
             taker,
             Number(order.params.id),
-            Number(detail.amount) ?? 1,
-            order.params.details.initialAmount,
+            amountFilled,
+            orderPrice,
             options
           ),
           success: [true],
