@@ -22,7 +22,7 @@ export class SingleTokenBuilder extends BaseBuilder<SingleTokenOrderParams> {
 
     const order = new Order(this.chainId, {
       ...rest,
-      extraParams: constants.AddressZero,
+      extraParams: constants.HashZero,
       numItems: 1,
       nfts: [
         {
