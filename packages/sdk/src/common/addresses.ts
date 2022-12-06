@@ -105,6 +105,13 @@ export const Routers: ChainIdToAddressMap = {
     "0x6a789513b2e555f9d3539bf9a053a57d2bfca426": "reservoir.tools",
     "0x29fcac61d9b2a3c55f3e1149d0278126c31abe74": "reservoir.tools",
   },
+  [Network.Polygon]: {
+    // Reservoir (modules)
+    "0x343621b9e3ee47b6ac5eb3343ca50137e56d8a70": "reservoir.tools",
+    "0x819327e005a3ed85f7b634e195b8f25d4a2a45f8": "reservoir.tools",
+    // Reservoir (modules)
+    "0xb75dfff7da2a0c8e6bb235b80d28f997152d06fc": "reservoir.tools",
+  },
 };
 
 export const RoyaltyRegistry: ChainIdToAddress = {

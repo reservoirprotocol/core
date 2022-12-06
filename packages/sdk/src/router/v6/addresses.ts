@@ -3,6 +3,7 @@ import { ChainIdToAddress, Network } from "../../utils";
 export const Router: ChainIdToAddress = {
   [Network.Ethereum]: "0x178a86d36d89c7fdebea90b739605da7b131ff6a", // V6_0_0
   [Network.EthereumGoerli]: "0xb35d22a4553ab9d2b85e2a606cbae55f844df50c", // V6_0_0
+  [Network.Polygon]: "0x819327e005a3ed85f7b634e195b8f25d4a2a45f8", // V6_0_0
 };
 
 // Utility modules
@@ -32,6 +33,7 @@ export const LooksRareModule: ChainIdToAddress = {
 export const SeaportModule: ChainIdToAddress = {
   [Network.Ethereum]: "0x3729014ef28f01b3ddcf7f980d925e0b71b1f847",
   [Network.EthereumGoerli]: "0x6c460f133c573c21e7f55900d0c68f6f085b91e7",
+  [Network.Polygon]: "0xb75dfff7da2a0c8e6bb235b80d28f997152d06fc",
 };
 
 export const SudoswapModule: ChainIdToAddress = {
