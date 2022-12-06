@@ -106,11 +106,18 @@ export const Routers: ChainIdToAddressMap = {
     "0x29fcac61d9b2a3c55f3e1149d0278126c31abe74": "reservoir.tools",
   },
   [Network.Polygon]: {
-    // Reservoir (modules)
+    // Reservoir (routers)
     "0x343621b9e3ee47b6ac5eb3343ca50137e56d8a70": "reservoir.tools",
     "0x819327e005a3ed85f7b634e195b8f25d4a2a45f8": "reservoir.tools",
     // Reservoir (modules)
     "0xb75dfff7da2a0c8e6bb235b80d28f997152d06fc": "reservoir.tools",
+  },
+  [Network.Optimism]: {
+    // Reservoir (routers)
+    "0x41216f11a8481843de3e4986c388f1cc8780b724": "reservoir.tools",
+    "0xc0f489a34672d5b960a19279d99d77e94221d0c9": "reservoir.tools",
+    // Reservoir (modules)
+    "0x8e6ee42575cd6e3680d29cbeae5032c33d668032": "reservoir.tools",
   },
 };
 
