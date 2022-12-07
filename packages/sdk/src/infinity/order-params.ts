@@ -346,10 +346,6 @@ export const normalize = (
 ): Types.OrderInput => {
   if ("constraints" in order) {
     const constraints = order.constraints.map((item) => bn(item).toString());
-    /**
-     * addresses are trimLowerCased in the construction of the extended class
-     * nfts are normalized and de-duplicated in the construction of the extended class
-     */
     const normalized = {
       isSellOrder: order.isSellOrder,
       signer: order.signer,
