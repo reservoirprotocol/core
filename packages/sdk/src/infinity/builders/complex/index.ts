@@ -9,18 +9,18 @@ export type ComplexOrderParams = Omit<
 
 export class ComplexBuilder extends BaseBuilder<ComplexOrderParams> {
   public isValid(order: Order): boolean {
-    try{
-        order.checkBaseValid();
-        return true;
-    }catch(err) {
-        return false;
+    try {
+      order.checkBaseValid();
+      return true;
+    } catch (err) {
+      return false;
     }
   }
 
   public build(params: ComplexOrderParams): Order {
     const order = new Order(this.chainId, {
       ...params,
-      extraParams: constants.AddressZero,
+      extraParams: constants.HashZero,
       complication: Addresses.Complication[this.chainId],
     });
 
