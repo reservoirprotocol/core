@@ -10,7 +10,6 @@ import { ExecutionInfo } from "../helpers/router";
 import {
   bn,
   getChainId,
-  getCurrentTimestamp,
   getRandomBoolean,
   getRandomFloat,
   getRandomInteger,
@@ -101,7 +100,8 @@ describe("[ReservoirV6_0_0] Element listings", () => {
     // Whether to cancel some orders in order to trigger partial filling
     partial: boolean,
     // Number of listings to fill
-    listingsCount: number
+    listingsCount: number,
+    useBatchSignedOrder: boolean,
   ) => {
     // Setup
 
@@ -113,6 +113,7 @@ describe("[ReservoirV6_0_0] Element listings", () => {
       : Sdk.Common.Addresses.Eth[chainId];
     const parsePrice = (price: string) =>
       useUsdc ? parseUnits(price, 6) : parseEther(price);
+    const useERC721 = useBatchSignedOrder || getRandomBoolean();
   
     const listings: ElementListing[] = [];
     const feesOnTop: BigNumber[] = [];
@@ -120,117 +121,140 @@ describe("[ReservoirV6_0_0] Element listings", () => {
       listings.push({
         seller: getRandomBoolean() ? alice : bob,
         nft: {
-          ...(getRandomBoolean()
+          ...(useERC721
             ? { kind: "erc721", contract: erc721 }
             : { kind: "erc1155", contract: erc1155 }),
           id: getRandomInteger(1, 10000),
         },
+        isBatchSignedOrder: useBatchSignedOrder,
         paymentToken: useUsdc
           ? Sdk.Common.Addresses.Usdc[chainId]
           : Sdk.Element.Addresses.Eth[chainId],
         price: parsePrice(getRandomFloat(0.0001, 2).toFixed(6)),
         isCancelled: partial && getRandomBoolean(),
-        isBatchSignedOrder: getRandomBoolean(),
       });
       if (chargeFees) {
         feesOnTop.push(parsePrice(getRandomFloat(0.0001, 0.1).toFixed(6)));
       }
     }
-    
-   await setupElementListings(listings);
-
+    await setupElementListings(listings);
+  
     // Prepare executions
-    
+  
+    const totalPrice = bn(
+      listings.map(({ price }) => price).reduce((a, b) => bn(a).add(b), bn(0))
+    );
     const executions: ExecutionInfo[] = [];
   
-    for (let i = 0; i < listings.length; i++) {
-      const listing = listings[i];
-      
-      // 1. When filling USDC listings, swap ETH to USDC on Uniswap V3 (for testing purposes only)
-      if (useUsdc) {
-        executions.push({
-          module: uniswapV3Module.address,
-          data: uniswapV3Module.interface.encodeFunctionData(
-            "ethToExactOutput",
-            [
-              {
-                tokenIn: Sdk.Common.Addresses.Weth[chainId],
-                tokenOut: Sdk.Common.Addresses.Usdc[chainId],
-                fee: 500,
-                // Send USDC to the Element module
-                recipient: elementModule.address,
-                amountOut: bn(listing.price).add(chargeFees ? feesOnTop[i] : 0),
-                amountInMaximum: parseEther("100"),
-                sqrtPriceLimitX96: 0,
-              },
-              // Refund to Carol
-              carol.address,
-            ]
-          ),
-          // Anything on top should be refunded
-          value: parseEther("100"),
-        })
-      }
-  
-      // 2. Fill listings
-      const nftAmount = listing.nft.amount ?? 1;
-      const order = listing.order as Sdk.Element.Order;
-      const totalPrice = order.getTotalPrice(nftAmount);
-      const fees = chargeFees ? [
-        {
-          recipient: emilio.address,
-          amount: feesOnTop[i],
-        }
-      ]: [];
-      
-      const listingParams = {
-        fillTo: carol.address,
-        refundTo: carol.address,
-        revertIfIncomplete,
-        token: paymentToken,
-        amount: totalPrice,
-      };
-
-      let data;
-      if (order.isBatchSignedOrder()) {
-        const funcName = `accept${useUsdc ? "ERC20" : "ETH"}ListingERC721V2`
-        data = elementModule.interface.encodeFunctionData(funcName, [
-          order.getRaw(),
-          listingParams,
-          fees,
-        ]);
-      } else if (order.contractKind() == "erc721") {
-        const funcName = `accept${useUsdc ? "ERC20" : "ETH"}ListingERC721`
-        data = elementModule.interface.encodeFunctionData(funcName, [
-          order.getRaw(),
-          order.params,
-          listingParams,
-          fees,
-        ]);
-      } else {
-        const funcName = `accept${useUsdc ? "ERC20" : "ETH"}ListingERC1155`
-        data = elementModule.interface.encodeFunctionData(funcName, [
-          order.getRaw(),
-          order.params,
-          nftAmount,
-          listingParams,
-          fees,
-        ]);
-      }
-    
+    // 1. When filling USDC listings, swap ETH to USDC on Uniswap V3 (for testing purposes only)
+    if (useUsdc) {
       executions.push({
-        module: elementModule.address,
-        data: data,
-        value: useUsdc
-          ? 0
-          : totalPrice.add(
-            // Anything on top should be refunded
-            feesOnTop
-              .reduce((a, b) => bn(a).add(b), bn(0))
-              .add(parseEther("0.1"))
-          ),
+        module: uniswapV3Module.address,
+        data: uniswapV3Module.interface.encodeFunctionData(
+          "ethToExactOutput",
+          [
+            {
+              tokenIn: Sdk.Common.Addresses.Weth[chainId],
+              tokenOut: Sdk.Common.Addresses.Usdc[chainId],
+              fee: 500,
+              // Send USDC to the Seaport module
+              recipient: elementModule.address,
+              amountOut: listings
+                .map(({ price }, i) =>
+                  bn(price).add(chargeFees ? feesOnTop[i] : 0)
+                )
+                .reduce((a, b) => bn(a).add(b), bn(0))
+                // Anything on top should be refunded
+                .add(parsePrice("1000")),
+              amountInMaximum: parseEther("100"),
+              sqrtPriceLimitX96: 0,
+            },
+            // Refund to Carol
+            carol.address,
+          ]
+        ),
+        // Anything on top should be refunded
+        value: parseEther("100"),
       });
     }
+  
+    // 2. Fill listings
+    let data;
+    const listingParams = {
+      fillTo: carol.address,
+      refundTo: carol.address,
+      revertIfIncomplete,
+      amount: totalPrice,
+      // Only relevant when filling USDC listings
+      token: paymentToken,
+    };
+    const fees = [
+      ...feesOnTop.map((amount) => ({
+        recipient: emilio.address,
+        amount,
+      })),
+    ];
+    if (useBatchSignedOrder) {
+      if (listings.length > 1) {
+        data = elementModule.interface.encodeFunctionData(
+          `accept${ useUsdc ? "ERC20" : "ETH" }ListingsERC721V2`,
+          [
+            listings.map((listing) => listing.order!.getRaw()),
+            listingParams,
+            fees,
+          ]
+        );
+      } else {
+        data = elementModule.interface.encodeFunctionData(
+          `accept${ useUsdc ? "ERC20" : "ETH" }ListingERC721V2`,
+          [
+            listings[0].order!.getRaw(),
+            listingParams,
+            fees,
+          ]
+        );
+      }
+    } else {
+      const tokenKind = listings[0].nft.kind.toUpperCase();
+      if (listings.length > 1) {
+        data = elementModule.interface.encodeFunctionData(
+          `accept${ useUsdc ? "ERC20" : "ETH" }Listings${ tokenKind }`,
+          [
+            listings.map((listing) => listing.order!.getRaw()),
+            listings.map((listing) => listing.order!.getRaw()),
+            tokenKind === "ERC1155"
+              ? listings.map((listing) => listing.nft.amount ?? "1")
+              : undefined,
+            listingParams,
+            fees,
+          ].filter(Boolean)
+        );
+      } else {
+        data = elementModule.interface.encodeFunctionData(
+          `accept${ useUsdc ? "ERC20" : "ETH" }Listing${ tokenKind }`,
+          [
+            listings[0].order!.getRaw(),
+            listings[0].order!.getRaw(),
+            tokenKind === "ERC1155"
+              ? listings[0].nft.amount ?? "1"
+              : undefined,
+            listingParams,
+            fees,
+          ].filter(Boolean)
+        );
+      }
+    }
+    executions.push({
+      module: elementModule.address,
+      data,
+      value: useUsdc ? 0
+        : totalPrice.add(
+          // Anything on top should be refunded
+          feesOnTop
+            .reduce((a, b) => bn(a).add(b), bn(0))
+            .add(parsePrice("0.1"))
+        )
+    })
   
     // Checks
   
@@ -299,11 +323,14 @@ describe("[ReservoirV6_0_0] Element listings", () => {
       // Fees are charged per execution, and since we have a single execution
       // here, we will have a single fee payment at the end adjusted over the
       // amount that was actually paid (eg. prices of filled orders)
-      const feesPaid = feesOnTop
-        .filter((_, i) => !listings[i].isCancelled)
+      const actualPaid = listings
+        .filter(({ isCancelled }) => !isCancelled)
+        .map(({ price }) => price)
         .reduce((a, b) => bn(a).add(b), bn(0));
       expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
-        feesPaid
+        listings
+          .map((_, i) => feesOnTop[i].mul(actualPaid).div(totalPrice))
+          .reduce((a, b) => bn(a).add(b), bn(0))
       );
     }
   
@@ -336,24 +363,28 @@ describe("[ReservoirV6_0_0] Element listings", () => {
   
   for (let useUsdc of [false, true]) {
     for (let multiple of [false, true]) {
-      for (let partial of [false, true]) {
-        for (let chargeFees of [false, true]) {
-          for (let revertIfIncomplete of [false, true]) {
-            it(
-              `${useUsdc ? "[usdc]" : "[eth]"}` +
-              `${multiple ? "[multiple-orders]" : "[single-order]"}` +
-              `${partial ? "[partial]" : "[full]"}` +
-              `${chargeFees ? "[fees]" : "[no-fees]"}` +
-              `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
-              async () =>
-                testAcceptListings(
-                  useUsdc,
-                  chargeFees,
-                  revertIfIncomplete,
-                  partial,
-                  multiple ? getRandomInteger(2, 6) : 1
-                )
-            );
+      for (let orderV2 of [false, true]) {
+        for (let partial of [false, true]) {
+          for (let chargeFees of [false, true]) {
+            for (let revertIfIncomplete of [false, true]) {
+              it(
+                `${useUsdc ? "[usdc]" : "[eth]"}` +
+                `${multiple ? "[multiple-orders]" : "[single-order]"}` +
+                `${orderV2 ? "[orderV2]" : ""}` +
+                `${partial ? "[partial]" : "[full]"}` +
+                `${chargeFees ? "[fees]" : "[no-fees]"}` +
+                `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
+                async () =>
+                  testAcceptListings(
+                    useUsdc,
+                    chargeFees,
+                    revertIfIncomplete,
+                    partial,
+                    multiple ? getRandomInteger(2, 6) : 1,
+                    orderV2
+                  )
+              );
+            }
           }
         }
       }

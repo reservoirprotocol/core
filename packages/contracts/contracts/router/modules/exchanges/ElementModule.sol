@@ -84,6 +84,57 @@ contract ElementModule is BaseExchangeModule {
         );
     }
 
+    // --- [ERC721] Multiple ETH listings ---
+
+    function acceptETHListingsERC721(
+        IElement.NFTSellOrder[] calldata orders,
+        IElement.Signature[] calldata signatures,
+        ETHListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundETHLeftover(params.refundTo)
+        chargeETHFees(fees, params.amount)
+    {
+        // Execute fill
+        _buyERC721sEx(
+            orders,
+            signatures,
+            params.fillTo,
+            params.revertIfIncomplete,
+            params.amount
+        );
+    }
+
+    // --- [ERC721] Multiple ERC20 listings ---
+
+    function acceptERC20ListingsERC721(
+        IElement.NFTSellOrder[] calldata orders,
+        IElement.Signature[] calldata signatures,
+        ERC20ListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundERC20Leftover(params.refundTo, params.token)
+        chargeERC20Fees(fees, params.token, params.amount)
+    {
+        // Approve the exchange if needed
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
+
+        // Execute fill
+        _buyERC721sEx(
+            orders,
+            signatures,
+            params.fillTo,
+            params.revertIfIncomplete,
+            0
+        );
+    }
+
     // --- [ERC721] Single ETH listing V2 ---
 
     function acceptETHListingERC721V2(
@@ -106,7 +157,7 @@ contract ElementModule is BaseExchangeModule {
         );
     }
 
-    // --- [ERC721] Single ERC20 listing ---
+    // --- [ERC721] Single ERC20 listing V2 ---
 
     function acceptERC20ListingERC721V2(
         IElement.BatchSignedOrder calldata order,
@@ -125,6 +176,53 @@ contract ElementModule is BaseExchangeModule {
         // Execute fill
         _fillBatchSignedOrder(
             order,
+            params.fillTo,
+            params.revertIfIncomplete,
+            0
+        );
+    }
+
+    // --- [ERC721] Multiple ETH listings V2 ---
+
+    function acceptETHListingsERC721V2(
+        IElement.BatchSignedOrder[] calldata orders,
+        ETHListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundETHLeftover(params.refundTo)
+        chargeETHFees(fees, params.amount)
+    {
+        // Execute fill
+        _fillBatchSignedOrders(
+            orders,
+            params.fillTo,
+            params.revertIfIncomplete,
+            params.amount
+        );
+    }
+
+    // --- [ERC721] Multiple ERC20 listings V2 ---
+
+    function acceptERC20ListingsERC721V2(
+        IElement.BatchSignedOrder[] calldata orders,
+        ERC20ListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundERC20Leftover(params.refundTo, params.token)
+        chargeERC20Fees(fees, params.token, params.amount)
+    {
+        // Approve the exchange if needed
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
+
+        // Execute fill
+        _fillBatchSignedOrders(
+            orders,
             params.fillTo,
             params.revertIfIncomplete,
             0
@@ -180,6 +278,61 @@ contract ElementModule is BaseExchangeModule {
             order,
             signature,
             amount,
+            params.fillTo,
+            params.revertIfIncomplete,
+            0
+        );
+    }
+
+    // --- [ERC1155] Multiple ETH listings ---
+
+    function acceptETHListingsERC1155(
+        IElement.ERC1155SellOrder[] calldata orders,
+        IElement.Signature[] calldata signatures,
+        uint128[] calldata amounts,
+        ETHListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundETHLeftover(params.refundTo)
+        chargeETHFees(fees, params.amount)
+    {
+        // Execute fill
+        _buyERC1155sEx(
+            orders,
+            signatures,
+            amounts,
+            params.fillTo,
+            params.revertIfIncomplete,
+            params.amount
+        );
+    }
+
+    // --- [ERC1155] Multiple ERC20 listings ---
+
+    function acceptERC20ListingsERC1155(
+        IElement.ERC1155SellOrder[] calldata orders,
+        IElement.Signature[] calldata signatures,
+        uint128[] calldata amounts,
+        ERC20ListingParams calldata params,
+        Fee[] calldata fees
+    )
+        external
+        payable
+        nonReentrant
+        refundERC20Leftover(params.refundTo, params.token)
+        chargeERC20Fees(fees, params.token, params.amount)
+    {
+        // Approve the exchange if needed
+        _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
+
+        // Execute fill
+        _buyERC1155sEx(
+            orders,
+            signatures,
+            amounts,
             params.fillTo,
             params.revertIfIncomplete,
             0
@@ -321,6 +474,36 @@ contract ElementModule is BaseExchangeModule {
         }
     }
 
+    function _buyERC721sEx(
+        IElement.NFTSellOrder[] calldata orders,
+        IElement.Signature[] calldata signatures,
+        address receiver,
+        bool revertIfIncomplete,
+        uint256 value
+    ) internal {
+        uint256 length = orders.length;
+
+        address[] memory takers = new address[](length);
+        for (uint256 i; i < length; ) {
+            takers[i] = receiver;
+            unchecked { ++i; }
+        }
+
+        // Execute fill
+        try EXCHANGE.batchBuyERC721sEx{value: value}(
+            orders,
+            signatures,
+            takers,
+            new bytes[](length),
+            revertIfIncomplete
+        ) {} catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
+        }
+    }
+
     function _fillBatchSignedOrder(
         IElement.BatchSignedOrder calldata order,
         address receiver,
@@ -355,6 +538,52 @@ contract ElementModule is BaseExchangeModule {
         }
     }
 
+    function _fillBatchSignedOrders(
+        IElement.BatchSignedOrder[] calldata orders,
+        address receiver,
+        bool revertIfIncomplete,
+        uint256 value
+    ) internal {
+        uint256 length = orders.length;
+        uint256 taker = uint256(uint160(receiver));
+
+        IElement.Parameters[] memory parameters = new IElement.Parameters[](length);
+        for (uint256 i; i < length; ) {
+            IElement.BatchSignedOrder calldata order = orders[i];
+
+            IElement.Parameters memory parameter;
+            parameter.r = order.r;
+            parameter.s = order.s;
+            parameter.collections = order.collectionsBytes;
+
+            // data1 [56 bits(startNonce) + 8 bits(v) + 32 bits(listingTime) + 160 bits(maker)]
+            parameter.data1 =
+                (order.startNonce << 200) | (uint256(order.v) << 192) |
+                (order.listingTime << 160) | uint256(uint160(order.maker));
+
+            // data2 [64 bits(taker part1) + 32 bits(expiryTime) + 160 bits(erc20Token)]
+            parameter.data2 =
+                ((taker >> 96) << 192) | (order.expirationTime << 160) | uint256(uint160(order.erc20Token));
+
+            // data3 [96 bits(taker part2) + 160 bits(platformFeeRecipient)]
+            parameter.data3 =
+                (taker << 160) | uint256(uint160(order.platformFeeRecipient));
+
+            parameters[i] = parameter;
+            unchecked { ++i; }
+        }
+
+        // Execute fill
+        uint256 additional2 = revertIfIncomplete ? (1 << 248) : 0;
+        try EXCHANGE.fillBatchSignedERC721Orders{value: value}(parameters, 0, additional2) {
+        } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
+        }
+    }
+
     function _buyERC1155Ex(
         IElement.ERC1155SellOrder calldata order,
         IElement.Signature calldata signature,
@@ -365,6 +594,38 @@ contract ElementModule is BaseExchangeModule {
     ) internal {
         try EXCHANGE.buyERC1155Ex{value: value}(order, signature, receiver, amount, "") {
         } catch {
+            // Revert if specified
+            if (revertIfIncomplete) {
+                revert UnsuccessfulFill();
+            }
+        }
+    }
+
+    function _buyERC1155sEx(
+        IElement.ERC1155SellOrder[] calldata orders,
+        IElement.Signature[] calldata signatures,
+        uint128[] calldata amounts,
+        address receiver,
+        bool revertIfIncomplete,
+        uint256 value
+    ) internal {
+        uint256 length = orders.length;
+
+        address[] memory takers = new address[](length);
+        for (uint256 i; i < length; ) {
+            takers[i] = receiver;
+            unchecked { ++i; }
+        }
+
+        // Execute fill
+        try EXCHANGE.batchBuyERC1155sEx{value: value}(
+            orders,
+            signatures,
+            takers,
+            amounts,
+            new bytes[](length),
+            revertIfIncomplete
+        ) {} catch {
             // Revert if specified
             if (revertIfIncomplete) {
                 revert UnsuccessfulFill();

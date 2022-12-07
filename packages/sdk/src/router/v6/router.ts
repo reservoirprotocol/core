@@ -366,7 +366,9 @@ export class Router {
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
-    const elementDetails: ListingDetailsExtracted[] = [];
+    const elementErc721Details: ListingDetailsExtracted[] = [];
+    const elementErc721V2Details: ListingDetailsExtracted[] = [];
+    const elementErc1155Details: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind, currency } = details[i];
 
@@ -410,9 +412,17 @@ export class Router {
           detailsRef = zoraDetails;
           break;
   
-        case "element":
-          detailsRef = elementDetails;
+        case "element": {
+          const order = details[i].order as Sdk.Element.Order;
+          detailsRef = order.isBatchSignedOrder()
+            ? elementErc721V2Details
+            : (
+              contractKind === "erc721"
+                ? elementErc721Details
+                : elementErc1155Details
+            );
           break;
+        }
   
         default:
           throw new Error("Unsupported exchange kind");
@@ -1080,54 +1090,149 @@ export class Router {
       }
     }
     
-    // Handle Element listings
-    if (elementDetails.length) {
+    // Handle Element ERC721 listings
+    if (elementErc721Details.length) {
+      const orders = elementErc721Details.map(
+        (d) => d.order as Sdk.Element.Order
+      );
+    
+      const totalPrice = orders
+        .map((order) => order.getTotalPrice())
+        .reduce((a, b) => a.add(b), bn(0));
+    
+      const fees = getFees(elementErc721Details);
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+    
+      const listingParams = {
+        fillTo: taker,
+        refundTo: taker,
+        revertIfIncomplete: Boolean(!options?.partial),
+        amount: totalPrice,
+      };
       const module = this.contracts.elementModule;
-      for (const detail of elementDetails) {
-        const order = detail.order as Sdk.Element.Order;
-        const totalPrice = order.getTotalPrice(detail.amount ?? 1);
-        const fees = getFees([detail]);
-        const totalFees = fees
-          .map(({ amount }) => bn(amount))
-          .reduce((a, b) => a.add(b), bn(0));
+    
+      executions.push({
+        module: module.address,
+        data:
+          orders.length === 1
+            ? module.interface.encodeFunctionData("acceptETHListingERC721", [
+              orders[0].getRaw(),
+              orders[0].params,
+              listingParams,
+              fees,
+            ])
+            : module.interface.encodeFunctionData("acceptETHListingsERC721", [
+              orders.map((order) => order.getRaw()),
+              orders.map((order) => order.params),
+              listingParams,
+              fees,
+            ]),
+        value: totalPrice.add(totalFees),
+      });
+    
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of elementErc721Details) {
+        success[originalIndex] = true;
+      }
+    }
+  
+    // Handle Element ERC721 listings V2
+    if (elementErc721V2Details.length) {
+      const orders = elementErc721V2Details.map(
+        (d) => d.order as Sdk.Element.Order
+      );
+    
+      const totalPrice = orders
+        .map((order) => order.getTotalPrice())
+        .reduce((a, b) => a.add(b), bn(0));
+    
+      const fees = getFees(elementErc721V2Details);
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+    
+      const listingParams = {
+        fillTo: taker,
+        refundTo: taker,
+        revertIfIncomplete: Boolean(!options?.partial),
+        amount: totalPrice,
+      };
+      const module = this.contracts.elementModule;
+    
+      executions.push({
+        module: module.address,
+        data:
+          orders.length === 1
+            ? module.interface.encodeFunctionData("acceptETHListingERC721V2", [
+              orders[0].getRaw(),
+              listingParams,
+              fees,
+            ])
+            : module.interface.encodeFunctionData("acceptETHListingsERC721V2", [
+              orders.map((order) => order.getRaw()),
+              listingParams,
+              fees,
+            ]),
+        value: totalPrice.add(totalFees),
+      });
+    
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of elementErc721V2Details) {
+        success[originalIndex] = true;
+      }
+    }
+    
+    // Handle Element ERC1155 listings
+    if (elementErc1155Details.length) {
+      const orders = elementErc1155Details.map(
+        (d) => d.order as Sdk.Element.Order
+      );
+    
+      const totalPrice = orders
+        .map((order, i) =>
+          order.getTotalPrice(elementErc1155Details[i].amount ?? 1)
+        )
+        .reduce((a, b) => a.add(b), bn(0));
+    
+      const fees = getFees(elementErc1155Details);
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+    
+      const listingParams = {
+        fillTo: taker,
+        refundTo: taker,
+        revertIfIncomplete: Boolean(!options?.partial),
+        amount: totalPrice,
+      };
+      const module = this.contracts.elementModule;
+  
+      executions.push({
+        module: module.address,
+        data:
+          orders.length === 1
+            ? module.interface.encodeFunctionData("acceptETHListingERC1155", [
+              orders[0].getRaw(),
+              orders[0].params,
+              elementErc1155Details[0].amount ?? 1,
+              listingParams,
+              fees,
+            ])
+            : module.interface.encodeFunctionData("acceptETHListingsERC1155", [
+              orders.map((order) => order.getRaw()),
+              orders.map((order) => order.params),
+              elementErc1155Details.map((d) => d.amount ?? 1),
+              listingParams,
+              fees,
+            ]),
+        value: totalPrice.add(totalFees),
+      });
       
-        const listingParams = {
-          fillTo: taker,
-          refundTo: taker,
-          revertIfIncomplete: Boolean(!options?.partial),
-          amount: totalPrice,
-        };
-      
-        let data;
-        if (order.isBatchSignedOrder()) {
-          data = module.interface.encodeFunctionData("acceptETHListingERC721V2", [
-            order.getRaw(),
-            listingParams,
-            fees,
-          ]);
-        } else if (detail.contractKind == "erc721") {
-          data = module.interface.encodeFunctionData("acceptETHListingERC721", [
-            order.getRaw(),
-            order.params,
-            listingParams,
-            fees,
-          ]);
-        } else {
-          data = module.interface.encodeFunctionData("acceptETHListingERC1155", [
-            order.getRaw(),
-            order.params,
-            detail.amount ?? 1,
-            listingParams,
-            fees,
-          ]);
-        }
-      
-        executions.push({
-          module: module.address,
-          data: data,
-          value: totalPrice.add(totalFees),
-        });
-        success[detail.originalIndex] = true;
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of elementErc1155Details) {
+        success[originalIndex] = true;
       }
     }
 

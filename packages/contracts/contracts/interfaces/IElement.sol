@@ -101,12 +101,32 @@ interface IElement {
         bytes32 s;
     }
 
+    /// @param data1 [56 bits(startNonce) + 8 bits(v) + 32 bits(listingTime) + 160 bits(maker)]
+    /// @param data2 [64 bits(taker part1) + 32 bits(expiryTime) + 160 bits(erc20Token)]
+    /// @param data3 [96 bits(taker part2) + 160 bits(platformFeeRecipient)]
+    struct Parameters {
+        uint256 data1;
+        uint256 data2;
+        uint256 data3;
+        bytes32 r;
+        bytes32 s;
+        bytes collections;
+    }
+
     function buyERC721Ex(
         NFTSellOrder calldata sellOrder,
         Signature calldata signature,
         address taker,
         bytes calldata takerData
     ) external payable;
+
+    function batchBuyERC721sEx(
+        NFTSellOrder[] calldata sellOrders,
+        Signature[] calldata signatures,
+        address[] calldata takers,
+        bytes[] calldata takerDatas,
+        bool revertIfIncomplete
+    ) external payable returns (bool[] memory successes);
 
     function buyERC1155Ex(
         ERC1155SellOrder calldata sellOrder,
@@ -115,6 +135,15 @@ interface IElement {
         uint128 erc1155BuyAmount,
         bytes calldata takerData
     ) external payable;
+
+    function batchBuyERC1155sEx(
+        ERC1155SellOrder[] calldata sellOrders,
+        Signature[] calldata signatures,
+        address[] calldata takers,
+        uint128[] calldata erc1155TokenAmounts,
+        bytes[] calldata takerDatas,
+        bool revertIfIncomplete
+    ) external payable returns (bool[] memory successes);
 
     function sellERC721(
         NFTBuyOrder calldata buyOrder,
@@ -136,5 +165,13 @@ interface IElement {
     function fillBatchSignedERC721Order(
         Parameter calldata parameter,
         bytes calldata collections
+    ) external payable;
+
+    /// @param additional1 [96 bits(withdrawETHAmount) + 160 bits(erc20Token)]
+    /// @param additional2 [8 bits(revertIfIncomplete) + 88 bits(unused) + 160 bits(royaltyFeeRecipient)]
+    function fillBatchSignedERC721Orders(
+        Parameters[] calldata parameters,
+        uint256 additional1,
+        uint256 additional2
     ) external payable;
 }
