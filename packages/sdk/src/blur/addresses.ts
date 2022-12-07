@@ -10,6 +10,10 @@ export const StandardPolicyERC721: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0xde0cdfc21ad03afe917efa4e8811fc3fb4e8f027",
 };
 
+export const StandardPolicyERC721_V2: ChainIdToAddress = {
+  [Network.Ethereum]: "0x0000000000dab4a563819e8fd93dba3b25bc3495"
+};
+
 export const StandardPolicyERC1155: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x4146c41a880b0f1f1b22f31c6354f23a7f6be8b2",
 };

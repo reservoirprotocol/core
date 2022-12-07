@@ -73,7 +73,8 @@ contract BlurModule is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        for (uint256 i = 0; i < sells.length; ) {
+        uint256 length = sells.length;
+        for (uint256 i = 0; i < length; ) {
             // Use `memory` to avoid `Stack too deep` errors
             IBlur.Input memory sell = sells[i];
 

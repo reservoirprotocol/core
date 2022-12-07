@@ -63,7 +63,7 @@ export class Router {
               nftIds: [tokenId],
             },
           ],
-          order.params.price ?? 0,
+          order.params.extra.prices[0] ?? 0,
           options?.recipient ?? taker,
           Math.floor(Date.now() / 1000) + 10 * 60,
         ]) + generateSourceBytes(options?.source),
