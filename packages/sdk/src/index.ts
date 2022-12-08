@@ -22,6 +22,7 @@ import * as Zora from "./zora";
 import * as Manifold from "./manifold";
 import * as CryptoKitties from "./crypto-kitties";
 import * as Beeple from "./beeple";
+import * as CryptoArte from "./cryptoarte";
 
 import * as RouterV5 from "./router/v5";
 import * as RouterV6 from "./router/v6";
@@ -53,4 +54,5 @@ export {
   Manifold,
   CryptoKitties,
   Beeple,
+  CryptoArte,
 };
