@@ -39,7 +39,7 @@ export const SeaportModule: ChainIdToAddress = {
 };
 
 export const SudoswapModule: ChainIdToAddress = {
-  [Network.Ethereum]: "0xecd3184bc21172ea96061afeefaa136e5b3761b6",
+  [Network.Ethereum]: "0x79abbfdf20fc6dd0c51693bf9a481f7351a70fd2",
 };
 
 export const UniswapV3Module: ChainIdToAddress = {
