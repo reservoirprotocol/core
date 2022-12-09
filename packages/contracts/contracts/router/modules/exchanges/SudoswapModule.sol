@@ -191,4 +191,29 @@ contract SudoswapModule is BaseExchangeModule {
         // Refund any ERC721 leftover
         _sendAllERC721(params.refundTo, collection, nftId);
     }
+
+    // --- ERC721 hooks ---
+
+    // Single token offer acceptance can be done approval-less by using the
+    // standard `safeTransferFrom` method together with specifying data for
+    // further contract calls. An example:
+    // `safeTransferFrom(
+    //      0xWALLET,
+    //      0xMODULE,
+    //      TOKEN_ID,
+    //      0xABI_ENCODED_ROUTER_EXECUTION_CALLDATA_FOR_OFFER_ACCEPTANCE
+    // )`
+
+    function onERC721Received(
+        address, // operator,
+        address, // from
+        uint256, // tokenId,
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
+        }
+
+        return this.onERC721Received.selector;
+    }
 }

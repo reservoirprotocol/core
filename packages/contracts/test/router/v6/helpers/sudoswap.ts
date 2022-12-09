@@ -66,7 +66,9 @@ export const setupSudoswapListings = async (listings: SudoswapListing[]) => {
 
     listing.order = new Sdk.Sudoswap.Order(chainId, {
       pair,
-      price: price.toString(),
+      extra: {
+        prices: [price.toString()],
+      },
     });
   }
 };
@@ -123,7 +125,9 @@ export const setupSudoswapOffers = async (offers: SudoswapOffer[]) => {
 
     offer.order = new Sdk.Sudoswap.Order(chainId, {
       pair,
-      price: price.toString(),
+      extra: {
+        prices: [price.toString()],
+      },
     });
   }
 };
