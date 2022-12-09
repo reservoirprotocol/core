@@ -348,6 +348,13 @@ export class Order {
       return "erc721-single-token";
     }
 
+<<<<<<< HEAD
+=======
+    if (this.params.matchingPolicy === Addresses.StandardPolicyERC721_V2[this.chainId]) {
+      return 'erc721-single-token'
+    }
+    
+>>>>>>> upstream/main
     throw new Error(
       "Could not detect order kind (order might have unsupported params/calldata)"
     );

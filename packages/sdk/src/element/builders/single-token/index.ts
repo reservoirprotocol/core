@@ -13,16 +13,17 @@ interface BuildParams extends BaseBuildParams {
 export class SingleTokenBuilder extends BaseBuilder {
   public isValid(order: Order): boolean {
     try {
+      const params = order.params as Types.BaseOrder;
       const copyOrder = this.build({
-        ...order.params,
+        ...params,
         direction:
-          order.params.direction === Types.TradeDirection.SELL ? "sell" : "buy",
-        contract: order.params.nft,
-        maker: order.params.maker,
-        paymentToken: order.params.erc20Token,
-        price: order.params.erc20TokenAmount,
-        amount: order.params.nftAmount,
-        tokenId: order.params.nftId,
+          params.direction === Types.TradeDirection.SELL ? "sell" : "buy",
+        contract: params.nft,
+        maker: params.maker,
+        paymentToken: params.erc20Token,
+        price: params.erc20TokenAmount,
+        amount: params.nftAmount,
+        tokenId: params.nftId,
       });
 
       if (!copyOrder) {

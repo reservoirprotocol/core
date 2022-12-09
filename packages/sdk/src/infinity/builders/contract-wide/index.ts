@@ -22,7 +22,7 @@ export class ContractWideBuilder extends BaseBuilder<ContractWideOrderParams> {
 
     const order = new Order(this.chainId, {
       ...rest,
-      extraParams: constants.AddressZero,
+      extraParams: constants.HashZero,
       nfts: [{ collection, tokens: [] }],
       complication: Addresses.Complication[this.chainId],
     });

@@ -86,6 +86,7 @@ export const Routers: ChainIdToAddressMap = {
     "0x613d3c588f6b8f89302b463f8f19f7241b2857e2": "reservoir.tools",
     "0x8162beec776442afd262b672730bb5d0d8af16a1": "reservoir.tools",
     "0x982b49de82a3ea5b8c42895482d9dd9bfefadf82": "reservoir.tools",
+    "0xb1096516fc33bb64a77158b10f155846e74bd7fa": "reservoir.tools",
     // Uniswap
     "0xef1c6e67703c7bd7107eed8303fbe6ec2554bf6b": "uniswap.org",
     // X2Y2
@@ -103,6 +104,20 @@ export const Routers: ChainIdToAddressMap = {
     "0x6c460f133c573c21e7f55900d0c68f6f085b91e7": "reservoir.tools",
     "0x6a789513b2e555f9d3539bf9a053a57d2bfca426": "reservoir.tools",
     "0x29fcac61d9b2a3c55f3e1149d0278126c31abe74": "reservoir.tools",
+  },
+  [Network.Polygon]: {
+    // Reservoir (routers)
+    "0x343621b9e3ee47b6ac5eb3343ca50137e56d8a70": "reservoir.tools",
+    "0x819327e005a3ed85f7b634e195b8f25d4a2a45f8": "reservoir.tools",
+    // Reservoir (modules)
+    "0xb75dfff7da2a0c8e6bb235b80d28f997152d06fc": "reservoir.tools",
+  },
+  [Network.Optimism]: {
+    // Reservoir (routers)
+    "0x41216f11a8481843de3e4986c388f1cc8780b724": "reservoir.tools",
+    "0xc0f489a34672d5b960a19279d99d77e94221d0c9": "reservoir.tools",
+    // Reservoir (modules)
+    "0x8e6ee42575cd6e3680d29cbeae5032c33d668032": "reservoir.tools",
   },
 };
 
