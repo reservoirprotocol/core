@@ -32,3 +32,8 @@ export const PolicyManager: ChainIdToAddress = {
   [Network.Ethereum]: "0x3a35a3102b5c6bd1e4d3237248be071ef53c8331",
   [Network.EthereumGoerli]: "0xc73c52c261ba61a222618a9ebc27ae79a18377d9"
 }
+
+export const Oracle: ChainIdToAddress = {
+  [Network.Ethereum]: "0xd44feab097e5fee7fd54c9481f56b806f7f3ddc1",
+  [Network.EthereumGoerli]: "0xe11816134ddd8728752995ee36e3b3cc72873166"
+}
