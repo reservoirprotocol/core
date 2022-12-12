@@ -38,6 +38,7 @@ export const Routers: ChainIdToAddressMap = {
   [Network.Ethereum]: {
     // Alphasharks
     "0x552b16d19dbad7af2786fe5a40d96d2a5c09428c": "alphasharks.io",
+    "0x114e54a100a0415abf9727234c92c83dbcc59abf": "alphasharks.io",
     // Blur
     "0x39da41747a83aee658334415666f3ef92dd0d541": "blur.io",
     // Element
