@@ -25,6 +25,7 @@ import * as Beeple from "./beeple";
 import * as CryptoArte from "./cryptoarte";
 import * as CryptoVoxels from "./cryptovoxels";
 import * as TofuNft from "./tofunft";
+import * as Okex from "./okex";
 
 import * as RouterV5 from "./router/v5";
 import * as RouterV6 from "./router/v6";
@@ -40,6 +41,7 @@ export {
   Infinity,
   Nftx,
   Nouns,
+  Okex,
   Quixotic,
   Rarible,
   Seaport,
