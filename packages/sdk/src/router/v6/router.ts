@@ -1477,7 +1477,7 @@ export class Router {
                 // Take into account the protocol fee of 0.5%
                 bn(order.params.extra.prices[0]).mul(50).div(10000)
               ),
-              Math.floor(Date.now() / 1000),
+              Math.floor(Date.now() / 1000) + 10 * 60,
               {
                 fillTo: taker,
                 refundTo: taker,
