@@ -25,6 +25,7 @@ import * as Beeple from "./beeple";
 import * as CryptoArte from "./cryptoarte";
 import * as CryptoVoxels from "./cryptovoxels";
 import * as TofuNft from "./tofunft";
+import * as BendDao from "./bend-dao";
 import * as Okex from "./okex";
 import * as NftTrader from "./nft-trader";
 import * as Decentraland from "./decentraland";
@@ -35,6 +36,7 @@ import * as RouterV6 from "./router/v6";
 export {
   Common,
   Beeple,
+  BendDao,
   Blur,
   CryptoArte,
   CryptoKitties,
