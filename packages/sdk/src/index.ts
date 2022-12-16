@@ -25,6 +25,7 @@ import * as Beeple from "./beeple";
 import * as CryptoArte from "./cryptoarte";
 import * as CryptoVoxels from "./cryptovoxels";
 import * as TofuNft from "./tofunft";
+import * as Okex from "./okex";
 import * as NftTrader from "./nft-trader";
 import * as Decentraland from "./decentraland";
 
@@ -49,6 +50,7 @@ export {
   NftTrader,
   Nftx,
   Nouns,
+  Okex,
   Quixotic,
   Rarible,
   Seaport,
