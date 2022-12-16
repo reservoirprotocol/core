@@ -25,6 +25,7 @@ import * as Beeple from "./beeple";
 import * as CryptoArte from "./cryptoarte";
 import * as CryptoVoxels from "./cryptovoxels";
 import * as TofuNft from "./tofunft";
+import * as NftTrader from "./nft-trader";
 import * as Decentraland from "./decentraland";
 
 import * as RouterV5 from "./router/v5";
@@ -44,9 +45,10 @@ export {
   Foundation,
   LooksRare,
   Infinity,
+  Manifold,
+  NftTrader,
   Nftx,
   Nouns,
-  Manifold,
   Quixotic,
   Rarible,
   Seaport,
