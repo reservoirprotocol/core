@@ -26,26 +26,39 @@ import * as CryptoArte from "./cryptoarte";
 import * as CryptoVoxels from "./cryptovoxels";
 import * as TofuNft from "./tofunft";
 import * as BendDao from "./bend-dao";
+import * as Okex from "./okex";
+import * as NftTrader from "./nft-trader";
+import * as Decentraland from "./decentraland";
 
 import * as RouterV5 from "./router/v5";
 import * as RouterV6 from "./router/v6";
 
 export {
   Common,
+  Beeple,
+  BendDao,
   Blur,
+  CryptoArte,
+  CryptoKitties,
   CryptoPunks,
+  CryptoVoxels,
+  Decentraland,
   Element,
   Forward,
   Foundation,
   LooksRare,
   Infinity,
+  Manifold,
+  NftTrader,
   Nftx,
   Nouns,
+  Okex,
   Quixotic,
   Rarible,
   Seaport,
   Sudoswap,
   SuperRare,
+  TofuNft,
   Universe,
   WyvernV2,
   WyvernV23,
@@ -54,11 +67,4 @@ export {
   Zora,
   RouterV5,
   RouterV6,
-  Manifold,
-  CryptoKitties,
-  Beeple,
-  CryptoArte,
-  CryptoVoxels,
-  TofuNft,
-  BendDao,
 };
