@@ -1679,6 +1679,9 @@ export class Router {
 
       case "nftx": {
         const order = detail.order as Sdk.Nftx.Order;
+        const tokenId = detail.tokenId;
+        // bid
+        order.params.specificIds = [tokenId]
 
         moduleLevelTx = {
           module: this.contracts.nftxModule.address,
