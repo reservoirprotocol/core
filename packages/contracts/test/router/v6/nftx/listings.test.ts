@@ -132,7 +132,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
       // 1. Fill listings
       {
         module: nftxModule.address,
-        data: nftxModule.interface.encodeFunctionData("buyWithETH", [
+        data: nftxModule.interface.encodeFunctionData("c", [
           listings.map((listing) => listing.order!.params),
           {
             fillTo: carol.address,

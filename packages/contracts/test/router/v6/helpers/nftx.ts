@@ -10,18 +10,12 @@ import NFTXStakingZapAbi from "@reservoir0x/sdk/src/nftx/abis/NFTXStakingZap.jso
 import { parseEther } from "@ethersproject/units";
 import { BigNumber } from "ethers";
 
-
 function addSlippage(price: BigNumber, percent: number) {
   return price;
-  // const value = price.mul(percent).div(100);
-  // return price.add(value)
 }
 
 function subSlippage(price: BigNumber, percent: number) {
   return price;
-  // const value = price.mul(percent).div(100);
-  // console.log("before", formatEther(price), 'after', formatEther(price.sub(value)))
-  // return price.sub(value)
 }
 
 // --- Listings ---
@@ -234,9 +228,10 @@ export const setupNFTXOffers = async (offers: SudoswapOffer[]) => {
           vaultId: _vaultId.toString(),
           collection: nft.contract.address,
           currency: Sdk.Common.Addresses.Weth[chainId],
-          ids: [newId.toString()],
+          specificIds: [newId.toString()],
+          price: offer.price.toString(),
           path: [vaultAddress, Sdk.Common.Addresses.Weth[chainId]],
-          minEthOut: offer.price.toString(),
+          // minEthOut: offer.price.toString(),
         });
       }
     }

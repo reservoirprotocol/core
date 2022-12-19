@@ -132,8 +132,8 @@ contract NFTXModule is BaseExchangeModule {
         if (isERC721) {
             try NFTX_MARKETPLACE.mintAndSell721WETH(
                 sellOrder.vaultId,
-                sellOrder.ids,
-                sellOrder.minEthOut,
+                sellOrder.specificIds,
+                sellOrder.price,
                 sellOrder.path,
                 address(this)
             ) {
@@ -159,9 +159,9 @@ contract NFTXModule is BaseExchangeModule {
         } else if (isERC1155) { 
             try NFTX_MARKETPLACE.mintAndSell1155WETH(
                 sellOrder.vaultId, 
-                sellOrder.ids,
+                sellOrder.specificIds,
                 sellOrder.amounts,
-                sellOrder.minEthOut,
+                sellOrder.price,
                 sellOrder.path,
                 address(this)
             ) {
@@ -185,12 +185,12 @@ contract NFTXModule is BaseExchangeModule {
             }
         }
 
-        uint256 length = sellOrder.ids.length;
+        uint256 length = sellOrder.specificIds.length;
         for (uint256 i = 0; i < length; ) {
              if (isERC721) {
-                _sendAllERC721(receiver, IERC721(address(collection)), sellOrder.ids[i]);
+                _sendAllERC721(receiver, IERC721(address(collection)), sellOrder.specificIds[i]);
             } else if (isERC1155) {
-                _sendAllERC1155(receiver, IERC1155(address(collection)), sellOrder.ids[i]);
+                _sendAllERC1155(receiver, IERC1155(address(collection)), sellOrder.specificIds[i]);
             }
             unchecked {
                 ++i;

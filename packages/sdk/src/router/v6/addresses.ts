@@ -64,3 +64,7 @@ export const ZoraModule: ChainIdToAddress = {
 export const ElementModule: ChainIdToAddress = {
   [Network.Ethereum]: "",
 };
+
+export const NFTXModule: ChainIdToAddress = {
+  [Network.Ethereum]: "",
+};

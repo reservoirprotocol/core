@@ -13,18 +13,17 @@ interface INFTXMarketplaceZap {
         uint256 amount;
         address[] path;
         uint256 price;
-        // address to;
     }
 
     struct SellOrder {
         uint256 vaultId;
         IERC165 collection;
         IERC20 currency;
-        uint256[] ids;
+        uint256[] specificIds;
+        // ERC1155
         uint256[] amounts;
-        uint256 minEthOut;
+        uint256 price;
         address[] path;
-        // address to;
     }
 
     function mintAndSell721(

@@ -23,7 +23,7 @@ export async function getPoolPrice(
   ]);
 
   const WETH = Common.Addresses.Weth[chainId];
-  const SUSHI_ROUTER = Addresses.SUSHI_ROUTER[chainId];
+  const SUSHI_ROUTER = Addresses.SushiRouter[chainId];
 
   const sushiRouter = new Contract(SUSHI_ROUTER, iface, provider);
 
