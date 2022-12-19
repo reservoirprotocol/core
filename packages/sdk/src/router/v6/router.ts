@@ -24,6 +24,7 @@ import ERC1155Abi from "../../common/abis/Erc1155.json";
 import RouterAbi from "./abis/ReservoirV6_0_0.json";
 // Modules
 import BlurModuleAbi from "./abis/BlurModule.json";
+import ElementModuleAbi from "./abis/ElementModule.json";
 import FoundationModuleAbi from "./abis/FoundationModule.json";
 import LooksRareModuleAbi from "./abis/LooksRareModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
@@ -33,7 +34,6 @@ import WETHModuleAbi from "./abis/WETHModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
-import ElementModuleAbi from "./abis/ElementModule.json";
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -59,6 +59,11 @@ export class Router {
       blurModule: new Contract(
         Addresses.BlurModule[chainId] ?? AddressZero,
         BlurModuleAbi,
+        provider
+      ),
+      elementModule: new Contract(
+        Addresses.ElementModule[chainId] ?? AddressZero,
+        ElementModuleAbi,
         provider
       ),
       foundationModule: new Contract(
@@ -106,11 +111,6 @@ export class Router {
         ZoraModuleAbi,
         provider
       ),
-      elementModule: new Contract(
-        Addresses.ElementModule[chainId] ?? AddressZero,
-        ElementModuleAbi,
-        provider
-      ),
     };
   }
 
@@ -132,6 +132,8 @@ export class Router {
       partial?: boolean;
       // Any extra data relevant when filling natively
       directFillingData?: any;
+      // Wallet used for relaying the fill transaction
+      relayer?: string;
     }
   ): Promise<{ txData: TxData; success: boolean[] }> {
     // Assume the listing details are consistent with the underlying order object
@@ -143,6 +145,10 @@ export class Router {
 
     // TODO: Add Universe router module
     if (details.some(({ kind }) => kind === "universe")) {
+      if (options?.relayer) {
+        throw new Error("Relayer not supported");
+      }
+
       if (details.length > 1) {
         throw new Error("Universe sweeping is not supported");
       } else {
@@ -163,6 +169,10 @@ export class Router {
 
     // TODO: Add Rarible router module
     if (details.some(({ kind }) => kind === "rarible")) {
+      if (options?.relayer) {
+        throw new Error("Relayer not supported");
+      }
+
       if (details.length > 1) {
         throw new Error("Rarible sweeping is not supported");
       } else {
@@ -181,6 +191,10 @@ export class Router {
 
     // TODO: Add Cryptopunks router module
     if (details.some(({ kind }) => kind === "cryptopunks")) {
+      if (options?.relayer) {
+        throw new Error("Relayer not supported");
+      }
+
       if (details.length > 1) {
         throw new Error("Cryptopunks sweeping is not supported");
       } else {
@@ -199,6 +213,10 @@ export class Router {
 
     // TODO: Add Infinity router module
     if (details.some(({ kind }) => kind === "infinity")) {
+      if (options?.relayer) {
+        throw new Error("Relayer not supported");
+      }
+
       if (details.length > 1) {
         throw new Error("Infinity sweeping is not supported");
       } else {
@@ -229,6 +247,10 @@ export class Router {
 
     // TODO: Add Manifold router module
     if (details.some(({ kind }) => kind === "manifold")) {
+      if (options?.relayer) {
+        throw new Error("Relayer not supported");
+      }
+
       if (details.length > 1) {
         throw new Error("Manifold sweeping is not supported");
       } else {
@@ -277,6 +299,8 @@ export class Router {
     );
     details = details.filter(({ kind }) => kind !== "seaport-partial");
 
+    const relayer = options?.relayer ?? taker;
+
     // If all orders are Seaport, then fill on Seaport directly
     // TODO: Directly fill for other exchanges as well
     if (
@@ -294,31 +318,37 @@ export class Router {
       if (details.length === 1) {
         const order = details[0].order as Sdk.Seaport.Order;
         return {
-          txData: exchange.fillOrderTx(
-            taker,
-            order,
-            order.buildMatching({ amount: details[0].amount }),
-            {
-              ...options,
-              ...options?.directFillingData,
-            }
-          ),
+          txData: {
+            ...exchange.fillOrderTx(
+              taker,
+              order,
+              order.buildMatching({ amount: details[0].amount }),
+              {
+                ...options,
+                ...options?.directFillingData,
+              }
+            ),
+            from: relayer,
+          },
           success: [true],
         };
       } else {
         const orders = details.map((d) => d.order as Sdk.Seaport.Order);
         return {
-          txData: exchange.fillOrdersTx(
-            taker,
-            orders,
-            orders.map((order, i) =>
-              order.buildMatching({ amount: details[i].amount })
+          txData: {
+            ...exchange.fillOrdersTx(
+              taker,
+              orders,
+              orders.map((order, i) =>
+                order.buildMatching({ amount: details[i].amount })
+              ),
+              {
+                ...options,
+                ...options?.directFillingData,
+              }
             ),
-            {
-              ...options,
-              ...options?.directFillingData,
-            }
-          ),
+            from: relayer,
+          },
           success: orders.map((_) => true),
         };
       }
@@ -363,6 +393,9 @@ export class Router {
 
     // Split all listings by their kind
     const blurDetails: ListingDetailsExtracted[] = [];
+    const elementErc721Details: ListingDetailsExtracted[] = [];
+    const elementErc721V2Details: ListingDetailsExtracted[] = [];
+    const elementErc1155Details: ListingDetailsExtracted[] = [];
     const foundationDetails: ListingDetailsExtracted[] = [];
     const looksRareDetails: ListingDetailsExtracted[] = [];
     const seaportDetails: PerCurrencyDetails = {};
@@ -371,9 +404,6 @@ export class Router {
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
-    const elementErc721Details: ListingDetailsExtracted[] = [];
-    const elementErc721V2Details: ListingDetailsExtracted[] = [];
-    const elementErc1155Details: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind, currency } = details[i];
 
@@ -382,6 +412,16 @@ export class Router {
         case "blur":
           detailsRef = blurDetails;
           break;
+
+        case "element": {
+          const order = details[i].order as Sdk.Element.Order;
+          detailsRef = order.isBatchSignedOrder()
+            ? elementErc721V2Details
+            : contractKind === "erc721"
+            ? elementErc721Details
+            : elementErc1155Details;
+          break;
+        }
 
         case "foundation":
           detailsRef = foundationDetails;
@@ -417,16 +457,6 @@ export class Router {
           detailsRef = zoraDetails;
           break;
 
-        case "element": {
-          const order = details[i].order as Sdk.Element.Order;
-          detailsRef = order.isBatchSignedOrder()
-            ? elementErc721V2Details
-            : contractKind === "erc721"
-            ? elementErc721Details
-            : elementErc1155Details;
-          break;
-        }
-
         default:
           throw new Error("Unsupported exchange kind");
       }
@@ -437,6 +467,213 @@ export class Router {
     // Generate router executions
     const executions: ExecutionInfo[] = [];
     const success: boolean[] = details.map(() => false);
+
+    // Handle Blur listings
+    if (blurDetails.length) {
+      const orders = blurDetails.map((d) => d.order as Sdk.Blur.Order);
+      const module = this.contracts.blurModule.address;
+
+      const fees = getFees(blurDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.price))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module,
+        data:
+          orders.length === 1
+            ? this.contracts.blurModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  orders[0].getRaw(),
+                  orders[0].buildMatching({
+                    trader: module,
+                  }),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.blurModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => order.getRaw()),
+                  orders.map((order) =>
+                    order.buildMatching({
+                      trader: module,
+                    })
+                  ),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of blurDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
+    // Handle Element ERC721 listings
+    if (elementErc721Details.length) {
+      const orders = elementErc721Details.map(
+        (d) => d.order as Sdk.Element.Order
+      );
+
+      const totalPrice = orders
+        .map((order) => order.getTotalPrice())
+        .reduce((a, b) => a.add(b), bn(0));
+
+      const fees = getFees(elementErc721Details);
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      const listingParams = {
+        fillTo: taker,
+        refundTo: taker,
+        revertIfIncomplete: Boolean(!options?.partial),
+        amount: totalPrice,
+      };
+      const module = this.contracts.elementModule;
+
+      executions.push({
+        module: module.address,
+        data:
+          orders.length === 1
+            ? module.interface.encodeFunctionData("acceptETHListingERC721", [
+                orders[0].getRaw(),
+                orders[0].params,
+                listingParams,
+                fees,
+              ])
+            : module.interface.encodeFunctionData("acceptETHListingsERC721", [
+                orders.map((order) => order.getRaw()),
+                orders.map((order) => order.params),
+                listingParams,
+                fees,
+              ]),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of elementErc721Details) {
+        success[originalIndex] = true;
+      }
+    }
+
+    // Handle Element ERC721 listings V2
+    if (elementErc721V2Details.length) {
+      const orders = elementErc721V2Details.map(
+        (d) => d.order as Sdk.Element.Order
+      );
+
+      const totalPrice = orders
+        .map((order) => order.getTotalPrice())
+        .reduce((a, b) => a.add(b), bn(0));
+
+      const fees = getFees(elementErc721V2Details);
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      const listingParams = {
+        fillTo: taker,
+        refundTo: taker,
+        revertIfIncomplete: Boolean(!options?.partial),
+        amount: totalPrice,
+      };
+      const module = this.contracts.elementModule;
+
+      executions.push({
+        module: module.address,
+        data:
+          orders.length === 1
+            ? module.interface.encodeFunctionData("acceptETHListingERC721V2", [
+                orders[0].getRaw(),
+                listingParams,
+                fees,
+              ])
+            : module.interface.encodeFunctionData("acceptETHListingsERC721V2", [
+                orders.map((order) => order.getRaw()),
+                listingParams,
+                fees,
+              ]),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of elementErc721V2Details) {
+        success[originalIndex] = true;
+      }
+    }
+
+    // Handle Element ERC1155 listings
+    if (elementErc1155Details.length) {
+      const orders = elementErc1155Details.map(
+        (d) => d.order as Sdk.Element.Order
+      );
+
+      const totalPrice = orders
+        .map((order, i) =>
+          order.getTotalPrice(elementErc1155Details[i].amount ?? 1)
+        )
+        .reduce((a, b) => a.add(b), bn(0));
+
+      const fees = getFees(elementErc1155Details);
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      const listingParams = {
+        fillTo: taker,
+        refundTo: taker,
+        revertIfIncomplete: Boolean(!options?.partial),
+        amount: totalPrice,
+      };
+      const module = this.contracts.elementModule;
+
+      executions.push({
+        module: module.address,
+        data:
+          orders.length === 1
+            ? module.interface.encodeFunctionData("acceptETHListingERC1155", [
+                orders[0].getRaw(),
+                orders[0].params,
+                elementErc1155Details[0].amount ?? 1,
+                listingParams,
+                fees,
+              ])
+            : module.interface.encodeFunctionData("acceptETHListingsERC1155", [
+                orders.map((order) => order.getRaw()),
+                orders.map((order) => order.params),
+                elementErc1155Details.map((d) => d.amount ?? 1),
+                listingParams,
+                fees,
+              ]),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of elementErc1155Details) {
+        success[originalIndex] = true;
+      }
+    }
 
     // Handle Foundation listings
     if (foundationDetails.length) {
@@ -1041,216 +1278,9 @@ export class Router {
       }
     }
 
-    // Handle Blur listings
-    if (blurDetails.length) {
-      const orders = blurDetails.map((d) => d.order as Sdk.Blur.Order);
-      const module = this.contracts.blurModule.address;
-
-      const fees = getFees(blurDetails);
-
-      const totalPrice = orders
-        .map((order) => bn(order.params.price))
-        .reduce((a, b) => a.add(b), bn(0));
-      const totalFees = fees
-        .map(({ amount }) => bn(amount))
-        .reduce((a, b) => a.add(b), bn(0));
-
-      executions.push({
-        module,
-        data:
-          orders.length === 1
-            ? this.contracts.blurModule.interface.encodeFunctionData(
-                "acceptETHListing",
-                [
-                  orders[0].getRaw(),
-                  orders[0].buildMatching({
-                    trader: module,
-                  }),
-                  {
-                    fillTo: taker,
-                    refundTo: taker,
-                    revertIfIncomplete: Boolean(!options?.partial),
-                    amount: totalPrice,
-                  },
-                  fees,
-                ]
-              )
-            : this.contracts.blurModule.interface.encodeFunctionData(
-                "acceptETHListings",
-                [
-                  orders.map((order) => order.getRaw()),
-                  orders.map((order) =>
-                    order.buildMatching({
-                      trader: module,
-                    })
-                  ),
-                  {
-                    fillTo: taker,
-                    refundTo: taker,
-                    revertIfIncomplete: Boolean(!options?.partial),
-                    amount: totalPrice,
-                  },
-                  fees,
-                ]
-              ),
-        value: totalPrice.add(totalFees),
-      });
-
-      // Mark the listings as successfully handled
-      for (const { originalIndex } of blurDetails) {
-        success[originalIndex] = true;
-      }
-    }
-
-    // Handle Element ERC721 listings
-    if (elementErc721Details.length) {
-      const orders = elementErc721Details.map(
-        (d) => d.order as Sdk.Element.Order
-      );
-
-      const totalPrice = orders
-        .map((order) => order.getTotalPrice())
-        .reduce((a, b) => a.add(b), bn(0));
-
-      const fees = getFees(elementErc721Details);
-      const totalFees = fees
-        .map(({ amount }) => bn(amount))
-        .reduce((a, b) => a.add(b), bn(0));
-
-      const listingParams = {
-        fillTo: taker,
-        refundTo: taker,
-        revertIfIncomplete: Boolean(!options?.partial),
-        amount: totalPrice,
-      };
-      const module = this.contracts.elementModule;
-
-      executions.push({
-        module: module.address,
-        data:
-          orders.length === 1
-            ? module.interface.encodeFunctionData("acceptETHListingERC721", [
-                orders[0].getRaw(),
-                orders[0].params,
-                listingParams,
-                fees,
-              ])
-            : module.interface.encodeFunctionData("acceptETHListingsERC721", [
-                orders.map((order) => order.getRaw()),
-                orders.map((order) => order.params),
-                listingParams,
-                fees,
-              ]),
-        value: totalPrice.add(totalFees),
-      });
-
-      // Mark the listings as successfully handled
-      for (const { originalIndex } of elementErc721Details) {
-        success[originalIndex] = true;
-      }
-    }
-
-    // Handle Element ERC721 listings V2
-    if (elementErc721V2Details.length) {
-      const orders = elementErc721V2Details.map(
-        (d) => d.order as Sdk.Element.Order
-      );
-
-      const totalPrice = orders
-        .map((order) => order.getTotalPrice())
-        .reduce((a, b) => a.add(b), bn(0));
-
-      const fees = getFees(elementErc721V2Details);
-      const totalFees = fees
-        .map(({ amount }) => bn(amount))
-        .reduce((a, b) => a.add(b), bn(0));
-
-      const listingParams = {
-        fillTo: taker,
-        refundTo: taker,
-        revertIfIncomplete: Boolean(!options?.partial),
-        amount: totalPrice,
-      };
-      const module = this.contracts.elementModule;
-
-      executions.push({
-        module: module.address,
-        data:
-          orders.length === 1
-            ? module.interface.encodeFunctionData("acceptETHListingERC721V2", [
-                orders[0].getRaw(),
-                listingParams,
-                fees,
-              ])
-            : module.interface.encodeFunctionData("acceptETHListingsERC721V2", [
-                orders.map((order) => order.getRaw()),
-                listingParams,
-                fees,
-              ]),
-        value: totalPrice.add(totalFees),
-      });
-
-      // Mark the listings as successfully handled
-      for (const { originalIndex } of elementErc721V2Details) {
-        success[originalIndex] = true;
-      }
-    }
-
-    // Handle Element ERC1155 listings
-    if (elementErc1155Details.length) {
-      const orders = elementErc1155Details.map(
-        (d) => d.order as Sdk.Element.Order
-      );
-
-      const totalPrice = orders
-        .map((order, i) =>
-          order.getTotalPrice(elementErc1155Details[i].amount ?? 1)
-        )
-        .reduce((a, b) => a.add(b), bn(0));
-
-      const fees = getFees(elementErc1155Details);
-      const totalFees = fees
-        .map(({ amount }) => bn(amount))
-        .reduce((a, b) => a.add(b), bn(0));
-
-      const listingParams = {
-        fillTo: taker,
-        refundTo: taker,
-        revertIfIncomplete: Boolean(!options?.partial),
-        amount: totalPrice,
-      };
-      const module = this.contracts.elementModule;
-
-      executions.push({
-        module: module.address,
-        data:
-          orders.length === 1
-            ? module.interface.encodeFunctionData("acceptETHListingERC1155", [
-                orders[0].getRaw(),
-                orders[0].params,
-                elementErc1155Details[0].amount ?? 1,
-                listingParams,
-                fees,
-              ])
-            : module.interface.encodeFunctionData("acceptETHListingsERC1155", [
-                orders.map((order) => order.getRaw()),
-                orders.map((order) => order.params),
-                elementErc1155Details.map((d) => d.amount ?? 1),
-                listingParams,
-                fees,
-              ]),
-        value: totalPrice.add(totalFees),
-      });
-
-      // Mark the listings as successfully handled
-      for (const { originalIndex } of elementErc1155Details) {
-        success[originalIndex] = true;
-      }
-    }
-
     return {
       txData: {
-        from: taker,
+        from: relayer,
         to: this.contracts.router.address,
         data:
           this.contracts.router.interface.encodeFunctionData("execute", [
