@@ -344,9 +344,10 @@ export const normalizeNfts = (nfts: Types.OrderInput["nfts"]) => {
 export const normalize = (
   order: Types.OrderInput | Types.InternalOrder | Types.SignedOrder
 ): Types.OrderInput => {
+  let input: Types.OrderInput;
   if ("constraints" in order) {
     const constraints = order.constraints.map((item) => bn(item).toString());
-    const normalized = {
+    input = {
       isSellOrder: order.isSellOrder,
       signer: order.signer,
       numItems: parseInt(constraints[0], 10),
@@ -362,29 +363,26 @@ export const normalize = (
       extraParams: order.extraParams,
     };
     if ("sig" in order) {
-      return {
-        ...normalized,
-        signature: order.sig,
-      };
+      input.signature = order.sig;
     }
-
-    return normalized;
+  } else {
+    input = order;
   }
 
   return {
-    isSellOrder: order.isSellOrder,
-    signer: lc(order.signer),
-    numItems: order.numItems,
-    startPrice: order.startPrice,
-    endPrice: order.endPrice,
-    startTime: order.startTime,
-    endTime: order.endTime,
-    nonce: order.nonce,
-    maxGasPrice: order.maxGasPrice,
-    nfts: normalizeNfts(order.nfts),
-    complication: lc(order.complication),
-    extraParams: order.extraParams,
-    currency: lc(order.currency),
+    isSellOrder: input.isSellOrder,
+    signer: lc(input.signer),
+    numItems: input.numItems,
+    startPrice: input.startPrice,
+    endPrice: input.endPrice,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    nonce: input.nonce,
+    maxGasPrice: input.maxGasPrice,
+    nfts: normalizeNfts(input.nfts),
+    complication: lc(input.complication),
+    extraParams: input.extraParams,
+    currency: lc(input.currency),
   };
 };
 
