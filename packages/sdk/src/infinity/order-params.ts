@@ -383,6 +383,7 @@ export const normalize = (
     complication: lc(input.complication),
     extraParams: input.extraParams,
     currency: lc(input.currency),
+    signature: input.signature,
   };
 };
 
