@@ -159,6 +159,7 @@ export class Router {
         return {
           txData: await exchange.fillOrderTx(taker, order, {
             amount: Number(details[0].amount),
+            source: options?.source,
           }),
           success: [true],
         };
@@ -181,6 +182,7 @@ export class Router {
             tokenId: details[0].tokenId,
             assetClass: details[0].contractKind.toUpperCase(),
             amount: Number(details[0].amount),
+            source: options?.source,
           }),
           success: [true],
         };
@@ -865,7 +867,7 @@ export class Router {
                             orders[0].params.consideration.length,
                         },
                         numerator: currencyDetails[0].amount ?? 1,
-                        denominator: 1,
+                        denominator: orders[0].getInfo()!.amount,
                         signature: orders[0].params.signature,
                         extraData: "0x",
                       },
@@ -890,7 +892,7 @@ export class Router {
                             order.params.consideration.length,
                         },
                         numerator: currencyDetails[i].amount ?? 1,
-                        denominator: 1,
+                        denominator: order.getInfo()!.amount,
                         signature: order.params.signature,
                         extraData: "0x",
                       })),

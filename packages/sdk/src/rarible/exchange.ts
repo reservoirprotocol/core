@@ -1,19 +1,22 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { Signer } from "@ethersproject/abstract-signer";
-import { BigNumberish, PopulatedTransaction } from "ethers";
-import { Contract, ContractTransaction } from "@ethersproject/contracts";
+import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
+import {
+  Contract,
+  ContractTransaction,
+  PopulatedTransaction,
+} from "@ethersproject/contracts";
 
 import * as Addresses from "./addresses";
 import { Order } from "./order";
 import * as Types from "./types";
-import { TxData, bn, generateSourceBytes, lc } from "../utils";
-
-import ExchangeAbi from "./abis/Exchange.json";
-import { BigNumber } from "ethers/lib";
 import {
   encodeForContract as v2Encode,
   encodeForMatchOrders as v1Encode,
 } from "./utils";
+import { TxData, generateSourceBytes } from "../utils";
+
+import ExchangeAbi from "./abis/Exchange.json";
 
 export class Exchange {
   public chainId: number;
@@ -35,8 +38,8 @@ export class Exchange {
     options: {
       assetClass?: "ERC721" | "ERC1155";
       tokenId?: string;
-      referrer?: string;
       amount?: number;
+      source?: string;
     }
   ): Promise<ContractTransaction> {
     const tx = await this.fillOrderTx(
@@ -47,28 +50,13 @@ export class Exchange {
     return taker.sendTransaction(tx);
   }
 
-  /**
-   * Calculate transaction value in case its a ETH order
-   */
-  public calculateTxValue(takeClass: string, takeAmount: string) {
-    let value = BigNumber.from(0);
-    // "ETH" can only be TAKE'a asset class in case it is a direct buy from a listing.
-    // In this case transaction value is the ETH value from order.take.amount.
-    // There can't be situations when ETH is a MAKE's asset class
-    if (takeClass === "ETH") {
-      value = BigNumber.from(takeAmount);
-    }
-
-    return value;
-  }
-
   public async fillOrderTx(
     taker: string,
     makerOrder: Order,
     options: {
       tokenId?: string;
       assetClass?: string;
-      referrer?: string;
+      source?: string;
       amount?: number;
     }
   ): Promise<TxData> {
@@ -126,9 +114,24 @@ export class Exchange {
     return {
       from: result.from!,
       to: result.to!,
-      data: result.data + generateSourceBytes(options?.referrer),
+      data: result.data + generateSourceBytes(options?.source),
       value: result.value && result.value.toHexString(),
     };
+  }
+
+  /**
+   * Calculate transaction value in case its a ETH order
+   */
+  public calculateTxValue(takeClass: string, takeAmount: string) {
+    let value = BigNumber.from(0);
+    // "ETH" can only be TAKE'a asset class in case it is a direct buy from a listing.
+    // In this case transaction value is the ETH value from order.take.amount.
+    // There can't be situations when ETH is a MAKE's asset class
+    if (takeClass === "ETH") {
+      value = BigNumber.from(takeAmount);
+    }
+
+    return value;
   }
 
   // --- Cancel order ---

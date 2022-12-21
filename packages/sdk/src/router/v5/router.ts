@@ -81,6 +81,7 @@ export class Router {
         const exchange = new Sdk.Universe.Exchange(this.chainId);
         return exchange.fillOrderTx(taker, order, {
           amount: Number(details[0].amount),
+          source: options?.source,
         });
       }
     }
@@ -95,6 +96,7 @@ export class Router {
           tokenId: details[0].tokenId,
           assetClass: details[0].contractKind.toUpperCase(),
           amount: Number(details[0].amount),
+          source: options?.source,
         });
       }
     }
