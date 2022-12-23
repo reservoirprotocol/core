@@ -320,43 +320,38 @@ export class Router {
           !fees?.length
       ) &&
       !options?.globalFees?.length &&
-      !options?.forceRouter
+      !options?.forceRouter &&
+      !options?.relayer
     ) {
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       if (details.length === 1) {
         const order = details[0].order as Sdk.Seaport.Order;
         return {
-          txData: {
-            ...exchange.fillOrderTx(
-              taker,
-              order,
-              order.buildMatching({ amount: details[0].amount }),
-              {
-                ...options,
-                ...options?.directFillingData,
-              }
-            ),
-            from: relayer,
-          },
+          txData: exchange.fillOrderTx(
+            taker,
+            order,
+            order.buildMatching({ amount: details[0].amount }),
+            {
+              ...options,
+              ...options?.directFillingData,
+            }
+          ),
           success: [true],
         };
       } else {
         const orders = details.map((d) => d.order as Sdk.Seaport.Order);
         return {
-          txData: {
-            ...exchange.fillOrdersTx(
-              taker,
-              orders,
-              orders.map((order, i) =>
-                order.buildMatching({ amount: details[i].amount })
-              ),
-              {
-                ...options,
-                ...options?.directFillingData,
-              }
+          txData: exchange.fillOrdersTx(
+            taker,
+            orders,
+            orders.map((order, i) =>
+              order.buildMatching({ amount: details[i].amount })
             ),
-            from: relayer,
-          },
+            {
+              ...options,
+              ...options?.directFillingData,
+            }
+          ),
           success: orders.map((_) => true),
         };
       }
