@@ -10,17 +10,9 @@ import NFTXStakingZapAbi from "@reservoir0x/sdk/src/nftx/abis/NFTXStakingZap.jso
 import { parseEther } from "@ethersproject/units";
 import { BigNumber } from "ethers";
 
-function addSlippage(price: BigNumber, percent: number) {
-  return price;
-}
-
-function subSlippage(price: BigNumber, percent: number) {
-  return price;
-}
-
 // --- Listings ---
 
-export type SudoswapListing = {
+export type NFTXListing = {
   seller: SignerWithAddress;
   nft: {
     contract: Contract;
@@ -102,17 +94,18 @@ export const setupNFTXListings = async (listings: SudoswapListing[]) => {
       const vaultAddress = await factory.vault(_vaultId.toString());
 
       const [poolPrice, nftIds] = await Promise.all([
-        Sdk.Nftx.helpers.getPoolPrice(
+        Sdk.Nftx.Helpers.getPoolPrice(
           vaultAddress,
-          2,
+          1,
+          5,
           getChainId(),
           ethers.provider
         ),
-        Sdk.Nftx.helpers.getPoolNFTs(vaultAddress, ethers.provider),
+        Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
       ]);
 
       if (poolPrice.buy) {
-        listing.price = addSlippage(parseEther(poolPrice.buy), 8);
+        listing.price = parseEther(poolPrice.buy);
         listing.vault = vaultAddress;
         listing.order = new Sdk.Nftx.Order(chainId, {
           vaultId: _vaultId.toString(),
@@ -121,6 +114,9 @@ export const setupNFTXListings = async (listings: SudoswapListing[]) => {
           amount: "1",
           path: [Sdk.Common.Addresses.Weth[chainId], vaultAddress],
           price: listing.price.toString(),
+          extra: {
+            prices: [listing.price.toString()],
+          },
         });
       }
     }
@@ -129,7 +125,7 @@ export const setupNFTXListings = async (listings: SudoswapListing[]) => {
 
 // --- Offers ---
 
-export type SudoswapOffer = {
+export type NFTXOffer = {
   buyer: SignerWithAddress;
   nft: {
     contract: Contract;
@@ -212,17 +208,18 @@ export const setupNFTXOffers = async (offers: SudoswapOffer[]) => {
       const vaultAddress = await factory.vault(_vaultId.toString());
 
       const [poolPrice, nftIds] = await Promise.all([
-        Sdk.Nftx.helpers.getPoolPrice(
+        Sdk.Nftx.Helpers.getPoolPrice(
           vaultAddress,
-          2,
+          1,
+          5,
           getChainId(),
           ethers.provider
         ),
-        Sdk.Nftx.helpers.getPoolNFTs(vaultAddress, ethers.provider),
+        Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
       ]);
 
       if (poolPrice.sell) {
-        offer.price = subSlippage(parseEther(poolPrice.sell), 8);
+        offer.price = parseEther(poolPrice.sell);
         offer.vault = vaultAddress;
         offer.order = new Sdk.Nftx.Order(chainId, {
           vaultId: _vaultId.toString(),
@@ -230,8 +227,10 @@ export const setupNFTXOffers = async (offers: SudoswapOffer[]) => {
           currency: Sdk.Common.Addresses.Weth[chainId],
           specificIds: [newId.toString()],
           price: offer.price.toString(),
+          extra: {
+            prices: [offer.price.toString()],
+          },
           path: [vaultAddress, Sdk.Common.Addresses.Weth[chainId]],
-          // minEthOut: offer.price.toString(),
         });
       }
     }

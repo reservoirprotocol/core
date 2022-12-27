@@ -7,7 +7,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../helpers/router";
-import { SudoswapListing, setupNFTXListings } from "../helpers/nftx";
+import { NFTXListing, setupNFTXListings } from "../helpers/nftx";
 import {
   bn,
   getChainId,
@@ -94,7 +94,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
     // Taker: Carol
     // Fee recipient: Emilio
 
-    let listings: SudoswapListing[] = [];
+    let listings: NFTXListing[] = [];
     const feesOnTop: BigNumber[] = [];
     for (let i = 0; i < listingsCount; i++) {
       listings.push({
@@ -132,7 +132,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
       // 1. Fill listings
       {
         module: nftxModule.address,
-        data: nftxModule.interface.encodeFunctionData("c", [
+        data: nftxModule.interface.encodeFunctionData("buyWithETH", [
           listings.map((listing) => listing.order!.params),
           {
             fillTo: carol.address,
@@ -197,13 +197,6 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
       Sdk.Common.Addresses.Eth[chainId]
     );
 
-    const poolBalanceAfter = await Promise.all(
-      sushiPools.filter(_ => _).map((address: any) => {
-        // return contract.getBalance(address)
-        return ethers.provider.getBalance(address);
-      })
-    )
-
     const aliceOrderList = listings.filter(
       ({ seller, isCancelled }) =>
         !isCancelled && seller.address === alice.address
@@ -225,10 +218,18 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
     
     // Checks
     const emilioBalance = ethBalancesAfter.emilio.sub(ethBalancesBefore.emilio);
-  
+    const carloSpend = ethBalancesBefore.carol.sub(ethBalancesAfter.carol);
+
+    const orderSum = aliceOrderSum.add(bobOrderSum);
+    const diffPercent = parseFloat(formatEther(orderSum.sub(carloSpend))) / parseFloat(formatEther(carloSpend)) * 100;
+
+    // Check Carol balance
+    expect(diffPercent).to.lte(Sdk.Nftx.Helpers.DEFAULT_SLIPPAGE);
+
+    // Sushi Pool hold the balance
+    
     // Alice got the payment
     // expect(aliceBalance).to.eq(aliceOrderSum);
-
     // Bob got the payment
     // expect(bobBalance).to.eq(bobOrderSum);
 
@@ -276,8 +277,6 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
           `${partial ? "[partial]" : "[full]"}` +
           `${chargeFees ? "[fees]" : "[no-fees]"}` +
           `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`
-
-          // if (testName === "[eth][multiple-orders][full][no-fees][reverts]") {
             it(testName,
               async () =>
                 testAcceptListings(
@@ -287,7 +286,6 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
                   multiple ? getRandomInteger(2, 6) : 1
                 )
             );
-          // }
         }
       }
     }

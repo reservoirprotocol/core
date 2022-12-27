@@ -26,8 +26,6 @@ contract NFTXModule is BaseExchangeModule {
         BaseExchangeModule(router)
     {}
 
-    // event LogStr(string message);
-
     // --- Fallback ---
 
     receive() external payable {}
@@ -119,17 +117,15 @@ contract NFTXModule is BaseExchangeModule {
     ) internal {
 
         IERC165 collection = sellOrder.collection;
-        bool isERC721 = collection.supportsInterface(ERC721_INTERFACE);
-        bool isERC1155 = collection.supportsInterface(ERC1155_INTERFACE);
 
-        if (isERC721) {
+        if (collection.supportsInterface(ERC721_INTERFACE)) {
             _approveERC721IfNeeded(IERC721(address(collection)), address(NFTX_MARKETPLACE));
-        } else if (isERC1155) {
+        } else if (collection.supportsInterface(ERC1155_INTERFACE)) {
             _approveERC1155IfNeeded(IERC1155(address(collection)), address(NFTX_MARKETPLACE));
         }
 
         // Execute the fill
-        if (isERC721) {
+        if (collection.supportsInterface(ERC721_INTERFACE)) {
             try NFTX_MARKETPLACE.mintAndSell721WETH(
                 sellOrder.vaultId,
                 sellOrder.specificIds,
@@ -149,14 +145,13 @@ contract NFTXModule is BaseExchangeModule {
                 // Forward any left payment to the specified receiver
                 _sendAllERC20(receiver, sellOrder.currency);
             } catch Error(string memory reason) {
-                emit LogStr(reason);
                 // Revert if specified
                 if (revertIfIncomplete) {
                     revert UnsuccessfulFill();
                 }
             }
 
-        } else if (isERC1155) { 
+        } else if (collection.supportsInterface(ERC1155_INTERFACE)) { 
             try NFTX_MARKETPLACE.mintAndSell1155WETH(
                 sellOrder.vaultId, 
                 sellOrder.specificIds,
@@ -187,9 +182,9 @@ contract NFTXModule is BaseExchangeModule {
 
         uint256 length = sellOrder.specificIds.length;
         for (uint256 i = 0; i < length; ) {
-             if (isERC721) {
+             if (collection.supportsInterface(ERC721_INTERFACE)) {
                 _sendAllERC721(receiver, IERC721(address(collection)), sellOrder.specificIds[i]);
-            } else if (isERC1155) {
+            } else if (collection.supportsInterface(ERC1155_INTERFACE)) {
                 _sendAllERC1155(receiver, IERC1155(address(collection)), sellOrder.specificIds[i]);
             }
             unchecked {

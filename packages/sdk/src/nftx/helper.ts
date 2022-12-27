@@ -7,9 +7,20 @@ import { Interface } from "@ethersproject/abi";
 import { BigNumber } from "ethers";
 import { bn } from "../utils";
 
+export const DEFAULT_SLIPPAGE = 5; 
+
+function addSlippage(price: BigNumber, percent: number) {
+  return price.add(price.mul(percent).div(BigNumber.from("100")));
+}
+
+function subSlippage(price: BigNumber, percent: number) {
+  return price.sub(price.mul(percent).div(BigNumber.from("100")))
+}
+
 export async function getPoolPrice(
   vault: string,
   amount = 1,
+  slippage = DEFAULT_SLIPPAGE,
   chainId: number,
   provider: Provider
 ) {
@@ -58,11 +69,17 @@ export async function getPoolPrice(
   if (sellPrice) {
     const price = parseEther(sellPrice).div(bn(amount));
     const mintFeeInETH = bn(fees.mintFee).mul(price).div(base);
-
-    sellPrice = formatEther(price.sub(mintFeeInETH));
+    sellPrice = formatEther(
+      subSlippage(
+        price.sub(mintFeeInETH), 
+        slippage
+      )
+    );
     feeBpsSell = mintFeeInETH
       .mul(bn(10000))
-      .div(parseEther(sellPrice))
+      .div(
+        price.sub(mintFeeInETH)
+      )
       .toString();
   }
 
@@ -72,15 +89,32 @@ export async function getPoolPrice(
     const targetBuyFeeInETH = bn(fees.targetRedeemFee).mul(price).div(base);
     const randomBuyFeeInETH = bn(fees.randomRedeemFee).mul(price).div(base);
 
-    buyPrice = formatEther(price.add(targetBuyFeeInETH));
-    randomBuyPrice = formatEther(price.add(randomBuyFeeInETH));
+    buyPrice = formatEther(
+      addSlippage(
+        price.add(targetBuyFeeInETH), 
+        slippage
+      )
+    );
+    
+    randomBuyPrice = formatEther(
+      addSlippage(
+        price.add(randomBuyFeeInETH), 
+        slippage
+      )
+    );
+
     feeBpsBuy = targetBuyFeeInETH
       .mul(bn(10000))
-      .div(parseEther(buyPrice))
+      .div(
+        price.add(targetBuyFeeInETH)
+      )
       .toString();
+
     feeBpsRandomBuy = randomBuyFeeInETH
       .mul(bn(10000))
-      .div(parseEther(randomBuyPrice))
+      .div(
+        price.add(randomBuyFeeInETH)
+      )
       .toString();
   }
 

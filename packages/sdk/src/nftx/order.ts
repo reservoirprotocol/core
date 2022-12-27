@@ -30,6 +30,9 @@ const normalize = (order: Types.OrderParams): Types.OrderParams => {
     currency: s(order.currency),
     amount: s(order.amount),
     path: order.path ? order.path.map(s) : [],
-    price: s(order.price)
+    price: s(order.price),
+    extra: {
+      prices: order.extra.prices.map(s),
+    }
   };
 };

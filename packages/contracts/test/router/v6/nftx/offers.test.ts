@@ -10,7 +10,7 @@ import {
   SeaportERC721Approval,
   setupSeaportERC721Approvals,
 } from "../helpers/seaport";
-import { SudoswapOffer, setupNFTXOffers } from "../helpers/nftx";
+import { NFTXOffer, setupNFTXOffers } from "../helpers/nftx";
 import {
   bn,
   getChainId,
@@ -105,7 +105,7 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
     // Makers: Alice and Bob
     // Taker: Carol
 
-    const offers: SudoswapOffer[] = [];
+    const offers: NFTXOffer[] = [];
     const fees: BigNumber[][] = [];
     for (let i = 0; i < offersCount; i++) {
       offers.push({
@@ -257,57 +257,35 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
         .reduce((a, b) => bn(a).add(b), bn(0)),
     });
 
-    const txReceipt = await ethers.provider.getTransactionReceipt(tx.hash);
-
-    for (const log of txReceipt.logs) {
-      try {
-        const parsed = nftxModule.interface.parseLog(log);
-        if (parsed.name === "LogStr") {
-          const revertReason = ethers.utils.defaultAbiCoder.decode(
-            ["string"],
-            "0x" +
-              ethers.utils.defaultAbiCoder
-                .decode(["bytes"], `0x${log.data}`)[0]
-                .substring(10)
-          );
-          console.error("revertReason", revertReason);
-        }
-      } catch {
-        //
-      }
-    }
-
     // Fetch post-state
-
     const balancesAfter = await getBalances(Sdk.Common.Addresses.Weth[chainId]);
 
     // Checks
 
     // Carol got the payment
+    const orderFee =  offers
+      .map((_, i) => (offers[i].isCancelled ? [] : fees[i]))
+      .map((executionFees) =>
+        executionFees.reduce((a, b) => bn(a).add(b), bn(0))
+      )
+      .reduce((a, b) => bn(a).add(b), bn(0));
+
     const carolAfter = balancesAfter.carol.sub(balancesBefore.carol);
+    const totalAmount = carolAfter.add(orderFee);
+
     const orderSum = offers
       .map((offer, i) => (offer.isCancelled ? bn(0) : bn(offer.price)))
       .reduce((a, b) => bn(a).add(b), bn(0));
 
-    const orderAmount = parseFloat(formatEther(orderSum)) 
-    const maxDiff = orderAmount * (orderAmount < 0.2 ? 0.8 : 0.3);
-    const balanceDiff = Math.abs(
-      parseFloat(formatEther(orderSum.sub(carolAfter)))
-    );
+    const diffPercent = parseFloat(formatEther(orderSum.sub(totalAmount))) / parseFloat(formatEther(totalAmount)) * 100;
 
-    expect(balanceDiff).to.lte(maxDiff);
+    // Check Carol balance
+    expect(diffPercent).to.lte(Sdk.Nftx.Helpers.DEFAULT_SLIPPAGE);
     expect(carolAfter).to.gte(bn(0));
 
     // Emilio got the fee payments
     if (chargeFees) {
-      expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
-        offers
-          .map((_, i) => (offers[i].isCancelled ? [] : fees[i]))
-          .map((executionFees) =>
-            executionFees.reduce((a, b) => bn(a).add(b), bn(0))
-          )
-          .reduce((a, b) => bn(a).add(b), bn(0))
-      );
+      expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(orderFee);
     }
 
     // Alice and Bob got the NFTs of the filled orders
@@ -337,15 +315,14 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
             `${chargeFees ? "[fees]" : "[no-fees]"}` +
             `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`
 
-          // if (testCaseName != '[multiple-orders][partial][fees][reverts]') continue;
-          it(testCaseName, async () =>
-            testAcceptOffers(
-              chargeFees,
-              revertIfIncomplete,
-              partial,
-              multiple ? getRandomInteger(2, 4) : 1
-            )
-          );
+            it(testCaseName, async () =>
+              testAcceptOffers(
+                chargeFees,
+                revertIfIncomplete,
+                partial,
+                multiple ? getRandomInteger(2, 4) : 1
+              )
+            );
         }
       }
     }

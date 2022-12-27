@@ -112,11 +112,6 @@ export class Router {
         ZoraModuleAbi,
         provider
       ),
-      elementModule: new Contract(
-        Addresses.ElementModule[chainId] ?? AddressZero,
-        ElementModuleAbi,
-        provider
-      ),
       nftxModule: new Contract(
         Addresses.NFTXModule[chainId] ?? AddressZero,
         NFTXModuleAbi,

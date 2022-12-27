@@ -5,6 +5,9 @@ export type OrderParams = {
   amounts?: string[];
   amount?: string;
   path:  string[];
-  price: string;
   currency?: string;
+  price: string;
+  extra: {
+    prices: string[];
+  }
 };

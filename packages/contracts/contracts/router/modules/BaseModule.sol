@@ -22,7 +22,6 @@ abstract contract BaseModule is TwoStepOwnable, ReentrancyGuard {
     error UnsuccessfulCall();
     error UnsuccessfulPayment();
     error WrongParams();
-    event LogStr(string message);
 
     // --- Constructor ---
 
