@@ -3,7 +3,7 @@ import { Contract } from "@ethersproject/contracts";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { ethers } from "hardhat";
-import { getChainId } from "../../../utils";
+import { getChainId, bn } from "../../../utils";
 
 import FactoryAbi from "@reservoir0x/sdk/src/nftx/abis/Factory.json";
 import NFTXStakingZapAbi from "@reservoir0x/sdk/src/nftx/abis/NFTXStakingZap.json";
@@ -42,7 +42,7 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
     const newId3 = nft.id + 10003;
     const newId4 = nft.id + 10004;
 
-    // Min 
+    // Min
     const poolIds = [newId, newId2, newId3, newId4];
 
     // Approve the factory contract
@@ -51,82 +51,91 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
     );
     await Promise.all(txs.map((c) => c.wait()));
 
-    if (!isCancelled) {
-      const _vaultId = await factory
-        .connect(seller)
-        .callStatic.createVault(
-          "TestNFT",
-          "TEST",
-          nft.contract.address,
-          false,
-          true
-        );
-
-      await factory
-        .connect(seller)
-        .createVault("TestNFT", "TEST", nft.contract.address, false, true);
-
-      await nft.contract
-        .connect(seller)
-        .setApprovalForAll(Sdk.Nftx.Addresses.NFTXStakingZap[chainId], true);
-
-      const NFTXStakingZap = new Contract(
-        Sdk.Nftx.Addresses.NFTXStakingZap[chainId],
-        NFTXStakingZapAbi,
-        ethers.provider
+    const _vaultId = await factory
+      .connect(seller)
+      .callStatic.createVault(
+        "TestNFT",
+        "TEST",
+        nft.contract.address,
+        false,
+        true
       );
 
-      const tx = await NFTXStakingZap.connect(seller).addLiquidity721ETH(
-        _vaultId,
-        poolIds,
-        price,
-        {
-          value: price,
-        }
-      );
+    await factory
+      .connect(seller)
+      .createVault("TestNFT", "TEST", nft.contract.address, false, true);
 
-      await tx.wait();
-      const vaultAddress = await factory.vault(_vaultId.toString());
+    await nft.contract
+      .connect(seller)
+      .setApprovalForAll(Sdk.Nftx.Addresses.NFTXStakingZap[chainId], true);
 
-      const SUSHI_ROUTER = Sdk.Nftx.Addresses.SushiRouter[chainId];
-      const sushiRouter = new Contract(SUSHI_ROUTER, new ethers.utils.Interface([
-        "function factory() external view returns (address)",
-      ]), ethers.provider);
+    const NFTXStakingZap = new Contract(
+      Sdk.Nftx.Addresses.NFTXStakingZap[chainId],
+      NFTXStakingZapAbi,
+      ethers.provider
+    );
 
-      const factoryAddr = await sushiRouter.factory();
-      const sushiFactory = new Contract(factoryAddr, new ethers.utils.Interface([
-        "function getPair(address, address) external view returns (address)",
-      ]), ethers.provider);
-
-      const lpToken = await sushiFactory.getPair(vaultAddress, Sdk.Common.Addresses.Weth[chainId]);
-
-      const [poolPrice, nftIds] = await Promise.all([
-        Sdk.Nftx.Helpers.getPoolPrice(
-          vaultAddress,
-          1,
-          5,
-          getChainId(),
-          ethers.provider
-        ),
-        Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
-      ]);
-
-      if (poolPrice.buy) {
-        listing.price = parseEther(poolPrice.buy);
-        listing.vault = vaultAddress;
-        listing.lpToken = lpToken;
-        listing.order = new Sdk.Nftx.Order(chainId, {
-          vaultId: _vaultId.toString(),
-          collection: nft.contract.address,
-          specificIds: [newId.toString()],
-          amount: "1",
-          path: [Sdk.Common.Addresses.Weth[chainId], vaultAddress],
-          price: listing.price.toString(),
-          extra: {
-            prices: [listing.price.toString()],
-          },
-        });
+    const tx = await NFTXStakingZap.connect(seller).addLiquidity721ETH(
+      _vaultId,
+      poolIds,
+      price,
+      {
+        value: price,
       }
+    );
+
+    await tx.wait();
+    const vaultAddress = await factory.vault(_vaultId.toString());
+
+    const SUSHI_ROUTER = Sdk.Nftx.Addresses.SushiRouter[chainId];
+    const sushiRouter = new Contract(
+      SUSHI_ROUTER,
+      new ethers.utils.Interface([
+        "function factory() external view returns (address)",
+      ]),
+      ethers.provider
+    );
+
+    const factoryAddr = await sushiRouter.factory();
+    const sushiFactory = new Contract(
+      factoryAddr,
+      new ethers.utils.Interface([
+        "function getPair(address, address) external view returns (address)",
+      ]),
+      ethers.provider
+    );
+
+    const lpToken = await sushiFactory.getPair(
+      vaultAddress,
+      Sdk.Common.Addresses.Weth[chainId]
+    );
+
+    const [poolPrice, nftIds] = await Promise.all([
+      Sdk.Nftx.Helpers.getPoolPrice(
+        vaultAddress,
+        1,
+        5,
+        getChainId(),
+        ethers.provider
+      ),
+      Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
+    ]);
+
+    if (poolPrice.buy) {
+      listing.price = parseEther(poolPrice.buy);
+      listing.vault = vaultAddress;
+      listing.lpToken = lpToken;
+      listing.order = new Sdk.Nftx.Order(chainId, {
+        vaultId: _vaultId.toString(),
+        collection: nft.contract.address,
+        specificIds: [newId.toString()],
+        amount: "1",
+        path: [Sdk.Common.Addresses.Weth[chainId], vaultAddress],
+        price: isCancelled ? "0" : listing.price.toString(),
+        extra: {
+          prices: [listing.price.toString()],
+        },
+      });
     }
   }
 };
@@ -172,71 +181,90 @@ export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
     );
     await Promise.all(txs.map((c) => c.wait()));
 
-    if (!isCancelled) {
-      const _vaultId = await factory
-        .connect(buyer)
-        .callStatic.createVault(
-          "TestNFT",
-          "TEST",
-          nft.contract.address,
-          false,
-          true
-        );
-
-      await factory
-        .connect(buyer)
-        .createVault("TestNFT", "TEST", nft.contract.address, false, true);
-
-      await nft.contract
-        .connect(buyer)
-        .setApprovalForAll(Sdk.Nftx.Addresses.NFTXStakingZap[chainId], true);
-
-      const NFTXStakingZap = new Contract(
-        Sdk.Nftx.Addresses.NFTXStakingZap[chainId],
-        NFTXStakingZapAbi,
-        ethers.provider
+    const _vaultId = await factory
+      .connect(buyer)
+      .callStatic.createVault(
+        "TestNFT",
+        "TEST",
+        nft.contract.address,
+        false,
+        true
       );
 
-     
-      const tx = await NFTXStakingZap.connect(buyer).addLiquidity721ETH(
-        _vaultId,
-        poolIds,
-        price,
-        {
-          value: price,
-        }
-      );
+    await factory
+      .connect(buyer)
+      .createVault("TestNFT", "TEST", nft.contract.address, false, true);
 
-      const vaultAddress = await factory.vault(_vaultId.toString());
-      const lpToken = await NFTXStakingZap.pairFor(vaultAddress, Sdk.Common.Addresses.Weth[chainId]);
+    await nft.contract
+      .connect(buyer)
+      .setApprovalForAll(Sdk.Nftx.Addresses.NFTXStakingZap[chainId], true);
 
-      const [poolPrice, nftIds] = await Promise.all([
-        Sdk.Nftx.Helpers.getPoolPrice(
-          vaultAddress,
-          1,
-          5,
-          getChainId(),
-          ethers.provider
-        ),
-        Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
-      ]);
+    const NFTXStakingZap = new Contract(
+      Sdk.Nftx.Addresses.NFTXStakingZap[chainId],
+      NFTXStakingZapAbi,
+      ethers.provider
+    );
 
-      if (poolPrice.sell) {
-        offer.price = parseEther(poolPrice.sell);
-        offer.vault = vaultAddress;
-        offer.lpToken = lpToken;
-        offer.order = new Sdk.Nftx.Order(chainId, {
-          vaultId: _vaultId.toString(),
-          collection: nft.contract.address,
-          currency: Sdk.Common.Addresses.Weth[chainId],
-          specificIds: [newId.toString()],
-          price: offer.price.toString(),
-          extra: {
-            prices: [offer.price.toString()],
-          },
-          path: [vaultAddress, Sdk.Common.Addresses.Weth[chainId]],
-        });
+    const tx = await NFTXStakingZap.connect(buyer).addLiquidity721ETH(
+      _vaultId,
+      poolIds,
+      price,
+      {
+        value: price,
       }
+    );
+
+    const vaultAddress = await factory.vault(_vaultId.toString());
+
+    const SUSHI_ROUTER = Sdk.Nftx.Addresses.SushiRouter[chainId];
+    const sushiRouter = new Contract(
+      SUSHI_ROUTER,
+      new ethers.utils.Interface([
+        "function factory() external view returns (address)",
+      ]),
+      ethers.provider
+    );
+
+    const factoryAddr = await sushiRouter.factory();
+    const sushiFactory = new Contract(
+      factoryAddr,
+      new ethers.utils.Interface([
+        "function getPair(address, address) external view returns (address)",
+      ]),
+      ethers.provider
+    );
+
+    const lpToken = await sushiFactory.getPair(
+      vaultAddress,
+      Sdk.Common.Addresses.Weth[chainId]
+    );
+
+    const [poolPrice, nftIds] = await Promise.all([
+      Sdk.Nftx.Helpers.getPoolPrice(
+        vaultAddress,
+        1,
+        5,
+        getChainId(),
+        ethers.provider
+      ),
+      Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
+    ]);
+
+    if (poolPrice.sell) {
+      offer.price = parseEther(poolPrice.sell);
+      offer.vault = vaultAddress;
+      offer.lpToken = lpToken;
+      offer.order = new Sdk.Nftx.Order(chainId, {
+        vaultId: _vaultId.toString(),
+        collection: nft.contract.address,
+        currency: Sdk.Common.Addresses.Weth[chainId],
+        specificIds: [newId.toString()],
+        price: isCancelled ? offer.price.mul(bn(10)).toString() : offer.price.toString(),
+        extra: {
+          prices: [offer.price.toString()],
+        },
+        path: [vaultAddress, Sdk.Common.Addresses.Weth[chainId]],
+      });
     }
   }
 };

@@ -102,7 +102,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
           id: getRandomInteger(1, 100000),
         },
         price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
-        isCancelled: false
+        isCancelled: partial && getRandomBoolean(),
       });
 
       if (chargeFees) {
@@ -111,8 +111,6 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
     }
 
     await setupNFTXListings(listings);
-
-    listings = listings.filter(_ => _.order);
 
     // Prepare executions
 
@@ -245,13 +243,13 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
 
     for (let index = 0; index < listings.length; index++) {
       const listing = listings[index];
+      if (listing.isCancelled) continue;
       if (listing.lpToken) {
         const before = pairBalancesBefore.find(c => c.pair === listing.lpToken)
         const after = pairBalancesAfter.find(c => c.pair === listing.lpToken)
         if (before && after) {
           const change = parseEther(after.balance).sub(parseEther(before.balance));
           const diffPercent = bn(listing.price).sub(change).mul(bn(10000)).div(listing.price);
-          // console.log(diffPercent.toString(), bn(lpFee).toString())
           // check pair balance change
           expect(diffPercent).to.eq(bn(lpFee));
         }
@@ -282,7 +280,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
         expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
       } else {
         expect(await nft.contract.ownerOf(nft.id)).to.eq(
-          listings[i].seller.address
+          listings[i].vault
         );
       }
     }
@@ -302,6 +300,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
           `${partial ? "[partial]" : "[full]"}` +
           `${chargeFees ? "[fees]" : "[no-fees]"}` +
           `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`
+
             it(testName,
               async () =>
                 testAcceptListings(

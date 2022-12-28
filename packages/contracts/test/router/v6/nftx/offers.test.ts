@@ -115,7 +115,7 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
           id: getRandomInteger(1, 100000),
         },
         price: parseEther(getRandomFloat(0.6, 5).toFixed(6)),
-        isCancelled: false,
+        isCancelled: partial && getRandomBoolean(),
       });
       if (chargeFees) {
         fees.push([parseEther(getRandomFloat(0.0001, 0.1).toFixed(6))]);
@@ -207,8 +207,7 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
             {
               fillTo: carol.address,
               refundTo: carol.address,
-              revertIfIncomplete
-              // revertIfIncomplete: false,
+              revertIfIncomplete,
             },
             [
               ...fees[i].map((amount) => ({
@@ -263,7 +262,7 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
     // Checks
 
     // Carol got the payment
-    const orderFee =  offers
+    const orderFee = offers
       .map((_, i) => (offers[i].isCancelled ? [] : fees[i]))
       .map((executionFees) =>
         executionFees.reduce((a, b) => bn(a).add(b), bn(0))
@@ -277,11 +276,16 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
       .map((offer, i) => (offer.isCancelled ? bn(0) : bn(offer.price)))
       .reduce((a, b) => bn(a).add(b), bn(0));
 
-    const diffPercent = parseFloat(formatEther(orderSum.sub(totalAmount))) / parseFloat(formatEther(totalAmount)) * 100;
+    if (orderSum.gt(bn(0))) {
+      const diffPercent =
+        (parseFloat(formatEther(orderSum.sub(totalAmount))) /
+          parseFloat(formatEther(totalAmount))) *
+        100;
 
-    // Check Carol balance
-    expect(diffPercent).to.lte(Sdk.Nftx.Helpers.DEFAULT_SLIPPAGE);
-    expect(carolAfter).to.gte(bn(0));
+      // Check Carol balance
+      expect(diffPercent).to.lte(Sdk.Nftx.Helpers.DEFAULT_SLIPPAGE);
+      expect(carolAfter).to.gte(bn(0));
+    }
 
     // Emilio got the fee payments
     if (chargeFees) {
@@ -313,16 +317,16 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
             `${multiple ? "[multiple-orders]" : "[single-order]"}` +
             `${partial ? "[partial]" : "[full]"}` +
             `${chargeFees ? "[fees]" : "[no-fees]"}` +
-            `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`
+            `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`;
 
-            it(testCaseName, async () =>
-              testAcceptOffers(
-                chargeFees,
-                revertIfIncomplete,
-                partial,
-                multiple ? getRandomInteger(2, 4) : 1
-              )
-            );
+          it(testCaseName, async () =>
+            testAcceptOffers(
+              chargeFees,
+              revertIfIncomplete,
+              partial,
+              multiple ? getRandomInteger(2, 4) : 1
+            )
+          );
         }
       }
     }

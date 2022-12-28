@@ -25,7 +25,7 @@ contract ReservoirV6_0_0 is ReentrancyGuard {
 
     error UnsuccessfulExecution();
     error UnsuccessfulPayment();
-    
+
     // --- Modifiers ---
 
     modifier refundETH() {
