@@ -18,8 +18,6 @@ import {
   setupNFTs,
 } from "../../../utils";
 
-import NFTXMarketplaceZapAbi from "@reservoir0x/sdk/src/nftx/abis/NFTXMarketplaceZap.json";
-
 describe("[ReservoirV6_0_0] NFTX listings", () => {
   const chainId = getChainId();
 
@@ -127,7 +125,6 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
-    const sushiPools = listings.filter(_ => _.vault).map(_ => _.vault)
     const executions: ExecutionInfo[] = [
       // 1. Fill listings
       {
@@ -178,10 +175,27 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
     }
 
     // Fetch pre-state
+    const getPairBalances = async () => {
+      const balances = [];
+      for (let index = 0; index < listings.length; index++) {
+        const listing = listings[index];
+        if (listing.lpToken) {
+          const contract = new Sdk.Common.Helpers.Erc20(ethers.provider, Sdk.Common.Addresses.Weth[chainId]);
+          const pairWETH = await contract.getBalance(listing.lpToken)
+          balances.push({
+            pair: listing.lpToken,
+            balance: formatEther(pairWETH)
+          })
+        }
+      }
+      return balances;
+    }
 
     const ethBalancesBefore = await getBalances(
       Sdk.Common.Addresses.Eth[chainId]
     );
+
+    const pairBalancesBefore = await getPairBalances();
 
     // Execute
 
@@ -226,12 +240,23 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
     // Check Carol balance
     expect(diffPercent).to.lte(Sdk.Nftx.Helpers.DEFAULT_SLIPPAGE);
 
-    // Sushi Pool hold the balance
-    
-    // Alice got the payment
-    // expect(aliceBalance).to.eq(aliceOrderSum);
-    // Bob got the payment
-    // expect(bobBalance).to.eq(bobOrderSum);
+    const pairBalancesAfter = await getPairBalances();
+    const lpFee = 281;  // 281 / 10000
+
+    for (let index = 0; index < listings.length; index++) {
+      const listing = listings[index];
+      if (listing.lpToken) {
+        const before = pairBalancesBefore.find(c => c.pair === listing.lpToken)
+        const after = pairBalancesAfter.find(c => c.pair === listing.lpToken)
+        if (before && after) {
+          const change = parseEther(after.balance).sub(parseEther(before.balance));
+          const diffPercent = bn(listing.price).sub(change).mul(bn(10000)).div(listing.price);
+          // console.log(diffPercent.toString(), bn(lpFee).toString())
+          // check pair balance change
+          expect(diffPercent).to.eq(bn(lpFee));
+        }
+      }
+    }
 
     // Emilio got the fee payments
     if (chargeFees) {

@@ -23,9 +23,10 @@ export type NFTXListing = {
   isCancelled?: boolean;
   order?: Sdk.Nftx.Order;
   vault?: string;
+  lpToken?: string;
 };
 
-export const setupNFTXListings = async (listings: SudoswapListing[]) => {
+export const setupNFTXListings = async (listings: NFTXListing[]) => {
   const chainId = getChainId();
 
   const factory = new Contract(
@@ -41,6 +42,7 @@ export const setupNFTXListings = async (listings: SudoswapListing[]) => {
     const newId3 = nft.id + 10003;
     const newId4 = nft.id + 10004;
 
+    // Min 
     const poolIds = [newId, newId2, newId3, newId4];
 
     // Approve the factory contract
@@ -74,13 +76,6 @@ export const setupNFTXListings = async (listings: SudoswapListing[]) => {
         ethers.provider
       );
 
-      const ethProvide = price as BigNumber;
-      const liquidity = await NFTXStakingZap.connect(
-        seller
-      ).callStatic.addLiquidity721ETH(_vaultId, poolIds, ethProvide, {
-        value: ethProvide,
-      });
-
       const tx = await NFTXStakingZap.connect(seller).addLiquidity721ETH(
         _vaultId,
         poolIds,
@@ -90,8 +85,20 @@ export const setupNFTXListings = async (listings: SudoswapListing[]) => {
         }
       );
 
-      const recipient = await tx.wait();
+      await tx.wait();
       const vaultAddress = await factory.vault(_vaultId.toString());
+
+      const SUSHI_ROUTER = Sdk.Nftx.Addresses.SushiRouter[chainId];
+      const sushiRouter = new Contract(SUSHI_ROUTER, new ethers.utils.Interface([
+        "function factory() external view returns (address)",
+      ]), ethers.provider);
+
+      const factoryAddr = await sushiRouter.factory();
+      const sushiFactory = new Contract(factoryAddr, new ethers.utils.Interface([
+        "function getPair(address, address) external view returns (address)",
+      ]), ethers.provider);
+
+      const lpToken = await sushiFactory.getPair(vaultAddress, Sdk.Common.Addresses.Weth[chainId]);
 
       const [poolPrice, nftIds] = await Promise.all([
         Sdk.Nftx.Helpers.getPoolPrice(
@@ -107,6 +114,7 @@ export const setupNFTXListings = async (listings: SudoswapListing[]) => {
       if (poolPrice.buy) {
         listing.price = parseEther(poolPrice.buy);
         listing.vault = vaultAddress;
+        listing.lpToken = lpToken;
         listing.order = new Sdk.Nftx.Order(chainId, {
           vaultId: _vaultId.toString(),
           collection: nft.contract.address,
@@ -136,9 +144,10 @@ export type NFTXOffer = {
   isCancelled?: boolean;
   order?: Sdk.Nftx.Order;
   vault?: string;
+  lpToken?: string;
 };
 
-export const setupNFTXOffers = async (offers: SudoswapOffer[]) => {
+export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
   const chainId = getChainId();
 
   const factory = new Contract(
@@ -188,14 +197,7 @@ export const setupNFTXOffers = async (offers: SudoswapOffer[]) => {
         ethers.provider
       );
 
-      const ethProvide = price as BigNumber;
-
-      const liquidity = await NFTXStakingZap.connect(
-        buyer
-      ).callStatic.addLiquidity721ETH(_vaultId, poolIds, ethProvide, {
-        value: ethProvide,
-      });
-
+     
       const tx = await NFTXStakingZap.connect(buyer).addLiquidity721ETH(
         _vaultId,
         poolIds,
@@ -206,6 +208,7 @@ export const setupNFTXOffers = async (offers: SudoswapOffer[]) => {
       );
 
       const vaultAddress = await factory.vault(_vaultId.toString());
+      const lpToken = await NFTXStakingZap.pairFor(vaultAddress, Sdk.Common.Addresses.Weth[chainId]);
 
       const [poolPrice, nftIds] = await Promise.all([
         Sdk.Nftx.Helpers.getPoolPrice(
@@ -221,6 +224,7 @@ export const setupNFTXOffers = async (offers: SudoswapOffer[]) => {
       if (poolPrice.sell) {
         offer.price = parseEther(poolPrice.sell);
         offer.vault = vaultAddress;
+        offer.lpToken = lpToken;
         offer.order = new Sdk.Nftx.Order(chainId, {
           vaultId: _vaultId.toString(),
           collection: nft.contract.address,

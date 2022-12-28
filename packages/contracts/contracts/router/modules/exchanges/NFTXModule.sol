@@ -118,14 +118,9 @@ contract NFTXModule is BaseExchangeModule {
 
         IERC165 collection = sellOrder.collection;
 
+        // Execute the sell
         if (collection.supportsInterface(ERC721_INTERFACE)) {
             _approveERC721IfNeeded(IERC721(address(collection)), address(NFTX_MARKETPLACE));
-        } else if (collection.supportsInterface(ERC1155_INTERFACE)) {
-            _approveERC1155IfNeeded(IERC1155(address(collection)), address(NFTX_MARKETPLACE));
-        }
-
-        // Execute the fill
-        if (collection.supportsInterface(ERC721_INTERFACE)) {
             try NFTX_MARKETPLACE.mintAndSell721WETH(
                 sellOrder.vaultId,
                 sellOrder.specificIds,
@@ -144,14 +139,22 @@ contract NFTXModule is BaseExchangeModule {
                 }
                 // Forward any left payment to the specified receiver
                 _sendAllERC20(receiver, sellOrder.currency);
-            } catch Error(string memory reason) {
+            } catch {
                 // Revert if specified
                 if (revertIfIncomplete) {
                     revert UnsuccessfulFill();
                 }
             }
 
+            uint256 length = sellOrder.specificIds.length;
+            for (uint256 i = 0; i < length; ) {
+                _sendAllERC721(receiver, IERC721(address(collection)), sellOrder.specificIds[i]);
+                unchecked {
+                    ++i;
+                }
+            }
         } else if (collection.supportsInterface(ERC1155_INTERFACE)) { 
+            _approveERC1155IfNeeded(IERC1155(address(collection)), address(NFTX_MARKETPLACE));
             try NFTX_MARKETPLACE.mintAndSell1155WETH(
                 sellOrder.vaultId, 
                 sellOrder.specificIds,
@@ -178,23 +181,18 @@ contract NFTXModule is BaseExchangeModule {
                     revert UnsuccessfulFill();
                 }
             }
-        }
 
-        uint256 length = sellOrder.specificIds.length;
-        for (uint256 i = 0; i < length; ) {
-             if (collection.supportsInterface(ERC721_INTERFACE)) {
-                _sendAllERC721(receiver, IERC721(address(collection)), sellOrder.specificIds[i]);
-            } else if (collection.supportsInterface(ERC1155_INTERFACE)) {
+            uint256 length = sellOrder.specificIds.length;
+            for (uint256 i = 0; i < length; ) {
                 _sendAllERC1155(receiver, IERC1155(address(collection)), sellOrder.specificIds[i]);
-            }
-            unchecked {
-                ++i;
+                unchecked {
+                    ++i;
+                }
             }
         }
-       
     }
 
-    // --- ERC721 hooks ---
+    // --- ERC721 / ERC1155 hooks ---
 
     // Single token offer acceptance can be done approval-less by using the
     // standard `safeTransferFrom` method together with specifying data for
@@ -217,5 +215,19 @@ contract NFTXModule is BaseExchangeModule {
         }
 
         return this.onERC721Received.selector;
+    }
+
+    function onERC1155Received(
+        address, // operator
+        address, // from
+        uint256, // tokenId
+        uint256, // amount
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (data.length > 0) {
+            _makeCall(router, data, 0);
+        }
+
+        return this.onERC1155Received.selector;
     }
 }
