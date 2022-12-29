@@ -67,8 +67,6 @@ export const getSource = (calldata: string) => {
           return undefined;
         }
       }
-    } else {
-      return calldata.slice(-8)
     }
   } catch {
     return undefined;
