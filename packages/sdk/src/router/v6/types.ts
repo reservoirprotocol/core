@@ -77,7 +77,11 @@ export type GenericOrder =
   | {
       kind: "manifold";
       order: Sdk.Manifold.Order;
-    };
+    }
+  | {
+      kind: "nftx",
+      order: Sdk.Nftx.Order
+  };
 
 export type ListingFillDetails = {
   contractKind: "erc721" | "erc1155";

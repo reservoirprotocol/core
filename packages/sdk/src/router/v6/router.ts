@@ -34,6 +34,7 @@ import WETHModuleAbi from "./abis/WETHModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
+import NFTXModuleAbi from "./abis/NFTXModule.json";
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -109,6 +110,11 @@ export class Router {
       zoraModule: new Contract(
         Addresses.ZoraModule[chainId] ?? AddressZero,
         ZoraModuleAbi,
+        provider
+      ),
+      nftxModule: new Contract(
+        Addresses.NFTXModule[chainId] ?? AddressZero,
+        NFTXModuleAbi,
         provider
       ),
     };
@@ -407,6 +413,7 @@ export class Router {
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
+    const nftxDetails: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind, currency } = details[i];
 
@@ -459,6 +466,11 @@ export class Router {
         case "zora":
           detailsRef = zoraDetails;
           break;
+        
+        case "nftx": {
+          detailsRef = nftxDetails;
+          break;
+        }
 
         default:
           throw new Error("Unsupported exchange kind");
@@ -982,6 +994,49 @@ export class Router {
         success[originalIndex] = true;
       }
     }
+
+    // Handle NFTX listings
+    if (nftxDetails.length) {
+      const orders = nftxDetails.map((d) => d.order as Sdk.Nftx.Order);
+      const fees = getFees(nftxDetails);
+
+      const totalPrice = orders
+        .map((order) =>
+          bn(
+            order.params.price
+          )
+        )
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module: this.contracts.nftxModule.address,
+        data: this.contracts.nftxModule.interface.encodeFunctionData(
+          "buyWithETH",
+          [
+            nftxDetails.map(
+              (d) => (d.order as Sdk.Nftx.Order).params
+            ),
+            {
+              fillTo: taker,
+              refundTo: taker,
+              revertIfIncomplete: Boolean(!options?.partial),
+              amount: totalPrice,
+            },
+            fees,
+          ]
+        ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of nftxDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
 
     // Handle X2Y2 listings
     if (x2y2Details.length) {
@@ -1723,6 +1778,33 @@ export class Router {
         break;
       }
 
+      case "nftx": {
+        const order = detail.order as Sdk.Nftx.Order;
+        const tokenId = detail.tokenId;
+        // bid
+        order.params.specificIds = [tokenId]
+
+        moduleLevelTx = {
+          module: this.contracts.nftxModule.address,
+          data: this.contracts.nftxModule.interface.encodeFunctionData(
+            "sell",
+            [
+              [
+                order.params
+              ],
+              {
+                fillTo: taker,
+                refundTo: taker,
+                revertIfIncomplete: true,
+              },
+              detail.fees ?? [],
+            ]
+          ),
+        };
+
+        break;
+      }
+      
       default: {
         throw new Error("Unsupported exchange kind");
       }

@@ -13,22 +13,25 @@ const getNetworkConfig = (chainId?: number) => {
     chainId = Number(process.env.CHAIN_ID ?? 1);
   }
 
-  let url: string;
-  switch (chainId) {
-    case 1:
-      url = `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
-      break;
-    case 5:
-      url = `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
-      break;
-    case 10:
-      url = `https://opt-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
-      break;
-    case 137:
-      url = `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
-      break;
-    default:
-      throw new Error("Unsupported chain id");
+  let url = process.env.RPC_URL;
+
+  if (!url) {
+    switch (chainId) {
+      case 1:
+        url = `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
+        break;
+      case 5:
+        url = `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
+        break;
+      case 10:
+        url = `https://opt-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
+        break;
+      case 137:
+        url = `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`;
+        break;
+      default:
+        throw new Error("Unsupported chain id");
+    }
   }
 
   return {

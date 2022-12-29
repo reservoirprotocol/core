@@ -1,16 +1,16 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
-import { parseEther } from "@ethersproject/units";
+import { formatEther, parseEther } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-
 import { ExecutionInfo } from "../helpers/router";
 import {
   SeaportERC721Approval,
   setupSeaportERC721Approvals,
 } from "../helpers/seaport";
+import { NFTXOffer, setupNFTXOffers } from "../helpers/nftx";
 import {
   bn,
   getChainId,
@@ -20,29 +20,29 @@ import {
   reset,
   setupNFTs,
 } from "../../../utils";
-import { ElementOffer, setupElementOffers } from "../helpers/element";
+import NFTXMarketplaceZapAbi from "@reservoir0x/sdk/src/nftx/abis/NFTXMarketplaceZap.json";
 
-describe("[ReservoirV6_0_0] Element offers", () => {
+describe("[ReservoirV6_0_0] NFTX offers", () => {
   const chainId = getChainId();
-  
+
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
   let david: SignerWithAddress;
   let emilio: SignerWithAddress;
-  
+
   let erc721: Contract;
   let router: Contract;
   let seaportApprovalOrderZone: Contract;
   let seaportModule: Contract;
-  let elementModule: Contract;
-  
+  let nftxModule: Contract;
+
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
-    
+
     ({ erc721 } = await setupNFTs(deployer));
-    
+
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
@@ -54,13 +54,13 @@ describe("[ReservoirV6_0_0] Element offers", () => {
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
-    elementModule = (await ethers
-      .getContractFactory("ElementModule", deployer)
+    nftxModule = (await ethers
+      .getContractFactory("NFTXModule", deployer)
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
   });
-  
+
   const getBalances = async (token: string) => {
     if (token === Sdk.Common.Addresses.Eth[chainId]) {
       return {
@@ -71,9 +71,7 @@ describe("[ReservoirV6_0_0] Element offers", () => {
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
         seaportModule: await ethers.provider.getBalance(seaportModule.address),
-        elementModule: await ethers.provider.getBalance(
-          elementModule.address
-        ),
+        nftxModule: await ethers.provider.getBalance(nftxModule.address),
       };
     } else {
       const contract = new Sdk.Common.Helpers.Erc20(ethers.provider, token);
@@ -85,13 +83,13 @@ describe("[ReservoirV6_0_0] Element offers", () => {
         emilio: await contract.getBalance(emilio.address),
         router: await contract.getBalance(router.address),
         seaportModule: await contract.getBalance(seaportModule.address),
-        elementModule: await contract.getBalance(elementModule.address),
+        nftxModule: await contract.getBalance(nftxModule.address),
       };
     }
   };
-  
+
   afterEach(reset);
-  
+
   const testAcceptOffers = async (
     // Whether to charge fees on the received amount
     chargeFees: boolean,
@@ -103,21 +101,20 @@ describe("[ReservoirV6_0_0] Element offers", () => {
     offersCount: number
   ) => {
     // Setup
-    
+
     // Makers: Alice and Bob
     // Taker: Carol
-    
-    const offers: ElementOffer[] = [];
+
+    const offers: NFTXOffer[] = [];
     const fees: BigNumber[][] = [];
     for (let i = 0; i < offersCount; i++) {
       offers.push({
         buyer: getRandomBoolean() ? alice : bob,
         nft: {
-          kind: "erc721",
           contract: erc721,
-          id: getRandomInteger(1, 10000),
+          id: getRandomInteger(1, 100000),
         },
-        price: parseEther(getRandomFloat(0.2, 2).toFixed(6)),
+        price: parseEther(getRandomFloat(0.6, 5).toFixed(6)),
         isCancelled: partial && getRandomBoolean(),
       });
       if (chargeFees) {
@@ -126,8 +123,8 @@ describe("[ReservoirV6_0_0] Element offers", () => {
         fees.push([]);
       }
     }
-    await setupElementOffers(offers);
-    
+    await setupNFTXOffers(offers);
+
     // In order to avoid giving NFT approvals to the router (remember,
     // the router is supposed to be stateless), we do create multiple
     // Seaport orders (we can also have a single aggregated order for
@@ -135,19 +132,22 @@ describe("[ReservoirV6_0_0] Element offers", () => {
     // (eg. offer = NFT and consideration = NFT - with the router as a
     // private recipient). This way, the NFT approvals will be made on
     // the Seaport conduit and the router stays stateless.
-    
+
     const approvals: SeaportERC721Approval[] = offers.map((offer) => ({
       giver: carol,
       filler: seaportModule.address,
-      receiver: elementModule.address,
-      nft: offer.nft,
+      receiver: nftxModule.address,
+      nft: {
+        ...offer.nft,
+        kind: "erc721",
+      },
       zone: seaportApprovalOrderZone.address,
     }));
-    
+
     await setupSeaportERC721Approvals(approvals);
-    
+
     // Prepare executions
-    
+
     const executions: ExecutionInfo[] = [
       // 1. Fill the approval orders, so that we avoid giving approval to the router
       {
@@ -161,7 +161,7 @@ describe("[ReservoirV6_0_0] Element offers", () => {
                   parameters: {
                     ...orders![0].params,
                     totalOriginalConsiderationItems:
-                    orders![0].params.consideration.length,
+                      orders![0].params.consideration.length,
                   },
                   signature: orders![0].params.signature,
                 },
@@ -170,7 +170,7 @@ describe("[ReservoirV6_0_0] Element offers", () => {
                   parameters: {
                     ...orders![1].params,
                     totalOriginalConsiderationItems:
-                    orders![1].params.consideration.length,
+                      orders![1].params.consideration.length,
                   },
                   signature: "0x",
                 },
@@ -198,30 +198,30 @@ describe("[ReservoirV6_0_0] Element offers", () => {
         value: 0,
       },
       // 2. Fill offers with the received NFTs
-      ...offers.map((offer, i) => ({
-        module: elementModule.address,
-        data: elementModule.interface.encodeFunctionData("acceptERC721Offer", [
-          offer.order!.getRaw(),
-          offer.order!.getRaw(),
-          {
-            fillTo: carol.address,
-            refundTo: carol.address,
-            revertIfIncomplete,
-          },
-          offer.nft.id,
-          [
-            ...fees[i].map((amount) => ({
-              recipient: emilio.address,
-              amount,
-            })),
-          ],
-        ]),
-        value: 0,
-      })),
+      ...offers
+        .filter((_) => _.order)
+        .map((offer, i) => ({
+          module: nftxModule.address,
+          data: nftxModule.interface.encodeFunctionData("sell", [
+            [offer.order?.params],
+            {
+              fillTo: carol.address,
+              refundTo: carol.address,
+              revertIfIncomplete,
+            },
+            [
+              ...fees[i].map((amount) => ({
+                recipient: emilio.address,
+                amount,
+              })),
+            ],
+          ]),
+          value: 0,
+        })),
     ];
-    
+
     // Checks
-    
+
     // If the `revertIfIncomplete` option is enabled and we have any
     // orders that are not fillable, the whole transaction should be
     // reverted
@@ -239,86 +239,93 @@ describe("[ReservoirV6_0_0] Element offers", () => {
       ).to.be.revertedWith(
         "reverted with custom error 'UnsuccessfulExecution()'"
       );
-      
+
       return;
     }
-    
+
     // Fetch pre-state
-    
     const balancesBefore = await getBalances(
       Sdk.Common.Addresses.Weth[chainId]
     );
-    
+
     // Execute
-    
-    await router.connect(carol).execute(executions, {
+
+    const tx = await router.connect(carol).execute(executions, {
       value: executions
         .map(({ value }) => value)
         .reduce((a, b) => bn(a).add(b), bn(0)),
     });
-    
+
     // Fetch post-state
-    
     const balancesAfter = await getBalances(Sdk.Common.Addresses.Weth[chainId]);
-    
+
     // Checks
-    
+
     // Carol got the payment
-    expect(balancesAfter.carol.sub(balancesBefore.carol)).to.eq(
-      offers
-        .map((offer, i) =>
-          offer.isCancelled
-            ? bn(0)
-            : bn(offer.price).sub(fees[i].reduce((a, b) => bn(a).add(b), bn(0)))
-        )
-        .reduce((a, b) => bn(a).add(b), bn(0))
-    );
-    
+    const orderFee = offers
+      .map((_, i) => (offers[i].isCancelled ? [] : fees[i]))
+      .map((executionFees) =>
+        executionFees.reduce((a, b) => bn(a).add(b), bn(0))
+      )
+      .reduce((a, b) => bn(a).add(b), bn(0));
+
+    const carolAfter = balancesAfter.carol.sub(balancesBefore.carol);
+    const totalAmount = carolAfter.add(orderFee);
+
+    const orderSum = offers
+      .map((offer, i) => (offer.isCancelled ? bn(0) : bn(offer.price)))
+      .reduce((a, b) => bn(a).add(b), bn(0));
+
+    if (orderSum.gt(bn(0))) {
+      const diffPercent =
+        (parseFloat(formatEther(orderSum.sub(totalAmount))) /
+          parseFloat(formatEther(totalAmount))) *
+        100;
+
+      // Check Carol balance
+      expect(diffPercent).to.lte(Sdk.Nftx.Helpers.DEFAULT_SLIPPAGE);
+      expect(carolAfter).to.gte(bn(0));
+    }
+
     // Emilio got the fee payments
     if (chargeFees) {
-      expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(
-        offers
-          .map((_, i) => (offers[i].isCancelled ? [] : fees[i]))
-          .map((executionFees) =>
-            executionFees.reduce((a, b) => bn(a).add(b), bn(0))
-          )
-          .reduce((a, b) => bn(a).add(b), bn(0))
-      );
+      expect(balancesAfter.emilio.sub(balancesBefore.emilio)).to.eq(orderFee);
     }
-    
+
     // Alice and Bob got the NFTs of the filled orders
-    for (const { buyer, nft, isCancelled } of offers) {
+    for (const { buyer, nft, isCancelled, vault } of offers) {
       if (!isCancelled) {
-        expect(await nft.contract.ownerOf(nft.id)).to.eq(buyer.address);
+        expect(await nft.contract.ownerOf(nft.id)).to.eq(vault);
       } else {
         expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
       }
     }
-    
+
     // Router is stateless
     expect(balancesAfter.router).to.eq(0);
     expect(balancesAfter.seaportModule).to.eq(0);
-    expect(balancesAfter.elementModule).to.eq(0);
+    expect(balancesAfter.nftxModule).to.eq(0);
   };
-  
+
   // Test various combinations for filling offers
-  
+
   for (let multiple of [false, true]) {
     for (let partial of [false, true]) {
       for (let chargeFees of [false, true]) {
         for (let revertIfIncomplete of [false, true]) {
-          it(
+          const testCaseName =
             `${multiple ? "[multiple-orders]" : "[single-order]"}` +
             `${partial ? "[partial]" : "[full]"}` +
             `${chargeFees ? "[fees]" : "[no-fees]"}` +
-            `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
-            async () =>
-              testAcceptOffers(
-                chargeFees,
-                revertIfIncomplete,
-                partial,
-                multiple ? getRandomInteger(2, 4) : 1
-              )
+            `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`;
+
+          it(testCaseName, async () =>
+            testAcceptOffers(
+              chargeFees,
+              revertIfIncomplete,
+              partial,
+              multiple ? getRandomInteger(2, 4) : 1
+            )
           );
         }
       }
