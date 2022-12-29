@@ -1,6 +1,7 @@
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { randomBytes } from "@ethersproject/random";
 import { toUtf8Bytes, toUtf8String } from "@ethersproject/strings";
+import { keccak256 } from "ethers/lib/utils";
 
 // Constants
 
@@ -34,7 +35,7 @@ const SEPARATOR = "1f";
 // Only allow printable ASCII characters
 const isPrintableASCII = (value: string) => /^[\x20-\x7F]*$/.test(value);
 
-export const generateSourceBytes = (source?: string) => {
+export const generateSourceBytesV1 = (source?: string) => {
   if (source && !isPrintableASCII(source)) {
     throw new Error("Not a printable ASCII string");
   }
@@ -44,6 +45,10 @@ export const generateSourceBytes = (source?: string) => {
         "hex"
       )}${SEPARATOR}`
     : "";
+};
+
+export const generateSourceBytes = (source?: string) => {
+  return source ? keccak256(toUtf8Bytes(source)).slice(2, 10) : "";
 };
 
 export const getSource = (calldata: string) => {
@@ -62,6 +67,8 @@ export const getSource = (calldata: string) => {
           return undefined;
         }
       }
+    } else {
+      return calldata.slice(-8)
     }
   } catch {
     return undefined;
