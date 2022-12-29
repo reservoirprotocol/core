@@ -1,13 +1,13 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { formatEther, parseEther } from "@ethersproject/units";
-import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import * as Sdk from "@reservoir0x/sdk/src";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { ExecutionInfo } from "../helpers/router";
 import { NFTXListing, setupNFTXListings } from "../helpers/nftx";
+import { ExecutionInfo } from "../helpers/router";
 import {
   bn,
   getChainId,
@@ -40,7 +40,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
       .then((factory) => factory.deploy())) as any;
-      nftxModule = (await ethers
+    nftxModule = (await ethers
       .getContractFactory("NFTXModule", deployer)
       .then((factory) =>
         factory.deploy(router.address, router.address)
@@ -56,9 +56,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
         david: await ethers.provider.getBalance(david.address),
         emilio: await ethers.provider.getBalance(emilio.address),
         router: await ethers.provider.getBalance(router.address),
-        nftxModule: await ethers.provider.getBalance(
-          nftxModule.address
-        ),
+        nftxModule: await ethers.provider.getBalance(nftxModule.address),
       };
     } else {
       const contract = new Sdk.Common.Helpers.Erc20(ethers.provider, token);
@@ -178,16 +176,19 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
       for (let index = 0; index < listings.length; index++) {
         const listing = listings[index];
         if (listing.lpToken) {
-          const contract = new Sdk.Common.Helpers.Erc20(ethers.provider, Sdk.Common.Addresses.Weth[chainId]);
-          const pairWETH = await contract.getBalance(listing.lpToken)
+          const contract = new Sdk.Common.Helpers.Erc20(
+            ethers.provider,
+            Sdk.Common.Addresses.Weth[chainId]
+          );
+          const pairWETH = await contract.getBalance(listing.lpToken);
           balances.push({
             pair: listing.lpToken,
-            balance: formatEther(pairWETH)
-          })
+            balance: formatEther(pairWETH),
+          });
         }
       }
       return balances;
-    }
+    };
 
     const ethBalancesBefore = await getBalances(
       Sdk.Common.Addresses.Eth[chainId]
@@ -197,7 +198,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
 
     // Execute
 
-    const tx = await router.connect(carol).execute(executions, {
+    await router.connect(carol).execute(executions, {
       value: executions
         .map(({ value }) => value)
         .reduce((a, b) => bn(a).add(b), bn(0)),
@@ -226,31 +227,40 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
     const bobOrderSum = bobOrderList
       .map(({ price }) => bn(price))
       .reduce((a, b) => bn(a).add(b), bn(0));
-    
-    
+
     // Checks
     const emilioBalance = ethBalancesAfter.emilio.sub(ethBalancesBefore.emilio);
     const carloSpend = ethBalancesBefore.carol.sub(ethBalancesAfter.carol);
 
     const orderSum = aliceOrderSum.add(bobOrderSum);
-    const diffPercent = parseFloat(formatEther(orderSum.sub(carloSpend))) / parseFloat(formatEther(carloSpend)) * 100;
+    const diffPercent =
+      (parseFloat(formatEther(orderSum.sub(carloSpend))) /
+        parseFloat(formatEther(carloSpend))) *
+      100;
 
     // Check Carol balance
     expect(diffPercent).to.lte(Sdk.Nftx.Helpers.DEFAULT_SLIPPAGE);
 
     const pairBalancesAfter = await getPairBalances();
-    const lpFee = 281;  // 281 / 10000
+    const lpFee = 281; // 281 / 10000
 
     for (let index = 0; index < listings.length; index++) {
       const listing = listings[index];
       if (listing.isCancelled) continue;
       if (listing.lpToken) {
-        const before = pairBalancesBefore.find(c => c.pair === listing.lpToken)
-        const after = pairBalancesAfter.find(c => c.pair === listing.lpToken)
+        const before = pairBalancesBefore.find(
+          (c) => c.pair === listing.lpToken
+        );
+        const after = pairBalancesAfter.find((c) => c.pair === listing.lpToken);
         if (before && after) {
-          const change = parseEther(after.balance).sub(parseEther(before.balance));
-          const diffPercent = bn(listing.price).sub(change).mul(bn(10000)).div(listing.price);
-          // check pair balance change
+          const change = parseEther(after.balance).sub(
+            parseEther(before.balance)
+          );
+          const diffPercent = bn(listing.price)
+            .sub(change)
+            .mul(bn(10000))
+            .div(listing.price);
+          // Check pair balance change
           expect(diffPercent).to.eq(bn(lpFee));
         }
       }
@@ -279,9 +289,7 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
       if (!listings[i].isCancelled) {
         expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
       } else {
-        expect(await nft.contract.ownerOf(nft.id)).to.eq(
-          listings[i].vault
-        );
+        expect(await nft.contract.ownerOf(nft.id)).to.eq(listings[i].vault);
       }
     }
 
@@ -294,22 +302,21 @@ describe("[ReservoirV6_0_0] NFTX listings", () => {
     for (let partial of [false, true]) {
       for (let chargeFees of [false, true]) {
         for (let revertIfIncomplete of [true, false]) {
+          const testName =
+            "[eth]" +
+            `${multiple ? "[multiple-orders]" : "[single-order]"}` +
+            `${partial ? "[partial]" : "[full]"}` +
+            `${chargeFees ? "[fees]" : "[no-fees]"}` +
+            `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`;
 
-          const testName = "[eth]" +
-          `${multiple ? "[multiple-orders]" : "[single-order]"}` +
-          `${partial ? "[partial]" : "[full]"}` +
-          `${chargeFees ? "[fees]" : "[no-fees]"}` +
-          `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`
-
-            it(testName,
-              async () =>
-                testAcceptListings(
-                  chargeFees,
-                  revertIfIncomplete,
-                  partial,
-                  multiple ? getRandomInteger(2, 6) : 1
-                )
-            );
+          it(testName, async () =>
+            testAcceptListings(
+              chargeFees,
+              revertIfIncomplete,
+              partial,
+              multiple ? getRandomInteger(2, 6) : 1
+            )
+          );
         }
       }
     }

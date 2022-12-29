@@ -1,7 +1,7 @@
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
+import { keccak256 } from "@ethersproject/keccak256";
 import { randomBytes } from "@ethersproject/random";
 import { toUtf8Bytes, toUtf8String } from "@ethersproject/strings";
-import { keccak256 } from "ethers/lib/utils";
 
 // Constants
 
@@ -29,29 +29,17 @@ export const s = (x: any) => (x ? String(x) : x);
 
 // Misc
 
-// Use the ASCII US (unit separator) character (code = 31) as a delimiter
-const SEPARATOR = "1f";
-
-// Only allow printable ASCII characters
-const isPrintableASCII = (value: string) => /^[\x20-\x7F]*$/.test(value);
-
-export const generateSourceBytesV1 = (source?: string) => {
-  if (source && !isPrintableASCII(source)) {
-    throw new Error("Not a printable ASCII string");
-  }
-
-  return source
-    ? `${SEPARATOR}${Buffer.from(toUtf8Bytes(source)).toString(
-        "hex"
-      )}${SEPARATOR}`
-    : "";
-};
-
 export const generateSourceBytes = (source?: string) => {
   return source ? keccak256(toUtf8Bytes(source)).slice(2, 10) : "";
 };
 
-export const getSource = (calldata: string) => {
+export const getSourceV1 = (calldata: string) => {
+  // Use the ASCII US (unit separator) character (code = 31) as a delimiter
+  const SEPARATOR = "1f";
+
+  // Only allow printable ASCII characters
+  const isPrintableASCII = (value: string) => /^[\x20-\x7F]*$/.test(value);
+
   try {
     if (calldata.endsWith(SEPARATOR)) {
       const index = calldata.slice(0, -2).lastIndexOf(SEPARATOR);

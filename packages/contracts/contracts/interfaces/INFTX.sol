@@ -5,7 +5,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface INFTXMarketplaceZap {
-
     struct BuyOrder {
         uint256 vaultId;
         IERC165 collection;
@@ -27,47 +26,44 @@ interface INFTXMarketplaceZap {
     }
 
     function mintAndSell721(
-        uint256 vaultId, 
-        uint256[] calldata ids, 
-        uint256 minEthOut, 
+        uint256 vaultId,
+        uint256[] calldata ids,
+        uint256 minEthOut,
         address[] calldata path,
         address to
     ) external;
 
-
-
     function mintAndSell721WETH(
-        uint256 vaultId, 
-        uint256[] calldata ids, 
-        uint256 minEthOut, 
+        uint256 vaultId,
+        uint256[] calldata ids,
+        uint256 minEthOut,
         address[] calldata path,
         address to
     ) external;
 
     function mintAndSell1155(
-        uint256 vaultId, 
-        uint256[] calldata ids, 
+        uint256 vaultId,
+        uint256[] calldata ids,
         uint256[] calldata amounts,
-        uint256 minWethOut, 
+        uint256 minWethOut,
         address[] calldata path,
         address to
     ) external;
 
     function mintAndSell1155WETH(
-        uint256 vaultId, 
-        uint256[] calldata ids, 
+        uint256 vaultId,
+        uint256[] calldata ids,
         uint256[] calldata amounts,
-        uint256 minWethOut, 
+        uint256 minWethOut,
         address[] calldata path,
         address to
     ) external;
 
     function buyAndRedeem(
-        uint256 vaultId, 
+        uint256 vaultId,
         uint256 amount,
-        uint256[] calldata specificIds, 
+        uint256[] calldata specificIds,
         address[] calldata path,
         address to
     ) external payable;
-
 }

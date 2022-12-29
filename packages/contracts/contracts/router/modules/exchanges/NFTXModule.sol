@@ -8,6 +8,7 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
+
 import {INFTXMarketplaceZap} from "../../../interfaces/INFTX.sol";
 
 contract NFTXModule is BaseExchangeModule {
@@ -30,7 +31,6 @@ contract NFTXModule is BaseExchangeModule {
 
     receive() external payable {}
 
-   
     // --- Multiple ETH listings ---
 
     function buyWithETH(
@@ -54,13 +54,12 @@ contract NFTXModule is BaseExchangeModule {
                 params.revertIfIncomplete,
                 order.price
             );
-            
+
             unchecked {
                 ++i;
             }
         }
     }
-
 
     // --- Internal ---
 
@@ -71,8 +70,9 @@ contract NFTXModule is BaseExchangeModule {
         uint256 value
     ) internal {
         // Execute the fill
-        try NFTX_MARKETPLACE.buyAndRedeem{value: value}(
-                buyOrder.vaultId, 
+        try
+            NFTX_MARKETPLACE.buyAndRedeem{value: value}(
+                buyOrder.vaultId,
                 buyOrder.amount,
                 buyOrder.specificIds,
                 buyOrder.path,
@@ -93,16 +93,11 @@ contract NFTXModule is BaseExchangeModule {
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-
         uint256 length = orders.length;
         for (uint256 i = 0; i < length; ) {
             // Execute fill
-            _sell(
-                orders[i],
-                params.fillTo,
-                params.revertIfIncomplete,
-                fees
-            );
+            _sell(orders[i], params.fillTo, params.revertIfIncomplete, fees);
+
             unchecked {
                 ++i;
             }
@@ -115,19 +110,24 @@ contract NFTXModule is BaseExchangeModule {
         bool revertIfIncomplete,
         Fee[] calldata fees
     ) internal {
-
         IERC165 collection = sellOrder.collection;
 
         // Execute the sell
         if (collection.supportsInterface(ERC721_INTERFACE)) {
-            _approveERC721IfNeeded(IERC721(address(collection)), address(NFTX_MARKETPLACE));
-            try NFTX_MARKETPLACE.mintAndSell721WETH(
-                sellOrder.vaultId,
-                sellOrder.specificIds,
-                sellOrder.price,
-                sellOrder.path,
-                address(this)
-            ) {
+            _approveERC721IfNeeded(
+                IERC721(address(collection)),
+                address(NFTX_MARKETPLACE)
+            );
+
+            try
+                NFTX_MARKETPLACE.mintAndSell721WETH(
+                    sellOrder.vaultId,
+                    sellOrder.specificIds,
+                    sellOrder.price,
+                    sellOrder.path,
+                    address(this)
+                )
+            {
                 // Pay fees
                 uint256 feesLength = fees.length;
                 for (uint256 i; i < feesLength; ) {
@@ -137,6 +137,7 @@ contract NFTXModule is BaseExchangeModule {
                         ++i;
                     }
                 }
+
                 // Forward any left payment to the specified receiver
                 _sendAllERC20(receiver, sellOrder.currency);
             } catch {
@@ -146,23 +147,35 @@ contract NFTXModule is BaseExchangeModule {
                 }
             }
 
+            // Refund any ERC721 leftover
             uint256 length = sellOrder.specificIds.length;
             for (uint256 i = 0; i < length; ) {
-                _sendAllERC721(receiver, IERC721(address(collection)), sellOrder.specificIds[i]);
+                _sendAllERC721(
+                    receiver,
+                    IERC721(address(collection)),
+                    sellOrder.specificIds[i]
+                );
+
                 unchecked {
                     ++i;
                 }
             }
-        } else if (collection.supportsInterface(ERC1155_INTERFACE)) { 
-            _approveERC1155IfNeeded(IERC1155(address(collection)), address(NFTX_MARKETPLACE));
-            try NFTX_MARKETPLACE.mintAndSell1155WETH(
-                sellOrder.vaultId, 
-                sellOrder.specificIds,
-                sellOrder.amounts,
-                sellOrder.price,
-                sellOrder.path,
-                address(this)
-            ) {
+        } else if (collection.supportsInterface(ERC1155_INTERFACE)) {
+            _approveERC1155IfNeeded(
+                IERC1155(address(collection)),
+                address(NFTX_MARKETPLACE)
+            );
+
+            try
+                NFTX_MARKETPLACE.mintAndSell1155WETH(
+                    sellOrder.vaultId,
+                    sellOrder.specificIds,
+                    sellOrder.amounts,
+                    sellOrder.price,
+                    sellOrder.path,
+                    address(this)
+                )
+            {
                 // Pay fees
                 uint256 feesLength = fees.length;
                 for (uint256 i; i < feesLength; ) {
@@ -182,9 +195,15 @@ contract NFTXModule is BaseExchangeModule {
                 }
             }
 
+            // Refund any ERC1155 leftover
             uint256 length = sellOrder.specificIds.length;
             for (uint256 i = 0; i < length; ) {
-                _sendAllERC1155(receiver, IERC1155(address(collection)), sellOrder.specificIds[i]);
+                _sendAllERC1155(
+                    receiver,
+                    IERC1155(address(collection)),
+                    sellOrder.specificIds[i]
+                );
+
                 unchecked {
                     ++i;
                 }

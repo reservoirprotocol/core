@@ -1,16 +1,17 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { formatEther, parseEther } from "@ethersproject/units";
-import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import * as Sdk from "@reservoir0x/sdk/src";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+
+import { NFTXOffer, setupNFTXOffers } from "../helpers/nftx";
 import { ExecutionInfo } from "../helpers/router";
 import {
   SeaportERC721Approval,
   setupSeaportERC721Approvals,
 } from "../helpers/seaport";
-import { NFTXOffer, setupNFTXOffers } from "../helpers/nftx";
 import {
   bn,
   getChainId,
@@ -20,7 +21,6 @@ import {
   reset,
   setupNFTs,
 } from "../../../utils";
-import NFTXMarketplaceZapAbi from "@reservoir0x/sdk/src/nftx/abis/NFTXMarketplaceZap.json";
 
 describe("[ReservoirV6_0_0] NFTX offers", () => {
   const chainId = getChainId();

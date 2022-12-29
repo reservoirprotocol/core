@@ -1,14 +1,14 @@
 import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
-import * as Sdk from "@reservoir0x/sdk/src";
+import { parseEther } from "@ethersproject/units";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import * as Sdk from "@reservoir0x/sdk/src";
 import { ethers } from "hardhat";
+
 import { getChainId, bn } from "../../../utils";
 
 import FactoryAbi from "@reservoir0x/sdk/src/nftx/abis/Factory.json";
 import NFTXStakingZapAbi from "@reservoir0x/sdk/src/nftx/abis/NFTXStakingZap.json";
-import { parseEther } from "@ethersproject/units";
-import { BigNumber } from "ethers";
 
 // --- Listings ---
 
@@ -42,7 +42,6 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
     const newId3 = nft.id + 10003;
     const newId4 = nft.id + 10004;
 
-    // Min
     const poolIds = [newId, newId2, newId3, newId4];
 
     // Approve the factory contract
@@ -75,7 +74,7 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
       ethers.provider
     );
 
-    const tx = await NFTXStakingZap.connect(seller).addLiquidity721ETH(
+    await NFTXStakingZap.connect(seller).addLiquidity721ETH(
       _vaultId,
       poolIds,
       price,
@@ -84,7 +83,6 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
       }
     );
 
-    await tx.wait();
     const vaultAddress = await factory.vault(_vaultId.toString());
 
     const SUSHI_ROUTER = Sdk.Nftx.Addresses.SushiRouter[chainId];
@@ -110,7 +108,7 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
       Sdk.Common.Addresses.Weth[chainId]
     );
 
-    const [poolPrice, nftIds] = await Promise.all([
+    const [poolPrice] = await Promise.all([
       Sdk.Nftx.Helpers.getPoolPrice(
         vaultAddress,
         1,
@@ -205,7 +203,7 @@ export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
       ethers.provider
     );
 
-    const tx = await NFTXStakingZap.connect(buyer).addLiquidity721ETH(
+    await NFTXStakingZap.connect(buyer).addLiquidity721ETH(
       _vaultId,
       poolIds,
       price,
@@ -239,7 +237,7 @@ export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
       Sdk.Common.Addresses.Weth[chainId]
     );
 
-    const [poolPrice, nftIds] = await Promise.all([
+    const [poolPrice] = await Promise.all([
       Sdk.Nftx.Helpers.getPoolPrice(
         vaultAddress,
         1,
@@ -259,7 +257,9 @@ export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
         collection: nft.contract.address,
         currency: Sdk.Common.Addresses.Weth[chainId],
         specificIds: [newId.toString()],
-        price: isCancelled ? offer.price.mul(bn(10)).toString() : offer.price.toString(),
+        price: isCancelled
+          ? offer.price.mul(bn(10)).toString()
+          : offer.price.toString(),
         extra: {
           prices: [offer.price.toString()],
         },
