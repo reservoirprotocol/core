@@ -15,6 +15,7 @@ import * as Common from "../common";
 import { bn, lc, s } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
+import { keccak256, defaultAbiCoder } from "ethers/lib/utils";
 
 export class Order {
   public chainId: number;
@@ -60,7 +61,12 @@ export class Order {
   }
   
   public id() {
-    return this.hash() + "_" + this.params.nonce;
+    return keccak256(
+      defaultAbiCoder.encode(
+        ["bytes32", "uint256"],
+        [this.hash(), this.params.nonce]
+      )
+    );
   }
   
   public hash() {
