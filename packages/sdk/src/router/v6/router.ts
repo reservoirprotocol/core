@@ -333,7 +333,7 @@ export class Router {
       if (details.length === 1) {
         const order = details[0].order as Sdk.Seaport.Order;
         return {
-          txData: exchange.fillOrderTx(
+          txData: await exchange.fillOrderTx(
             taker,
             order,
             order.buildMatching({ amount: details[0].amount }),
@@ -347,7 +347,7 @@ export class Router {
       } else {
         const orders = details.map((d) => d.order as Sdk.Seaport.Order);
         return {
-          txData: exchange.fillOrdersTx(
+          txData: await exchange.fillOrdersTx(
             taker,
             orders,
             orders.map((order, i) =>
@@ -466,7 +466,7 @@ export class Router {
         case "zora":
           detailsRef = zoraDetails;
           break;
-        
+
         case "nftx": {
           detailsRef = nftxDetails;
           break;
@@ -810,6 +810,7 @@ export class Router {
 
     // Handle Seaport listings
     if (Object.keys(seaportDetails).length) {
+      const exchange = new Sdk.Seaport.Exchange(this.chainId);
       for (const currency of Object.keys(seaportDetails)) {
         const currencyDetails = seaportDetails[currency];
 
@@ -876,7 +877,7 @@ export class Router {
                         numerator: currencyDetails[0].amount ?? 1,
                         denominator: orders[0].getInfo()!.amount,
                         signature: orders[0].params.signature,
-                        extraData: "0x",
+                        extraData: await exchange.getExtraData(orders[0]),
                       },
                       {
                         fillTo: taker,
@@ -892,17 +893,19 @@ export class Router {
                 : this.contracts.seaportModule.interface.encodeFunctionData(
                     `accept${currencyIsETH ? "ETH" : "ERC20"}Listings`,
                     [
-                      orders.map((order, i) => ({
-                        parameters: {
-                          ...order.params,
-                          totalOriginalConsiderationItems:
-                            order.params.consideration.length,
-                        },
-                        numerator: currencyDetails[i].amount ?? 1,
-                        denominator: order.getInfo()!.amount,
-                        signature: order.params.signature,
-                        extraData: "0x",
-                      })),
+                      await Promise.all(
+                        orders.map(async (order, i) => ({
+                          parameters: {
+                            ...order.params,
+                            totalOriginalConsiderationItems:
+                              order.params.consideration.length,
+                          },
+                          numerator: currencyDetails[i].amount ?? 1,
+                          denominator: order.getInfo()!.amount,
+                          signature: order.params.signature,
+                          extraData: await exchange.getExtraData(order),
+                        }))
+                      ),
                       // TODO: Optimize the fulfillments
                       {
                         offer: orders
@@ -1001,11 +1004,7 @@ export class Router {
       const fees = getFees(nftxDetails);
 
       const totalPrice = orders
-        .map((order) =>
-          bn(
-            order.params.price
-          )
-        )
+        .map((order) => bn(order.params.price))
         .reduce((a, b) => a.add(b), bn(0));
       const totalFees = fees
         .map(({ amount }) => bn(amount))
@@ -1016,9 +1015,7 @@ export class Router {
         data: this.contracts.nftxModule.interface.encodeFunctionData(
           "buyWithETH",
           [
-            nftxDetails.map(
-              (d) => (d.order as Sdk.Nftx.Order).params
-            ),
+            nftxDetails.map((d) => (d.order as Sdk.Nftx.Order).params),
             {
               fillTo: taker,
               refundTo: taker,
@@ -1036,7 +1033,6 @@ export class Router {
         success[originalIndex] = true;
       }
     }
-
 
     // Handle X2Y2 listings
     if (x2y2Details.length) {
@@ -1534,6 +1530,7 @@ export class Router {
       }
 
       case "seaport": {
+        const exchange = new Sdk.Seaport.Exchange(this.chainId);
         const order = detail.order as Sdk.Seaport.Order;
 
         const matchParams = order.buildMatching({
@@ -1558,7 +1555,7 @@ export class Router {
                 numerator: matchParams.amount ?? 1,
                 denominator: order.getInfo()!.amount,
                 signature: order.params.signature,
-                extraData: "0x",
+                extraData: await exchange.getExtraData(order),
               },
               matchParams.criteriaResolvers ?? [],
               {
@@ -1575,7 +1572,9 @@ export class Router {
       }
 
       case "seaport-partial": {
+        const exchange = new Sdk.Seaport.Exchange(this.chainId);
         const order = detail.order as Sdk.Seaport.Types.PartialOrder;
+
         const result = await axios.get(
           `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}` +
             (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
@@ -1602,7 +1601,7 @@ export class Router {
                 numerator: detail.amount ?? 1,
                 denominator: fullOrder.getInfo()!.amount,
                 signature: fullOrder.params.signature,
-                extraData: "0x",
+                extraData: await exchange.getExtraData(fullOrder),
               },
               result.data.criteriaResolvers ?? [],
               {
@@ -1782,29 +1781,24 @@ export class Router {
         const order = detail.order as Sdk.Nftx.Order;
         const tokenId = detail.tokenId;
         // bid
-        order.params.specificIds = [tokenId]
+        order.params.specificIds = [tokenId];
 
         moduleLevelTx = {
           module: this.contracts.nftxModule.address,
-          data: this.contracts.nftxModule.interface.encodeFunctionData(
-            "sell",
-            [
-              [
-                order.params
-              ],
-              {
-                fillTo: taker,
-                refundTo: taker,
-                revertIfIncomplete: true,
-              },
-              detail.fees ?? [],
-            ]
-          ),
+          data: this.contracts.nftxModule.interface.encodeFunctionData("sell", [
+            [order.params],
+            {
+              fillTo: taker,
+              refundTo: taker,
+              revertIfIncomplete: true,
+            },
+            detail.fees ?? [],
+          ]),
         };
 
         break;
       }
-      
+
       default: {
         throw new Error("Unsupported exchange kind");
       }

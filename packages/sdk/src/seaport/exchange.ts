@@ -7,6 +7,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero, HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { keccak256 } from "@ethersproject/solidity";
+import axios from "axios";
 
 import * as Addresses from "./addresses";
 import { BaseOrderInfo } from "./builders/base";
@@ -44,7 +45,7 @@ export class Exchange {
       source?: string;
     }
   ): Promise<TransactionResponse> {
-    const tx = this.fillOrderTx(
+    const tx = await this.fillOrderTx(
       await taker.getAddress(),
       order,
       matchParams,
@@ -53,7 +54,7 @@ export class Exchange {
     return taker.sendTransaction(tx);
   }
 
-  public fillOrderTx(
+  public async fillOrderTx(
     taker: string,
     order: Order | BundleOrder,
     matchParams: Types.MatchParams,
@@ -66,7 +67,7 @@ export class Exchange {
       }[];
       source?: string;
     }
-  ): TxData {
+  ): Promise<TxData> {
     const recipient = options?.recipient ?? AddressZero;
     const conduitKey = options?.conduitKey ?? HashZero;
     const feesOnTop = options?.feesOnTop ?? [];
@@ -91,7 +92,9 @@ export class Exchange {
           // Order is single quantity
           info.amount === "1" &&
           // Order has no criteria
-          !matchParams.criteriaResolvers
+          !matchParams.criteriaResolvers &&
+          // Order requires no extra data
+          !this.requiresExtraData(order)
         ) {
           info = info as BaseOrderInfo;
 
@@ -165,7 +168,7 @@ export class Exchange {
                     numerator: matchParams.amount || "1",
                     denominator: info.amount,
                     signature: order.params.signature!,
-                    extraData: "0x",
+                    extraData: await this.getExtraData(order),
                   },
                   matchParams.criteriaResolvers || [],
                   conduitKey,
@@ -188,7 +191,9 @@ export class Exchange {
           // Order is single quantity
           info.amount === "1" &&
           // Order has no criteria
-          !matchParams.criteriaResolvers
+          !matchParams.criteriaResolvers &&
+          // Order requires no extra data
+          !this.requiresExtraData(order)
         ) {
           info = info as BaseOrderInfo;
 
@@ -251,7 +256,7 @@ export class Exchange {
                     numerator: matchParams.amount || "1",
                     denominator: info.amount,
                     signature: order.params.signature!,
-                    extraData: "0x",
+                    extraData: await this.getExtraData(order),
                   },
                   matchParams.criteriaResolvers || [],
                   conduitKey,
@@ -318,7 +323,7 @@ export class Exchange {
       maxOrdersToFulfill?: number;
     }
   ): Promise<TransactionResponse> {
-    const tx = this.fillOrdersTx(
+    const tx = await this.fillOrdersTx(
       await taker.getAddress(),
       orders,
       matchParams,
@@ -327,7 +332,7 @@ export class Exchange {
     return taker.sendTransaction(tx);
   }
 
-  public fillOrdersTx(
+  public async fillOrdersTx(
     taker: string,
     orders: Order[],
     matchParams: Types.MatchParams[],
@@ -337,7 +342,7 @@ export class Exchange {
       source?: string;
       maxOrdersToFulfill?: number;
     }
-  ): TxData {
+  ): Promise<TxData> {
     const recipient = options?.recipient ?? AddressZero;
     const conduitKey = options?.conduitKey ?? HashZero;
 
@@ -348,17 +353,19 @@ export class Exchange {
         this.contract.interface.encodeFunctionData(
           "fulfillAvailableAdvancedOrders",
           [
-            orders.map((order, i) => ({
-              parameters: {
-                ...order.params,
-                totalOriginalConsiderationItems:
-                  order.params.consideration.length,
-              },
-              numerator: matchParams[i].amount || "1",
-              denominator: order.getInfo()!.amount,
-              signature: order.params.signature!,
-              extraData: "0x",
-            })),
+            await Promise.all(
+              orders.map(async (order, i) => ({
+                parameters: {
+                  ...order.params,
+                  totalOriginalConsiderationItems:
+                    order.params.consideration.length,
+                },
+                numerator: matchParams[i].amount || "1",
+                denominator: order.getInfo()!.amount,
+                signature: order.params.signature!,
+                extraData: await this.getExtraData(order),
+              }))
+            ),
             matchParams
               .map((m, i) =>
                 (m.criteriaResolvers ?? []).map((resolver) => ({
@@ -429,6 +436,34 @@ export class Exchange {
         [order.params],
       ]),
     };
+  }
+
+  // --- Get extra data ---
+
+  public requiresExtraData(order: Order): boolean {
+    if (order.params.zone === Addresses.CancelXZone[this.chainId]) {
+      return true;
+    }
+    return false;
+  }
+
+  public async getExtraData(order: Order): Promise<string> {
+    switch (order.params.zone) {
+      case Addresses.CancelXZone[this.chainId]: {
+        const { extraData } = await axios
+          .get(
+            `https://cancelx-${
+              this.chainId === 1 ? "production" : "development"
+            }.up.railway.app/api/sign/${order.hash()}`
+          )
+          .then((response) => response.data);
+
+        return extraData;
+      }
+
+      default:
+        return "0x";
+    }
   }
 
   // --- Get counter (eg. nonce) ---
