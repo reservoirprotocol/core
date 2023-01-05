@@ -126,6 +126,7 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
       listing.order = new Sdk.Nftx.Order(chainId, {
         vaultId: _vaultId.toString(),
         collection: nft.contract.address,
+        pool: vaultAddress,
         specificIds: [newId.toString()],
         amount: "1",
         path: [Sdk.Common.Addresses.Weth[chainId], vaultAddress],
@@ -254,6 +255,7 @@ export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
       offer.lpToken = lpToken;
       offer.order = new Sdk.Nftx.Order(chainId, {
         vaultId: _vaultId.toString(),
+        pool: vaultAddress,
         collection: nft.contract.address,
         currency: Sdk.Common.Addresses.Weth[chainId],
         specificIds: [newId.toString()],

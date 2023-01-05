@@ -24,6 +24,7 @@ const normalize = (order: Types.OrderParams): Types.OrderParams => {
 
   return {
     vaultId: s(order.vaultId),
+    pool: lc(order.pool),
     collection: lc(order.collection),
     specificIds: order.specificIds ? order.specificIds.map(s) : [],
     amounts: order.amounts ? order.amounts.map(s) : [],

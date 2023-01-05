@@ -1,5 +1,6 @@
 export type OrderParams = {
   vaultId: string;
+  pool: string;
   collection: string;
   specificIds?: string[];
   amounts?: string[];
