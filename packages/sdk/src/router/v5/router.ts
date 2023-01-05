@@ -582,9 +582,14 @@ export class Router {
 
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(this.contract.address, order, matchParams, {
-          recipient: taker,
-        }),
+        tx: await exchange.fillOrderTx(
+          this.contract.address,
+          order,
+          matchParams,
+          {
+            recipient: taker,
+          }
+        ),
         exchangeKind: ExchangeKind.SEAPORT,
         maker: order.params.offerer,
       };
@@ -685,7 +690,7 @@ export class Router {
 
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(
+        tx: await exchange.fillOrderTx(
           filler,
           order,
           matchParams,
@@ -706,7 +711,7 @@ export class Router {
 
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
       return {
-        tx: exchange.fillOrderTx(
+        tx: await exchange.fillOrderTx(
           filler,
           fullOrder,
           {
