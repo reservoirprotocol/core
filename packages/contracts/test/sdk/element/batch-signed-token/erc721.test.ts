@@ -6,25 +6,30 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { getChainId, getCurrentTimestamp, reset, setupNFTs, } from "../../../utils";
+import {
+  getChainId,
+  getCurrentTimestamp,
+  reset,
+  setupNFTs,
+} from "../../../utils";
 
 describe("Element - BatchSignedToken Erc721", () => {
   const chainId = getChainId();
-  
+
   let deployer: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
   let ted: SignerWithAddress;
-  
+
   let erc721: Contract;
-  
+
   beforeEach(async () => {
-    [ deployer, alice, bob, carol, ted ] = await ethers.getSigners();
-    
+    [deployer, alice, bob, carol, ted] = await ethers.getSigners();
+
     ({ erc721 } = await setupNFTs(deployer));
   });
-  
+
   afterEach(reset);
 
   it("Build and fill sell order", async () => {
@@ -161,12 +166,12 @@ describe("Element - BatchSignedToken Erc721", () => {
     const tedBalanceAfter = await ethers.provider.getBalance(ted.address);
     const ownerAfter = await nft.getOwner(soldTokenId);
 
-    expect(buyerBalanceBefore.sub(buyerBalanceAfter)).to.be.gt(
-      price
-    );
+    expect(buyerBalanceBefore.sub(buyerBalanceAfter)).to.be.gt(price);
     expect(carolBalanceAfter.sub(carolBalanceBefore)).to.eq(parseEther("0.1"));
     expect(tedBalanceAfter.sub(tedBalanceBefore)).to.eq(parseEther("0.05"));
-    expect(sellerBalanceAfter).to.eq(sellerBalanceBefore.add(price).sub(parseEther("0.15")));
+    expect(sellerBalanceAfter).to.eq(
+      sellerBalanceBefore.add(price).sub(parseEther("0.15"))
+    );
     expect(ownerAfter).to.eq(buyer.address);
   });
 
@@ -175,19 +180,19 @@ describe("Element - BatchSignedToken Erc721", () => {
     const seller = bob;
     const price = parseEther("1");
     const soldTokenId = 0;
-    
+
     // Mint erc721 to seller
     await erc721.connect(seller).mint(soldTokenId);
-    
+
     const nft = new Common.Helpers.Erc721(ethers.provider, erc721.address);
-    
+
     // Approve the exchange
     await nft.approve(seller, Element.Addresses.Exchange[chainId]);
-    
+
     const exchange = new Element.Exchange(chainId);
-    
+
     const builder = new Element.Builders.BatchSignedToken(chainId);
-    
+
     // Build sell order
     const sellOrder = builder.build({
       maker: seller.address,
@@ -200,24 +205,24 @@ describe("Element - BatchSignedToken Erc721", () => {
       expirationTime: (await getCurrentTimestamp(ethers.provider)) + 100,
       startNonce: Date.now(),
     });
-    
+
     // Sign the order
     await sellOrder.sign(seller);
-    
+
     // Approve the exchange for escrowing.
     await erc721
       .connect(seller)
       .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
-    
+
     // Create matching buy order
     const buyOrder = sellOrder.buildMatching();
-    
+
     await sellOrder.checkFillability(ethers.provider);
-    
+
     await exchange.cancelOrder(seller, sellOrder);
-    
-    await expect(exchange.fillOrder(buyer, sellOrder, buyOrder)).to.be.revertedWith(
-      "fillBatchSignedERC721Order: no order filled."
-    );
+
+    await expect(
+      exchange.fillOrder(buyer, sellOrder, buyOrder)
+    ).to.be.revertedWith("fillBatchSignedERC721Order: no order filled.");
   });
 });

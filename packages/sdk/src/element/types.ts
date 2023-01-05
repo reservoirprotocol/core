@@ -46,7 +46,7 @@ export type Collection = {
     erc20TokenAmount: string;
     nftId: string;
   }[];
-}
+};
 
 export type BatchSignedOrder = {
   maker: string;
@@ -69,7 +69,7 @@ export type BatchSignedOrder = {
   platformFee?: number;
   royaltyFeeRecipient?: string;
   royaltyFee?: number;
-}
+};
 
 export type MatchParams = {
   nftId?: string;

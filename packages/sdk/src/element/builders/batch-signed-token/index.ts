@@ -1,7 +1,8 @@
 import { BigNumberish } from "@ethersproject/bignumber";
+import { AddressZero, HashZero } from "@ethersproject/constants";
+
 import { Order } from "../../order";
 import * as Types from "../../types";
-import { AddressZero, HashZero } from "@ethersproject/constants";
 import { bn } from "../../../utils";
 
 export interface BuildParams {
@@ -21,25 +22,26 @@ export interface BuildParams {
 }
 
 export class BatchSignedTokenBuilder {
-  
   public chainId: number;
-  
+
   constructor(chainId: number) {
     this.chainId = chainId;
   }
-  
+
   public build(params: BuildParams) {
     const collection: Types.Collection = {
       nftAddress: params.contract,
       platformFee: params.platformFee || 0,
       royaltyFee: params.royaltyFee || 0,
       royaltyFeeRecipient: params.royaltyFeeRecipient || AddressZero,
-      items: [{
-        erc20TokenAmount: bn(params.price).toString(),
-        nftId: params.tokenId.toString(),
-      }],
+      items: [
+        {
+          erc20TokenAmount: bn(params.price).toString(),
+          nftId: params.tokenId.toString(),
+        },
+      ],
     };
-    
+
     const basicCollections: Types.Collection[] = [];
     const collections: Types.Collection[] = [];
     if (
@@ -50,7 +52,7 @@ export class BatchSignedTokenBuilder {
     } else {
       basicCollections.push(collection);
     }
-    
+
     return new Order(this.chainId, {
       maker: params.maker,
       listingTime: params.listingTime,

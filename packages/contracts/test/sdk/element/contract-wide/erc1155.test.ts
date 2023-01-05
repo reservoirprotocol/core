@@ -73,7 +73,6 @@ describe("Element - ContractWide Erc1155", () => {
       .connect(seller)
       .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
 
-
     // Create matching sell order
     const sellOrder = buyOrder.buildMatching({
       amount: 1,

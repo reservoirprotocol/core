@@ -19,7 +19,7 @@ export interface BaseBuildParams {
   expiry?: BigNumberish;
   nonce?: BigNumberish;
   signatureType?: number;
-  hashNonce: BigNumberish,
+  hashNonce: BigNumberish;
   v?: number;
   r?: string;
   s?: string;

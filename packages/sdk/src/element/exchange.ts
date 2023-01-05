@@ -3,6 +3,7 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { MaxUint256 } from "@ethersproject/constants";
 import { Contract, ContractTransaction } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/abstract-provider";
+
 import * as Addresses from "./addresses";
 import * as CommonAddresses from "../common/addresses";
 import { Order } from "./order";
@@ -52,39 +53,46 @@ export class Exchange {
     const to = this.contract.address;
     let data: string;
     let value: BigNumber | undefined;
-  
+
     if (order.side() == "sell") {
       if (order.isBatchSignedOrder()) {
         const raw = order.getRaw();
-  
+
         // data1 [56 bits(startNonce) + 8 bits(v) + 32 bits(listingTime) + 160 bits(maker)]
-        const data1 = bn(raw.startNonce).shl(200)
+        const data1 = bn(raw.startNonce)
+          .shl(200)
           .or(bn(raw.v).shl(192))
           .or(bn(raw.listingTime).shl(160))
           .or(bn(raw.maker))
           .and(MaxUint256);
-  
+
         // data2 [64 bits(taker part1) + 32 bits(expiryTime) + 160 bits(erc20Token)]
-        const data2 = bn(taker).shr(96).shl(192)
+        const data2 = bn(taker)
+          .shr(96)
+          .shl(192)
           .or(bn(raw.expirationTime).shl(160))
           .or(bn(raw.erc20Token))
           .and(MaxUint256);
-  
+
         // data3 [96 bits(taker part2) + 160 bits(platformFeeRecipient)]
-        const data3 = bn(taker).shl(160)
+        const data3 = bn(taker)
+          .shl(160)
           .or(bn(raw.platformFeeRecipient))
           .and(MaxUint256);
-  
-        data = this.contract.interface.encodeFunctionData("fillBatchSignedERC721Order", [
-          {
-            data1,
-            data2,
-            data3,
-            r: raw.r,
-            s: raw.s,
-          },
-          raw.collectionsBytes,
-        ]);
+
+        data = this.contract.interface.encodeFunctionData(
+          "fillBatchSignedERC721Order",
+          [
+            {
+              data1,
+              data2,
+              data3,
+              r: raw.r,
+              s: raw.s,
+            },
+            raw.collectionsBytes,
+          ]
+        );
       } else if (order.contractKind() == "erc721") {
         data = this.contract.interface.encodeFunctionData("buyERC721Ex", [
           order.getRaw(),
@@ -101,13 +109,15 @@ export class Exchange {
           BytesEmpty,
         ]);
       }
-    
+
       if (order.erc20Token() == CommonAddresses.Eth[this.chainId]) {
         value = order.getTotalPrice(matchParams.nftAmount);
       }
     } else {
-      const unwrapNativeToken = (order.erc20Token() == CommonAddresses.Weth[this.chainId].toLowerCase()) ?
-        (matchParams.unwrapNativeToken ?? true) : false;
+      const unwrapNativeToken =
+        order.erc20Token() == CommonAddresses.Weth[this.chainId].toLowerCase()
+          ? matchParams.unwrapNativeToken ?? true
+          : false;
       if (order.contractKind() == "erc721") {
         data = this.contract.interface.encodeFunctionData("sellERC721", [
           order.getRaw(),
@@ -131,9 +141,9 @@ export class Exchange {
     if (order.isBatchSignedOrder()) {
       // BatchSignedOrder don't support sourceBytes.
     } else {
-      data += generateSourceBytes(options?.source)
+      data += generateSourceBytes(options?.source);
     }
-    
+
     return {
       from: taker,
       to,
@@ -205,7 +215,7 @@ export class Exchange {
     if (order.isBatchSignedOrder()) {
       return bn(order.hash());
     }
-  
+
     const isSell = order.side() == "sell";
     if (order.contractKind() == "erc721") {
       if (isSell) {

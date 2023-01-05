@@ -1,3 +1,4 @@
+import { defaultAbiCoder } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
 import { hexZeroPad, splitSignature } from "@ethersproject/bytes";
@@ -5,6 +6,7 @@ import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero, HashZero, MaxUint256 } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
+import { keccak256 } from "@ethersproject/keccak256";
 import { verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
@@ -15,18 +17,22 @@ import * as Common from "../common";
 import { bn, lc, s } from "../utils";
 
 import ExchangeAbi from "./abis/Exchange.json";
-import { keccak256, defaultAbiCoder } from "ethers/lib/utils";
 
 export class Order {
   public chainId: number;
   public params: Types.BaseOrder | Types.BatchSignedOrder;
-  
-  constructor(chainId: number, params: Types.BaseOrder | Types.BatchSignedOrder) {
+
+  constructor(
+    chainId: number,
+    params: Types.BaseOrder | Types.BatchSignedOrder
+  ) {
     this.chainId = chainId;
-    
+
     if (this.isBatchSignedOrder(params)) {
       try {
-        this.params = normalizeBatchSignedOrder(params as Types.BatchSignedOrder);
+        this.params = normalizeBatchSignedOrder(
+          params as Types.BatchSignedOrder
+        );
       } catch {
         throw new Error("Invalid params");
       }
@@ -37,14 +43,14 @@ export class Order {
       } catch {
         throw new Error("Invalid params");
       }
-      
+
       // Detect kind
       if (!p.kind) {
         this.params.kind = this.detectKind();
       }
     }
   }
-  
+
   public getRaw() {
     if (this.isBatchSignedOrder()) {
       const params = this.asBatchSignedOrder();
@@ -59,7 +65,7 @@ export class Order {
         : toRawErc1155Order(this.asBaseOrder());
     }
   }
-  
+
   public id() {
     return keccak256(
       defaultAbiCoder.encode(
@@ -68,18 +74,18 @@ export class Order {
       )
     );
   }
-  
+
   public hash() {
     const [types, value] = this.getEip712TypesAndValue();
     return _TypedDataEncoder.hash(EIP712_DOMAIN(this.chainId), types, value);
   }
-  
+
   public async sign(signer: TypedDataSigner) {
-    const [ types, value ] = this.getEip712TypesAndValue();
+    const [types, value] = this.getEip712TypesAndValue();
     const { v, r, s } = splitSignature(
       await signer._signTypedData(EIP712_DOMAIN(this.chainId), types, value)
     );
-  
+
     this.params = {
       ...this.params,
       v,
@@ -87,7 +93,11 @@ export class Order {
       s,
     };
     if (this.isBatchSignedOrder()) {
-      this.asBatchSignedOrder().hash = _TypedDataEncoder.hash(EIP712_DOMAIN(this.chainId), types, value);
+      this.asBatchSignedOrder().hash = _TypedDataEncoder.hash(
+        EIP712_DOMAIN(this.chainId),
+        types,
+        value
+      );
     } else {
       this.asBaseOrder().signatureType = 0;
     }
@@ -141,23 +151,31 @@ export class Order {
       ExchangeAbi as any,
       provider
     );
-  
+
     if (this.contractKind() == "erc721") {
       const hashNonce = await exchange.getHashNonce(this.params.maker);
       if (!bn(hashNonce).eq(this.params.hashNonce)) {
         throw new Error("not-fillable");
       }
-    
+
       const nonceRange = bn(this.params.nonce).shr(8);
-      const statusVector = await exchange.getERC721OrderStatusBitVector(this.params.maker, nonceRange);
+      const statusVector = await exchange.getERC721OrderStatusBitVector(
+        this.params.maker,
+        nonceRange
+      );
       const nonceMask = bn(1).shl(bn(this.params.nonce).and(0xff).toNumber());
       if (!nonceMask.and(statusVector).isZero()) {
         throw new Error("not-fillable");
       }
     } else {
-      const info = this.side() == "sell"
-        ? await exchange.getERC1155SellOrderInfo(toRawErc1155Order(this.asBaseOrder()))
-        : await exchange.getERC1155BuyOrderInfo(toRawErc1155Order(this.asBaseOrder()));
+      const info =
+        this.side() == "sell"
+          ? await exchange.getERC1155SellOrderInfo(
+              toRawErc1155Order(this.asBaseOrder())
+            )
+          : await exchange.getERC1155BuyOrderInfo(
+              toRawErc1155Order(this.asBaseOrder())
+            );
       if (
         !bn(info.status).eq(1) ||
         bn(info.remainingAmount).isZero() ||
@@ -166,7 +184,7 @@ export class Order {
         throw new Error("not-fillable");
       }
     }
-  
+
     if (this.side() == "buy") {
       // Check that maker has enough balance to cover the payment
       // and the approval to the token transfer proxy is set
@@ -176,7 +194,7 @@ export class Order {
       if (bn(balance).lt(totalPrice)) {
         throw new Error("no-balance");
       }
-    
+
       // Check allowance
       const allowance = await erc20.getAllowance(
         this.params.maker,
@@ -188,13 +206,13 @@ export class Order {
     } else {
       if (this.contractKind() == "erc721") {
         const erc721 = new Common.Helpers.Erc721(provider, this.params.nft!);
-      
+
         // Check ownership
         const owner = await erc721.getOwner(this.params.nftId!);
         if (lc(owner) !== lc(this.params.maker)) {
           throw new Error("no-balance");
         }
-      
+
         // Check approval
         const isApproved = await erc721.isApproved(
           this.params.maker,
@@ -206,13 +224,13 @@ export class Order {
       } else {
         const params = this.asBaseOrder();
         const erc1155 = new Common.Helpers.Erc1155(provider, params.nft);
-      
+
         // Check balance
         const balance = await erc1155.getBalance(params.maker, params.nftId);
         if (bn(balance).lt(params.nftAmount!)) {
           throw new Error("no-balance");
         }
-      
+
         // Check approval
         const isApproved = await erc1155.isApproved(
           this.params.maker,
@@ -224,23 +242,25 @@ export class Order {
       }
     }
   }
-  
+
   public buildMatching(data?: any) {
     if (this.isBatchSignedOrder()) {
       return {
         nftId: this.params.nftId,
-        nftAmount: '1',
+        nftAmount: "1",
       };
     } else {
       return this.getBuilder().buildMatching(this, data);
     }
   }
-  
-  public isBatchSignedOrder(params?: Types.BaseOrder | Types.BatchSignedOrder): boolean {
+
+  public isBatchSignedOrder(
+    params?: Types.BaseOrder | Types.BatchSignedOrder
+  ): boolean {
     // @ts-ignore
     return (params ?? this.params).startNonce != null;
   }
-  
+
   public getTotalPrice(quantity?: BigNumberish): BigNumber {
     if (this.isBatchSignedOrder()) {
       return bn(this.params.erc20TokenAmount!);
@@ -250,19 +270,29 @@ export class Order {
         return bn(params.erc20TokenAmount).add(this.getFeeAmount());
       } else {
         const fillQuantity = quantity != null ? quantity : params.nftAmount!;
-        const erc20Amount = this.side() == "sell" ?
-          ceilDiv(bn(params.erc20TokenAmount).mul(fillQuantity), params.nftAmount!) :
-          bn(params.erc20TokenAmount).mul(fillQuantity).div(params.nftAmount!);
+        const erc20Amount =
+          this.side() == "sell"
+            ? ceilDiv(
+                bn(params.erc20TokenAmount).mul(fillQuantity),
+                params.nftAmount!
+              )
+            : bn(params.erc20TokenAmount)
+                .mul(fillQuantity)
+                .div(params.nftAmount!);
         return erc20Amount.add(this.getFeeAmount(fillQuantity));
       }
     }
   }
-  
+
   public getFeeAmount(quantity?: BigNumberish): BigNumber {
     if (this.isBatchSignedOrder()) {
       const params = this.asBatchSignedOrder();
-      const platformFee = bn(params.erc20TokenAmount!).mul(params.platformFee!).div(10000);
-      const royaltyFee = bn(params.erc20TokenAmount!).mul(params.royaltyFee!).div(10000);
+      const platformFee = bn(params.erc20TokenAmount!)
+        .mul(params.platformFee!)
+        .div(10000);
+      const royaltyFee = bn(params.erc20TokenAmount!)
+        .mul(params.royaltyFee!)
+        .div(10000);
       return platformFee.add(royaltyFee);
     } else {
       const params = this.asBaseOrder();
@@ -274,7 +304,7 @@ export class Order {
       }
     }
   }
-  
+
   public listingTime(): number {
     if (this.isBatchSignedOrder()) {
       return this.asBatchSignedOrder().listingTime;
@@ -282,7 +312,7 @@ export class Order {
       return bn(this.asBaseOrder().expiry).shr(32).and(0xffffffff).toNumber();
     }
   }
-  
+
   public expirationTime(): number {
     if (this.isBatchSignedOrder()) {
       return this.asBatchSignedOrder().expirationTime;
@@ -290,19 +320,21 @@ export class Order {
       return bn(this.asBaseOrder().expiry).and(0xffffffff).toNumber();
     }
   }
-  
+
   public erc20Token(): string {
     return toStandardERC20Address(this.params.erc20Token);
   }
-  
+
   public side(): string {
     if (this.isBatchSignedOrder()) {
       return "sell";
     } else {
-      return this.asBaseOrder().direction === Types.TradeDirection.SELL ? "sell" : "buy";
+      return this.asBaseOrder().direction === Types.TradeDirection.SELL
+        ? "sell"
+        : "buy";
     }
   }
-  
+
   public orderKind(): string | undefined {
     if (this.isBatchSignedOrder()) {
       return "single-token";
@@ -310,7 +342,7 @@ export class Order {
       return this.asBaseOrder().kind?.split("-").slice(1).join("-");
     }
   }
-  
+
   public contractKind(): string | undefined {
     if (this.isBatchSignedOrder()) {
       return "erc721";
@@ -359,7 +391,7 @@ export class Order {
       }
     }
   }
-  
+
   private getBuilder(): BaseBuilder {
     if (!this.isBatchSignedOrder()) {
       switch (this.asBaseOrder().kind) {
@@ -367,7 +399,7 @@ export class Order {
         case "erc1155-contract-wide": {
           return new Builders.ContractWide(this.chainId);
         }
-        
+
         case "erc721-single-token":
         case "erc1155-single-token": {
           return new Builders.SingleToken(this.chainId);
@@ -388,7 +420,7 @@ export class Order {
           : "erc721-contract-wide";
       }
     }
-  
+
     // single-token
     {
       const builder = new Builders.SingleToken(this.chainId);
@@ -403,11 +435,11 @@ export class Order {
       "Could not detect order kind (order might have unsupported params/calldata)"
     );
   }
-  
+
   private asBatchSignedOrder(): Types.BatchSignedOrder {
     return this.params as Types.BatchSignedOrder;
   }
-  
+
   private asBaseOrder(): Types.BaseOrder {
     return this.params as Types.BaseOrder;
   }
@@ -514,31 +546,31 @@ const ERC1155_SELL_ORDER_EIP712_TYPES = {
 
 const BATCH_SIGNED_ORDER_EIP712_TYPES = {
   BatchSignedERC721Orders: [
-    { type: 'address', name: 'maker' },
-    { type: 'uint256', name: 'listingTime' },
-    { type: 'uint256', name: 'expiryTime' },
-    { type: 'uint256', name: 'startNonce' },
-    { type: 'address', name: 'erc20Token' },
-    { type: 'address', name: 'platformFeeRecipient' },
-    { type: 'BasicCollection[]', name: 'basicCollections' },
-    { type: 'Collection[]', name: 'collections' },
-    { type: 'uint256', name: 'hashNonce' },
+    { type: "address", name: "maker" },
+    { type: "uint256", name: "listingTime" },
+    { type: "uint256", name: "expiryTime" },
+    { type: "uint256", name: "startNonce" },
+    { type: "address", name: "erc20Token" },
+    { type: "address", name: "platformFeeRecipient" },
+    { type: "BasicCollection[]", name: "basicCollections" },
+    { type: "Collection[]", name: "collections" },
+    { type: "uint256", name: "hashNonce" },
   ],
   BasicCollection: [
-    { type: 'address', name: 'nftAddress' },
-    { type: 'bytes32', name: 'fee' },
-    { type: 'bytes32[]', name: 'items' },
+    { type: "address", name: "nftAddress" },
+    { type: "bytes32", name: "fee" },
+    { type: "bytes32[]", name: "items" },
   ],
   Collection: [
-    { type: 'address', name: 'nftAddress' },
-    { type: 'bytes32', name: 'fee' },
-    { type: 'OrderItem[]', name: 'items' },
+    { type: "address", name: "nftAddress" },
+    { type: "bytes32", name: "fee" },
+    { type: "OrderItem[]", name: "items" },
   ],
   OrderItem: [
-    { type: 'uint256', name: 'erc20TokenAmount' },
-    { type: 'uint256', name: 'nftId' },
-  ]
-}
+    { type: "uint256", name: "erc20TokenAmount" },
+    { type: "uint256", name: "nftId" },
+  ],
+};
 
 const toRawErc721Order = (params: Types.BaseOrder): any => {
   return {
@@ -571,37 +603,43 @@ const toRawBatchSignedOrder = (params: Types.BatchSignedOrder): any => {
     platformFeeRecipient: params.platformFeeRecipient,
     basicCollections: toRawCollections(params.basicCollections, true),
     collections: toRawCollections(params.collections, false),
-    hashNonce: params.hashNonce
+    hashNonce: params.hashNonce,
   };
 };
 
-const toRawCollections = (collections: Types.Collection[], isBasic: boolean) => {
+const toRawCollections = (
+  collections: Types.Collection[],
+  isBasic: boolean
+) => {
   const list: any[] = [];
   for (const collection of collections) {
-    const items: string[] = []
+    const items: string[] = [];
     for (const item of collection.items) {
       if (isBasic) {
         // item [96 bits(erc20TokenAmount) + 160 bits(nftId)].
-        items.push(toHexZeroPad(bn(item.erc20TokenAmount).shl(160).or(item.nftId), true));
+        items.push(
+          toHexZeroPad(bn(item.erc20TokenAmount).shl(160).or(item.nftId), true)
+        );
       } else {
         items.push(toHexZeroPad(bn(item.erc20TokenAmount), true));
         items.push(toHexZeroPad(bn(item.nftId), true));
       }
     }
-    
+
     // fee [16 bits(platformFeePercentage) + 16 bits(royaltyFeePercentage) + 160 bits(royaltyFeeRecipient)].
-    const fee = bn(collection.platformFee).shl(176)
+    const fee = bn(collection.platformFee)
+      .shl(176)
       .or(bn(collection.royaltyFee).shl(160))
       .or(bn(collection.royaltyFeeRecipient));
-    
+
     list.push({
       nftAddress: collection.nftAddress,
       fee: toHexZeroPad(fee, true),
       items: items,
-    })
+    });
   }
   return list;
-}
+};
 
 const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
   // Perform some normalization operations on the order:
@@ -639,7 +677,9 @@ const normalize = (order: Types.BaseOrder): Types.BaseOrder => {
   };
 };
 
-const normalizeBatchSignedOrder = (order: Types.BatchSignedOrder): Types.BatchSignedOrder => {
+const normalizeBatchSignedOrder = (
+  order: Types.BatchSignedOrder
+): Types.BatchSignedOrder => {
   const normalizeOrder: Types.BatchSignedOrder = {
     maker: lc(order.maker),
     listingTime: toNumber(order.listingTime, 2 ** 32),
@@ -676,7 +716,7 @@ const getCurrentOrderInfo = (order: Types.BatchSignedOrder): any => {
     nonce = endNonce;
   }
   throw new Error("Invalid params");
-}
+};
 
 const toOrderInfo = (collection: Types.Collection, i: number): any => {
   if (collection.platformFee + collection.royaltyFee > 10000) {
@@ -689,24 +729,29 @@ const toOrderInfo = (collection: Types.Collection, i: number): any => {
     platformFee: collection.platformFee,
     royaltyFeeRecipient: collection.royaltyFeeRecipient,
     royaltyFee: collection.royaltyFee,
-  }
-}
+  };
+};
 
-const normalizeCollections = (collections: Types.Collection[]): Types.Collection[] => {
-  return collections?.map(value => {
-    return {
-      nftAddress: lc(value.nftAddress),
-      platformFee: toNumber(value.platformFee, 10001),
-      royaltyFeeRecipient: lc(value.royaltyFeeRecipient),
-      royaltyFee: toNumber(value.royaltyFee, 10001),
-      items: value.items?.map(item => {
-        return {
-          erc20TokenAmount: s(item.erc20TokenAmount),
-          nftId: s(item.nftId)
-        };
-      }) ?? [],
-    };
-  }) ?? [];
+const normalizeCollections = (
+  collections: Types.Collection[]
+): Types.Collection[] => {
+  return (
+    collections?.map((value) => {
+      return {
+        nftAddress: lc(value.nftAddress),
+        platformFee: toNumber(value.platformFee, 10001),
+        royaltyFeeRecipient: lc(value.royaltyFeeRecipient),
+        royaltyFee: toNumber(value.royaltyFee, 10001),
+        items:
+          value.items?.map((item) => {
+            return {
+              erc20TokenAmount: s(item.erc20TokenAmount),
+              nftId: s(item.nftId),
+            };
+          }) ?? [],
+      };
+    }) ?? []
+  );
 };
 
 const toCollectionsBytes = (order: Types.BatchSignedOrder): string => {
@@ -725,7 +770,7 @@ const toCollectionsBytes = (order: Types.BatchSignedOrder): string => {
     }
   }
   return bytes;
-}
+};
 
 const toCollectionBytes = (
   isBasic: boolean,
@@ -742,20 +787,21 @@ const toCollectionBytes = (
       break;
     }
   }
-  
+
   // head1 [96 bits(filledIndexList part1) + 160 bits(nftAddress)]
   // Here, the leftmost 1 byte is used for filledIndex, so `filledIndex << 248`.
   const head1 = bn(filledIndex).shl(248).or(collection.nftAddress);
-  
+
   // head2 [8 bits(collectionType) + 8 bits(itemsCount) + 8 bits(filledCount) + 8 bits(unused) + 32 bits(filledIndexList part2)
   //        + 16 bits(platformFeePercentage) + 16 bits(royaltyFeePercentage) + 160 bits(royaltyFeeRecipient)]
-  const head2 = bn(isBasic ? 0 : 1).shl(248)
+  const head2 = bn(isBasic ? 0 : 1)
+    .shl(248)
     .or(bn(collection.items.length).shl(240))
     .or(bn(filledCount).shl(232))
     .or(bn(collection.platformFee).shl(176))
     .or(bn(collection.royaltyFee).shl(160))
     .or(collection.royaltyFeeRecipient);
-  
+
   let bytes = toHexZeroPad(head1) + toHexZeroPad(head2);
   if (isBasic) {
     for (const item of collection.items) {
@@ -764,24 +810,25 @@ const toCollectionBytes = (
     }
   } else {
     for (const item of collection.items) {
-      bytes += toHexZeroPad(bn(item.erc20TokenAmount)) + toHexZeroPad(bn(item.nftId));
+      bytes +=
+        toHexZeroPad(bn(item.erc20TokenAmount)) + toHexZeroPad(bn(item.nftId));
     }
   }
   return bytes;
-}
+};
 
 const toHexZeroPad = (value: BigNumber, withPrefix?: boolean): string => {
   const hex = hexZeroPad(value.and(MaxUint256).toHexString(), 32);
   return withPrefix ? hex : hex.substring(2);
-}
+};
 
 const toNumber = (number: any, limit: number) => {
-  const val = Number(number)
+  const val = Number(number);
   if (isNaN(val) && val >= limit) {
     throw new Error("Invalid number");
   }
   return val;
-}
+};
 
 const toStandardERC20Address = (address: string): string => {
   if (!address || lc(address) == Addresses.NativeEthAddress) {
@@ -797,7 +844,11 @@ const toContractERC20Address = (address: string): string => {
   return lc(address);
 };
 
-const calcFeeAmount = (order: Types.BaseOrder, quantity: BigNumberish, totalQuantity: BigNumberish): BigNumber => {
+const calcFeeAmount = (
+  order: Types.BaseOrder,
+  quantity: BigNumberish,
+  totalQuantity: BigNumberish
+): BigNumber => {
   let value = bn(0);
   for (const fee of order.fees) {
     const amount = bn(fee.amount).mul(quantity).div(totalQuantity);

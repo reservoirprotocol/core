@@ -73,8 +73,8 @@ describe("Element - SingleToken Erc1155", () => {
 
     // Approve the exchange for escrowing.
     await erc1155
-    .connect(seller)
-    .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
+      .connect(seller)
+      .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
 
     // Create matching sell order
     const sellOrder = buyOrder.buildMatching({ amount: 1 });
@@ -163,12 +163,12 @@ describe("Element - SingleToken Erc1155", () => {
 
     // Approve the exchange for escrowing.
     await erc1155
-    .connect(seller1)
-    .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
-    
+      .connect(seller1)
+      .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
+
     await erc1155
-    .connect(seller2)
-    .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
+      .connect(seller2)
+      .setApprovalForAll(Element.Addresses.Exchange[chainId], true);
 
     await buyOrder.checkFillability(ethers.provider);
 
