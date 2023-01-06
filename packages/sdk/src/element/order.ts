@@ -613,7 +613,7 @@ const toRawCollections = (
 ) => {
   const list: any[] = [];
   for (const collection of collections) {
-    const items: string[] = [];
+    const items: any[] = [];
     for (const item of collection.items) {
       if (isBasic) {
         // item [96 bits(erc20TokenAmount) + 160 bits(nftId)].
@@ -621,8 +621,10 @@ const toRawCollections = (
           toHexZeroPad(bn(item.erc20TokenAmount).shl(160).or(item.nftId), true)
         );
       } else {
-        items.push(toHexZeroPad(bn(item.erc20TokenAmount), true));
-        items.push(toHexZeroPad(bn(item.nftId), true));
+        items.push({
+          erc20TokenAmount: toHexZeroPad(bn(item.erc20TokenAmount), true),
+          nftId: toHexZeroPad(bn(item.nftId), true),
+        });
       }
     }
 
