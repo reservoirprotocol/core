@@ -62,9 +62,7 @@ export const ZoraModule: ChainIdToAddress = {
 };
 
 export const ElementModule: ChainIdToAddress = {
-  [Network.Ethereum]: "",
+  [Network.Ethereum]: "0xef82b43719dd13ba33ef7d93e6f0d1f690eea5b2",
 };
 
-export const NFTXModule: ChainIdToAddress = {
-  [Network.Ethereum]: "",
-};
+export const NFTXModule: ChainIdToAddress = {};
