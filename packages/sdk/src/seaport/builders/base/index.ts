@@ -12,6 +12,7 @@ export interface BaseBuildParams {
   contract: string;
   price: BigNumberish;
   endPrice?: BigNumberish;
+  amount?: BigNumberish;
   paymentToken: string;
   fees?: {
     recipient: string;

@@ -13,7 +13,6 @@ import { bn, lc, s } from "../../../utils";
 interface BuildParams extends BaseBuildParams {
   tokenIds: BigNumberish[];
   merkleRoot?: BigNumberish;
-  amount?: BigNumberish;
 }
 
 interface OrderInfo extends BaseOrderInfo {

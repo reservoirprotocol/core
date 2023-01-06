@@ -8,7 +8,6 @@ import { bn, s } from "../../../utils";
 
 interface BuildParams extends BaseBuildParams {
   tokenId: BigNumberish;
-  amount?: BigNumberish;
 }
 
 export class SingleTokenBuilder extends BaseBuilder {

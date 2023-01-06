@@ -6,9 +6,7 @@ import { Order } from "../../order";
 import * as Types from "../../types";
 import { bn, s } from "../../../utils";
 
-interface BuildParams extends BaseBuildParams {
-  amount?: BigNumberish;
-}
+interface BuildParams extends BaseBuildParams {}
 
 export class ContractWideBuilder extends BaseBuilder {
   constructor(chainId: number) {
