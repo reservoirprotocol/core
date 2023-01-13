@@ -14,9 +14,6 @@ export const getPoolPrice = async (
   slippage: number,
   provider: Provider
 ) => {
-  let buyPrice: BigNumberish | null = null;
-  let sellPrice: BigNumberish | null = null;
-
   const iface = new Interface([
     "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)",
     "function getAmountsIn(uint amountOut, address[] memory path) view returns (uint[] memory amounts)",
@@ -31,15 +28,17 @@ export const getPoolPrice = async (
     provider
   );
 
-  amount = parseEther(amount.toString());
-
+  const localAmount = parseEther(amount.toString());
   const fees = await getPoolFees(vault, provider);
   const unit = parseEther("1");
+
+  let buyPrice: BigNumberish | null = null;
+  let sellPrice: BigNumberish | null = null;
 
   try {
     const path = [weth, vault];
     const amounts = await sushiRouter.getAmountsIn(
-      amount.add(amount.mul(fees.redeemFee).div(unit)),
+      localAmount.add(localAmount.mul(fees.redeemFee).div(unit)),
       path
     );
     buyPrice = amounts[0].div(amount);
@@ -52,7 +51,7 @@ export const getPoolPrice = async (
 
   try {
     const path = [vault, weth];
-    const amounts = await sushiRouter.getAmountsOut(amount, path);
+    const amounts = await sushiRouter.getAmountsOut(localAmount, path);
     sellPrice = amounts[1].div(amount);
     if (slippage) {
       sellPrice = bn(sellPrice!).sub(bn(sellPrice!).mul(slippage).div(10000));
@@ -64,9 +63,9 @@ export const getPoolPrice = async (
   return {
     amount,
     currency: weth,
-    bps: {
-      sell: bn(fees.mintFee).div("100000000000000"),
-      buy: bn(fees.redeemFee).div("100000000000000"),
+    feeBps: {
+      sell: bn(fees.mintFee).div("100000000000000").toString(),
+      buy: bn(fees.redeemFee).div("100000000000000").toString(),
     },
     price: {
       sell: sellPrice?.toString(),
