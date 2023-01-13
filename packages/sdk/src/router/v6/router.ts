@@ -1022,12 +1022,40 @@ export class Router {
         .map(({ amount }) => bn(amount))
         .reduce((a, b) => a.add(b), bn(0));
 
+      // Aggregate same-pool orders
+      const perPoolOrders: { [pool: string]: Sdk.Nftx.Order[] } = {};
+      for (const details of nftxDetails) {
+        const order = details.order as Sdk.Nftx.Order;
+        if (!perPoolOrders[order.params.pool]) {
+          perPoolOrders[order.params.pool] = [];
+        }
+        perPoolOrders[order.params.pool].push(order);
+
+        // Update the order's price in-place
+        order.params.price =
+          order.params.extra.prices[
+            perPoolOrders[order.params.pool].length - 1
+          ];
+      }
+
       executions.push({
         module: this.contracts.nftxModule.address,
         data: this.contracts.nftxModule.interface.encodeFunctionData(
           "buyWithETH",
           [
-            nftxDetails.map((d) => (d.order as Sdk.Nftx.Order).params),
+            Object.keys(perPoolOrders).map((pool) => ({
+              vaultId: perPoolOrders[pool][0].params.vaultId,
+              collection: perPoolOrders[pool][0].params.collection,
+              specificIds: perPoolOrders[pool].map(
+                (o) => o.params.specificIds![0]
+              ),
+              amount: perPoolOrders[pool].length,
+              path: perPoolOrders[pool][0].params.path,
+              price: perPoolOrders[pool]
+                .map((o) => bn(o.params.price))
+                .reduce((a, b) => a.add(b))
+                .toString(),
+            })),
             {
               fillTo: taker,
               refundTo: taker,
