@@ -10,11 +10,14 @@ import * as Addresses from "./addresses";
 
 export const getPoolPrice = async (
   vault: string,
-  amount: BigNumberish,
+  amount: number,
   side: "sell" | "buy",
   slippage: number,
   provider: Provider
-) => {
+): Promise<{
+  feeBps: BigNumberish;
+  price: BigNumberish;
+}> => {
   const chainId = await provider.getNetwork().then((n) => n.chainId);
 
   const weth = Common.Addresses.Weth[chainId];
@@ -44,7 +47,6 @@ export const getPoolPrice = async (
     }
 
     return {
-      amount,
       feeBps: bn(fees.redeemFee).div("100000000000000").toString(),
       price: price.toString(),
     };
@@ -58,7 +60,6 @@ export const getPoolPrice = async (
     }
 
     return {
-      amount,
       feeBps: bn(fees.mintFee).div("100000000000000").toString(),
       price: price.toString(),
     };
