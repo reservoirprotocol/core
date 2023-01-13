@@ -1,6 +1,5 @@
 import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
-import { parseEther } from "@ethersproject/units";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { ethers } from "hardhat";
@@ -120,7 +119,7 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
     ]);
 
     if (poolPrice.buy) {
-      listing.price = parseEther(poolPrice.buy);
+      listing.price = bn(poolPrice.buy);
       listing.vault = vaultAddress;
       listing.lpToken = lpToken;
       listing.order = new Sdk.Nftx.Order(chainId, {
@@ -250,7 +249,7 @@ export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
     ]);
 
     if (poolPrice.sell) {
-      offer.price = parseEther(poolPrice.sell);
+      offer.price = bn(poolPrice.sell);
       offer.vault = vaultAddress;
       offer.lpToken = lpToken;
       offer.order = new Sdk.Nftx.Order(chainId, {
