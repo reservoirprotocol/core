@@ -41,7 +41,7 @@ export const getPoolPrice = async (
       localAmount.add(localAmount.mul(fees.redeemFee).div(unit)),
       path
     );
-    buyPrice = amounts[0].div(amount);
+    buyPrice = amounts[0];
     if (slippage) {
       buyPrice = bn(buyPrice!).add(bn(buyPrice!).mul(slippage).div(10000));
     }
@@ -52,7 +52,7 @@ export const getPoolPrice = async (
   try {
     const path = [vault, weth];
     const amounts = await sushiRouter.getAmountsOut(localAmount, path);
-    sellPrice = amounts[1].div(amount);
+    sellPrice = amounts[1];
     if (slippage) {
       sellPrice = bn(sellPrice!).sub(bn(sellPrice!).mul(slippage).div(10000));
     }
