@@ -108,7 +108,7 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
     );
 
     const [poolPrice] = await Promise.all([
-      Sdk.Nftx.Helpers.getPoolPrice(vaultAddress, 1, 5, ethers.provider),
+      Sdk.Nftx.Helpers.getPoolPrice(vaultAddress, 1, "buy", 5, ethers.provider),
       Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
     ]);
 
@@ -232,7 +232,13 @@ export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
     );
 
     const [poolPrice] = await Promise.all([
-      Sdk.Nftx.Helpers.getPoolPrice(vaultAddress, 1, 5, ethers.provider),
+      Sdk.Nftx.Helpers.getPoolPrice(
+        vaultAddress,
+        1,
+        "sell",
+        5,
+        ethers.provider
+      ),
       Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
     ]);
 

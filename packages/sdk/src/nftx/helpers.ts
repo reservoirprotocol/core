@@ -11,20 +11,19 @@ import * as Addresses from "./addresses";
 export const getPoolPrice = async (
   vault: string,
   amount: BigNumberish,
+  side: "sell" | "buy",
   slippage: number,
   provider: Provider
 ) => {
-  const iface = new Interface([
-    "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)",
-    "function getAmountsIn(uint amountOut, address[] memory path) view returns (uint[] memory amounts)",
-  ]);
-
   const chainId = await provider.getNetwork().then((n) => n.chainId);
 
   const weth = Common.Addresses.Weth[chainId];
   const sushiRouter = new Contract(
     Addresses.SushiRouter[chainId],
-    iface,
+    new Interface([
+      "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)",
+      "function getAmountsIn(uint amountOut, address[] memory path) view returns (uint[] memory amounts)",
+    ]),
     provider
   );
 
@@ -32,46 +31,38 @@ export const getPoolPrice = async (
   const fees = await getPoolFees(vault, provider);
   const unit = parseEther("1");
 
-  let buyPrice: BigNumberish | null = null;
-  let sellPrice: BigNumberish | null = null;
-
-  try {
+  if (side === "buy") {
     const path = [weth, vault];
     const amounts = await sushiRouter.getAmountsIn(
       localAmount.add(localAmount.mul(fees.redeemFee).div(unit)),
       path
     );
-    buyPrice = amounts[0];
-    if (slippage) {
-      buyPrice = bn(buyPrice!).add(bn(buyPrice!).mul(slippage).div(10000));
-    }
-  } catch {
-    // Skip errors
-  }
 
-  try {
+    let price = amounts[0];
+    if (slippage) {
+      price = bn(price).add(bn(price).mul(slippage).div(10000));
+    }
+
+    return {
+      amount,
+      feeBps: bn(fees.redeemFee).div("100000000000000").toString(),
+      price: price.toString(),
+    };
+  } else {
     const path = [vault, weth];
     const amounts = await sushiRouter.getAmountsOut(localAmount, path);
-    sellPrice = amounts[1];
-    if (slippage) {
-      sellPrice = bn(sellPrice!).sub(bn(sellPrice!).mul(slippage).div(10000));
-    }
-  } catch {
-    // Skip errors
-  }
 
-  return {
-    amount,
-    currency: weth,
-    feeBps: {
-      sell: bn(fees.mintFee).div("100000000000000").toString(),
-      buy: bn(fees.redeemFee).div("100000000000000").toString(),
-    },
-    price: {
-      sell: sellPrice?.toString(),
-      buy: buyPrice?.toString(),
-    },
-  };
+    let price = amounts[1];
+    if (slippage) {
+      price = bn(price!).sub(bn(price).mul(slippage).div(10000));
+    }
+
+    return {
+      amount,
+      feeBps: bn(fees.mintFee).div("100000000000000").toString(),
+      price: price.toString(),
+    };
+  }
 };
 
 export const getPoolNFTs = async (vault: string, provider: Provider) => {
