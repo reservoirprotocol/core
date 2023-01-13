@@ -4,17 +4,17 @@ import * as Addresses from "./addresses";
 import { Provider } from "@ethersproject/abstract-provider";
 import { formatEther, parseEther } from "@ethersproject/units";
 import { Interface } from "@ethersproject/abi";
-import { BigNumber } from "ethers";
+import { BigNumber, BigNumberish } from "ethers";
 import { bn } from "../utils";
 
 export const DEFAULT_SLIPPAGE = 5; 
 
 function addSlippage(price: BigNumber, percent: number) {
-  return price.add(price.mul(percent).div(BigNumber.from("100")));
+  return price.add(price.mul(percent).div(bn(100)));
 }
 
 function subSlippage(price: BigNumber, percent: number) {
-  return price.sub(price.mul(percent).div(BigNumber.from("100")))
+  return price.sub(price.mul(percent).div(bn(100)))
 }
 
 export async function getPoolPrice(
@@ -24,9 +24,14 @@ export async function getPoolPrice(
   chainId: number,
   provider: Provider
 ) {
-  let buyPrice = null;
-  let sellPrice = null;
-  let randomBuyPrice = null;
+
+  let buyPrice: BigNumberish | null = null;
+  let sellPrice: BigNumberish | null = null;
+  let randomBuyPrice: BigNumberish | null = null;
+
+  let buyPriceRaw: BigNumberish | null = null;
+  let sellPriceRaw: BigNumberish | null = null;
+  let randomBuyPriceRaw: BigNumberish | null = null;
 
   const iface = new Interface([
     "function getAmountsOut(uint amountIn, address[] memory path) view returns (uint[] memory amounts)",
@@ -44,7 +49,7 @@ export async function getPoolPrice(
       parseEther(`${amount}`),
       path
     );
-    buyPrice = formatEther(amounts[0]);
+    buyPrice = amounts[0]
   } catch (error) {
     //
   }
@@ -55,66 +60,51 @@ export async function getPoolPrice(
       parseEther(`${amount}`),
       path
     );
-    sellPrice = formatEther(amounts[1]);
+    sellPrice = amounts[1];
   } catch (error) {
     //
   }
 
   const fees = await getPoolFees(vault, provider);
   const base = parseEther(`1`);
+
   let feeBpsSell = null;
   let feeBpsBuy = null;
   let feeBpsRandomBuy = null;
 
   if (sellPrice) {
-    const price = parseEther(sellPrice).div(bn(amount));
+    const price = bn(sellPrice).div(bn(amount));
     const mintFeeInETH = bn(fees.mintFee).mul(price).div(base);
-    sellPrice = formatEther(
-      subSlippage(
-        price.sub(mintFeeInETH), 
-        slippage
-      )
-    );
+    sellPriceRaw = price.sub(mintFeeInETH)
+    sellPrice = subSlippage(sellPriceRaw, slippage);
     feeBpsSell = mintFeeInETH
       .mul(bn(10000))
       .div(
-        price.sub(mintFeeInETH)
+        sellPriceRaw
       )
       .toString();
   }
 
   if (buyPrice) {
     // 1 ETH = x Vault Token
-    const price = parseEther(buyPrice).div(bn(amount));
+    const price = bn(buyPrice).div(bn(amount));
     const targetBuyFeeInETH = bn(fees.targetRedeemFee).mul(price).div(base);
     const randomBuyFeeInETH = bn(fees.randomRedeemFee).mul(price).div(base);
 
-    buyPrice = formatEther(
-      addSlippage(
-        price.add(targetBuyFeeInETH), 
-        slippage
-      )
-    );
-    
-    randomBuyPrice = formatEther(
-      addSlippage(
-        price.add(randomBuyFeeInETH), 
-        slippage
-      )
-    );
+    buyPriceRaw = price.add(targetBuyFeeInETH);
+    randomBuyPriceRaw = price.add(randomBuyFeeInETH);
 
+    buyPrice = addSlippage(buyPriceRaw, slippage);
+    randomBuyPrice = addSlippage(randomBuyPriceRaw, slippage);
+ 
     feeBpsBuy = targetBuyFeeInETH
       .mul(bn(10000))
-      .div(
-        price.add(targetBuyFeeInETH)
-      )
+      .div(buyPriceRaw)
       .toString();
 
     feeBpsRandomBuy = randomBuyFeeInETH
       .mul(bn(10000))
-      .div(
-        price.add(randomBuyFeeInETH)
-      )
+      .div(randomBuyPriceRaw)
       .toString();
   }
 
@@ -126,10 +116,16 @@ export async function getPoolPrice(
       buy: feeBpsBuy,
       randomBuy: feeBpsRandomBuy,
     },
+    slippage,
+    raw: {
+      sell: sellPriceRaw?.toString(),
+      buy: buyPriceRaw?.toString(),
+      buyRandom: randomBuyPriceRaw?.toString(),
+    },
     currency: WETH,
-    sell: sellPrice,
-    buy: buyPrice,
-    buyRandom: randomBuyPrice,
+    sell: sellPrice?.toString(),
+    buy: buyPrice?.toString(),
+    buyRandom: randomBuyPrice?.toString(),
   };
 }
 
