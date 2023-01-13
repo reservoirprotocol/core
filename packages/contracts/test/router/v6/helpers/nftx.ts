@@ -108,18 +108,12 @@ export const setupNFTXListings = async (listings: NFTXListing[]) => {
     );
 
     const [poolPrice] = await Promise.all([
-      Sdk.Nftx.Helpers.getPoolPrice(
-        vaultAddress,
-        1,
-        5,
-        getChainId(),
-        ethers.provider
-      ),
+      Sdk.Nftx.Helpers.getPoolPrice(vaultAddress, 1, 5, ethers.provider),
       Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
     ]);
 
-    if (poolPrice.buy) {
-      listing.price = bn(poolPrice.buy);
+    if (poolPrice.price.buy) {
+      listing.price = bn(poolPrice.price.buy);
       listing.vault = vaultAddress;
       listing.lpToken = lpToken;
       listing.order = new Sdk.Nftx.Order(chainId, {
@@ -238,18 +232,12 @@ export const setupNFTXOffers = async (offers: NFTXOffer[]) => {
     );
 
     const [poolPrice] = await Promise.all([
-      Sdk.Nftx.Helpers.getPoolPrice(
-        vaultAddress,
-        1,
-        5,
-        getChainId(),
-        ethers.provider
-      ),
+      Sdk.Nftx.Helpers.getPoolPrice(vaultAddress, 1, 5, ethers.provider),
       Sdk.Nftx.Helpers.getPoolNFTs(vaultAddress, ethers.provider),
     ]);
 
-    if (poolPrice.sell) {
-      offer.price = bn(poolPrice.sell);
+    if (poolPrice.price.sell) {
+      offer.price = bn(poolPrice.price.sell);
       offer.vault = vaultAddress;
       offer.lpToken = lpToken;
       offer.order = new Sdk.Nftx.Order(chainId, {

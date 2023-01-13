@@ -250,7 +250,7 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
 
     // Execute
 
-    const tx = await router.connect(carol).execute(executions, {
+    await router.connect(carol).execute(executions, {
       value: executions
         .map(({ value }) => value)
         .reduce((a, b) => bn(a).add(b), bn(0)),
@@ -273,7 +273,7 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
     const totalAmount = carolAfter.add(orderFee);
 
     const orderSum = offers
-      .map((offer, i) => (offer.isCancelled ? bn(0) : bn(offer.price)))
+      .map((offer) => (offer.isCancelled ? bn(0) : bn(offer.price)))
       .reduce((a, b) => bn(a).add(b), bn(0));
 
     if (orderSum.gt(bn(0))) {
@@ -283,7 +283,8 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
         100;
 
       // Check Carol balance
-      expect(diffPercent).to.lte(Sdk.Nftx.Helpers.DEFAULT_SLIPPAGE);
+      const defaultSlippage = 5;
+      expect(diffPercent).to.lte(defaultSlippage);
       expect(carolAfter).to.gte(bn(0));
     }
 
@@ -293,7 +294,7 @@ describe("[ReservoirV6_0_0] NFTX offers", () => {
     }
 
     // Alice and Bob got the NFTs of the filled orders
-    for (const { buyer, nft, isCancelled, vault } of offers) {
+    for (const { nft, isCancelled, vault } of offers) {
       if (!isCancelled) {
         expect(await nft.contract.ownerOf(nft.id)).to.eq(vault);
       } else {

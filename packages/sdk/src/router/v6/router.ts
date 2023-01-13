@@ -1004,7 +1004,19 @@ export class Router {
       const fees = getFees(nftxDetails);
 
       const totalPrice = orders
-        .map((order) => bn(order.params.price))
+        .map((order) =>
+          bn(
+            order.params.extra.prices[
+              // Handle multiple listings from the same pool
+              orders
+                .filter((o) => o.params.pool === order.params.pool)
+                .findIndex(
+                  (o) =>
+                    o.params.specificIds?.[0] === order.params.specificIds?.[0]
+                )
+            ]
+          )
+        )
         .reduce((a, b) => a.add(b), bn(0));
       const totalFees = fees
         .map(({ amount }) => bn(amount))
