@@ -8,6 +8,34 @@ import * as Common from "../common";
 import { bn } from "../utils";
 import * as Addresses from "./addresses";
 
+export const getPoolFeatures = async (address: string, provider: Provider) => {
+  const iface = new Interface([
+    "function assetAddress() view returns (address)",
+    "function is1155() view returns (bool)",
+    "function allowAllItems() view returns (bool)",
+    "function enableMint() view returns (bool)",
+    "function enableTargetRedeem() view returns (bool)",
+  ]);
+
+  const vault = new Contract(address, iface, provider);
+  const [assetAddress, is1155, allowAllItems, enableMint, enableTargetRedeem] =
+    await Promise.all([
+      vault.assetAddress(),
+      vault.is1155(),
+      vault.allowAllItems(),
+      vault.enableMint(),
+      vault.enableTargetRedeem(),
+    ]);
+
+  return {
+    assetAddress: assetAddress.toLowerCase(),
+    is1155: Boolean(is1155),
+    allowAllItems: Boolean(allowAllItems),
+    enableMint: Boolean(enableMint),
+    enableTargetRedeem: Boolean(enableTargetRedeem),
+  };
+};
+
 export const getPoolPrice = async (
   vault: string,
   amount: number,
@@ -69,7 +97,7 @@ export const getPoolPrice = async (
 export const getPoolNFTs = async (vault: string, provider: Provider) => {
   const tokenIds: string[] = [];
   const iface = new Interface([
-    "function allHoldings() external view returns (uint256[] memory)",
+    "function allHoldings() view returns (uint256[] memory)",
   ]);
 
   const factory = new Contract(vault, iface, provider);
@@ -81,13 +109,14 @@ export const getPoolNFTs = async (vault: string, provider: Provider) => {
   } catch {
     // Skip errors
   }
+
   return tokenIds;
 };
 
 export const getPoolFees = async (address: string, provider: Provider) => {
   const iface = new Interface([
-    "function mintFee() public view returns (uint256)",
-    "function targetRedeemFee() public view returns (uint256)",
+    "function mintFee() view returns (uint256)",
+    "function targetRedeemFee() view returns (uint256)",
   ]);
 
   const vault = new Contract(address, iface, provider);
