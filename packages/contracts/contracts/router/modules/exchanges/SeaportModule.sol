@@ -16,10 +16,9 @@ import {ISeaport} from "../../../interfaces/ISeaport.sol";
 contract SeaportModule is BaseExchangeModule {
     // --- Structs ---
 
-    // Helper struct for avoiding "Stack too deep" errors
-    struct SeaportFulfillments {
-        ISeaport.FulfillmentComponent[][] offer;
-        ISeaport.FulfillmentComponent[][] consideration;
+    struct SeaportETHListingWithPrice {
+        ISeaport.AdvancedOrder order;
+        uint256 price;
     }
 
     // --- Fields ---
@@ -101,9 +100,7 @@ contract SeaportModule is BaseExchangeModule {
     // --- Multiple ETH listings ---
 
     function acceptETHListings(
-        ISeaport.AdvancedOrder[] calldata orders,
-        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
-        SeaportFulfillments memory fulfillments,
+        SeaportETHListingWithPrice[] calldata orders,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -113,30 +110,44 @@ contract SeaportModule is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        // Execute the fill
-        params.revertIfIncomplete
-            ? _fillMultipleOrdersWithRevertIfIncomplete(
-                orders,
-                new ISeaport.CriteriaResolver[](0),
-                fulfillments,
-                params.fillTo,
-                params.amount
-            )
-            : _fillMultipleOrders(
-                orders,
-                new ISeaport.CriteriaResolver[](0),
-                fulfillments,
-                params.fillTo,
-                params.amount
-            );
+        uint256 length = orders.length;
+        ISeaport.CriteriaResolver[]
+            memory criteriaResolvers = new ISeaport.CriteriaResolver[](0);
+
+        // Execute the fills
+        if (params.revertIfIncomplete) {
+            for (uint256 i; i < length; ) {
+                _fillSingleOrderWithRevertIfIncomplete(
+                    orders[i].order,
+                    criteriaResolvers,
+                    params.fillTo,
+                    orders[i].price
+                );
+
+                unchecked {
+                    ++i;
+                }
+            }
+        } else {
+            for (uint256 i; i < length; ) {
+                _fillSingleOrder(
+                    orders[i].order,
+                    criteriaResolvers,
+                    params.fillTo,
+                    orders[i].price
+                );
+
+                unchecked {
+                    ++i;
+                }
+            }
+        }
     }
 
     // --- Multiple ERC20 listings ---
 
     function acceptERC20Listings(
         ISeaport.AdvancedOrder[] calldata orders,
-        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
-        SeaportFulfillments memory fulfillments,
         ERC20ListingParams calldata params,
         Fee[] calldata fees
     )
@@ -148,22 +159,38 @@ contract SeaportModule is BaseExchangeModule {
         // Approve the exchange if needed
         _approveERC20IfNeeded(params.token, address(EXCHANGE), params.amount);
 
-        // Execute the fill
-        params.revertIfIncomplete
-            ? _fillMultipleOrdersWithRevertIfIncomplete(
-                orders,
-                new ISeaport.CriteriaResolver[](0),
-                fulfillments,
-                params.fillTo,
-                0
-            )
-            : _fillMultipleOrders(
-                orders,
-                new ISeaport.CriteriaResolver[](0),
-                fulfillments,
-                params.fillTo,
-                0
-            );
+        uint256 length = orders.length;
+        ISeaport.CriteriaResolver[]
+            memory criteriaResolvers = new ISeaport.CriteriaResolver[](0);
+
+        // Execute the fills
+        if (params.revertIfIncomplete) {
+            for (uint256 i; i < length; ) {
+                _fillSingleOrderWithRevertIfIncomplete(
+                    orders[i],
+                    criteriaResolvers,
+                    params.fillTo,
+                    0
+                );
+
+                unchecked {
+                    ++i;
+                }
+            }
+        } else {
+            for (uint256 i; i < length; ) {
+                _fillSingleOrder(
+                    orders[i],
+                    criteriaResolvers,
+                    params.fillTo,
+                    0
+                );
+
+                unchecked {
+                    ++i;
+                }
+            }
+        }
     }
 
     // --- Single ERC721 offer ---
@@ -428,89 +455,6 @@ contract SeaportModule is BaseExchangeModule {
             // Make sure the amount filled as part of this call is correct
             if (afterFilledAmount - beforeFilledAmount != order.numerator) {
                 revert UnsuccessfulFill();
-            }
-        }
-    }
-
-    function _fillMultipleOrders(
-        ISeaport.AdvancedOrder[] calldata orders,
-        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
-        ISeaport.CriteriaResolver[] memory criteriaResolvers,
-        SeaportFulfillments memory fulfillments,
-        address receiver,
-        uint256 value
-    ) internal {
-        // Execute the fill
-        EXCHANGE.fulfillAvailableAdvancedOrders{value: value}(
-            orders,
-            criteriaResolvers,
-            fulfillments.offer,
-            fulfillments.consideration,
-            bytes32(0),
-            receiver,
-            // Assume at most 255 orders can be filled at once
-            0xff
-        );
-    }
-
-    function _fillMultipleOrdersWithRevertIfIncomplete(
-        ISeaport.AdvancedOrder[] calldata orders,
-        // Use `memory` instead of `calldata` to avoid `Stack too deep` errors
-        ISeaport.CriteriaResolver[] memory criteriaResolvers,
-        SeaportFulfillments memory fulfillments,
-        address receiver,
-        uint256 value
-    ) internal {
-        uint256 length = orders.length;
-
-        bytes32[] memory orderHashes = new bytes32[](length);
-        uint256[] memory beforeFilledAmounts = new uint256[](length);
-        {
-            for (uint256 i = 0; i < length; ) {
-                // Cache each order's hashes
-                orderHashes[i] = _getOrderHash(orders[i].parameters);
-                // Before filling, get each order's filled amount
-                beforeFilledAmounts[i] = _getFilledAmount(orderHashes[i]);
-
-                unchecked {
-                    ++i;
-                }
-            }
-        }
-
-        // Execute the fill
-        (bool[] memory fulfilled, ) = EXCHANGE.fulfillAvailableAdvancedOrders{
-            value: value
-        }(
-            orders,
-            criteriaResolvers,
-            fulfillments.offer,
-            fulfillments.consideration,
-            bytes32(0),
-            receiver,
-            // Assume at most 255 orders can be filled at once
-            0xff
-        );
-
-        for (uint256 i = 0; i < length; ) {
-            // After successfully filling, get the order's filled amount
-            uint256 afterFilledAmount = _getFilledAmount(orderHashes[i]);
-
-            // Make sure the amount filled as part of this call is correct
-            if (
-                fulfilled[i] &&
-                afterFilledAmount - beforeFilledAmounts[i] !=
-                orders[i].numerator
-            ) {
-                fulfilled[i] = false;
-            }
-
-            if (!fulfilled[i]) {
-                revert UnsuccessfulFill();
-            }
-
-            unchecked {
-                ++i;
             }
         }
     }

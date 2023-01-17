@@ -894,39 +894,29 @@ export class Router {
                     `accept${currencyIsETH ? "ETH" : "ERC20"}Listings`,
                     [
                       await Promise.all(
-                        orders.map(async (order, i) => ({
-                          parameters: {
-                            ...order.params,
-                            totalOriginalConsiderationItems:
-                              order.params.consideration.length,
-                          },
-                          numerator: currencyDetails[i].amount ?? 1,
-                          denominator: order.getInfo()!.amount,
-                          signature: order.params.signature,
-                          extraData: await exchange.getExtraData(order),
-                        }))
+                        orders.map(async (order, i) => {
+                          const orderData = {
+                            parameters: {
+                              ...order.params,
+                              totalOriginalConsiderationItems:
+                                order.params.consideration.length,
+                            },
+                            numerator: currencyDetails[i].amount ?? 1,
+                            denominator: order.getInfo()!.amount,
+                            signature: order.params.signature,
+                            extraData: await exchange.getExtraData(order),
+                          };
+
+                          if (currencyIsETH) {
+                            return {
+                              order: orderData,
+                              price: orders[i].getMatchingPrice(),
+                            };
+                          } else {
+                            return orderData;
+                          }
+                        })
                       ),
-                      // TODO: Optimize the fulfillments
-                      {
-                        offer: orders
-                          .map((order, i) =>
-                            order.params.offer.map((_, j) => ({
-                              orderIndex: i,
-                              itemIndex: j,
-                            }))
-                          )
-                          .flat()
-                          .map((x) => [x]),
-                        consideration: orders
-                          .map((order, i) =>
-                            order.params.consideration.map((_, j) => ({
-                              orderIndex: i,
-                              itemIndex: j,
-                            }))
-                          )
-                          .flat()
-                          .map((x) => [x]),
-                      },
                       {
                         fillTo: taker,
                         refundTo: taker,

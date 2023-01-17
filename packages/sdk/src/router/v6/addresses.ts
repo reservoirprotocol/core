@@ -32,10 +32,10 @@ export const LooksRareModule: ChainIdToAddress = {
 };
 
 export const SeaportModule: ChainIdToAddress = {
-  [Network.Ethereum]: "0x3729014ef28f01b3ddcf7f980d925e0b71b1f847",
-  [Network.EthereumGoerli]: "0x6c460f133c573c21e7f55900d0c68f6f085b91e7",
-  [Network.Polygon]: "0xb75dfff7da2a0c8e6bb235b80d28f997152d06fc",
-  [Network.Optimism]: "0x8e6ee42575cd6e3680d29cbeae5032c33d668032",
+  [Network.Ethereum]: "0x20794ef7693441799a3f38fcc22a12b3e04b9572",
+  [Network.EthereumGoerli]: "0x04c3af2cad3d1c037930184161ec24ba3a631129",
+  [Network.Polygon]: "0xe225afd0b78a265a60ccaeb1c1310e0016716e7b",
+  [Network.Optimism]: "0x51e59caf8980d4284707daa2267ec4cc05f48374",
 };
 
 export const SudoswapModule: ChainIdToAddress = {

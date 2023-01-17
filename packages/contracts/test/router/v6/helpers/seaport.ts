@@ -38,7 +38,7 @@ export const setupSeaportListings = async (listings: SeaportListing[]) => {
         .connect(seller)
         .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
     } else {
-      await nft.contract.connect(seller).mint(nft.id);
+      await nft.contract.connect(seller).mintMany(nft.id, nft.amount ?? 1);
       await nft.contract
         .connect(seller)
         .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);

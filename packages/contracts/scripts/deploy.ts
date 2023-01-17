@@ -45,11 +45,14 @@ export class DeploymentHelper {
 const main = async () => {
   const deploymentHelper = await DeploymentHelper.getInstance();
 
-  // await deploymentHelper.deploy(
-  //   "ZeroExV4Module",
-  //   [deploymentHelper.deployer.address, router.address],
-  //   { verifyOnEtherscan: true }
-  // );
+  await deploymentHelper.deploy(
+    "SeaportModule",
+    [
+      deploymentHelper.deployer.address,
+      "0xc0f489a34672d5b960a19279d99d77e94221d0c9",
+    ],
+    { verifyOnEtherscan: true }
+  );
 };
 
 main()

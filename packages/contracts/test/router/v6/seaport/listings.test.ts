@@ -16,7 +16,6 @@ import {
 import {
   bn,
   getChainId,
-  getCurrentTimestamp,
   getRandomBoolean,
   getRandomFloat,
   getRandomInteger,
@@ -186,38 +185,28 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
             data: seaportModule.interface.encodeFunctionData(
               `accept${useUsdc ? "ERC20" : "ETH"}Listings`,
               [
-                listings.map((listing) => ({
-                  parameters: {
-                    ...listing.order!.params,
-                    totalOriginalConsiderationItems:
-                      listing.order!.params.consideration.length,
-                  },
-                  numerator: 1,
-                  denominator: 1,
-                  signature: listing.order!.params.signature,
-                  extraData: "0x",
-                })),
-                // TODO: Look into optimizing the fulfillments
-                {
-                  offer: listings
-                    .map(({ order }, i) =>
-                      order!.params.offer.map((_, j) => ({
-                        orderIndex: i,
-                        itemIndex: j,
-                      }))
-                    )
-                    .flat()
-                    .map((x) => [x]),
-                  consideration: listings
-                    .map(({ order }, i) =>
-                      order!.params.consideration.map((_, j) => ({
-                        orderIndex: i,
-                        itemIndex: j,
-                      }))
-                    )
-                    .flat()
-                    .map((x) => [x]),
-                },
+                listings.map((listing) => {
+                  const order = {
+                    parameters: {
+                      ...listing.order!.params,
+                      totalOriginalConsiderationItems:
+                        listing.order!.params.consideration.length,
+                    },
+                    numerator: 1,
+                    denominator: 1,
+                    signature: listing.order!.params.signature,
+                    extraData: "0x",
+                  };
+
+                  if (useUsdc) {
+                    return order;
+                  } else {
+                    return {
+                      order,
+                      price: listing.price,
+                    };
+                  }
+                }),
                 {
                   fillTo: carol.address,
                   refundTo: carol.address,
