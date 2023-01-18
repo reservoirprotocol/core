@@ -80,7 +80,10 @@ export const getPoolPrice = async (
     };
   } else {
     const path = [vault, weth];
-    const amounts = await sushiRouter.getAmountsOut(localAmount, path);
+    const amounts = await sushiRouter.getAmountsOut(
+      localAmount.sub(localAmount.mul(fees.mintFee).div(unit)),
+      path
+    );
 
     let price = amounts[1];
     if (slippage) {
