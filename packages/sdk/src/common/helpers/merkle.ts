@@ -1,5 +1,5 @@
 import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
-import { keccak256 } from "ethers/lib/utils";
+import { keccak256 } from "@ethersproject/keccak256";
 import MerkleTree from "merkletreejs";
 
 export const hashFn = (tokenId: BigNumberish) =>
