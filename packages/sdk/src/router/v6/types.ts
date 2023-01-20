@@ -79,9 +79,13 @@ export type GenericOrder =
       order: Sdk.Manifold.Order;
     }
   | {
-      kind: "nftx",
-      order: Sdk.Nftx.Order
-  };
+      kind: "nftx";
+      order: Sdk.Nftx.Order;
+    }
+  | {
+      kind: "flow";
+      order: Sdk.Flow.Order;
+    };
 
 export type ListingFillDetails = {
   contractKind: "erc721" | "erc1155";

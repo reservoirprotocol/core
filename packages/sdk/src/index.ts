@@ -12,6 +12,7 @@ import * as CryptoPunks from "./cryptopunks";
 import * as CryptoVoxels from "./cryptovoxels";
 import * as Decentraland from "./decentraland";
 import * as Element from "./element";
+import * as Flow from "./flow";
 import * as Forward from "./forward";
 import * as Foundation from "./foundation";
 import * as Infinity from "./infinity";
@@ -51,6 +52,7 @@ export {
   CryptoVoxels,
   Decentraland,
   Element,
+  Flow,
   Forward,
   Foundation,
   Infinity,

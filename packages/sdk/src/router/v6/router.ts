@@ -251,6 +251,40 @@ export class Router {
       }
     }
 
+    // TODO: Add Flow router module
+    if (details.some(({ kind }) => kind === "flow")) {
+      if (options?.relayer) {
+        throw new Error("Relayer not supported");
+      }
+
+      if (details.length > 1) {
+        throw new Error("Flow sweeping is not supported");
+      } else {
+        if (options?.globalFees?.length) {
+          throw new Error("Fees not supported");
+        }
+
+        const order = details[0].order as Sdk.Flow.Order;
+        const exchange = new Sdk.Flow.Exchange(this.chainId);
+
+        if (options?.directFillingData) {
+          return {
+            txData: exchange.takeOrdersTx(taker, [
+              {
+                order,
+                tokens: options.directFillingData,
+              },
+            ]),
+            success: [true],
+          };
+        }
+        return {
+          txData: exchange.takeMultipleOneOrdersTx(taker, [order]),
+          success: [true],
+        };
+      }
+    }
+
     // TODO: Add Manifold router module
     if (details.some(({ kind }) => kind === "manifold")) {
       if (options?.relayer) {
