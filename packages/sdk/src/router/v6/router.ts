@@ -11,9 +11,15 @@ import {
   Fee,
   ListingDetails,
   ListingFillDetails,
+  NFTApproval,
+  NFTPermit,
 } from "./types";
 import { generateSwapExecution } from "./uniswap";
-import { isETH } from "./utils";
+import {
+  generateApprovalTxData,
+  generateSeaportApprovalOrder,
+  isETH,
+} from "./utils";
 import * as Sdk from "../../index";
 import { TxData, bn, generateSourceBytes } from "../../utils";
 
@@ -1446,215 +1452,373 @@ export class Router {
     };
   }
 
-  public async fillBidTx(
-    detail: BidDetails,
+  // Fill multiple bids in a single transaction
+  public async fillBidsTx(
+    details: BidDetails[],
     taker: string,
     options?: {
       source?: string;
+      // Skip any errors (either off-chain or on-chain)
+      partial?: boolean;
     }
   ): Promise<{
     txData: TxData;
-    // When `true`, the fill happens natively (not proxied, eg. through the router or via the on-received hooks)
-    direct?: boolean;
+    approvals: NFTApproval[];
+    permits: NFTPermit[];
+    success: boolean[];
   }> {
     // Assume the bid details are consistent with the underlying order object
 
+    // CASE 1
+    // Handle exchanges which don't have a router module implemented by filling directly
+
     // TODO: Add Blur router module
-    if (detail.kind === "blur") {
-      const order = detail.order as Sdk.Blur.Order;
-      const exchange = new Sdk.Blur.Exchange(this.chainId);
-      const matchOrder = order.buildMatching({
-        trader: taker,
-      });
-      return {
-        txData: exchange.fillOrderTx(taker, order, matchOrder),
-        direct: true,
-      };
-    }
+    if (details.some(({ kind }) => kind === "blur")) {
+      if (details.length > 1) {
+        throw new Error("Blur multi-selling is not supported");
+      } else {
+        const detail = details[0];
 
-    // TODO: Add Universe router module
-    if (detail.kind === "universe") {
-      const order = detail.order as Sdk.Universe.Order;
-      const exchange = new Sdk.Universe.Exchange(this.chainId);
-      return {
-        txData: await exchange.fillOrderTx(taker, order, {
-          amount: Number(detail.amount ?? 1),
-          source: options?.source,
-        }),
-        direct: true,
-      };
-    }
-
-    // TODO: Add Rarible router module
-    if (detail.kind === "rarible") {
-      const order = detail.order as Sdk.Rarible.Order;
-      const exchange = new Sdk.Rarible.Exchange(this.chainId);
-      return {
-        txData: await exchange.fillOrderTx(taker, order, {
-          tokenId: detail.tokenId,
-          assetClass: detail.contractKind.toUpperCase(),
-          amount: Number(detail.amount),
-        }),
-        direct: true,
-      };
-    }
-
-    // TODO: Add Forward router module
-    if (detail.kind === "forward") {
-      const order = detail.order as Sdk.Forward.Order;
-
-      const matchParams = order.buildMatching({
-        tokenId: detail.tokenId,
-        amount: detail.amount ?? 1,
-        ...(detail.extraArgs ?? {}),
-      });
-
-      const exchange = new Sdk.Forward.Exchange(this.chainId);
-      return {
-        txData: exchange.fillOrderTx(taker, order, matchParams, {
-          source: options?.source,
-        }),
-        direct: true,
-      };
-    }
-
-    // Build module-level transaction data
-    let moduleLevelTx: {
-      module: string;
-      data: string;
-    };
-    switch (detail.kind) {
-      case "looks-rare": {
-        const order = detail.order as Sdk.LooksRare.Order;
-        const module = this.contracts.looksRareModule.address;
-
-        const matchParams = order.buildMatching(
-          // For LooksRare, the module acts as the taker proxy
-          module,
-          {
-            tokenId: detail.tokenId,
-            ...(detail.extraArgs || {}),
-          }
-        );
-
-        moduleLevelTx = {
-          module,
-          data: this.contracts.looksRareModule.interface.encodeFunctionData(
-            detail.contractKind === "erc721"
-              ? "acceptERC721Offer"
-              : "acceptERC1155Offer",
-            [
-              matchParams,
-              order.params,
-              {
-                fillTo: taker,
-                refundTo: taker,
-                revertIfIncomplete: true,
-              },
-              detail.fees ?? [],
-            ]
+        // Approve Blur's ExecutionDelegate contract
+        const approval = {
+          contract: detail.contract,
+          owner: taker,
+          operator: Sdk.Blur.Addresses.ExecutionDelegate[this.chainId],
+          txData: generateApprovalTxData(
+            detail.contract,
+            taker,
+            Sdk.Blur.Addresses.ExecutionDelegate[this.chainId]
           ),
         };
 
-        break;
+        const order = detail.order as Sdk.Blur.Order;
+        const exchange = new Sdk.Blur.Exchange(this.chainId);
+        const matchOrder = order.buildMatching({
+          trader: taker,
+        });
+        return {
+          txData: exchange.fillOrderTx(taker, order, matchOrder),
+          approvals: [approval],
+          permits: [],
+          success: [true],
+        };
       }
+    }
 
-      case "seaport": {
-        const exchange = new Sdk.Seaport.Exchange(this.chainId);
-        const order = detail.order as Sdk.Seaport.Order;
+    // TODO: Add Universe router module
+    if (details.some(({ kind }) => kind === "universe")) {
+      if (details.length > 1) {
+        throw new Error("Universe multi-selling is not supported");
+      } else {
+        const detail = details[0];
 
+        // Approve Universe's Exchange contract
+        const approval = {
+          contract: detail.contract,
+          owner: taker,
+          operator: Sdk.Universe.Addresses.Exchange[this.chainId],
+          txData: generateApprovalTxData(
+            detail.contract,
+            taker,
+            Sdk.Universe.Addresses.Exchange[this.chainId]
+          ),
+        };
+
+        const order = detail.order as Sdk.Universe.Order;
+        const exchange = new Sdk.Universe.Exchange(this.chainId);
+        return {
+          txData: await exchange.fillOrderTx(taker, order, {
+            amount: Number(detail.amount ?? 1),
+            source: options?.source,
+          }),
+          approvals: [approval],
+          permits: [],
+          success: [true],
+        };
+      }
+    }
+
+    // TODO: Add Rarible router module
+    if (details.some(({ kind }) => kind === "rarible")) {
+      if (details.length > 1) {
+        throw new Error("Rarible multi-selling is not supported");
+      } else {
+        const detail = details[0];
+
+        // Approve Rarible's NFTTransferProxy contract
+        const approval = {
+          contract: detail.contract,
+          owner: taker,
+          operator: Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId],
+          txData: generateApprovalTxData(
+            detail.contract,
+            taker,
+            Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId]
+          ),
+        };
+
+        const order = detail.order as Sdk.Rarible.Order;
+        const exchange = new Sdk.Rarible.Exchange(this.chainId);
+        return {
+          txData: await exchange.fillOrderTx(taker, order, {
+            tokenId: detail.tokenId,
+            assetClass: detail.contractKind.toUpperCase(),
+            amount: Number(detail.amount),
+          }),
+          approvals: [approval],
+          permits: [],
+          success: [true],
+        };
+      }
+    }
+
+    // TODO: Add Forward router module
+    if (details.some(({ kind }) => kind === "forward")) {
+      if (details.length > 1) {
+        throw new Error("Forward multi-selling is not supported");
+      } else {
+        const detail = details[0];
+
+        // Approve Forward's Exchange contract
+        const approval = {
+          contract: detail.contract,
+          owner: taker,
+          operator: Sdk.Forward.Addresses.Exchange[this.chainId],
+          txData: generateApprovalTxData(
+            detail.contract,
+            taker,
+            Sdk.Forward.Addresses.Exchange[this.chainId]
+          ),
+        };
+
+        const order = detail.order as Sdk.Forward.Order;
         const matchParams = order.buildMatching({
           tokenId: detail.tokenId,
           amount: detail.amount ?? 1,
           ...(detail.extraArgs ?? {}),
         });
 
-        moduleLevelTx = {
-          module: this.contracts.seaportModule.address,
-          data: this.contracts.seaportModule.interface.encodeFunctionData(
-            detail.contractKind === "erc721"
-              ? "acceptERC721Offer"
-              : "acceptERC1155Offer",
-            [
-              {
-                parameters: {
-                  ...order.params,
-                  totalOriginalConsiderationItems:
-                    order.params.consideration.length,
-                },
-                numerator: matchParams.amount ?? 1,
-                denominator: order.getInfo()!.amount,
-                signature: order.params.signature,
-                extraData: await exchange.getExtraData(order),
-              },
-              matchParams.criteriaResolvers ?? [],
-              {
-                fillTo: taker,
-                refundTo: taker,
-                revertIfIncomplete: true,
-              },
-              detail.fees ?? [],
-            ]
-          ),
+        const exchange = new Sdk.Forward.Exchange(this.chainId);
+        return {
+          txData: exchange.fillOrderTx(taker, order, matchParams, {
+            source: options?.source,
+          }),
+          approvals: [approval],
+          permits: [],
+          success: [true],
         };
-
-        break;
       }
+    }
 
-      case "seaport-partial": {
-        const exchange = new Sdk.Seaport.Exchange(this.chainId);
-        const order = detail.order as Sdk.Seaport.Types.PartialOrder;
+    // CASE 2
+    // Handle exchanges which do have a router module implemented by filling through the router
 
-        const result = await axios.get(
-          `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}` +
-            (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
-        );
+    // Keep track of any approvals that might be needed
+    const approvals: NFTApproval[] = [];
+    // Keep track of any permits that might be needed
+    const permits: NFTPermit[] = [];
 
-        const fullOrder = new Sdk.Seaport.Order(
+    // Generate router executions
+    const executions: ExecutionInfo[] = [];
+    const success: boolean[] = details.map(() => false);
+
+    for (let i = 0; i < details.length; i++) {
+      const detail = details[i];
+
+      // Handle approval and permit
+      approvals.push({
+        contract: detail.contract,
+        owner: taker,
+        operator: Sdk.Seaport.Addresses.OpenseaConduit[this.chainId],
+        txData: generateApprovalTxData(
+          detail.contract,
+          taker,
+          Sdk.Seaport.Addresses.OpenseaConduit[this.chainId]
+        ),
+      });
+
+      const generatePermit = (toModule: string) => {
+        const seaportApproval = generateSeaportApprovalOrder(
           this.chainId,
-          result.data.order
+          taker,
+          toModule,
+          {
+            kind: detail.contractKind,
+            contract: detail.contract,
+            tokenId: detail.tokenId,
+            amount: detail.amount,
+          }
         );
+        permits.push({
+          contract: detail.contract,
+          contractKind: detail.contractKind,
+          tokenId: detail.tokenId,
+          amount: detail.amount,
+          data: {
+            kind: "seaport-approval-order",
+            ...seaportApproval,
+          },
+        });
+      };
 
-        moduleLevelTx = {
-          module: this.contracts.seaportModule.address,
-          data: this.contracts.seaportModule.interface.encodeFunctionData(
-            detail.contractKind === "erc721"
-              ? "acceptERC721Offer"
-              : "acceptERC1155Offer",
-            [
-              {
-                parameters: {
-                  ...fullOrder.params,
-                  totalOriginalConsiderationItems:
-                    fullOrder.params.consideration.length,
+      switch (detail.kind) {
+        case "looks-rare": {
+          const order = detail.order as Sdk.LooksRare.Order;
+          const module = this.contracts.looksRareModule;
+
+          generatePermit(module.address);
+
+          const matchParams = order.buildMatching(
+            // For LooksRare, the module acts as the taker proxy
+            module.address,
+            {
+              tokenId: detail.tokenId,
+              ...(detail.extraArgs || {}),
+            }
+          );
+
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                matchParams,
+                order.params,
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
                 },
-                numerator: detail.amount ?? 1,
-                denominator: fullOrder.getInfo()!.amount,
-                signature: fullOrder.params.signature,
-                extraData: await exchange.getExtraData(fullOrder),
-              },
-              result.data.criteriaResolvers ?? [],
-              {
-                fillTo: taker,
-                refundTo: taker,
-                revertIfIncomplete: true,
-              },
-              detail.fees ?? [],
-            ]
-          ),
-        };
+                detail.fees ?? [],
+              ]
+            ),
+            value: 0,
+          });
 
-        break;
-      }
+          success[i] = true;
 
-      case "sudoswap": {
-        const order = detail.order as Sdk.Sudoswap.Order;
+          break;
+        }
 
-        moduleLevelTx = {
-          module: this.contracts.sudoswapModule.address,
-          data: this.contracts.sudoswapModule.interface.encodeFunctionData(
-            "sell",
-            [
+        case "seaport": {
+          const order = detail.order as Sdk.Seaport.Order;
+          const module = this.contracts.seaportModule;
+
+          generatePermit(module.address);
+
+          const matchParams = order.buildMatching({
+            tokenId: detail.tokenId,
+            amount: detail.amount ?? 1,
+            ...(detail.extraArgs ?? {}),
+          });
+
+          const exchange = new Sdk.Seaport.Exchange(this.chainId);
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                {
+                  parameters: {
+                    ...order.params,
+                    totalOriginalConsiderationItems:
+                      order.params.consideration.length,
+                  },
+                  numerator: matchParams.amount ?? 1,
+                  denominator: order.getInfo()!.amount,
+                  signature: order.params.signature,
+                  extraData: await exchange.getExtraData(order),
+                },
+                matchParams.criteriaResolvers ?? [],
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                },
+                detail.fees ?? [],
+              ]
+            ),
+            value: 0,
+          });
+
+          success[i] = true;
+
+          break;
+        }
+
+        case "seaport-partial": {
+          const order = detail.order as Sdk.Seaport.Types.PartialOrder;
+          const module = this.contracts.seaportModule;
+
+          generatePermit(module.address);
+
+          try {
+            const result = await axios.get(
+              `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}` +
+                (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
+            );
+
+            const fullOrder = new Sdk.Seaport.Order(
+              this.chainId,
+              result.data.order
+            );
+
+            const exchange = new Sdk.Seaport.Exchange(this.chainId);
+            executions.push({
+              module: module.address,
+              data: module.interface.encodeFunctionData(
+                detail.contractKind === "erc721"
+                  ? "acceptERC721Offer"
+                  : "acceptERC1155Offer",
+                [
+                  {
+                    parameters: {
+                      ...fullOrder.params,
+                      totalOriginalConsiderationItems:
+                        fullOrder.params.consideration.length,
+                    },
+                    numerator: detail.amount ?? 1,
+                    denominator: fullOrder.getInfo()!.amount,
+                    signature: fullOrder.params.signature,
+                    extraData: await exchange.getExtraData(fullOrder),
+                  },
+                  result.data.criteriaResolvers ?? [],
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                  },
+                  detail.fees ?? [],
+                ]
+              ),
+              value: 0,
+            });
+
+            success[i] = true;
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              continue;
+            }
+          }
+
+          break;
+        }
+
+        case "sudoswap": {
+          const order = detail.order as Sdk.Sudoswap.Order;
+          const module = this.contracts.sudoswapModule;
+
+          generatePermit(module.address);
+
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData("sell", [
               order.params.pair,
               detail.tokenId,
               bn(order.params.extra.prices[0]).sub(
@@ -1665,219 +1829,275 @@ export class Router {
               {
                 fillTo: taker,
                 refundTo: taker,
-                revertIfIncomplete: true,
+                revertIfIncomplete: Boolean(!options?.partial),
               },
               detail.fees ?? [],
-            ]
-          ),
-        };
+            ]),
+            value: 0,
+          });
 
-        break;
-      }
+          success[i] = true;
 
-      case "x2y2": {
-        const order = detail.order as Sdk.X2Y2.Order;
-        const exchange = new Sdk.X2Y2.Exchange(
-          this.chainId,
-          String(this.options?.x2y2ApiKey)
-        );
-
-        moduleLevelTx = {
-          module: this.contracts.x2y2Module.address,
-          data: this.contracts.x2y2Module.interface.encodeFunctionData(
-            detail.contractKind === "erc721"
-              ? "acceptERC721Offer"
-              : "acceptERC1155Offer",
-            [
-              exchange.contract.interface.decodeFunctionData(
-                "run",
-                await exchange.fetchInput(
-                  // For X2Y2, the module acts as the taker proxy
-                  this.contracts.x2y2Module.address,
-                  order,
-                  {
-                    tokenId: detail.tokenId,
-                    source: options?.source,
-                  }
-                )
-              ).input,
-              {
-                fillTo: taker,
-                refundTo: taker,
-                revertIfIncomplete: true,
-              },
-              detail.fees ?? [],
-            ]
-          ),
-        };
-
-        break;
-      }
-
-      case "zeroex-v4": {
-        const order = detail.order as Sdk.ZeroExV4.Order;
-
-        // Retrieve the order's signature
-        if (order.params.cbOrderId) {
-          await new Sdk.ZeroExV4.Exchange(
-            this.chainId,
-            String(this.options?.cbApiKey!)
-          ).releaseOrder(taker, order);
+          break;
         }
 
-        if (detail.contractKind === "erc721") {
-          moduleLevelTx = {
-            module: this.contracts.zeroExV4Module.address,
-            data: this.contracts.zeroExV4Module.interface.encodeFunctionData(
-              "acceptERC721Offer",
-              [
+        case "x2y2": {
+          const order = detail.order as Sdk.X2Y2.Order;
+          const module = this.contracts.x2y2Module;
+
+          generatePermit(module.address);
+
+          try {
+            const exchange = new Sdk.X2Y2.Exchange(
+              this.chainId,
+              String(this.options?.x2y2ApiKey)
+            );
+            executions.push({
+              module: module.address,
+              data: module.interface.encodeFunctionData(
+                detail.contractKind === "erc721"
+                  ? "acceptERC721Offer"
+                  : "acceptERC1155Offer",
+                [
+                  exchange.contract.interface.decodeFunctionData(
+                    "run",
+                    await exchange.fetchInput(
+                      // For X2Y2, the module acts as the taker proxy
+                      module.address,
+                      order,
+                      {
+                        tokenId: detail.tokenId,
+                        source: options?.source,
+                      }
+                    )
+                  ).input,
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                  },
+                  detail.fees ?? [],
+                ]
+              ),
+              value: 0,
+            });
+            success[i] = true;
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              continue;
+            }
+          }
+
+          break;
+        }
+
+        case "zeroex-v4": {
+          const order = detail.order as Sdk.ZeroExV4.Order;
+          const module = this.contracts.zeroExV4Module;
+
+          generatePermit(module.address);
+
+          try {
+            // Retrieve the order's signature
+            if (order.params.cbOrderId) {
+              await new Sdk.ZeroExV4.Exchange(
+                this.chainId,
+                String(this.options?.cbApiKey!)
+              ).releaseOrder(taker, order);
+            }
+
+            if (detail.contractKind === "erc721") {
+              executions.push({
+                module: module.address,
+                data: module.interface.encodeFunctionData("acceptERC721Offer", [
+                  order.getRaw(),
+                  order.params,
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                  },
+                  detail.tokenId,
+                  detail.fees ?? [],
+                ]),
+                value: 0,
+              });
+            } else {
+              executions.push({
+                module: module.address,
+                data: module.interface.encodeFunctionData(
+                  "acceptERC1155Offer",
+                  [
+                    order.getRaw(),
+                    order.params,
+                    detail.amount ?? 1,
+                    {
+                      fillTo: taker,
+                      refundTo: taker,
+                      revertIfIncomplete: Boolean(!options?.partial),
+                    },
+                    detail.tokenId,
+                    detail.fees ?? [],
+                  ]
+                ),
+                value: 0,
+              });
+            }
+
+            success[i] = true;
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              continue;
+            }
+          }
+
+          break;
+        }
+
+        case "element": {
+          const order = detail.order as Sdk.Element.Order;
+          const module = this.contracts.elementModule;
+
+          generatePermit(module.address);
+
+          if (detail.contractKind === "erc721") {
+            executions.push({
+              module: module.address,
+              data: module.interface.encodeFunctionData("acceptERC721Offer", [
                 order.getRaw(),
                 order.params,
                 {
                   fillTo: taker,
                   refundTo: taker,
-                  revertIfIncomplete: true,
+                  revertIfIncomplete: Boolean(!options?.partial),
                 },
                 detail.tokenId,
                 detail.fees ?? [],
-              ]
-            ),
-          };
-        } else {
-          moduleLevelTx = {
-            module: this.contracts.zeroExV4Module.address,
-            data: this.contracts.zeroExV4Module.interface.encodeFunctionData(
-              "acceptERC1155Offer",
-              [
+              ]),
+              value: 0,
+            });
+          } else {
+            executions.push({
+              module: module.address,
+              data: module.interface.encodeFunctionData("acceptERC1155Offer", [
                 order.getRaw(),
                 order.params,
                 detail.amount ?? 1,
                 {
                   fillTo: taker,
                   refundTo: taker,
-                  revertIfIncomplete: true,
+                  revertIfIncomplete: Boolean(!options?.partial),
                 },
                 detail.tokenId,
                 detail.fees ?? [],
-              ]
-            ),
-          };
+              ]),
+              value: 0,
+            });
+          }
+
+          success[i] = true;
+
+          break;
         }
 
-        break;
-      }
+        case "nftx": {
+          const order = detail.order as Sdk.Nftx.Order;
+          const module = this.contracts.nftxModule;
 
-      case "element": {
-        const order = detail.order as Sdk.Element.Order;
-        const module = this.contracts.elementModule;
+          generatePermit(module.address);
 
-        if (detail.contractKind === "erc721") {
-          moduleLevelTx = {
+          const tokenId = detail.tokenId;
+          order.params.specificIds = [tokenId];
+
+          executions.push({
             module: module.address,
-            data: module.interface.encodeFunctionData("acceptERC721Offer", [
-              order.getRaw(),
-              order.params,
+            data: module.interface.encodeFunctionData("sell", [
+              [order.params],
               {
                 fillTo: taker,
                 refundTo: taker,
-                revertIfIncomplete: true,
+                revertIfIncomplete: Boolean(!options?.partial),
               },
-              detail.tokenId,
               detail.fees ?? [],
             ]),
-          };
-        } else {
-          moduleLevelTx = {
-            module: module.address,
-            data: module.interface.encodeFunctionData("acceptERC1155Offer", [
-              order.getRaw(),
-              order.params,
-              detail.amount ?? 1,
-              {
-                fillTo: taker,
-                refundTo: taker,
-                revertIfIncomplete: true,
-              },
-              detail.tokenId,
-              detail.fees ?? [],
-            ]),
-          };
+            value: 0,
+          });
+
+          success[i] = true;
+
+          break;
         }
 
-        break;
+        default: {
+          throw new Error("Unsupported exchange kind");
+        }
       }
+    }
 
-      case "nftx": {
-        const order = detail.order as Sdk.Nftx.Order;
-        const tokenId = detail.tokenId;
-        // bid
-        order.params.specificIds = [tokenId];
-
-        moduleLevelTx = {
-          module: this.contracts.nftxModule.address,
-          data: this.contracts.nftxModule.interface.encodeFunctionData("sell", [
-            [order.params],
-            {
-              fillTo: taker,
-              refundTo: taker,
-              revertIfIncomplete: true,
-            },
-            detail.fees ?? [],
-          ]),
-        };
-
-        break;
-      }
-
-      default: {
-        throw new Error("Unsupported exchange kind");
-      }
+    if (!executions.length) {
+      throw new Error("No executions to handle");
     }
 
     // Generate router-level transaction data
     const routerLevelTxData =
       this.contracts.router.interface.encodeFunctionData("execute", [
-        [
-          {
-            module: moduleLevelTx.module,
-            data: moduleLevelTx.data,
-            value: 0,
-          },
-        ],
+        executions,
       ]);
 
-    // Use the on-received ERC721/ERC1155 hooks for approval-less bid filling
-    if (detail.contractKind === "erc721") {
-      return {
-        txData: {
-          from: taker,
-          to: detail.contract,
-          data:
-            new Interface(ERC721Abi).encodeFunctionData(
-              "safeTransferFrom(address,address,uint256,bytes)",
-              [taker, moduleLevelTx.module, detail.tokenId, routerLevelTxData]
-            ) + generateSourceBytes(options?.source),
-        },
-        direct: false,
-      };
+    if (executions.length === 1) {
+      // Use the on-received ERC721/ERC1155 hooks for approval-less bid filling
+      const detail = details[success.findIndex(Boolean)];
+      if (detail.contractKind === "erc721") {
+        return {
+          txData: {
+            from: taker,
+            to: detail.contract,
+            data:
+              new Interface(ERC721Abi).encodeFunctionData(
+                "safeTransferFrom(address,address,uint256,bytes)",
+                [taker, executions[0].module, detail.tokenId, routerLevelTxData]
+              ) + generateSourceBytes(options?.source),
+          },
+          approvals: [],
+          permits: [],
+          success,
+        };
+      } else {
+        return {
+          txData: {
+            from: taker,
+            to: detail.contract,
+            data:
+              new Interface(ERC1155Abi).encodeFunctionData(
+                "safeTransferFrom(address,address,uint256,uint256,bytes)",
+                [
+                  taker,
+                  executions[0].module,
+                  detail.tokenId,
+                  detail.amount ?? 1,
+                  routerLevelTxData,
+                ]
+              ) + generateSourceBytes(options?.source),
+          },
+          approvals: [],
+          permits: [],
+          success,
+        };
+      }
     } else {
       return {
         txData: {
           from: taker,
-          to: detail.contract,
-          data:
-            new Interface(ERC1155Abi).encodeFunctionData(
-              "safeTransferFrom(address,address,uint256,uint256,bytes)",
-              [
-                taker,
-                moduleLevelTx.module,
-                detail.tokenId,
-                detail.amount ?? 1,
-                routerLevelTxData,
-              ]
-            ) + generateSourceBytes(options?.source),
+          to: Addresses.Router[this.chainId],
+          data: routerLevelTxData + generateSourceBytes(options?.source),
         },
-        direct: false,
+        approvals: approvals.filter((_, i) => success[i]),
+        permits: permits.filter((_, i) => success[i]),
+        success,
       };
     }
   }
