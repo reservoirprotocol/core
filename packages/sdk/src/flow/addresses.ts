@@ -1,9 +1,9 @@
 import { ChainIdToAddress, Network } from "../utils";
 
 export const Exchange: ChainIdToAddress = {
-  [Network.Ethereum]: "0xf1000068a40b93318312c67677825c7c9671a4e9",
+  [Network.Ethereum]: "0xf1000142679a6a57abd2859d18f8002216b0ac2b",
   [Network.EthereumGoerli]: "0xa79c18bcdd5c45d4f58317609fe1b6c6a5b623b2",
-  [Network.Polygon]: "0xf1000068a40b93318312c67677825c7c9671a4e9",
+  [Network.Polygon]: "0xf1000142679a6a57abd2859d18f8002216b0ac2b",
 };
 
 export const Complication: ChainIdToAddress = {
