@@ -1,6 +1,7 @@
 import { BigNumberish } from "@ethersproject/bignumber";
 
 import * as Sdk from "../../index";
+import { TxData } from "../../utils";
 
 export type ExecutionInfo = {
   module: string;
@@ -11,6 +12,25 @@ export type ExecutionInfo = {
 export type Fee = {
   recipient: string;
   amount: BigNumberish;
+};
+
+export type NFTApproval = {
+  contract: string;
+  owner: string;
+  operator: string;
+  txData: TxData;
+};
+
+export type NFTPermit = {
+  contract: string;
+  contractKind: "erc721" | "erc1155";
+  tokenId: BigNumberish;
+  amount?: BigNumberish;
+  data: {
+    kind: "seaport-approval-order";
+    order: Sdk.Seaport.Order;
+    mirrorOrder: Sdk.Seaport.Order;
+  };
 };
 
 export type GenericOrder =
