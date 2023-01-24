@@ -2,17 +2,9 @@ import { BigNumberish } from "@ethersproject/bignumber";
 
 import * as Sdk from "../../index";
 import { TxData } from "../../utils";
+import { SeaportApprovalOrder } from "./permits/seaport-approval-order";
 
-export type ExecutionInfo = {
-  module: string;
-  data: string;
-  value: BigNumberish;
-};
-
-export type Fee = {
-  recipient: string;
-  amount: BigNumberish;
-};
+// Approvals and permits
 
 export type NFTApproval = {
   contract: string;
@@ -26,12 +18,26 @@ export type NFTPermit = {
   contractKind: "erc721" | "erc1155";
   tokenId: BigNumberish;
   amount?: BigNumberish;
-  data: {
+  details: {
     kind: "seaport-approval-order";
-    order: Sdk.Seaport.Order;
-    mirrorOrder: Sdk.Seaport.Order;
+    data: SeaportApprovalOrder;
   };
 };
+
+// Misc
+
+export type ExecutionInfo = {
+  module: string;
+  data: string;
+  value: BigNumberish;
+};
+
+export type Fee = {
+  recipient: string;
+  amount: BigNumberish;
+};
+
+// Orders
 
 export type GenericOrder =
   | {

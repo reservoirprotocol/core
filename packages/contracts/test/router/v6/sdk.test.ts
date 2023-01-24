@@ -13,11 +13,11 @@ import {
   setupNFTs,
   setupRouterWithModules,
 } from "../../utils";
+import { SeaportApprovalOrderHandler } from "@reservoir0x/sdk/src/router/v6/permits/seaport-approval-order";
 import {
   BidDetails,
   ListingDetails,
 } from "@reservoir0x/sdk/src/router/v6/types";
-import { prependNFTPermits } from "@reservoir0x/sdk/src/router/v6/utils";
 
 describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
   const chainId = getChainId();
@@ -936,19 +936,30 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       await seller.sendTransaction(approval.txData);
     }
 
+    const permitHandler = new SeaportApprovalOrderHandler(chainId);
+
     // Sign permits
     for (const permit of tx.permits) {
       // Override permit start and end times
       const now = await getCurrentTimestamp(ethers.provider);
-      permit.data.order.params.startTime = now;
-      permit.data.order.params.endTime = now + 60;
-      permit.data.mirrorOrder.params.startTime = now;
-      permit.data.mirrorOrder.params.endTime = now + 60;
+      permit.details.data.order.startTime = now;
+      permit.details.data.order.endTime = now + 60;
+      permit.details.data.mirrorOrder.startTime = now;
+      permit.details.data.mirrorOrder.endTime = now + 60;
 
-      await permit.data.order.sign(seller);
+      const signatureData = permitHandler.getSignatureData(permit.details.data);
+      const signature = await seller._signTypedData(
+        signatureData.domain,
+        signatureData.types,
+        signatureData.value
+      );
+      permitHandler.attachAndCheckSignature(permit.details.data, signature);
     }
 
-    const txData = prependNFTPermits(chainId, tx.txData, tx.permits);
+    const txData = permitHandler.attachToRouterExecution(
+      tx.txData,
+      tx.permits.map((p) => p.details.data)
+    );
     await seller.sendTransaction(txData);
 
     const sellerWethBalanceAfter = await weth.getBalance(seller.address);
@@ -1143,6 +1154,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
 
     const router = new Sdk.RouterV6.Router(chainId, ethers.provider);
 
+    const permitHandler = new SeaportApprovalOrderHandler(chainId);
     {
       const nonPartialTx = await router.fillBidsTx(bids, seller.address, {
         source: "reservoir.market",
@@ -1157,18 +1169,25 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       for (const permit of nonPartialTx.permits) {
         // Override permit start and end times
         const now = await getCurrentTimestamp(ethers.provider);
-        permit.data.order.params.startTime = now;
-        permit.data.order.params.endTime = now + 60;
-        permit.data.mirrorOrder.params.startTime = now;
-        permit.data.mirrorOrder.params.endTime = now + 60;
+        permit.details.data.order.startTime = now;
+        permit.details.data.order.endTime = now + 60;
+        permit.details.data.mirrorOrder.startTime = now;
+        permit.details.data.mirrorOrder.endTime = now + 60;
 
-        await permit.data.order.sign(seller);
+        const signatureData = permitHandler.getSignatureData(
+          permit.details.data
+        );
+        const signature = await seller._signTypedData(
+          signatureData.domain,
+          signatureData.types,
+          signatureData.value
+        );
+        permitHandler.attachAndCheckSignature(permit.details.data, signature);
       }
 
-      const txData = prependNFTPermits(
-        chainId,
+      const txData = permitHandler.attachToRouterExecution(
         nonPartialTx.txData,
-        nonPartialTx.permits
+        nonPartialTx.permits.map((p) => p.details.data)
       );
       await expect(seller.sendTransaction(txData)).to.be.revertedWith(
         "reverted with custom error 'UnsuccessfulExecution()'"
@@ -1189,18 +1208,23 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
     for (const permit of partialTx.permits) {
       // Override permit start and end times
       const now = await getCurrentTimestamp(ethers.provider);
-      permit.data.order.params.startTime = now;
-      permit.data.order.params.endTime = now + 60;
-      permit.data.mirrorOrder.params.startTime = now;
-      permit.data.mirrorOrder.params.endTime = now + 60;
+      permit.details.data.order.startTime = now;
+      permit.details.data.order.endTime = now + 60;
+      permit.details.data.mirrorOrder.startTime = now;
+      permit.details.data.mirrorOrder.endTime = now + 60;
 
-      await permit.data.order.sign(seller);
+      const signatureData = permitHandler.getSignatureData(permit.details.data);
+      const signature = await seller._signTypedData(
+        signatureData.domain,
+        signatureData.types,
+        signatureData.value
+      );
+      permitHandler.attachAndCheckSignature(permit.details.data, signature);
     }
 
-    const txData = prependNFTPermits(
-      chainId,
+    const txData = permitHandler.attachToRouterExecution(
       partialTx.txData,
-      partialTx.permits
+      partialTx.permits.map((p) => p.details.data)
     );
     await seller.sendTransaction({ ...txData, gasLimit: 3000000 });
 

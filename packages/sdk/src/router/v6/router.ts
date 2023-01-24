@@ -5,6 +5,7 @@ import { Contract } from "@ethersproject/contracts";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
+import { SeaportApprovalOrderHandler } from "./permits/seaport-approval-order";
 import {
   BidDetails,
   ExecutionInfo,
@@ -15,11 +16,7 @@ import {
   NFTPermit,
 } from "./types";
 import { generateSwapExecution } from "./uniswap";
-import {
-  generateApprovalTxData,
-  generateSeaportApprovalOrder,
-  isETH,
-} from "./utils";
+import { generateApprovalTxData, isETH } from "./utils";
 import * as Sdk from "../../index";
 import { TxData, bn, generateSourceBytes } from "../../utils";
 
@@ -1638,25 +1635,22 @@ export class Router {
       });
 
       const generatePermit = (toModule: string) => {
-        const seaportApproval = generateSeaportApprovalOrder(
-          this.chainId,
-          taker,
-          toModule,
-          {
-            kind: detail.contractKind,
-            contract: detail.contract,
-            tokenId: detail.tokenId,
-            amount: detail.amount,
-          }
-        );
+        const seaportApproval = new SeaportApprovalOrderHandler(
+          this.chainId
+        ).generate(taker, toModule, {
+          kind: detail.contractKind,
+          contract: detail.contract,
+          tokenId: detail.tokenId,
+          amount: detail.amount,
+        });
         permits.push({
           contract: detail.contract,
           contractKind: detail.contractKind,
           tokenId: detail.tokenId,
           amount: detail.amount,
-          data: {
+          details: {
             kind: "seaport-approval-order",
-            ...seaportApproval,
+            data: seaportApproval,
           },
         });
       };
