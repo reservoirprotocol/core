@@ -107,6 +107,10 @@ export type GenericOrder =
   | {
       kind: "nftx";
       order: Sdk.Nftx.Order;
+    }
+  | {
+      kind: "flow";
+      order: Sdk.Flow.Order;
     };
 
 export type ListingFillDetails = {
