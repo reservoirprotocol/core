@@ -1,9 +1,10 @@
 import { Interface } from "@ethersproject/abi";
-import { BigNumberish } from "@ethersproject/bignumber";
-import { AddressZero } from "@ethersproject/constants";
+import { Provider } from "@ethersproject/abstract-provider";
+import { AddressZero, HashZero } from "@ethersproject/constants";
 
+import { Token } from "../types";
 import * as Sdk from "../../../index";
-import { TxData, getCurrentTimestamp } from "../../../utils";
+import { TxData, getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
 import RouterAbi from "../abis/ReservoirV6_0_0.json";
 import SeaportModuleAbi from "../abis/SeaportModule.json";
@@ -15,76 +16,63 @@ export type SeaportApprovalOrder = {
 
 export class SeaportApprovalOrderHandler {
   public chainId: number;
+  public provider: Provider;
 
-  constructor(chainId: number) {
+  constructor(chainId: number, provider: Provider) {
     this.chainId = chainId;
+    this.provider = provider;
   }
 
-  public generate(
+  public async generate(
     giver: string,
     receiver: string,
-    token: {
-      kind: "erc721" | "erc1155";
-      contract: string;
-      tokenId: BigNumberish;
-      amount?: BigNumberish;
-    },
+    tokens: Token[],
     expiresIn = 10 * 60
-  ): SeaportApprovalOrder {
+  ): Promise<SeaportApprovalOrder> {
     const now = getCurrentTimestamp();
 
     // Build approval order
-    const builder = new Sdk.Seaport.Builders.SingleToken(this.chainId);
-    const order = builder.build({
-      side: "sell",
-      tokenKind: token.kind,
+    const offer = tokens.map((token) => ({
+      itemType: token.kind === "erc721" ? 2 : 3,
+      token: token.contract,
+      identifierOrCriteria: token.tokenId.toString(),
+      startAmount: (token.amount ?? "1").toString(),
+      endAmount: (token.amount ?? "1").toString(),
+    }));
+    const order = new Sdk.Seaport.Order(this.chainId, {
+      kind: "single-token",
       offerer: giver,
-      contract: token.contract,
-      tokenId: token.tokenId,
-      paymentToken: AddressZero,
-      price: 0,
-      counter: 0,
-      amount: (token.amount ?? "1").toString(),
+      zone: Sdk.Seaport.Addresses.ApprovalOrderZone[this.chainId],
+      offer,
+      consideration: offer.map((o) => ({ ...o, recipient: receiver })),
+      orderType: Sdk.Seaport.Types.OrderType.FULL_RESTRICTED,
       startTime: now,
       endTime: now + expiresIn,
-      zone: Sdk.Seaport.Addresses.ApprovalOrderZone[this.chainId],
+      zoneHash: HashZero,
+      salt: getRandomBytes().toHexString(),
       conduitKey: Sdk.Seaport.Addresses.OpenseaConduitKey[this.chainId],
+      counter: await new Sdk.Seaport.Exchange(this.chainId)
+        .getCounter(this.provider, giver)
+        .then((c) => c.toString()),
     });
-
-    // Tweak the offer and consideration items
-    order.params.offer = [
-      {
-        itemType: token.kind === "erc721" ? 2 : 3,
-        token: token.contract,
-        identifierOrCriteria: token.tokenId.toString(),
-        startAmount: (token.amount ?? "1").toString(),
-        endAmount: (token.amount ?? "1").toString(),
-      },
-    ];
-    order.params.consideration = [
-      {
-        ...order.params.offer[0],
-        recipient: receiver,
-      },
-    ];
 
     // Build mirror order
-    const mirrorOrder = builder.build({
-      side: "sell",
-      tokenKind: "erc721",
+    const mirrorOrder = new Sdk.Seaport.Order(this.chainId, {
+      kind: "single-token",
       offerer: receiver,
-      contract: giver,
-      tokenId: 0,
-      paymentToken: giver,
-      price: 1,
-      counter: 0,
+      zone: AddressZero,
+      offer: [],
+      consideration: [],
+      orderType: Sdk.Seaport.Types.OrderType.PARTIAL_OPEN,
       startTime: now,
       endTime: now + expiresIn,
+      zoneHash: HashZero,
+      salt: getRandomBytes().toHexString(),
+      conduitKey: Sdk.Seaport.Addresses.OpenseaConduitKey[this.chainId],
+      counter: await new Sdk.Seaport.Exchange(this.chainId)
+        .getCounter(this.provider, receiver)
+        .then((c) => c.toString()),
     });
-
-    // Tweak the offer and consideration items
-    mirrorOrder.params.offer = [];
-    mirrorOrder.params.consideration = [];
 
     return { order: order.params, mirrorOrder: mirrorOrder.params };
   }
@@ -152,20 +140,24 @@ export class SeaportApprovalOrderHandler {
               ],
               // For each regular order, match the single offer item to the single consideration item
               [
-                ...seaportApprovalOrders.map((_, i) => ({
-                  offerComponents: [
-                    {
-                      orderIndex: i * 2,
-                      itemIndex: 0,
-                    },
-                  ],
-                  considerationComponents: [
-                    {
-                      orderIndex: i * 2,
-                      itemIndex: 0,
-                    },
-                  ],
-                })),
+                ...seaportApprovalOrders
+                  .map(({ order }, i) =>
+                    order.offer.map((_, j) => ({
+                      offerComponents: [
+                        {
+                          orderIndex: i * 2,
+                          itemIndex: j,
+                        },
+                      ],
+                      considerationComponents: [
+                        {
+                          orderIndex: i * 2,
+                          itemIndex: j,
+                        },
+                      ],
+                    }))
+                  )
+                  .flat(),
               ],
             ]),
             value: 0,

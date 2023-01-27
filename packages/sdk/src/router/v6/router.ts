@@ -14,6 +14,7 @@ import {
   ListingFillDetails,
   NFTApproval,
   NFTPermit,
+  Token,
 } from "./types";
 import { generateSwapExecution } from "./uniswap";
 import { generateApprovalTxData, isETH } from "./utils";
@@ -1488,6 +1489,7 @@ export class Router {
     details: BidDetails[],
     taker: string,
     options?: {
+      // Fill source for attribution
       source?: string;
       // Skip any errors (either off-chain or on-chain)
       partial?: boolean;
@@ -1644,10 +1646,116 @@ export class Router {
     // CASE 2
     // Handle exchanges which do have a router module implemented by filling through the router
 
+    // Step 1
+    // Handle approvals and permits
+
     // Keep track of any approvals that might be needed
     const approvals: NFTApproval[] = [];
-    // Keep track of any permits that might be needed
-    const permits: NFTPermit[] = [];
+
+    // Keep track of the tokens needed by each module (we'll have one permit per module)
+    const moduleToTokens: { [module: string]: Token[] } = {};
+
+    for (let i = 0; i < details.length; i++) {
+      const detail = details[i];
+
+      const contract = detail.contract;
+      const owner = taker;
+      const operator = Sdk.Seaport.Addresses.OpenseaConduit[this.chainId];
+
+      // Generate approval (ensure uniqueness)
+      if (
+        !approvals.find(
+          (a) =>
+            a.contract === contract &&
+            a.owner === owner &&
+            a.operator === operator
+        )
+      ) {
+        approvals.push({
+          contract,
+          owner,
+          operator,
+          txData: generateApprovalTxData(contract, owner, operator),
+        });
+      }
+
+      // Aggregate tokens by module
+
+      let module: Contract;
+      switch (detail.kind) {
+        case "looks-rare": {
+          module = this.contracts.looksRareModule;
+          break;
+        }
+
+        case "seaport":
+        case "seaport-partial": {
+          module = this.contracts.seaportModule;
+          break;
+        }
+
+        case "sudoswap": {
+          module = this.contracts.sudoswapModule;
+          break;
+        }
+
+        case "nftx": {
+          module = this.contracts.nftxModule;
+          break;
+        }
+
+        case "x2y2": {
+          module = this.contracts.x2y2Module;
+          break;
+        }
+
+        case "zeroex-v4": {
+          module = this.contracts.zeroExV4Module;
+          break;
+        }
+
+        case "element": {
+          module = this.contracts.elementModule;
+          break;
+        }
+
+        default: {
+          throw new Error("Unreachable");
+        }
+      }
+
+      if (!moduleToTokens[module.address]) {
+        moduleToTokens[module.address] = [];
+      }
+      moduleToTokens[module.address].push({
+        kind: detail.contractKind,
+        contract: detail.contract,
+        tokenId: detail.tokenId,
+        amount: detail.amount,
+      });
+    }
+
+    // Generate permits
+    const permitHandler = new SeaportApprovalOrderHandler(
+      this.chainId,
+      this.provider
+    );
+    const permits: NFTPermit[] = await Promise.all(
+      Object.keys(moduleToTokens).map(async (module) => ({
+        tokens: moduleToTokens[module],
+        details: {
+          kind: "seaport-approval-order",
+          data: await permitHandler.generate(
+            taker,
+            module,
+            moduleToTokens[module]
+          ),
+        },
+      }))
+    );
+
+    // Step 2
+    // Handle calldata generation
 
     // Generate router executions
     const executions: ExecutionInfo[] = [];
@@ -1656,45 +1764,10 @@ export class Router {
     for (let i = 0; i < details.length; i++) {
       const detail = details[i];
 
-      // Handle approval and permit
-      approvals.push({
-        contract: detail.contract,
-        owner: taker,
-        operator: Sdk.Seaport.Addresses.OpenseaConduit[this.chainId],
-        txData: generateApprovalTxData(
-          detail.contract,
-          taker,
-          Sdk.Seaport.Addresses.OpenseaConduit[this.chainId]
-        ),
-      });
-
-      const generatePermit = (toModule: string) => {
-        const seaportApproval = new SeaportApprovalOrderHandler(
-          this.chainId
-        ).generate(taker, toModule, {
-          kind: detail.contractKind,
-          contract: detail.contract,
-          tokenId: detail.tokenId,
-          amount: detail.amount,
-        });
-        permits.push({
-          contract: detail.contract,
-          contractKind: detail.contractKind,
-          tokenId: detail.tokenId,
-          amount: detail.amount,
-          details: {
-            kind: "seaport-approval-order",
-            data: seaportApproval,
-          },
-        });
-      };
-
       switch (detail.kind) {
         case "looks-rare": {
           const order = detail.order as Sdk.LooksRare.Order;
           const module = this.contracts.looksRareModule;
-
-          generatePermit(module.address);
 
           const matchParams = order.buildMatching(
             // For LooksRare, the module acts as the taker proxy
@@ -1733,8 +1806,6 @@ export class Router {
         case "seaport": {
           const order = detail.order as Sdk.Seaport.Order;
           const module = this.contracts.seaportModule;
-
-          generatePermit(module.address);
 
           const matchParams = order.buildMatching({
             tokenId: detail.tokenId,
@@ -1781,8 +1852,6 @@ export class Router {
         case "seaport-partial": {
           const order = detail.order as Sdk.Seaport.Types.PartialOrder;
           const module = this.contracts.seaportModule;
-
-          generatePermit(module.address);
 
           try {
             const result = await axios.get(
@@ -1842,8 +1911,6 @@ export class Router {
           const order = detail.order as Sdk.Sudoswap.Order;
           const module = this.contracts.sudoswapModule;
 
-          generatePermit(module.address);
-
           executions.push({
             module: module.address,
             data: module.interface.encodeFunctionData("sell", [
@@ -1872,8 +1939,6 @@ export class Router {
         case "x2y2": {
           const order = detail.order as Sdk.X2Y2.Order;
           const module = this.contracts.x2y2Module;
-
-          generatePermit(module.address);
 
           try {
             const exchange = new Sdk.X2Y2.Exchange(
@@ -1909,6 +1974,7 @@ export class Router {
               ),
               value: 0,
             });
+
             success[i] = true;
           } catch {
             if (!options?.partial) {
@@ -1924,8 +1990,6 @@ export class Router {
         case "zeroex-v4": {
           const order = detail.order as Sdk.ZeroExV4.Order;
           const module = this.contracts.zeroExV4Module;
-
-          generatePermit(module.address);
 
           try {
             // Retrieve the order's signature
@@ -1990,8 +2054,6 @@ export class Router {
           const order = detail.order as Sdk.Element.Order;
           const module = this.contracts.elementModule;
 
-          generatePermit(module.address);
-
           if (detail.contractKind === "erc721") {
             executions.push({
               module: module.address,
@@ -2035,8 +2097,6 @@ export class Router {
         case "nftx": {
           const order = detail.order as Sdk.Nftx.Order;
           const module = this.contracts.nftxModule;
-
-          generatePermit(module.address);
 
           const tokenId = detail.tokenId;
           order.params.specificIds = [tokenId];
