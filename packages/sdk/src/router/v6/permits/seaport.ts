@@ -79,6 +79,11 @@ export class Handler {
 
   // Given an already encoded router execution, attach a list of permits to it
   public attachToRouterExecution(txData: TxData, data: Data[]): TxData {
+    // Handle the case when there's no permits to attach
+    if (!data.length) {
+      return txData;
+    }
+
     const routerIface = new Interface(RouterAbi);
     const executionInfos = routerIface.decodeFunctionData(
       "execute",
