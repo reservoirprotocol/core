@@ -5,7 +5,7 @@ import { Contract } from "@ethersproject/contracts";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
-import * as SeaportPermit from "@reservoir0x/sdk/src/router/v6/permits/seaport";
+import * as SeaportPermit from "./permits/seaport";
 import {
   BidDetails,
   ExecutionInfo,
