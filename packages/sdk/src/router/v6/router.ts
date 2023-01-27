@@ -5,7 +5,7 @@ import { Contract } from "@ethersproject/contracts";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
-import { SeaportApprovalOrderHandler } from "./permits/seaport-approval-order";
+import * as SeaportPermit from "@reservoir0x/sdk/src/router/v6/permits/seaport";
 import {
   BidDetails,
   ExecutionInfo,
@@ -14,12 +14,11 @@ import {
   ListingFillDetails,
   NFTApproval,
   NFTPermit,
-  Token,
 } from "./types";
 import { generateSwapExecution } from "./uniswap";
 import { generateApprovalTxData, isETH } from "./utils";
 import * as Sdk from "../../index";
-import { TxData, bn, generateSourceBytes } from "../../utils";
+import { TxData, bn, generateSourceBytes, uniqBy } from "../../utils";
 
 // Tokens
 import ERC721Abi from "../../common/abis/Erc721.json";
@@ -1531,9 +1530,9 @@ export class Router {
         });
         return {
           txData: exchange.fillOrderTx(taker, order, matchOrder),
+          success: [true],
           approvals: [approval],
           permits: [],
-          success: [true],
         };
       }
     }
@@ -1564,9 +1563,9 @@ export class Router {
             amount: Number(detail.amount ?? 1),
             source: options?.source,
           }),
+          success: [true],
           approvals: [approval],
           permits: [],
-          success: [true],
         };
       }
     }
@@ -1598,9 +1597,9 @@ export class Router {
             assetClass: detail.contractKind.toUpperCase(),
             amount: Number(detail.amount),
           }),
+          success: [true],
           approvals: [approval],
           permits: [],
-          success: [true],
         };
       }
     }
@@ -1636,9 +1635,9 @@ export class Router {
           txData: exchange.fillOrderTx(taker, order, matchParams, {
             source: options?.source,
           }),
+          success: [true],
           approvals: [approval],
           permits: [],
-          success: [true],
         };
       }
     }
@@ -1652,8 +1651,8 @@ export class Router {
     // Keep track of any approvals that might be needed
     const approvals: NFTApproval[] = [];
 
-    // Keep track of the tokens needed by each module (we'll have one permit per module)
-    const moduleToTokens: { [module: string]: Token[] } = {};
+    // Keep track of the tokens needed by each module
+    const permitItems: SeaportPermit.Item[] = [];
 
     for (let i = 0; i < details.length; i++) {
       const detail = details[i];
@@ -1662,25 +1661,15 @@ export class Router {
       const owner = taker;
       const operator = Sdk.Seaport.Addresses.OpenseaConduit[this.chainId];
 
-      // Generate approval (ensure uniqueness)
-      if (
-        !approvals.find(
-          (a) =>
-            a.contract === contract &&
-            a.owner === owner &&
-            a.operator === operator
-        )
-      ) {
-        approvals.push({
-          contract,
-          owner,
-          operator,
-          txData: generateApprovalTxData(contract, owner, operator),
-        });
-      }
+      // Generate approval
+      approvals.push({
+        contract,
+        owner,
+        operator,
+        txData: generateApprovalTxData(contract, owner, operator),
+      });
 
-      // Aggregate tokens by module
-
+      // Generate permit item
       let module: Contract;
       switch (detail.kind) {
         case "looks-rare": {
@@ -1723,36 +1712,16 @@ export class Router {
           throw new Error("Unreachable");
         }
       }
-
-      if (!moduleToTokens[module.address]) {
-        moduleToTokens[module.address] = [];
-      }
-      moduleToTokens[module.address].push({
-        kind: detail.contractKind,
-        contract: detail.contract,
-        tokenId: detail.tokenId,
-        amount: detail.amount,
+      permitItems.push({
+        token: {
+          kind: detail.contractKind,
+          contract: detail.contract,
+          tokenId: detail.tokenId,
+          amount: detail.amount,
+        },
+        receiver: module.address,
       });
     }
-
-    // Generate permits
-    const permitHandler = new SeaportApprovalOrderHandler(
-      this.chainId,
-      this.provider
-    );
-    const permits: NFTPermit[] = await Promise.all(
-      Object.keys(moduleToTokens).map(async (module) => ({
-        tokens: moduleToTokens[module],
-        details: {
-          kind: "seaport-approval-order",
-          data: await permitHandler.generate(
-            taker,
-            module,
-            moduleToTokens[module]
-          ),
-        },
-      }))
-    );
 
     // Step 2
     // Handle calldata generation
@@ -2150,9 +2119,9 @@ export class Router {
                 [taker, executions[0].module, detail.tokenId, routerLevelTxData]
               ) + generateSourceBytes(options?.source),
           },
+          success,
           approvals: [],
           permits: [],
-          success,
         };
       } else {
         return {
@@ -2171,9 +2140,9 @@ export class Router {
                 ]
               ) + generateSourceBytes(options?.source),
           },
+          success,
           approvals: [],
           permits: [],
-          success,
         };
       }
     } else {
@@ -2183,9 +2152,28 @@ export class Router {
           to: Addresses.Router[this.chainId],
           data: routerLevelTxData + generateSourceBytes(options?.source),
         },
-        approvals: approvals.filter((_, i) => success[i]),
-        permits: permits.filter((_, i) => success[i]),
         success,
+        // Ensure approvals are unique
+        approvals: uniqBy(
+          approvals.filter((_, i) => success[i]),
+          ({ txData: { from, to, data } }) => `${from}-${to}-${data}`
+        ),
+        // Generate permits
+        permits: await (async (): Promise<NFTPermit[]> => {
+          const items = permitItems.filter((_, i) => success[i]);
+          return [
+            {
+              tokens: items.map((i) => i.token),
+              details: {
+                kind: "seaport",
+                data: await new SeaportPermit.Handler(
+                  this.chainId,
+                  this.provider
+                ).generate(taker, items),
+              },
+            },
+          ];
+        })(),
       };
     }
   }

@@ -13,7 +13,7 @@ import {
   setupNFTs,
   setupRouterWithModules,
 } from "../../utils";
-import { SeaportApprovalOrderHandler } from "@reservoir0x/sdk/src/router/v6/permits/seaport-approval-order";
+import * as SeaportPermit from "@reservoir0x/sdk/src/router/v6/permits/seaport";
 import {
   BidDetails,
   ListingDetails,
@@ -942,10 +942,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       await seller.sendTransaction(approval.txData);
     }
 
-    const permitHandler = new SeaportApprovalOrderHandler(
-      chainId,
-      ethers.provider
-    );
+    const permitHandler = new SeaportPermit.Handler(chainId, ethers.provider);
 
     // Sign permits
     for (const permit of tx.permits) {
@@ -954,9 +951,6 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       permit.details.data.order.zone = seaportApprovalOrderZone.address;
       permit.details.data.order.startTime = now;
       permit.details.data.order.endTime = now + 60;
-      permit.details.data.mirrorOrder.zone = seaportApprovalOrderZone.address;
-      permit.details.data.mirrorOrder.startTime = now;
-      permit.details.data.mirrorOrder.endTime = now + 60;
 
       const signatureData = permitHandler.getSignatureData(permit.details.data);
       const signature = await seller._signTypedData(
@@ -1165,10 +1159,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
 
     const router = new Sdk.RouterV6.Router(chainId, ethers.provider);
 
-    const permitHandler = new SeaportApprovalOrderHandler(
-      chainId,
-      ethers.provider
-    );
+    const permitHandler = new SeaportPermit.Handler(chainId, ethers.provider);
     {
       const nonPartialTx = await router.fillBidsTx(bids, seller.address, {
         source: "reservoir.market",
@@ -1186,9 +1177,6 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
         permit.details.data.order.zone = seaportApprovalOrderZone.address;
         permit.details.data.order.startTime = now;
         permit.details.data.order.endTime = now + 60;
-        permit.details.data.mirrorOrder.zone = seaportApprovalOrderZone.address;
-        permit.details.data.mirrorOrder.startTime = now;
-        permit.details.data.mirrorOrder.endTime = now + 60;
 
         const signatureData = permitHandler.getSignatureData(
           permit.details.data
@@ -1227,9 +1215,6 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       permit.details.data.order.zone = seaportApprovalOrderZone.address;
       permit.details.data.order.startTime = now;
       permit.details.data.order.endTime = now + 60;
-      permit.details.data.mirrorOrder.zone = seaportApprovalOrderZone.address;
-      permit.details.data.mirrorOrder.startTime = now;
-      permit.details.data.mirrorOrder.endTime = now + 60;
 
       const signatureData = permitHandler.getSignatureData(permit.details.data);
       const signature = await seller._signTypedData(

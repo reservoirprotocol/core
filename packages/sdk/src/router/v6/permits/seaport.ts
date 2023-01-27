@@ -1,6 +1,6 @@
 import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
-import { AddressZero, HashZero } from "@ethersproject/constants";
+import { HashZero } from "@ethersproject/constants";
 
 import { Token } from "../types";
 import * as Sdk from "../../../index";
@@ -9,12 +9,16 @@ import { TxData, getCurrentTimestamp, getRandomBytes } from "../../../utils";
 import RouterAbi from "../abis/ReservoirV6_0_0.json";
 import SeaportModuleAbi from "../abis/SeaportModule.json";
 
-export type SeaportApprovalOrder = {
+export type Data = {
   order: Sdk.Seaport.Types.OrderComponents;
-  mirrorOrder: Sdk.Seaport.Types.OrderComponents;
 };
 
-export class SeaportApprovalOrderHandler {
+export type Item = {
+  token: Token;
+  receiver: string;
+};
+
+export class Handler {
   public chainId: number;
   public provider: Provider;
 
@@ -25,14 +29,16 @@ export class SeaportApprovalOrderHandler {
 
   public async generate(
     giver: string,
-    receiver: string,
-    tokens: Token[],
+    items: {
+      token: Token;
+      receiver: string;
+    }[],
     expiresIn = 10 * 60
-  ): Promise<SeaportApprovalOrder> {
+  ): Promise<Data> {
     const now = getCurrentTimestamp();
 
     // Build approval order
-    const offer = tokens.map((token) => ({
+    const offer = items.map(({ token }) => ({
       itemType: token.kind === "erc721" ? 2 : 3,
       token: token.contract,
       identifierOrCriteria: token.tokenId.toString(),
@@ -44,7 +50,10 @@ export class SeaportApprovalOrderHandler {
       offerer: giver,
       zone: Sdk.Seaport.Addresses.ApprovalOrderZone[this.chainId],
       offer,
-      consideration: offer.map((o) => ({ ...o, recipient: receiver })),
+      consideration: offer.map((o, i) => ({
+        ...o,
+        recipient: items[i].receiver,
+      })),
       orderType: Sdk.Seaport.Types.OrderType.FULL_RESTRICTED,
       startTime: now,
       endTime: now + expiresIn,
@@ -56,50 +65,20 @@ export class SeaportApprovalOrderHandler {
         .then((c) => c.toString()),
     });
 
-    // Build mirror order
-    const mirrorOrder = new Sdk.Seaport.Order(this.chainId, {
-      kind: "single-token",
-      offerer: receiver,
-      zone: AddressZero,
-      offer: [],
-      consideration: [],
-      orderType: Sdk.Seaport.Types.OrderType.PARTIAL_OPEN,
-      startTime: now,
-      endTime: now + expiresIn,
-      zoneHash: HashZero,
-      salt: getRandomBytes().toHexString(),
-      conduitKey: Sdk.Seaport.Addresses.OpenseaConduitKey[this.chainId],
-      counter: await new Sdk.Seaport.Exchange(this.chainId)
-        .getCounter(this.provider, receiver)
-        .then((c) => c.toString()),
-    });
-
-    return { order: order.params, mirrorOrder: mirrorOrder.params };
+    return { order: order.params };
   }
 
-  public getSignatureData(seaportApprovalOrder: SeaportApprovalOrder) {
-    return new Sdk.Seaport.Order(
-      this.chainId,
-      seaportApprovalOrder.order
-    ).getSignatureData();
+  public getSignatureData(data: Data) {
+    return new Sdk.Seaport.Order(this.chainId, data.order).getSignatureData();
   }
 
-  public attachAndCheckSignature(
-    seaportApprovalOrder: SeaportApprovalOrder,
-    signature: string
-  ) {
-    seaportApprovalOrder.order.signature = signature;
-    new Sdk.Seaport.Order(
-      this.chainId,
-      seaportApprovalOrder.order
-    ).checkSignature();
+  public attachAndCheckSignature(data: Data, signature: string) {
+    data.order.signature = signature;
+    new Sdk.Seaport.Order(this.chainId, data.order).checkSignature();
   }
 
   // Given an already encoded router execution, attach a list of permits to it
-  public attachToRouterExecution(
-    txData: TxData,
-    seaportApprovalOrders: SeaportApprovalOrder[]
-  ): TxData {
+  public attachToRouterExecution(txData: TxData, data: Data[]): TxData {
     const routerIface = new Interface(RouterAbi);
     const executionInfos = routerIface.decodeFunctionData(
       "execute",
@@ -115,32 +94,17 @@ export class SeaportApprovalOrderHandler {
             module: Sdk.RouterV6.Addresses.SeaportModule[this.chainId],
             data: seaportModuleIface.encodeFunctionData("matchOrders", [
               [
-                ...seaportApprovalOrders
-                  .map(({ order, mirrorOrder }) => [
-                    // Regular order
-                    {
-                      parameters: {
-                        ...order,
-                        totalOriginalConsiderationItems:
-                          order.consideration.length,
-                      },
-                      signature: order.signature,
-                    },
-                    // Mirror order
-                    {
-                      parameters: {
-                        ...mirrorOrder,
-                        totalOriginalConsiderationItems:
-                          mirrorOrder.consideration.length,
-                      },
-                      signature: "0x",
-                    },
-                  ])
-                  .flat(),
+                ...data.map(({ order }) => ({
+                  parameters: {
+                    ...order,
+                    totalOriginalConsiderationItems: order.consideration.length,
+                  },
+                  signature: order.signature,
+                })),
               ],
-              // For each regular order, match the single offer item to the single consideration item
+              // For each order, match the single offer item to the single consideration item
               [
-                ...seaportApprovalOrders
+                ...data
                   .map(({ order }, i) =>
                     order.offer.map((_, j) => ({
                       offerComponents: [

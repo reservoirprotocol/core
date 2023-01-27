@@ -27,6 +27,19 @@ export const lc = (x: string) => x?.toLowerCase();
 export const n = (x: any) => (x ? Number(x) : x);
 export const s = (x: any) => (x ? String(x) : x);
 
+export const uniqBy = <T>(items: T[], uniqId: (item: T) => string): T[] => {
+  const result: T[] = [];
+  const uniqItems = new Set<string>();
+  for (const item of items) {
+    const id = uniqId(item);
+    if (!uniqItems.has(id)) {
+      result.push(item);
+      uniqItems.add(id);
+    }
+  }
+  return result;
+};
+
 // Misc
 
 export const generateSourceBytes = (source?: string) => {
@@ -73,12 +86,9 @@ export type TxData = {
 export enum Network {
   // Ethereum
   Ethereum = 1,
-  EthereumRinkeby = 4,
   EthereumGoerli = 5,
-  EthereumKovan = 42,
   // Optimism
   Optimism = 10,
-  OptimismKovan = 69,
   // Gnosis
   Gnosis = 100,
   // Polygon
