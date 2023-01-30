@@ -977,6 +977,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@reservoir0x/core@workspace:."
   dependencies:
+    "@uniswap/permit2-sdk": ^1.2.0
     axios: ^0.27.2
     typedoc: ^0.22.10
   languageName: unknown
@@ -1539,6 +1540,16 @@ __metadata:
     "@ethersproject/strings": ^5.7.0
     tiny-invariant: ^1.3.1
   checksum: 894bbcf0fa5b3bce6345baef97c736f7cd12d572c1e1d215806ed35936bf502785c35c5241eeb616e600b50d7125ef5eef5f116fc3386d5f677b029d424c4013
+  languageName: node
+  linkType: hard
+
+"@uniswap/permit2-sdk@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "@uniswap/permit2-sdk@npm:1.2.0"
+  dependencies:
+    ethers: ^5.3.1
+    tiny-invariant: ^1.3.1
+  checksum: 524519c4f5492a721de9215f4c74c18af4a8a4f676273ccc9c01512fe36c8e8ac51dd3474b19021522b76ef2edd25d9c871b0eb051e22b6564e37cd2b9422920
   languageName: node
   linkType: hard
 

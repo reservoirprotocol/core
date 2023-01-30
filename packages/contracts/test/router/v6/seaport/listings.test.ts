@@ -5,6 +5,8 @@ import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import Permit2ABI from "@reservoir0x/sdk/src/common/abis/Permit2.json";
+import ERC20ABI from "@reservoir0x/sdk/src/common/abis/Erc20.json";
 
 import { ExecutionInfo } from "../helpers/router";
 import {
@@ -21,7 +23,10 @@ import {
   getRandomInteger,
   reset,
   setupNFTs,
+  setupTokens,
 } from "../../../utils";
+
+import { SignatureTransfer, AllowanceTransfer } from "@uniswap/permit2-sdk";
 
 describe("[ReservoirV6_0_0] Seaport listings", () => {
   const chainId = getChainId();
@@ -35,15 +40,19 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
 
   let erc1155: Contract;
   let erc721: Contract;
+  // let erc20: Contract;
   let router: Contract;
   let seaportApprovalOrderZone: Contract;
   let seaportModule: Contract;
   let uniswapV3Module: Contract;
+  let permit2: Contract;
+  let permit2Module: Contract;
 
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
 
     ({ erc721, erc1155 } = await setupNFTs(deployer));
+    // ({ erc20 } = await setupTokens(deployer));
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
@@ -58,6 +67,14 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
       )) as any;
     uniswapV3Module = (await ethers
       .getContractFactory("UniswapV3Module", deployer)
+      .then((factory) =>
+        factory.deploy(router.address, router.address)
+      )) as any;
+
+    permit2 = new Contract(Sdk.Common.Addresses.Permit2[chainId], Permit2ABI);
+    // erc20
+    permit2Module = (await ethers
+      .getContractFactory("Permit2Module", deployer)
       .then((factory) =>
         factory.deploy(router.address, router.address)
       )) as any;
@@ -95,6 +112,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
   afterEach(reset);
 
   const testAcceptListings = async (
+    inputUsdc: boolean,
     // Whether to fill USDC or ETH listings
     useUsdc: boolean,
     // Whether to include fees on top
@@ -396,6 +414,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
                 `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
               async () =>
                 testAcceptListings(
+                  false,
                   useUsdc,
                   chargeFees,
                   revertIfIncomplete,
@@ -408,6 +427,279 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
       }
     }
   }
+
+  it("Permit2 - Fill listing with USDC", async () => {
+    // Setup
+
+    // Maker: Alice
+    // Taker: Bob
+    const listing: SeaportListing = {
+      seller: alice,
+      nft: {
+        kind: "erc721",
+        contract: erc721,
+        id: getRandomInteger(1, 10000),
+      },
+      paymentToken: Sdk.Common.Addresses.Usdc[chainId],
+      price: parseUnits(getRandomFloat(0.0001, 2).toFixed(6), 6),
+    };
+
+    const swapExecutions: ExecutionInfo[] = [
+      // 1. Swap ETH for USDC on UniswapV3, sending the USDC to the Seaport module
+      {
+        module: uniswapV3Module.address,
+        data: uniswapV3Module.interface.encodeFunctionData("ethToExactOutput", [
+          {
+            tokenIn: Sdk.Common.Addresses.Weth[chainId],
+            tokenOut: Sdk.Common.Addresses.Usdc[chainId],
+            fee: 500,
+            recipient: bob.address,
+            amountOut: bn(listing.price).add(
+              // Anything on top should be refunded
+              parseUnits("500", 6)
+            ),
+            amountInMaximum: parseEther("10"),
+            sqrtPriceLimitX96: 0,
+          },
+          bob.address,
+        ]),
+        // Anything on top should be refunded
+        value: parseEther("10"),
+      },
+    ];
+
+    // Swap to erc20
+    try {
+      await router.connect(bob).execute(swapExecutions, {
+        value: swapExecutions
+          .map(({ value }) => value)
+          .reduce((a, b) => bn(a).add(b)),
+      });
+    } catch {
+      // error
+    }
+
+    const generatePermit2Transfer = async (
+      signer: SignerWithAddress,
+      to: string,
+      amount: string
+    ) => {
+      const permitTransfer = {
+        permitted: [
+          {
+            token: Sdk.Common.Addresses.Usdc[chainId],
+            amount,
+          },
+        ],
+
+        spender: Sdk.Common.Addresses.Permit2[chainId],
+        nonce: "0",
+        deadline: Math.floor(new Date().getTime() / 1000) + 5 * 60,
+      };
+
+      const signatureData = SignatureTransfer.getPermitData(
+        permitTransfer,
+        Sdk.Common.Addresses.Permit2[chainId],
+        chainId
+      );
+
+      const signature = await signer._signTypedData(
+        signatureData.domain,
+        signatureData.types,
+        signatureData.values
+      );
+
+      const transferDetails = [
+        {
+          to,
+          requestedAmount: amount,
+        },
+      ];
+
+      return {
+        permit: permitTransfer,
+        owner: signer.address,
+        transferDetails,
+        signature,
+      };
+    };
+
+    const generatePermit2ModuleTransfer = async (
+      signer: SignerWithAddress,
+      to: string,
+      token: string,
+      module: string,
+      amount: string
+    ) => {
+      
+      const permitBatch = {
+        details: [
+          {
+            token,
+            amount,
+            expiration: Math.floor(new Date().getTime() / 1000) + 86400,
+            nonce: 0,
+          },
+        ],
+        spender: module,
+        sigDeadline: Math.floor(new Date().getTime() / 1000) + 86400,
+      };
+
+      const signatureData = AllowanceTransfer.getPermitData(
+        permitBatch,
+        Sdk.Common.Addresses.Permit2[chainId],
+        chainId
+      );
+
+      const signature = await signer._signTypedData(
+        signatureData.domain,
+        signatureData.types,
+        signatureData.values
+      );
+
+      return {
+        permit: permitBatch,
+        owner: signer.address,
+        transferDetails: [
+          {
+            from: signer.address,
+            to,
+            amount,
+            token,
+          },
+        ],
+        signature,
+      };
+    };
+
+    const erc20 = new Contract(Sdk.Common.Addresses.Usdc[chainId], ERC20ABI);
+    await erc20
+      .connect(bob)
+      .approve(
+        Sdk.Common.Addresses.Permit2[chainId],
+        ethers.constants.MaxInt256
+      );
+
+    const permitModuleTransfer = await generatePermit2ModuleTransfer(
+      bob,
+      seaportModule.address,
+      Sdk.Common.Addresses.Usdc[chainId],
+      permit2Module.address,
+      listing.price.toString()
+    );
+
+    const permitTransfer = await generatePermit2Transfer(
+      bob,
+      seaportModule.address,
+      listing.price.toString()
+    );
+
+    await setupSeaportListings([listing]);
+
+    // Prepare executions
+
+    const usingPermitModule = true;
+    const executions: ExecutionInfo[] = [
+      // 1. Transfer with permit2
+      usingPermitModule
+        ? {
+            module: permit2Module.address,
+            data: permit2Module.interface.encodeFunctionData(`permitTransfer`, [
+              permitModuleTransfer.owner,
+              permitModuleTransfer.permit,
+              permitModuleTransfer.transferDetails,
+              permitModuleTransfer.signature,
+            ]),
+            value: 0,
+          }
+        : {
+            module: Sdk.Common.Addresses.Permit2[chainId],
+            data: permit2.interface.encodeFunctionData(
+              `permitTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes)`,
+              [
+                permitTransfer.permit,
+                permitTransfer.transferDetails,
+                permitTransfer.owner,
+                permitTransfer.signature,
+              ]
+            ),
+            value: 0,
+          },
+      // 2. Fill USDC listing with the received funds
+      {
+        module: seaportModule.address,
+        data: seaportModule.interface.encodeFunctionData("acceptERC20Listing", [
+          {
+            parameters: {
+              ...listing.order!.params,
+              totalOriginalConsiderationItems:
+                listing.order!.params.consideration.length,
+            },
+            numerator: 1,
+            denominator: 1,
+            signature: listing.order!.params.signature,
+            extraData: "0x",
+          },
+          {
+            fillTo: bob.address,
+            refundTo: bob.address,
+            revertIfIncomplete: true,
+            amount: listing.price,
+            token: listing.paymentToken!,
+          },
+          [],
+        ]),
+        value: 0,
+      },
+    ];
+
+    // Fetch pre-state
+
+    const balancesBefore = await getBalances(
+      Sdk.Common.Addresses.Usdc[chainId]
+    );
+
+    // Execute
+
+    await router.connect(bob).execute(executions, {
+      value: executions
+        .map(({ value }) => value)
+        .reduce((a, b) => bn(a).add(b)),
+    });
+
+    // console.log(
+    //   await permit2
+    //     .connect(bob)
+    //     .allowance(
+    //       bob.address,
+    //       Sdk.Common.Addresses.Usdc[chainId],
+    //       permit2Module.address
+    //     ),
+    // );
+
+    // Fetch post-state
+
+    const balancesAfter = await getBalances(Sdk.Common.Addresses.Usdc[chainId]);
+    const ethBalancesAfter = await getBalances(
+      Sdk.Common.Addresses.Eth[chainId]
+    );
+
+    // Checks
+
+    // Alice got the USDC
+    expect(balancesAfter.alice.sub(balancesBefore.alice)).to.eq(listing.price);
+
+    // Bob got the NFT
+    expect(await erc721.ownerOf(listing.nft.id)).to.eq(bob.address);
+
+    // Router is stateless
+    expect(balancesAfter.router).to.eq(0);
+    expect(balancesAfter.seaportModule).to.eq(0);
+    expect(balancesAfter.uniswapV3Module).to.eq(0);
+    expect(ethBalancesAfter.router).to.eq(0);
+    expect(ethBalancesAfter.seaportModule).to.eq(0);
+    expect(ethBalancesAfter.uniswapV3Module).to.eq(0);
+  });
 
   it("Fill USDC listing with ETH", async () => {
     // Setup

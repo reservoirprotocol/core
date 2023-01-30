@@ -38,6 +38,7 @@ import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
 import NFTXModuleAbi from "./abis/NFTXModule.json";
+import Permit2ModuleAbi from  "./abis/Permit2Module.json";
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -120,6 +121,11 @@ export class Router {
         NFTXModuleAbi,
         provider
       ),
+      permit2Module: new Contract(
+        Addresses.Permit2Module[chainId] ?? AddressZero,
+        Permit2ModuleAbi,
+        provider
+      ),
     };
   }
 
@@ -141,6 +147,8 @@ export class Router {
       directFillingData?: any;
       // Wallet used for relaying the fill transaction
       relayer?: string;
+      permit?: any;
+      signature?: any;
     }
   ): Promise<{ txData: TxData; success: boolean[] }> {
     // Assume the listing details are consistent with the underlying order object
@@ -400,9 +408,9 @@ export class Router {
       }
     }
 
-    if (!isETH(this.chainId, buyInCurrency)) {
-      throw new Error("Unsupported buy-in currency");
-    }
+    // if (!isETH(this.chainId, buyInCurrency)) {
+    //   // throw new Error("Unsupported buy-in currency");
+    // }
 
     const getFees = (ownDetails: ListingFillDetails[]) => [
       // Global fees
@@ -519,6 +527,51 @@ export class Router {
     // Generate router executions
     const executions: ExecutionInfo[] = [];
     const success: boolean[] = details.map(() => false);
+
+
+    if (!isETH(this.chainId, buyInCurrency) && options && options.permit && options.signature) {
+
+      // permit and swap here
+      executions.push({
+        module: this.contracts.permit2Module.address,
+        data: this.contracts.permit2Module.interface.encodeFunctionData(
+          'permitTransfer',
+          [
+            taker,
+            options.permit,
+            [
+              {
+                from: taker,
+                to: this.contracts.uniswapV3Module.address,
+                token: buyInCurrency,
+                amount: '0'
+              }
+            ],
+            options.signature
+          ]
+        ),
+        value: 0
+      });
+
+      executions.push(
+      //   await generateSwapExecution(
+      //     this.chainId,
+      //     this.provider,
+      //     buyInCurrency,
+      //     currency,
+      //     totalPayment,
+      //     {
+      //       uniswapV3Module: this.contracts.uniswapV3Module,
+      //       wethModule: this.contracts.wethModule,
+      //       // Forward any swapped tokens to the Seaport module
+      //       recipient: this.contracts.seaportModule.address,
+      //       refundTo: taker,
+      //     }
+      //   )
+      );
+      
+    }
+
 
     // Handle Blur listings
     if (blurDetails.length) {

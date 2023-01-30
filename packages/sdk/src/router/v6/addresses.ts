@@ -68,3 +68,7 @@ export const ElementModule: ChainIdToAddress = {
 export const NFTXModule: ChainIdToAddress = {
   [Network.Ethereum]: "0x27eb35119dda39df73db6681019edc4c16311acc",
 };
+
+export const Permit2Module: ChainIdToAddress = {
+  [Network.Ethereum]: "",
+};
