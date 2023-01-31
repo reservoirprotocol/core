@@ -76,7 +76,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
     permit2Module = (await ethers
       .getContractFactory("Permit2Module", deployer)
       .then((factory) =>
-        factory.deploy(router.address, router.address)
+        factory.deploy(router.address)
       )) as any;
   });
 

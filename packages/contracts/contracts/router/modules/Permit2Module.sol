@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {BaseExchangeModule} from "./BaseExchangeModule.sol";
-import {BaseModule} from "../BaseModule.sol";
-import {IAllowanceTransfer} from "../../../interfaces/IAllowanceTransfer.sol";
+import {BaseModule} from "./BaseModule.sol";
+import {IAllowanceTransfer} from "../../interfaces/IAllowanceTransfer.sol";
 
-contract Permit2Module is BaseExchangeModule {
+contract Permit2Module is BaseModule {
     // --- Fields ---
 
     IAllowanceTransfer public constant PERMIT2 =
@@ -13,23 +12,14 @@ contract Permit2Module is BaseExchangeModule {
 
     // --- Constructor ---
 
-    constructor(address owner, address router)
-        BaseModule(owner)
-        BaseExchangeModule(router)
-    {}
-
-    // --- Fallback ---
-
-    receive() external payable {}
-
-    // --- Wrap ---
+    constructor(address owner) BaseModule(owner) {}
 
     function permitTransfer(
         address owner, 
         IAllowanceTransfer.PermitBatch memory permitBatch, 
         IAllowanceTransfer.AllowanceTransferDetails[] calldata transferDetails,
         bytes calldata signature
-    ) external payable nonReentrant {
+    ) external nonReentrant {
         PERMIT2.permit(owner, permitBatch, signature);
         PERMIT2.transferFrom(transferDetails);
     }
