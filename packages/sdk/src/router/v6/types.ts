@@ -3,6 +3,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import * as Sdk from "../../index";
 import { TxData } from "../../utils";
 import * as SeaportPermit from "@reservoir0x/sdk/src/router/v6/permits/seaport";
+import * as Permit2 from "@reservoir0x/sdk/src/router/v6/permits/permit2";
 
 export type Token = {
   kind: "erc721" | "erc1155";
@@ -15,6 +16,13 @@ export type Token = {
 
 export type NFTApproval = {
   contract: string;
+  owner: string;
+  operator: string;
+  txData: TxData;
+};
+
+export type TokenApproval = {
+  token: string;
   owner: string;
   operator: string;
   txData: TxData;

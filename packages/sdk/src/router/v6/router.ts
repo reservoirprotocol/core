@@ -14,6 +14,7 @@ import {
   ListingFillDetails,
   NFTApproval,
   NFTPermit,
+  TokenApproval,
 } from "./types";
 import { generateSwapExecution } from "./uniswap";
 import { generateApprovalTxData, isETH } from "./utils";
@@ -443,6 +444,12 @@ export class Router {
 
     // For supporting filling listings having different underlying currencies
     type PerCurrencyDetails = { [currency: string]: ListingDetailsExtracted[] };
+
+    // Keep track of any approvals that might be needed
+    // const approvals: TokenApproval[] = [];
+
+    // Keep track of the tokens needed by each module
+    // const permitItems: SeaportPermit.Item[] = [];
 
     // Split all listings by their kind
     const blurDetails: ListingDetailsExtracted[] = [];
