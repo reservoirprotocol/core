@@ -667,15 +667,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
         .reduce((a, b) => bn(a).add(b)),
     });
 
-    // console.log(
-    //   await permit2
-    //     .connect(bob)
-    //     .allowance(
-    //       bob.address,
-    //       Sdk.Common.Addresses.Usdc[chainId],
-    //       permit2Module.address
-    //     ),
-    // );
+ 
 
     // Fetch post-state
 

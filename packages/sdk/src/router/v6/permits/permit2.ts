@@ -2,12 +2,15 @@ import { AllowanceTransfer, PermitBatch } from "@uniswap/permit2-sdk";
 import * as Sdk from "@reservoir0x/sdk/src";
 
 import { Interface } from "@ethersproject/abi";
+import { Provider } from "@ethersproject/abstract-provider";
 import { BigNumberish } from "@ethersproject/bignumber";
 
 import { TxData, getCurrentTimestamp } from "../../../utils";
 
 import RouterAbi from "../abis/ReservoirV6_0_0.json";
+import Permit2ABI from "../../../common/abis/Permit2.json";
 import Permit2ModuleAbi from "../abis/Permit2Module.json";
+import { Contract } from "ethers";
 
 export type TransferDetail = {
   from: string;
@@ -25,20 +28,29 @@ export type Permit2Approval = {
 
 export class Permit2Handler {
   public chainId: number;
+  public provider: Provider;
+  public permit2: Contract
+  public address: string;
+  public module: string
 
-  constructor(chainId: number) {
+  constructor(chainId: number, provider: Provider) {
     this.chainId = chainId;
+    this.provider = provider;
+    this.address = Sdk.RouterV6.Addresses.Permit2Module[this.chainId];
+    this.module = Sdk.RouterV6.Addresses.Permit2Module[this.chainId];
+    this.permit2 = new Contract(this.address, Permit2ABI, provider);
   }
 
-  public generate(
+  public async generate(
     from: string,
     owner: string,
     receiver: string,
     token: string,
     amount: BigNumberish,
-    expiresIn = 10 * 60,
-    nonce = 0
-  ): Permit2Approval {
+    expiresIn = 10 * 60
+  ): Promise<Permit2Approval> {
+    
+    const packedAllowance = await this.permit2.allowance(owner, token, this.module);
     const now = getCurrentTimestamp();
     const permitBatch = {
       details: [
@@ -46,10 +58,10 @@ export class Permit2Handler {
           token,
           amount,
           expiration: now + expiresIn,
-          nonce,
+          nonce: packedAllowance.nonce
         },
       ],
-      spender: Sdk.RouterV6.Addresses.Permit2Module[this.chainId],
+      spender: this.module,
       sigDeadline: now + expiresIn,
     };
 
@@ -75,12 +87,11 @@ export class Permit2Handler {
     );
   }
 
-  public attachAndCheckSignature(
-    permit2Approval: Permit2Approval,
-    signature: string
-  ) {
-    
-  }
+  // public attachAndCheckSignature(
+  //   permit2Approval: Permit2Approval,
+  //   signature: string
+  // ) {
+  // }
 
   public attachToRouterExecution(
     txData: TxData,
@@ -99,7 +110,7 @@ export class Permit2Handler {
         [
           ...permitApprovals.map((permit2Approval) => {
             return {
-              module: Sdk.RouterV6.Addresses.Permit2Module[this.chainId],
+              module: this.address,
               data: permit2ModuleIface.encodeFunctionData("permitTransfer", [
                 permit2Approval.owner,
                 permit2Approval.permitBatch,
