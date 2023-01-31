@@ -15,7 +15,6 @@ const getNetworkConfig = (chainId?: number) => {
   }
 
   let url = process.env.RPC_URL;
-
   if (!url) {
     switch (chainId) {
       case 1:
