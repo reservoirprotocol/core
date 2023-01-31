@@ -2,7 +2,14 @@ import { BigNumberish } from "@ethersproject/bignumber";
 
 import * as Sdk from "../../index";
 import { TxData } from "../../utils";
-import { SeaportApprovalOrder } from "./permits/seaport-approval-order";
+import * as SeaportPermit from "@reservoir0x/sdk/src/router/v6/permits/seaport";
+
+export type Token = {
+  kind: "erc721" | "erc1155";
+  contract: string;
+  tokenId: BigNumberish;
+  amount?: BigNumberish;
+};
 
 // Approvals and permits
 
@@ -14,13 +21,10 @@ export type NFTApproval = {
 };
 
 export type NFTPermit = {
-  contract: string;
-  contractKind: "erc721" | "erc1155";
-  tokenId: BigNumberish;
-  amount?: BigNumberish;
+  tokens: Token[];
   details: {
-    kind: "seaport-approval-order";
-    data: SeaportApprovalOrder;
+    kind: "seaport";
+    data: SeaportPermit.Data;
   };
 };
 

@@ -13,7 +13,7 @@ import {
   setupNFTs,
   setupRouterWithModules,
 } from "../../utils";
-import { SeaportApprovalOrderHandler } from "@reservoir0x/sdk/src/router/v6/permits/seaport-approval-order";
+import * as SeaportPermit from "@reservoir0x/sdk/src/router/v6/permits/seaport";
 import {
   BidDetails,
   ListingDetails,
@@ -32,12 +32,18 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
   let erc721: Contract;
   let erc1155: Contract;
 
+  let seaportApprovalOrderZone: Contract;
+
   beforeEach(async () => {
     [deployer, feeRecipient, alice, bob, carol, dan] =
       await ethers.getSigners();
 
     ({ erc721, erc1155 } = await setupNFTs(deployer));
     await setupRouterWithModules(chainId, deployer);
+
+    seaportApprovalOrderZone = (await ethers
+      .getContractFactory("SeaportApprovalOrderZone", deployer)
+      .then((factory) => factory.deploy())) as any;
   });
 
   afterEach(reset);
@@ -936,16 +942,15 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       await seller.sendTransaction(approval.txData);
     }
 
-    const permitHandler = new SeaportApprovalOrderHandler(chainId);
+    const permitHandler = new SeaportPermit.Handler(chainId, ethers.provider);
 
     // Sign permits
     for (const permit of tx.permits) {
       // Override permit start and end times
       const now = await getCurrentTimestamp(ethers.provider);
+      permit.details.data.order.zone = seaportApprovalOrderZone.address;
       permit.details.data.order.startTime = now;
       permit.details.data.order.endTime = now + 60;
-      permit.details.data.mirrorOrder.startTime = now;
-      permit.details.data.mirrorOrder.endTime = now + 60;
 
       const signatureData = permitHandler.getSignatureData(permit.details.data);
       const signature = await seller._signTypedData(
@@ -1154,7 +1159,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
 
     const router = new Sdk.RouterV6.Router(chainId, ethers.provider);
 
-    const permitHandler = new SeaportApprovalOrderHandler(chainId);
+    const permitHandler = new SeaportPermit.Handler(chainId, ethers.provider);
     {
       const nonPartialTx = await router.fillBidsTx(bids, seller.address, {
         source: "reservoir.market",
@@ -1169,10 +1174,9 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       for (const permit of nonPartialTx.permits) {
         // Override permit start and end times
         const now = await getCurrentTimestamp(ethers.provider);
+        permit.details.data.order.zone = seaportApprovalOrderZone.address;
         permit.details.data.order.startTime = now;
         permit.details.data.order.endTime = now + 60;
-        permit.details.data.mirrorOrder.startTime = now;
-        permit.details.data.mirrorOrder.endTime = now + 60;
 
         const signatureData = permitHandler.getSignatureData(
           permit.details.data
@@ -1208,10 +1212,9 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
     for (const permit of partialTx.permits) {
       // Override permit start and end times
       const now = await getCurrentTimestamp(ethers.provider);
+      permit.details.data.order.zone = seaportApprovalOrderZone.address;
       permit.details.data.order.startTime = now;
       permit.details.data.order.endTime = now + 60;
-      permit.details.data.mirrorOrder.startTime = now;
-      permit.details.data.mirrorOrder.endTime = now + 60;
 
       const signatureData = permitHandler.getSignatureData(permit.details.data);
       const signature = await seller._signTypedData(
