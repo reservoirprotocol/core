@@ -13,6 +13,8 @@ contract UniswapV3Module is BaseExchangeModule {
 
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
+    event LogStr(bytes message);
+
     IUniswapV3Router public constant SWAP_ROUTER =
         IUniswapV3Router(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
 
@@ -59,6 +61,10 @@ contract UniswapV3Module is BaseExchangeModule {
         );
 
         // Execute the swap
-        SWAP_ROUTER.exactOutputSingle(params);
+        try SWAP_ROUTER.exactOutputSingle(params) {
+
+        } catch (bytes memory err) {
+            emit LogStr(err);
+        }
     }
 }
