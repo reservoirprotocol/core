@@ -932,9 +932,21 @@ export class Router {
                 refundTo: taker,
               }
             );
-            executions.push(swapInfo.execution);
-            swapExecutions.push(swapInfo);
 
+            executions.push(swapInfo.execution);
+
+            // When target is ETH, add unwrap step
+            if (isETH(this.chainId, currency)) {
+              executions.push({
+                module: this.contracts.wethModule.address,
+                data: this.contracts.wethModule.interface.encodeFunctionData("unwrap", [
+                  this.contracts.seaportModule.address,
+                ]),
+                value: 0,
+              })
+            }
+
+            swapExecutions.push(swapInfo);
           } catch (error) {
             if (!options?.partial) {
               throw new Error("Could not generate swap execution");
@@ -945,13 +957,16 @@ export class Router {
           }
         }
 
-        if (isSameCurrency && !buyIsETH) {
-          permitItems.push({
-            from: taker,
-            to: this.contracts.seaportModule.address,
-            token: buyInCurrency,
-            amount: totalPayment.toString()
-          });
+        // Generate transfer
+        if (isSameCurrency ) {
+          if (!buyIsETH) {
+            permitItems.push({
+              from: taker,
+              to: this.contracts.seaportModule.address,
+              token: buyInCurrency,
+              amount: totalPayment.toString()
+            });
+          }
         }
 
         if (!skipFillExecution) {

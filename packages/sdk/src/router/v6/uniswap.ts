@@ -3,6 +3,7 @@ import { Provider } from "@ethersproject/abstract-provider";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Protocol } from "@uniswap/router-sdk";
+import * as Sdk from "@reservoir0x/sdk/src";
 import {
   Currency,
   CurrencyAmount,
@@ -19,7 +20,7 @@ import { isETH, isWETH } from "./utils";
 export type SwapInfo = {
   execution: ExecutionInfo;
   amounts?: any;
-}
+};
 
 const getToken = async (
   chainId: number,
@@ -64,7 +65,7 @@ export const generateSwapExecution = async (
           options.recipient,
         ]),
         value: toTokenAmount,
-      }
+      },
     };
   } else if (
     isWETH(chainId, fromTokenAddress) &&
@@ -78,15 +79,17 @@ export const generateSwapExecution = async (
           options.recipient,
         ]),
         value: 0,
-      }
+      },
     };
   } else {
-
     const inputIsEth = isETH(chainId, fromTokenAddress);
+    const outputInEth = isETH(chainId, fromTokenAddress);
 
     // We need to swap
     const fromToken = await getToken(chainId, provider, fromTokenAddress);
-    const toToken = await getToken(chainId, provider, toTokenAddress);
+    const toToken = outputInEth
+      ? await getToken(chainId, provider, Sdk.Common.Addresses.Weth[chainId])
+      : await getToken(chainId, provider, toTokenAddress);
 
     const route = await router.route(
       CurrencyAmount.fromRawAmount(toToken, toTokenAmount.toString()),
@@ -94,7 +97,8 @@ export const generateSwapExecution = async (
       TradeType.EXACT_OUTPUT,
       {
         type: SwapType.SWAP_ROUTER_02,
-        recipient: options.recipient,
+        // Send to Weth unwrap
+        recipient: outputInEth ? options.wethModule.address : options.recipient,
         slippageTolerance: new Percent(5, 100),
         deadline: Math.floor(Date.now() / 1000 + 1800),
       },
@@ -150,6 +154,8 @@ export const generateSwapExecution = async (
 
     return {
       amounts: {
+        tokenIn: fromTokenAddress,
+        tokenOut: toTokenAddress,
         amountIn: params.params.amountInMaximum,
         amountOut: params.params.amountOut,
       },
@@ -160,7 +166,7 @@ export const generateSwapExecution = async (
           [params.params, options.refundTo]
         ),
         value: inputIsEth ? params.params.amountInMaximum : 0,
-      }
+      },
     };
   }
 };
