@@ -21,7 +21,7 @@ export type NFTApproval = {
   txData: TxData;
 };
 
-export type TokenApproval = {
+export type ERC20Approval = {
   token: string;
   owner: string;
   operator: string;
@@ -33,6 +33,14 @@ export type NFTPermit = {
   details: {
     kind: "seaport";
     data: SeaportPermit.Data;
+  };
+};
+
+export type ERC20Permit = {
+  tokens: string[];
+  details: {
+    kind: "permit2";
+    data: Permit2.Permit2Approval;
   };
 };
 

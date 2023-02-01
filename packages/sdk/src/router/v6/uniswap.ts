@@ -16,6 +16,11 @@ import { AlphaRouter, SwapType } from "@uniswap/smart-order-router";
 import { ExecutionInfo } from "./types";
 import { isETH, isWETH } from "./utils";
 
+export type SwapInfo = {
+  execution: ExecutionInfo;
+  amounts?: any;
+}
+
 const getToken = async (
   chainId: number,
   provider: Provider,
@@ -44,7 +49,7 @@ export const generateSwapExecution = async (
     recipient: string;
     refundTo: string;
   }
-): Promise<ExecutionInfo> => {
+): Promise<SwapInfo> => {
   const router = new AlphaRouter({
     chainId: chainId,
     provider: provider as any,
@@ -53,11 +58,13 @@ export const generateSwapExecution = async (
   if (isETH(chainId, fromTokenAddress) && isWETH(chainId, toTokenAddress)) {
     // We need to wrap ETH
     return {
-      module: options.wethModule.address,
-      data: options.wethModule.interface.encodeFunctionData("wrap", [
-        options.recipient,
-      ]),
-      value: toTokenAmount,
+      execution: {
+        module: options.wethModule.address,
+        data: options.wethModule.interface.encodeFunctionData("wrap", [
+          options.recipient,
+        ]),
+        value: toTokenAmount,
+      }
     };
   } else if (
     isWETH(chainId, fromTokenAddress) &&
@@ -65,17 +72,23 @@ export const generateSwapExecution = async (
   ) {
     // We need to unwrap WETH
     return {
-      module: options.wethModule.address,
-      data: options.wethModule.interface.encodeFunctionData("unwrap", [
-        options.recipient,
-      ]),
-      value: 0,
+      execution: {
+        module: options.wethModule.address,
+        data: options.wethModule.interface.encodeFunctionData("unwrap", [
+          options.recipient,
+        ]),
+        value: 0,
+      }
     };
   } else {
+
+    const inputIsEth = isETH(chainId, fromTokenAddress);
+
     // We need to swap
     const fromToken = await getToken(chainId, provider, fromTokenAddress);
     const toToken = await getToken(chainId, provider, toTokenAddress);
 
+    console.log('find route')
     const route = await router.route(
       CurrencyAmount.fromRawAmount(toToken, toTokenAmount.toString()),
       fromToken,
@@ -88,10 +101,15 @@ export const generateSwapExecution = async (
       },
       {
         protocols: [Protocol.V3],
-        maxSwapsPerPath: 1,
+        maxSwapsPerPath: inputIsEth ? 5 : 1,
       }
     );
+
+    console.log('done')
+
     if (!route) {
+
+      console.log(fromToken, fromTokenAddress, toTokenAddress)
       throw new Error("Could not generate route");
     }
 
@@ -135,13 +153,21 @@ export const generateSwapExecution = async (
       throw new Error("Could not generate compatible route");
     }
 
+    console.log('params', params.params)
+
     return {
-      module: options.uniswapV3Module.address,
-      data: options.uniswapV3Module.interface.encodeFunctionData(
-        "ethToExactOutput",
-        [params.params, options.refundTo]
-      ),
-      value: params.params.amountInMaximum,
+      amounts: {
+        amountIn: params.params.amountInMaximum,
+        amountOut: params.params.amountOut,
+      },
+      execution: {
+        module: options.uniswapV3Module.address,
+        data: options.uniswapV3Module.interface.encodeFunctionData(
+          inputIsEth ? "ethToExactOutput" : "erc20ToExactOutput",
+          [params.params, options.refundTo]
+        ),
+        value: inputIsEth ? params.params.amountInMaximum : 0,
+      }
     };
   }
 };

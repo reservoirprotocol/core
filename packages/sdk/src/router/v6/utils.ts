@@ -1,4 +1,5 @@
 import { Interface } from "@ethersproject/abi";
+import { BigNumberish } from "ethers";
 
 import * as Sdk from "../../index";
 import { TxData } from "../../utils";
@@ -19,4 +20,17 @@ export const generateApprovalTxData = (
   data: new Interface([
     "function setApprovalForAll(address operator, bool isApproved)",
   ]).encodeFunctionData("setApprovalForAll", [operator, true]),
+});
+
+export const generateApproveTxData = (
+  contract: string,
+  owner: string,
+  spender: string,
+  amount: BigNumberish
+): TxData => ({
+  from: owner,
+  to: contract,
+  data: new Interface([
+    "function approve(address spender, uint256 amount)",
+  ]).encodeFunctionData("approve", [spender, amount]),
 });

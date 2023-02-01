@@ -112,7 +112,6 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
   afterEach(reset);
 
   const testAcceptListings = async (
-    inputUsdc: boolean,
     // Whether to fill USDC or ETH listings
     useUsdc: boolean,
     // Whether to include fees on top
@@ -414,7 +413,6 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
                 `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
               async () =>
                 testAcceptListings(
-                  false,
                   useUsdc,
                   chargeFees,
                   revertIfIncomplete,

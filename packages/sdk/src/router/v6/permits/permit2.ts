@@ -1,9 +1,9 @@
-import { AllowanceTransfer, PermitBatch } from "@uniswap/permit2-sdk";
+import { AllowanceTransfer, PermitBatch, PermitDetails } from "@uniswap/permit2-sdk";
 import * as Sdk from "@reservoir0x/sdk/src";
 
 import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
-import { BigNumberish } from "@ethersproject/bignumber";
+import { verifyTypedData } from "@ethersproject/wallet";
 
 import { TxData, getCurrentTimestamp } from "../../../utils";
 
@@ -26,72 +26,93 @@ export type Permit2Approval = {
   transferDetails: TransferDetail[];
 };
 
-export class Permit2Handler {
+export class Handler {
   public chainId: number;
   public provider: Provider;
   public permit2: Contract
   public address: string;
   public module: string
 
-  constructor(chainId: number, provider: Provider) {
+  constructor(chainId: number, provider: Provider, module?: string) {
     this.chainId = chainId;
     this.provider = provider;
-    this.address = Sdk.RouterV6.Addresses.Permit2Module[this.chainId];
-    this.module = Sdk.RouterV6.Addresses.Permit2Module[this.chainId];
+    this.address = Sdk.Common.Addresses.Permit2[this.chainId];
+    this.module = module ?? Sdk.RouterV6.Addresses.Permit2Module[this.chainId];
     this.permit2 = new Contract(this.address, Permit2ABI, provider);
   }
 
   public async generate(
-    from: string,
-    owner: string,
-    receiver: string,
-    token: string,
-    amount: BigNumberish,
+    transferDetails: TransferDetail[],
     expiresIn = 10 * 60
   ): Promise<Permit2Approval> {
-    
-    const packedAllowance = await this.permit2.allowance(owner, token, this.module);
+
+    if (transferDetails.length === 0)  throw new Error("transferDetails empty")
+   
     const now = getCurrentTimestamp();
+    const owner = transferDetails[0].from;
+    const details: PermitDetails[] = [];
+    
+    await Promise.all(
+      transferDetails.map(async ({ from, token, amount }) => {
+        try {
+            const packedAllowance = await this.permit2.allowance(from, token, this.module);
+            details.push( 
+              {
+                token,
+                amount,
+                expiration: now + expiresIn,
+                nonce: packedAllowance.nonce
+              }
+            )
+        } catch (error) {
+          // error
+        }
+      })
+    );
+
     const permitBatch = {
-      details: [
-        {
-          token,
-          amount,
-          expiration: now + expiresIn,
-          nonce: packedAllowance.nonce
-        },
-      ],
+      details: details.filter(c => c),
       spender: this.module,
       sigDeadline: now + expiresIn,
     };
-
+    
     return {
       owner,
       permitBatch,
-      transferDetails: [
-        {
-          from,
-          to: receiver,
-          amount: amount.toString(),
-          token,
-        },
-      ],
+      transferDetails,
     }
   }
 
   public getSignatureData(permit2Approval: Permit2Approval) {
-    return AllowanceTransfer.getPermitData(
+    const signatureData = AllowanceTransfer.getPermitData(
       permit2Approval.permitBatch,
       Sdk.Common.Addresses.Permit2[this.chainId],
       this.chainId
     );
+    return {
+      signatureKind: "eip712",
+      domain: signatureData.domain,
+      types: signatureData.types,
+      value: signatureData.values
+    }
   }
 
-  // public attachAndCheckSignature(
-  //   permit2Approval: Permit2Approval,
-  //   signature: string
-  // ) {
-  // }
+  public attachAndCheckSignature(
+    permit2Approval: Permit2Approval,
+    signature: string
+  ) {
+
+    const signatureData = this.getSignatureData(permit2Approval);
+    const signer = verifyTypedData(
+      signatureData.domain,
+      signatureData.types,
+      signatureData.value,
+      signature
+    );
+
+    permit2Approval.signature = signature;
+
+  }
 
   public attachToRouterExecution(
     txData: TxData,
@@ -110,7 +131,7 @@ export class Permit2Handler {
         [
           ...permitApprovals.map((permit2Approval) => {
             return {
-              module: this.address,
+              module: this.module,
               data: permit2ModuleIface.encodeFunctionData("permitTransfer", [
                 permit2Approval.owner,
                 permit2Approval.permitBatch,
