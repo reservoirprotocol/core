@@ -88,7 +88,6 @@ export const generateSwapExecution = async (
     const fromToken = await getToken(chainId, provider, fromTokenAddress);
     const toToken = await getToken(chainId, provider, toTokenAddress);
 
-    console.log('find route')
     const route = await router.route(
       CurrencyAmount.fromRawAmount(toToken, toTokenAmount.toString()),
       fromToken,
@@ -105,11 +104,7 @@ export const generateSwapExecution = async (
       }
     );
 
-    console.log('done')
-
     if (!route) {
-
-      console.log(fromToken, fromTokenAddress, toTokenAddress)
       throw new Error("Could not generate route");
     }
 
@@ -152,8 +147,6 @@ export const generateSwapExecution = async (
     } catch {
       throw new Error("Could not generate compatible route");
     }
-
-    console.log('params', params.params)
 
     return {
       amounts: {

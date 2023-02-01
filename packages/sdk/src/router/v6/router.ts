@@ -945,6 +945,15 @@ export class Router {
           }
         }
 
+        if (isSameCurrency && !buyIsETH) {
+          permitItems.push({
+            from: taker,
+            to: this.contracts.seaportModule.address,
+            token: buyInCurrency,
+            amount: totalPayment.toString()
+          });
+        }
+
         if (!skipFillExecution) {
           executions.push({
             module: this.contracts.seaportModule.address,
@@ -1042,7 +1051,7 @@ export class Router {
 
         permitItems.push({
           from: taker,
-          to: this.contracts.seaportModule.address,
+          to: this.contracts.uniswapV3Module.address,
           token: buyInCurrency,
           amount: totalSwapInputAmount.toString()
         });

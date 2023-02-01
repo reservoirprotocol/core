@@ -4,8 +4,7 @@ import * as Sdk from "@reservoir0x/sdk/src";
 import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { verifyTypedData } from "@ethersproject/wallet";
-
-import { TxData, getCurrentTimestamp } from "../../../utils";
+import { TxData, getCurrentTimestamp, bn } from "../../../utils";
 
 import RouterAbi from "../abis/ReservoirV6_0_0.json";
 import Permit2ABI from "../../../common/abis/Permit2.json";
@@ -50,28 +49,40 @@ export class Handler {
    
     const now = getCurrentTimestamp();
     const owner = transferDetails[0].from;
+    const rawDetails: PermitDetails[] = [];
     const details: PermitDetails[] = [];
     
     await Promise.all(
       transferDetails.map(async ({ from, token, amount }) => {
         try {
-            const packedAllowance = await this.permit2.allowance(from, token, this.module);
-            details.push( 
-              {
-                token,
-                amount,
-                expiration: now + expiresIn,
-                nonce: packedAllowance.nonce
-              }
-            )
+          const packedAllowance = await this.permit2.allowance(from, token, this.module);
+          rawDetails.push( 
+            {
+              token,
+              amount,
+              expiration: now + expiresIn,
+              nonce: packedAllowance.nonce
+            }
+          )
         } catch (error) {
           // error
         }
       })
     );
 
+    // Aggregate same token amount
+    for (let index = 0; index < rawDetails.length; index++) {
+      const detail = rawDetails[index];
+      const existsPermit = details.find(_ => _.token === detail.token);
+      if (!existsPermit) {
+        details.push(detail);
+      } else {
+        existsPermit.amount = bn(existsPermit.amount).add(bn(detail.amount))
+      }
+    }
+
     const permitBatch = {
-      details: details.filter(c => c),
+      details,
       spender: this.module,
       sigDeadline: now + expiresIn,
     };
@@ -109,6 +120,10 @@ export class Handler {
       signatureData.value,
       signature
     );
+
+    if(signer.toLowerCase() != permit2Approval.owner.toLowerCase()) {
+      throw new Error('invalid signature')
+    }
 
     permit2Approval.signature = signature;
 
