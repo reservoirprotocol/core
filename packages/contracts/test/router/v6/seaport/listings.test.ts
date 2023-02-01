@@ -538,6 +538,11 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
 
     await setupSeaportListings([listing]);
 
+    console.log("permitModuleTransfer", permitModuleTransfer)
+    console.log('address', {
+      permit2Module: permit2Module.address,
+      uniswapV3Module: uniswapV3Module.address
+    })
     // Prepare executions
     const executions: ExecutionInfo[] = [
       // 1. Transfer with permit2
@@ -596,6 +601,14 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
       // },
     ];
 
+    console.log({
+      from: '',
+      to: router.address,
+      data: router.interface.encodeFunctionData('execute', [
+        executions
+      ])
+    })
+
 
     console.log("swap", {
       tokenIn: Sdk.Common.Addresses.Usdc[chainId],
@@ -645,6 +658,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
 
 
     // Fetch post-state
+    console.log("USDC", await getBalances(Sdk.Common.Addresses.Usdc[chainId]))
 
     const balancesAfter = await getBalances(Sdk.Common.Addresses.Eth[chainId]);
     const ethBalancesAfter = await getBalances(

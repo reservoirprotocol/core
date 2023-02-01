@@ -61,10 +61,6 @@ contract UniswapV3Module is BaseExchangeModule {
         );
 
         // Execute the swap
-        try SWAP_ROUTER.exactOutputSingle(params) {
-
-        } catch (bytes memory err) {
-            emit LogStr(err);
-        }
+        SWAP_ROUTER.exactOutputSingle(params);
     }
 }
