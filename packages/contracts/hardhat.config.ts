@@ -8,6 +8,7 @@ import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@tenderly/hardhat-tenderly";
 import "hardhat-gas-reporter";
+import "hardhat-tracer";
 
 const getNetworkConfig = (chainId?: number) => {
   if (!chainId) {
