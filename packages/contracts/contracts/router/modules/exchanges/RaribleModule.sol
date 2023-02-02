@@ -242,7 +242,7 @@ contract RaribleModule is BaseExchangeModule {
                     address(this),
                     receiver,
                     tokenId,
-                    orderLeft.takeAsset.value,
+                    orderLeft.makeAsset.value,
                     ""
                 );
             }
