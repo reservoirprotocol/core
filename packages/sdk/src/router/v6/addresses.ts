@@ -38,6 +38,8 @@ export const SeaportModule: ChainIdToAddress = {
   [Network.Optimism]: "0x51e59caf8980d4284707daa2267ec4cc05f48374",
 };
 
+export const SeaportV12Module: ChainIdToAddress = {};
+
 export const SudoswapModule: ChainIdToAddress = {
   [Network.Ethereum]: "0x79abbfdf20fc6dd0c51693bf9a481f7351a70fd2",
 };

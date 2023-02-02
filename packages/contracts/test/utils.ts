@@ -96,6 +96,12 @@ export const setupRouterWithModules = async (
   Sdk.RouterV6.Addresses.SeaportModule[chainId] =
     seaportModule.address.toLowerCase();
 
+  const seaportV12Module = await ethers
+    .getContractFactory("SeaportV12Module", deployer)
+    .then((factory) => factory.deploy(deployer.address, router.address));
+  Sdk.RouterV6.Addresses.SeaportV12Module[chainId] =
+    seaportV12Module.address.toLowerCase();
+
   const zeroExV4Module = await ethers
     .getContractFactory("ZeroExV4Module", deployer)
     .then((factory) => factory.deploy(deployer.address, router.address));

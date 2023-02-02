@@ -31,6 +31,7 @@ import ElementModuleAbi from "./abis/ElementModule.json";
 import FoundationModuleAbi from "./abis/FoundationModule.json";
 import LooksRareModuleAbi from "./abis/LooksRareModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
+import SeaportV12ModuleAbi from "./abis/SeaportV12Module.json";
 import SudoswapModuleAbi from "./abis/SudoswapModule.json";
 import UniswapV3ModuleAbi from "./abis/UniswapV3Module.json";
 import WETHModuleAbi from "./abis/WETHModule.json";
@@ -83,6 +84,11 @@ export class Router {
       seaportModule: new Contract(
         Addresses.SeaportModule[chainId] ?? AddressZero,
         SeaportModuleAbi,
+        provider
+      ),
+      seaportV12Module: new Contract(
+        Addresses.SeaportV12Module[chainId] ?? AddressZero,
+        SeaportV12ModuleAbi,
         provider
       ),
       sudoswapModule: new Contract(
@@ -350,6 +356,36 @@ export class Router {
     );
     details = details.filter(({ kind }) => kind !== "seaport-partial");
 
+    await Promise.all(
+      details
+        .filter(({ kind }) => kind === "seaport-v1.2-partial")
+        .map(async (detail) => {
+          try {
+            const order = detail.order as Sdk.SeaportV12.Types.PartialOrder;
+            const result = await axios.get(
+              `https://order-fetcher.vercel.app/api/listing?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}`
+            );
+
+            const fullOrder = new Sdk.SeaportV12.Order(
+              this.chainId,
+              result.data.order
+            );
+            details.push({
+              ...detail,
+              kind: "seaport-v1.2",
+              order: fullOrder,
+            });
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              return;
+            }
+          }
+        })
+    );
+    details = details.filter(({ kind }) => kind !== "seaport-v1.2-partial");
+
     const relayer = options?.relayer ?? taker;
 
     // If all orders are Seaport, then fill on Seaport directly
@@ -383,6 +419,51 @@ export class Router {
         };
       } else {
         const orders = details.map((d) => d.order as Sdk.Seaport.Order);
+        return {
+          txData: await exchange.fillOrdersTx(
+            taker,
+            orders,
+            orders.map((order, i) =>
+              order.buildMatching({ amount: details[i].amount })
+            ),
+            {
+              ...options,
+              ...options?.directFillingData,
+            }
+          ),
+          success: orders.map((_) => true),
+        };
+      }
+    }
+    if (
+      details.every(
+        ({ kind, fees, currency }) =>
+          kind === "seaport-v1.2" &&
+          currency === details[0].currency &&
+          buyInCurrency === currency &&
+          !fees?.length
+      ) &&
+      !options?.globalFees?.length &&
+      !options?.forceRouter &&
+      !options?.relayer
+    ) {
+      const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+      if (details.length === 1) {
+        const order = details[0].order as Sdk.SeaportV12.Order;
+        return {
+          txData: await exchange.fillOrderTx(
+            taker,
+            order,
+            order.buildMatching({ amount: details[0].amount }),
+            {
+              ...options,
+              ...options?.directFillingData,
+            }
+          ),
+          success: [true],
+        };
+      } else {
+        const orders = details.map((d) => d.order as Sdk.SeaportV12.Order);
         return {
           txData: await exchange.fillOrdersTx(
             taker,
@@ -445,6 +526,7 @@ export class Router {
     const foundationDetails: ListingDetailsExtracted[] = [];
     const looksRareDetails: ListingDetailsExtracted[] = [];
     const seaportDetails: PerCurrencyDetails = {};
+    const seaportV12Details: PerCurrencyDetails = {};
     const sudoswapDetails: ListingDetailsExtracted[] = [];
     const x2y2Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
@@ -483,6 +565,13 @@ export class Router {
             seaportDetails[currency] = [];
           }
           detailsRef = seaportDetails[currency];
+          break;
+
+        case "seaport-v1.2":
+          if (!seaportV12Details[currency]) {
+            seaportV12Details[currency] = [];
+          }
+          detailsRef = seaportV12Details[currency];
           break;
 
         case "sudoswap":
@@ -928,6 +1017,139 @@ export class Router {
                     ]
                   )
                 : this.contracts.seaportModule.interface.encodeFunctionData(
+                    `accept${currencyIsETH ? "ETH" : "ERC20"}Listings`,
+                    [
+                      await Promise.all(
+                        orders.map(async (order, i) => {
+                          const orderData = {
+                            parameters: {
+                              ...order.params,
+                              totalOriginalConsiderationItems:
+                                order.params.consideration.length,
+                            },
+                            numerator: currencyDetails[i].amount ?? 1,
+                            denominator: order.getInfo()!.amount,
+                            signature: order.params.signature,
+                            extraData: await exchange.getExtraData(order),
+                          };
+
+                          if (currencyIsETH) {
+                            return {
+                              order: orderData,
+                              price: orders[i].getMatchingPrice(),
+                            };
+                          } else {
+                            return orderData;
+                          }
+                        })
+                      ),
+                      {
+                        fillTo: taker,
+                        refundTo: taker,
+                        revertIfIncomplete: Boolean(!options?.partial),
+                        // Only needed for ERC20 listings
+                        token: currency,
+                        amount: totalPrice,
+                      },
+                      fees,
+                    ]
+                  ),
+            value: currencyIsETH ? totalPayment : 0,
+          });
+
+          // Mark the listings as successfully handled
+          for (const { originalIndex } of currencyDetails) {
+            success[originalIndex] = true;
+          }
+        }
+      }
+    }
+
+    // Handle Seaport V1.2 listings
+    if (Object.keys(seaportV12Details).length) {
+      const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+      for (const currency of Object.keys(seaportV12Details)) {
+        const currencyDetails = seaportV12Details[currency];
+
+        const orders = currencyDetails.map(
+          (d) => d.order as Sdk.SeaportV12.Order
+        );
+        const fees = getFees(currencyDetails);
+
+        const totalPrice = orders
+          .map((order, i) =>
+            // Seaport orders can be partially-fillable
+            bn(order.getMatchingPrice())
+              .mul(currencyDetails[i].amount ?? 1)
+              .div(order.getInfo()!.amount)
+          )
+          .reduce((a, b) => a.add(b), bn(0));
+        const totalFees = fees
+          .map(({ amount }) => bn(amount))
+          .reduce((a, b) => a.add(b), bn(0));
+        const totalPayment = totalPrice.add(totalFees);
+
+        const currencyIsETH = isETH(this.chainId, currency);
+        let skipFillExecution = false;
+        if (!currencyIsETH) {
+          try {
+            executions.push(
+              await generateSwapExecution(
+                this.chainId,
+                this.provider,
+                buyInCurrency,
+                currency,
+                totalPayment,
+                {
+                  uniswapV3Module: this.contracts.uniswapV3Module,
+                  wethModule: this.contracts.wethModule,
+                  // Forward any swapped tokens to the Seaport V1.2 module
+                  recipient: this.contracts.seaportV12Module.address,
+                  refundTo: taker,
+                }
+              )
+            );
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate swap execution");
+            } else {
+              // Since the swap execution generation failed, we should also skip the fill execution
+              skipFillExecution = true;
+            }
+          }
+        }
+
+        if (!skipFillExecution) {
+          executions.push({
+            module: this.contracts.seaportV12Module.address,
+            data:
+              orders.length === 1
+                ? this.contracts.seaportV12Module.interface.encodeFunctionData(
+                    `accept${currencyIsETH ? "ETH" : "ERC20"}Listing`,
+                    [
+                      {
+                        parameters: {
+                          ...orders[0].params,
+                          totalOriginalConsiderationItems:
+                            orders[0].params.consideration.length,
+                        },
+                        numerator: currencyDetails[0].amount ?? 1,
+                        denominator: orders[0].getInfo()!.amount,
+                        signature: orders[0].params.signature,
+                        extraData: await exchange.getExtraData(orders[0]),
+                      },
+                      {
+                        fillTo: taker,
+                        refundTo: taker,
+                        revertIfIncomplete: Boolean(!options?.partial),
+                        // Only needed for ERC20 listings
+                        token: currency,
+                        amount: totalPrice,
+                      },
+                      fees,
+                    ]
+                  )
+                : this.contracts.seaportV12Module.interface.encodeFunctionData(
                     `accept${currencyIsETH ? "ETH" : "ERC20"}Listings`,
                     [
                       await Promise.all(
@@ -1683,6 +1905,12 @@ export class Router {
           break;
         }
 
+        case "seaport-v1.2":
+        case "seaport-v1.2-partial": {
+          module = this.contracts.seaportV12Module;
+          break;
+        }
+
         case "sudoswap": {
           module = this.contracts.sudoswapModule;
           break;
@@ -1834,6 +2062,110 @@ export class Router {
             );
 
             const exchange = new Sdk.Seaport.Exchange(this.chainId);
+            executions.push({
+              module: module.address,
+              data: module.interface.encodeFunctionData(
+                detail.contractKind === "erc721"
+                  ? "acceptERC721Offer"
+                  : "acceptERC1155Offer",
+                [
+                  {
+                    parameters: {
+                      ...fullOrder.params,
+                      totalOriginalConsiderationItems:
+                        fullOrder.params.consideration.length,
+                    },
+                    numerator: detail.amount ?? 1,
+                    denominator: fullOrder.getInfo()!.amount,
+                    signature: fullOrder.params.signature,
+                    extraData: await exchange.getExtraData(fullOrder),
+                  },
+                  result.data.criteriaResolvers ?? [],
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                  },
+                  detail.fees ?? [],
+                ]
+              ),
+              value: 0,
+            });
+
+            success[i] = true;
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              continue;
+            }
+          }
+
+          break;
+        }
+
+        case "seaport-v1.2": {
+          const order = detail.order as Sdk.SeaportV12.Order;
+          const module = this.contracts.seaportV12Module;
+
+          const matchParams = order.buildMatching({
+            tokenId: detail.tokenId,
+            amount: detail.amount ?? 1,
+            ...(detail.extraArgs ?? {}),
+          });
+
+          const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                {
+                  parameters: {
+                    ...order.params,
+                    totalOriginalConsiderationItems:
+                      order.params.consideration.length,
+                  },
+                  numerator: matchParams.amount ?? 1,
+                  denominator: order.getInfo()!.amount,
+                  signature: order.params.signature,
+                  extraData: await exchange.getExtraData(order),
+                },
+                matchParams.criteriaResolvers ?? [],
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                },
+                detail.fees ?? [],
+              ]
+            ),
+            value: 0,
+          });
+
+          success[i] = true;
+
+          break;
+        }
+
+        case "seaport-v1.2-partial": {
+          const order = detail.order as Sdk.SeaportV12.Types.PartialOrder;
+          const module = this.contracts.seaportV12Module;
+
+          try {
+            const result = await axios.get(
+              `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}` +
+                (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
+            );
+
+            const fullOrder = new Sdk.SeaportV12.Order(
+              this.chainId,
+              result.data.order
+            );
+
+            const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
             executions.push({
               module: module.address,
               data: module.interface.encodeFunctionData(

@@ -654,7 +654,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       });
     }
 
-    // Order 2: Seaport USDC
+    // Order 2: Seaport V1.2 USDC
     const seller2 = bob;
     const tokenId2 = 1;
     const price2 = parseUnits("1.5", 6);
@@ -666,10 +666,10 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       // Approve the exchange
       await erc721
         .connect(seller2)
-        .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
+        .setApprovalForAll(Sdk.SeaportV12.Addresses.Exchange[chainId], true);
 
       // Build sell order
-      const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
+      const builder = new Sdk.SeaportV12.Builders.SingleToken(chainId);
       const sellOrder = builder.build({
         side: "sell",
         tokenKind: "erc721",
@@ -693,7 +693,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       await sellOrder.checkFillability(ethers.provider);
 
       listings.push({
-        kind: "seaport",
+        kind: "seaport-v1.2",
         contractKind: "erc721",
         contract: erc721.address,
         tokenId: tokenId2.toString(),
@@ -812,6 +812,17 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       0
     );
     expect(
+      await ethers.provider.getBalance(
+        router.contracts.seaportV12Module.address
+      )
+    ).to.eq(0);
+    expect(
+      await usdc.getBalance(router.contracts.seaportV12Module.address)
+    ).to.eq(0);
+    expect(
+      await weth.getBalance(router.contracts.seaportV12Module.address)
+    ).to.eq(0);
+    expect(
       await ethers.provider.getBalance(router.contracts.uniswapV3Module.address)
     ).to.eq(0);
     expect(
@@ -876,7 +887,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       });
     }
 
-    // Order 2: Seaport WETH
+    // Order 2: Seaport V1.2 WETH
     const buyer2 = bob;
     const tokenId2 = 1;
     const price2 = parseEther("0.5");
@@ -884,7 +895,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
     {
       // Wrap ETH for buyer
       await weth.deposit(buyer2, price2);
-      await weth.approve(buyer2, Sdk.Seaport.Addresses.Exchange[chainId]);
+      await weth.approve(buyer2, Sdk.SeaportV12.Addresses.Exchange[chainId]);
 
       // Mint erc721 to seller
       await erc721.connect(seller).mint(tokenId2);
@@ -892,10 +903,10 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       // Approve the exchange
       await erc721
         .connect(seller)
-        .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
+        .setApprovalForAll(Sdk.SeaportV12.Addresses.Exchange[chainId], true);
 
       // Build sell order
-      const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
+      const builder = new Sdk.SeaportV12.Builders.SingleToken(chainId);
       const buyOrder = builder.build({
         side: "buy",
         tokenKind: "erc721",
@@ -917,7 +928,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       await buyOrder.sign(buyer2);
 
       bids.push({
-        kind: "seaport",
+        kind: "seaport-v1.2",
         contractKind: "erc721",
         contract: erc721.address,
         tokenId: tokenId2.toString(),
@@ -986,10 +997,18 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
     expect(
       await ethers.provider.getBalance(router.contracts.seaportModule.address)
     ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(
+        router.contracts.seaportV12Module.address
+      )
+    ).to.eq(0);
     expect(await weth.getBalance(router.contracts.router.address)).to.eq(0);
     expect(await weth.getBalance(router.contracts.seaportModule.address)).to.eq(
       0
     );
+    expect(
+      await weth.getBalance(router.contracts.seaportV12Module.address)
+    ).to.eq(0);
   });
 
   it("Fill multiple bids with skipped reverts", async () => {
@@ -1048,7 +1067,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       });
     }
 
-    // Order 2: Seaport WETH
+    // Order 2: Seaport V1.2 WETH
     const buyer2 = bob;
     const tokenId2 = 1;
     const price2 = parseEther("0.5");
@@ -1056,7 +1075,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
     {
       // Wrap ETH for buyer
       await weth.deposit(buyer2, price2);
-      await weth.approve(buyer2, Sdk.Seaport.Addresses.Exchange[chainId]);
+      await weth.approve(buyer2, Sdk.SeaportV12.Addresses.Exchange[chainId]);
 
       // Mint erc721 to seller
       await erc721.connect(seller).mint(tokenId2);
@@ -1064,10 +1083,10 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       // Approve the exchange
       await erc721
         .connect(seller)
-        .setApprovalForAll(Sdk.Seaport.Addresses.Exchange[chainId], true);
+        .setApprovalForAll(Sdk.SeaportV12.Addresses.Exchange[chainId], true);
 
       // Build sell order
-      const builder = new Sdk.Seaport.Builders.SingleToken(chainId);
+      const builder = new Sdk.SeaportV12.Builders.SingleToken(chainId);
       const buyOrder = builder.build({
         side: "buy",
         tokenKind: "erc721",
@@ -1089,7 +1108,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       await buyOrder.sign(buyer2);
 
       bids.push({
-        kind: "seaport",
+        kind: "seaport-v1.2",
         contractKind: "erc721",
         contract: erc721.address,
         tokenId: tokenId2.toString(),
@@ -1097,7 +1116,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       });
     }
 
-    // Order 2: Seaport WETH
+    // Order 3: Seaport WETH
     const buyer3 = carol;
     const tokenId3 = 2;
     const price3 = parseEther("0.253");
@@ -1252,9 +1271,17 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
     expect(
       await ethers.provider.getBalance(router.contracts.seaportModule.address)
     ).to.eq(0);
+    expect(
+      await ethers.provider.getBalance(
+        router.contracts.seaportV12Module.address
+      )
+    ).to.eq(0);
     expect(await weth.getBalance(router.contracts.router.address)).to.eq(0);
     expect(await weth.getBalance(router.contracts.seaportModule.address)).to.eq(
       0
     );
+    expect(
+      await weth.getBalance(router.contracts.seaportV12Module.address)
+    ).to.eq(0);
   });
 });
