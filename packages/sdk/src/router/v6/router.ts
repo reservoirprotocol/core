@@ -38,6 +38,7 @@ import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
 import NFTXModuleAbi from "./abis/NFTXModule.json";
+import RaribleModuleAbi from "./abis/RaribleModule.json";
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -120,6 +121,11 @@ export class Router {
         NFTXModuleAbi,
         provider
       ),
+      raribleModule: new Contract(
+        Addresses.RaribleModule[chainId] ?? AddressZero,
+        RaribleModuleAbi,
+        provider
+      ),
     };
   }
 
@@ -167,29 +173,6 @@ export class Router {
         const exchange = new Sdk.Universe.Exchange(this.chainId);
         return {
           txData: await exchange.fillOrderTx(taker, order, {
-            amount: Number(details[0].amount),
-            source: options?.source,
-          }),
-          success: [true],
-        };
-      }
-    }
-
-    // TODO: Add Rarible router module
-    if (details.some(({ kind }) => kind === "rarible")) {
-      if (options?.relayer) {
-        throw new Error("Relayer not supported");
-      }
-
-      if (details.length > 1) {
-        throw new Error("Rarible sweeping is not supported");
-      } else {
-        const order = details[0].order as Sdk.Rarible.Order;
-        const exchange = new Sdk.Rarible.Exchange(this.chainId);
-        return {
-          txData: await exchange.fillOrderTx(taker, order, {
-            tokenId: details[0].tokenId,
-            assetClass: details[0].contractKind.toUpperCase(),
             amount: Number(details[0].amount),
             source: options?.source,
           }),
@@ -451,6 +434,7 @@ export class Router {
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
     const nftxDetails: ListingDetailsExtracted[] = [];
+    const raribleDetails: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind, currency } = details[i];
 
@@ -506,6 +490,11 @@ export class Router {
 
         case "nftx": {
           detailsRef = nftxDetails;
+          break;
+        }
+
+        case "rarible": {
+          detailsRef = raribleDetails;
           break;
         }
 
@@ -1458,6 +1447,68 @@ export class Router {
 
       // Mark the listings as successfully handled
       for (const { originalIndex } of zoraDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
+    // Handle Rarible listings
+    if (raribleDetails.length) {
+      const orders = raribleDetails.map((d) => d.order as Sdk.Rarible.Order);
+      const module = this.contracts.raribleModule.address;
+
+      const fees = getFees(raribleDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.take.value))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module,
+        data:
+          orders.length === 1
+            ? this.contracts.raribleModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  orders[0].buildMatching(
+                    module
+                  ),
+                  orders[0].params,
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.raribleModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) =>
+                    order.buildMatching(
+                      // For LooksRare, the module acts as the taker proxy
+                      module
+                    )
+                  ),
+                  orders.map((order) => order.params),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of looksRareDetails) {
         success[originalIndex] = true;
       }
     }
