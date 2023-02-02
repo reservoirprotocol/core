@@ -7,7 +7,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../helpers/router";
-import * as Helpers from "../helpers/seaport-v12";
+import * as Helpers from "../helpers/seaport-v1.2";
 import {
   bn,
   getChainId,
