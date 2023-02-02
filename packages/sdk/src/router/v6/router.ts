@@ -1465,6 +1465,26 @@ export class Router {
         .map(({ amount }) => bn(amount))
         .reduce((a, b) => a.add(b), bn(0));
 
+      const order = orders[0];
+
+      let matchOrder = null;
+      if (orders.length === 1) {
+        matchOrder = orders[0].buildMatching(module);
+        if (order.params.side === "buy") {
+          matchOrder.make.assetType.collection =
+            matchOrder.make.assetType.contract;
+
+          order.params.take.assetType.collection =
+            order.params.take.assetType.contract;
+        } else {
+          matchOrder.take.assetType.collection =
+            matchOrder.take.assetType.contract;
+
+          order.params.make.assetType.collection =
+            order.params.make.assetType.contract;
+        }
+      }
+
       executions.push({
         module,
         data:
@@ -1472,9 +1492,7 @@ export class Router {
             ? this.contracts.raribleModule.interface.encodeFunctionData(
                 "acceptETHListing",
                 [
-                  orders[0].buildMatching(
-                    module
-                  ),
+                  matchOrder,
                   orders[0].params,
                   {
                     fillTo: taker,
@@ -1488,13 +1506,32 @@ export class Router {
             : this.contracts.raribleModule.interface.encodeFunctionData(
                 "acceptETHListings",
                 [
-                  orders.map((order) =>
-                    order.buildMatching(
-                      // For LooksRare, the module acts as the taker proxy
+                  orders.map((order) => {
+                    const matchOrder = order.buildMatching(
                       module
-                    )
-                  ),
-                  orders.map((order) => order.params),
+                    );
+
+                    if (order.params.side === "buy") {
+                      matchOrder.make.assetType.collection =
+                        matchOrder.make.assetType.contract;
+                    } else {
+                      matchOrder.take.assetType.collection =
+                        matchOrder.take.assetType.contract;
+                    }
+
+                    return matchOrder;
+                  }),
+                  orders.map((order) => {
+                    if (order.params.side === "buy") {
+                      order.params.take.assetType.collection =
+                        order.params.take.assetType.contract;
+                    } else {
+                      order.params.make.assetType.collection =
+                        order.params.make.assetType.contract;
+                    }
+                    console.log(order.params);
+                    return order.params;
+                  }),
                   {
                     fillTo: taker,
                     refundTo: taker,

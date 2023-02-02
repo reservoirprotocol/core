@@ -57,6 +57,7 @@ export type LocalAssetType = {
   creators?: IPart[];
   royalties?: IPart[];
   signatures?: string[];
+  collection?: string;
 };
 
 export type LocalAsset = {

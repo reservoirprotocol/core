@@ -109,7 +109,7 @@ export const setupRaribleListings = async (listings: RaribleListing[]) => {
   const exchange = new Sdk.LooksRare.Exchange(chainId);
 
   for (const listing of listings) {
-    const { maker, tokenId, tokenKind, contract } = listing;
+    const { maker, tokenId, tokenKind, contract, payouts } = listing;
 
     // Approve the exchange contract
     await contract.connect(maker).mint(tokenId);
@@ -131,7 +131,10 @@ export const setupRaribleListings = async (listings: RaribleListing[]) => {
       paymentToken: listing.paymentToken,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+      payouts,
     });
+
+    listing.order = order;
     await order.sign(maker);
   }
 };

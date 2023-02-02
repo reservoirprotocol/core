@@ -6,20 +6,22 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface IRarible {
     struct AssetType {
+        IERC165 collection;
+        uint tokenId;
         bytes4 assetClass;
         bytes data;
     }
 
     struct Asset {
         AssetType assetType;
-        uint value;
+        uint256 value;
     }
 
     struct Order {
         address maker;
-        Asset makeAsset;
+        Asset make;
         address taker;
-        Asset takeAsset;
+        Asset take;
         uint salt;
         uint start;
         uint end;
@@ -32,51 +34,9 @@ interface IRarible {
         IERC165 collection;
     }
 
-    struct Purchase {
-        address sellOrderMaker;
-        uint256 sellOrderNftAmount;
-        bytes4 nftAssetClass;
-        NftData nftData;
-        uint256 sellOrderPaymentAmount;
-        IERC20 paymentToken;
-        uint256 sellOrderSalt;
-        uint sellOrderStart;
-        uint sellOrderEnd;
-        bytes4 sellOrderDataType;
-        bytes sellOrderData;
-        bytes sellOrderSignature;
-
-        uint256 buyOrderPaymentAmount;
-        uint256 buyOrderNftAmount;
-        bytes buyOrderData;
-    }
-
-    /*All accept bid parameters need for create buyOrder and sellOrder*/
-    struct AcceptBid {
-        address bidMaker;
-        uint256 bidNftAmount;
-        bytes4 nftAssetClass;
-        NftData nftData;
-        uint256 bidPaymentAmount;
-        IERC20 paymentToken;
-        uint256 bidSalt;
-        uint bidStart;
-        uint bidEnd;
-        bytes4 bidDataType;
-        bytes bidData;
-        bytes bidSignature;
-
-        uint256 sellOrderPaymentAmount;
-        uint256 sellOrderNftAmount;
-        bytes sellOrderData;
-    }
-
-    function directPurchase(
-        Purchase calldata direct
-    ) external payable;
-
-    function directAcceptBid(
-        AcceptBid calldata takerBid
+    function matchOrders(
+        Order calldata orderLeft,
+        Order calldata orderRight
     ) external payable;
 }
 

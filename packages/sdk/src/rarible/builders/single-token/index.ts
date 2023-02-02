@@ -1,7 +1,7 @@
 import { BaseBuilder, BaseOrderInfo } from "../base";
 import { Order } from "../../order";
 import * as Types from "../../types";
-import { lc, n, s } from "../../../utils";
+import { bn, lc, n, s } from "../../../utils";
 import { BigNumber, constants } from "ethers/lib/ethers";
 import { AssetClass } from "../../types";
 import { ORDER_DATA_TYPES } from "../../constants";
@@ -95,9 +95,11 @@ export class SingleTokenBuilder extends BaseBuilder {
           ? {
               assetClass: AssetClass.ERC20,
               contract: lc(params.paymentToken),
+              collection: lc(params.paymentToken),
             }
           : {
               assetClass: AssetClass.ETH,
+              collection: constants.AddressZero,
             }),
       },
       value: params.price,
@@ -123,6 +125,8 @@ export class SingleTokenBuilder extends BaseBuilder {
     taker: string,
     data: { amount?: string }
   ) {
+    order.make.assetType.collection = order.make.assetType.contract;
+    order.take.assetType.collection = constants.AddressZero;
     const rightOrder = {
       type: order.type,
       maker: lc(taker),

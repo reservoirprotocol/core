@@ -39,7 +39,8 @@ contract RaribleModule is BaseExchangeModule {
     // --- Single ETH listing ---
 
     function acceptETHListing(
-        IRarible.Purchase calldata direct,
+        IRarible.Order calldata orderLeft,
+        IRarible.Order calldata orderRight,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -51,7 +52,8 @@ contract RaribleModule is BaseExchangeModule {
     {
         // Execute fill
         _buy(
-            direct,
+            orderLeft,
+            orderRight,
             params.fillTo,
             params.revertIfIncomplete,
             params.amount
@@ -61,7 +63,8 @@ contract RaribleModule is BaseExchangeModule {
     // --- Multiple ETH listings ---
 
     function acceptETHListings(
-        IRarible.Purchase[] calldata directs,
+        IRarible.Order[] calldata ordersLeft,
+        IRarible.Order[] calldata ordersRight,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -71,16 +74,17 @@ contract RaribleModule is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
-        for (uint256 i = 0; i < directs.length; ) {
-            // Use `memory` to avoid `Stack too deep` errors
-            IRarible.Purchase calldata direct = directs[i];
+        for (uint256 i = 0; i < ordersLeft.length; ) {
+            IRarible.Order calldata orderLeft = ordersLeft[i];
+            IRarible.Order calldata orderRight = ordersRight[i];
 
             // Execute fill
             _buy(
-                direct,
+                orderLeft,
+                orderRight,
                 params.fillTo,
                 params.revertIfIncomplete,
-                direct.sellOrderPaymentAmount
+                orderLeft.make.value
             );
 
             unchecked {
@@ -92,49 +96,53 @@ contract RaribleModule is BaseExchangeModule {
     // --- [ERC721] Single offer ---
 
     function acceptERC721Offer(
-        IRarible.AcceptBid calldata direct,
+        IRarible.Order calldata orderLeft,
+        IRarible.Order calldata orderRight,
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-        IERC721 collection = IERC721(address(direct.nftData.collection));
+        IERC721 collection = IERC721(address(orderLeft.take.assetType.collection));
 
         // Approve the transfer manager if needed
         _approveERC721IfNeeded(collection, TRANSFER_MANAGER);
 
         // Execute the fill
         _sell(
-            direct,
+            orderLeft,
+            orderRight,
             params.fillTo,
             params.revertIfIncomplete,
             fees
         );
 
         // Refund any ERC721 leftover
-        _sendAllERC721(params.refundTo, collection, direct.nftData.tokenId);
+        _sendAllERC721(params.refundTo, collection, orderLeft.take.assetType.tokenId);
     }
 
     // --- [ERC1155] Single offer ---
 
     function acceptERC1155Offer(
-        IRarible.AcceptBid calldata direct,
+        IRarible.Order calldata orderLeft,
+        IRarible.Order calldata orderRight,
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-        IERC1155 collection = IERC1155(address(direct.nftData.collection));
+        IERC1155 collection = IERC1155(address(orderLeft.take.assetType.collection));
 
         // Approve the transfer manager if needed
         _approveERC1155IfNeeded(collection, TRANSFER_MANAGER);
 
         // Execute the fill
         _sell(
-            direct,
+            orderLeft,
+            orderRight,
             params.fillTo,
             params.revertIfIncomplete,
             fees
         );
 
         // Refund any ERC1155 leftover
-        _sendAllERC1155(params.refundTo, collection, direct.nftData.tokenId);
+        _sendAllERC1155(params.refundTo, collection, orderLeft.take.assetType.tokenId);
     }
 
     // --- ERC721 / ERC1155 hooks ---
@@ -179,16 +187,17 @@ contract RaribleModule is BaseExchangeModule {
     // --- Internal ---
 
     function _buy(
-        IRarible.Purchase calldata direct,
+        IRarible.Order calldata orderLeft,
+        IRarible.Order calldata orderRight,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
     ) internal {
         // Execute the fill
         try
-            EXCHANGE.directPurchase{value: value}(direct)
+            EXCHANGE.matchOrders{value: value}(orderLeft, orderRight)
         {
-            IERC165 collection = direct.nftData.collection;
+            IERC165 collection = orderLeft.make.assetType.collection;
 
             // Forward any token to the specified receiver
             bool isERC721 = collection.supportsInterface(ERC721_INTERFACE);
@@ -196,7 +205,7 @@ contract RaribleModule is BaseExchangeModule {
                 IERC721(address(collection)).safeTransferFrom(
                     address(this),
                     receiver,
-                    direct.nftData.tokenId
+                    orderLeft.make.assetType.tokenId
                 );
             } else {
                 bool isERC1155 = collection.supportsInterface(
@@ -206,8 +215,8 @@ contract RaribleModule is BaseExchangeModule {
                     IERC1155(address(collection)).safeTransferFrom(
                         address(this),
                         receiver,
-                        direct.nftData.tokenId,
-                        direct.sellOrderPaymentAmount,
+                        orderLeft.make.assetType.tokenId,
+                        orderLeft.take.value,
                         ""
                     );
                 }
@@ -220,19 +229,21 @@ contract RaribleModule is BaseExchangeModule {
         }
     }
 
-        function _sell(
-        IRarible.AcceptBid calldata direct,
+    function _sell(
+        IRarible.Order calldata orderLeft,
+        IRarible.Order calldata orderRight,
         address receiver,
         bool revertIfIncomplete,
         Fee[] calldata fees
     ) internal {
         // Execute the fill
-        try EXCHANGE.directAcceptBid(direct) {
+        try EXCHANGE.matchOrders(orderLeft, orderRight) {
             // Pay fees
             uint256 feesLength = fees.length;
             for (uint256 i; i < feesLength; ) {
                 Fee memory fee = fees[i];
-                _sendERC20(fee.recipient, fee.amount, direct.paymentToken);
+                
+                _sendERC20(fee.recipient, fee.amount, IERC20(address(orderLeft.make.assetType.collection)));
 
                 unchecked {
                     ++i;
@@ -240,7 +251,7 @@ contract RaribleModule is BaseExchangeModule {
             }
 
             // Forward any left payment to the specified receiver
-            _sendAllERC20(receiver, direct.paymentToken);
+            _sendAllERC20(receiver, IERC20(address(orderLeft.make.assetType.collection)));
         } catch {
             // Revert if specified
             if (revertIfIncomplete) {
