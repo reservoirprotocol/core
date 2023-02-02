@@ -1623,40 +1623,6 @@ export class Router {
       }
     }
 
-    // TODO: Add Rarible router module
-    if (details.some(({ kind }) => kind === "rarible")) {
-      if (details.length > 1) {
-        throw new Error("Rarible multi-selling is not supported");
-      } else {
-        const detail = details[0];
-
-        // Approve Rarible's NFTTransferProxy contract
-        const approval = {
-          contract: detail.contract,
-          owner: taker,
-          operator: Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId],
-          txData: generateApprovalTxData(
-            detail.contract,
-            taker,
-            Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId]
-          ),
-        };
-
-        const order = detail.order as Sdk.Rarible.Order;
-        const exchange = new Sdk.Rarible.Exchange(this.chainId);
-        return {
-          txData: await exchange.fillOrderTx(taker, order, {
-            tokenId: detail.tokenId,
-            assetClass: detail.contractKind.toUpperCase(),
-            amount: Number(detail.amount),
-          }),
-          success: [true],
-          approvals: [approval],
-          permits: [],
-        };
-      }
-    }
-
     // TODO: Add Forward router module
     if (details.some(({ kind }) => kind === "forward")) {
       if (details.length > 1) {
@@ -2139,41 +2105,44 @@ export class Router {
 
           success[i] = true;
 
-        break;
-      }
+          break;
+        }
 
-      case "rarible": {
-        const order = detail.order as Sdk.Rarible.Order;
-        const module = this.contracts.raribleModule.address;
+        case "rarible": {
+          const order = detail.order as Sdk.Rarible.Order;
+          const module = this.contracts.raribleModule;
 
-        const matchParams = order.buildMatching(module, {
-          tokenId: detail.tokenId,
-          ...(detail.extraArgs || {}),
-        });
+          const matchParams = order.buildMatching(module.address, {
+            tokenId: detail.tokenId,
+            ...(detail.extraArgs || {}),
+          });
 
-        moduleLevelTx = {
-          module,
-          data: this.contracts.rarible.interface.encodeFunctionData(
-            detail.contractKind === "erc721"
-              ? "acceptERC721Offer"
-              : "acceptERC1155Offer",
-            [
-              encodeForMatchOrders(order.params),
-              order.params.signature,
-              encodeForMatchOrders(matchParams),
-              "0x",
-              {
-                fillTo: taker,
-                refundTo: taker,
-                revertIfIncomplete: true,
-              },
-              detail.fees ?? [],
-            ]
-          ),
-        };
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                encodeForMatchOrders(order.params),
+                order.params.signature,
+                encodeForMatchOrders(matchParams),
+                "0x",
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                },
+                detail.fees ?? [],
+              ]
+            ),
+            value: 0,
+          });
 
-        break;
-      }
+          success[i] = true;
+
+          break;
+        }
 
         default: {
           throw new Error("Unsupported exchange kind");
