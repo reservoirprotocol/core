@@ -221,7 +221,7 @@ contract RaribleModule is BaseExchangeModule {
             EXCHANGE.matchOrders{value: value}(orderLeft, signatureLeft, orderRight, signatureRight)
         {
             (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
-            IERC165 collection = IERC165(address(token));
+            IERC165 collection = IERC165(token);
 
             // Forward any token to the specified receiver
             bool isERC721 = collection.supportsInterface(ERC721_INTERFACE);
@@ -265,7 +265,7 @@ contract RaribleModule is BaseExchangeModule {
             for (uint256 i; i < feesLength; ) {
                 Fee memory fee = fees[i];
                 
-                _sendERC20(fee.recipient, fee.amount, IERC20(address(token)));
+                _sendERC20(fee.recipient, fee.amount, IERC20(token));
 
                 unchecked {
                     ++i;
@@ -273,7 +273,7 @@ contract RaribleModule is BaseExchangeModule {
             }
 
             // Forward any left payment to the specified receiver
-            _sendAllERC20(receiver, IERC20(address(token)));
+            _sendAllERC20(receiver, IERC20(token));
         } catch {
             // Revert if specified
             if (revertIfIncomplete) {
