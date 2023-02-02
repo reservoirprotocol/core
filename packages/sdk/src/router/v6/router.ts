@@ -39,6 +39,8 @@ import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
 import NFTXModuleAbi from "./abis/NFTXModule.json";
+import RaribleModuleAbi from "./abis/RaribleModule.json";
+import { encodeForMatchOrders } from "../../rarible/utils";
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -126,6 +128,11 @@ export class Router {
         NFTXModuleAbi,
         provider
       ),
+      raribleModule: new Contract(
+        Addresses.RaribleModule[chainId] ?? AddressZero,
+        RaribleModuleAbi,
+        provider
+      ),
     };
   }
 
@@ -173,29 +180,6 @@ export class Router {
         const exchange = new Sdk.Universe.Exchange(this.chainId);
         return {
           txData: await exchange.fillOrderTx(taker, order, {
-            amount: Number(details[0].amount),
-            source: options?.source,
-          }),
-          success: [true],
-        };
-      }
-    }
-
-    // TODO: Add Rarible router module
-    if (details.some(({ kind }) => kind === "rarible")) {
-      if (options?.relayer) {
-        throw new Error("Relayer not supported");
-      }
-
-      if (details.length > 1) {
-        throw new Error("Rarible sweeping is not supported");
-      } else {
-        const order = details[0].order as Sdk.Rarible.Order;
-        const exchange = new Sdk.Rarible.Exchange(this.chainId);
-        return {
-          txData: await exchange.fillOrderTx(taker, order, {
-            tokenId: details[0].tokenId,
-            assetClass: details[0].contractKind.toUpperCase(),
             amount: Number(details[0].amount),
             source: options?.source,
           }),
@@ -533,6 +517,7 @@ export class Router {
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
     const nftxDetails: ListingDetailsExtracted[] = [];
+    const raribleDetails: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind, currency } = details[i];
 
@@ -595,6 +580,11 @@ export class Router {
 
         case "nftx": {
           detailsRef = nftxDetails;
+          break;
+        }
+
+        case "rarible": {
+          detailsRef = raribleDetails;
           break;
         }
 
@@ -1684,6 +1674,67 @@ export class Router {
       }
     }
 
+    // Handle Rarible listings
+    if (raribleDetails.length) {
+      const orders = raribleDetails.map((d) => d.order as Sdk.Rarible.Order);
+      const module = this.contracts.raribleModule.address;
+
+      const fees = getFees(raribleDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.take.value))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module,
+        data:
+          orders.length === 1
+            ? this.contracts.raribleModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  encodeForMatchOrders(orders[0].params),
+                  orders[0].params.signature,
+                  encodeForMatchOrders(orders[0].buildMatching(module)),
+                  "0x",
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.raribleModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => encodeForMatchOrders(order.params)),
+                  orders.map((order) => order.params.signature),
+                  orders.map((order) =>
+                    encodeForMatchOrders(order.buildMatching(module))
+                  ),
+                  "0x",
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of raribleDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
     if (!executions.length) {
       throw new Error("No executions to handle");
     }
@@ -1784,40 +1835,6 @@ export class Router {
           txData: await exchange.fillOrderTx(taker, order, {
             amount: Number(detail.amount ?? 1),
             source: options?.source,
-          }),
-          success: [true],
-          approvals: [approval],
-          permits: [],
-        };
-      }
-    }
-
-    // TODO: Add Rarible router module
-    if (details.some(({ kind }) => kind === "rarible")) {
-      if (details.length > 1) {
-        throw new Error("Rarible multi-selling is not supported");
-      } else {
-        const detail = details[0];
-
-        // Approve Rarible's NFTTransferProxy contract
-        const approval = {
-          contract: detail.contract,
-          owner: taker,
-          operator: Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId],
-          txData: generateApprovalTxData(
-            detail.contract,
-            taker,
-            Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId]
-          ),
-        };
-
-        const order = detail.order as Sdk.Rarible.Order;
-        const exchange = new Sdk.Rarible.Exchange(this.chainId);
-        return {
-          txData: await exchange.fillOrderTx(taker, order, {
-            tokenId: detail.tokenId,
-            assetClass: detail.contractKind.toUpperCase(),
-            amount: Number(detail.amount),
           }),
           success: [true],
           approvals: [approval],
@@ -2413,6 +2430,42 @@ export class Router {
               },
               detail.fees ?? [],
             ]),
+            value: 0,
+          });
+
+          success[i] = true;
+
+          break;
+        }
+
+        case "rarible": {
+          const order = detail.order as Sdk.Rarible.Order;
+          const module = this.contracts.raribleModule;
+
+          const matchParams = order.buildMatching(module.address, {
+            tokenId: detail.tokenId,
+            ...(detail.extraArgs || {}),
+          });
+
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                encodeForMatchOrders(order.params),
+                order.params.signature,
+                encodeForMatchOrders(matchParams),
+                "0x",
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                },
+                detail.fees ?? [],
+              ]
+            ),
             value: 0,
           });
 
