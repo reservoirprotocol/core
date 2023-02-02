@@ -18,6 +18,7 @@ import {
 import { generateSwapExecution } from "./uniswap";
 import { generateApprovalTxData, isETH } from "./utils";
 import * as Sdk from "../../index";
+import { encodeForMatchOrders } from "../../rarible/utils";
 import { TxData, bn, generateSourceBytes, uniqBy } from "../../utils";
 
 // Tokens
@@ -30,6 +31,8 @@ import BlurModuleAbi from "./abis/BlurModule.json";
 import ElementModuleAbi from "./abis/ElementModule.json";
 import FoundationModuleAbi from "./abis/FoundationModule.json";
 import LooksRareModuleAbi from "./abis/LooksRareModule.json";
+import NFTXModuleAbi from "./abis/NFTXModule.json";
+import RaribleModuleAbi from "./abis/RaribleModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
 import SeaportV12ModuleAbi from "./abis/SeaportV12Module.json";
 import SudoswapModuleAbi from "./abis/SudoswapModule.json";
@@ -38,9 +41,6 @@ import WETHModuleAbi from "./abis/WETHModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
-import NFTXModuleAbi from "./abis/NFTXModule.json";
-import RaribleModuleAbi from "./abis/RaribleModule.json";
-import { encodeForMatchOrders } from "../../rarible/utils";
 
 type SetupOptions = {
   x2y2ApiKey?: string;

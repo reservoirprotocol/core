@@ -2,6 +2,7 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
+import { encodeForMatchOrders } from "@reservoir0x/sdk/src/rarible/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
@@ -11,12 +12,7 @@ import {
   SeaportERC721Approval,
   setupSeaportERC721Approvals,
 } from "../helpers/seaport";
-import {
-  ORDER_DATA_TYPES,
-  ORDER_TYPES,
-  RaribleListing,
-  setupRaribleOffers,
-} from "../helpers/rarible";
+import { RaribleListing, setupRaribleOffers } from "../helpers/rarible";
 import {
   bn,
   getChainId,
@@ -26,9 +22,6 @@ import {
   reset,
   setupNFTs,
 } from "../../../utils";
-import { getCurrentTimestamp } from "@reservoir0x/sdk/src/utils";
-import { encodeForMatchOrders } from "@reservoir0x/sdk/src/rarible/utils";
-import { Erc1155 } from "@reservoir0x/sdk/src/common/helpers";
 
 describe("[ReservoirV6_0_0] Rarible offers", () => {
   const chainId = getChainId();
@@ -41,7 +34,6 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
   let emilio: SignerWithAddress;
 
   let erc721: Contract;
-  let erc1155: Contract;
   let router: Contract;
   let seaportApprovalOrderZone: Contract;
   let seaportModule: Contract;
@@ -50,7 +42,7 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
 
-    ({ erc721, erc1155 } = await setupNFTs(deployer));
+    ({ erc721 } = await setupNFTs(deployer));
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)

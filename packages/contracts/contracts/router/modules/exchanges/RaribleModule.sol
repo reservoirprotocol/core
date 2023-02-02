@@ -10,7 +10,6 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {IRarible} from "../../../interfaces/IRarible.sol";
-import "hardhat/console.sol";
 
 // Notes:
 // - supports filling listings (both ERC721/ERC1155 but only ETH-denominated)
@@ -24,7 +23,7 @@ contract RaribleModule is BaseExchangeModule {
     IRarible public constant EXCHANGE =
         IRarible(0x9757F2d2b135150BBeb65308D4a91804107cd8D6);
 
-    address public constant TRANSFER_MANAGER =          
+    address public constant TRANSFER_MANAGER =
         0x4feE7B061C97C9c496b01DbcE9CDb10c02f0a0Be;
 
     bytes4 public constant ERC721_INTERFACE = 0x80ac58cd;
@@ -80,7 +79,7 @@ contract RaribleModule is BaseExchangeModule {
         nonReentrant
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
-    {        
+    {
         for (uint256 i = 0; i < ordersLeft.length; ) {
             IRarible.Order calldata orderLeft = ordersLeft[i];
             IRarible.Order calldata orderRight = ordersRight[i];
@@ -112,7 +111,10 @@ contract RaribleModule is BaseExchangeModule {
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-        (address token, uint tokenId) = abi.decode(orderLeft.takeAsset.assetType.data, (address, uint256));
+        (address token, uint256 tokenId) = abi.decode(
+            orderLeft.takeAsset.assetType.data,
+            (address, uint256)
+        );
 
         IERC721 collection = IERC721(address(token));
 
@@ -144,7 +146,10 @@ contract RaribleModule is BaseExchangeModule {
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-        (address token, uint tokenId) = abi.decode(orderLeft.takeAsset.assetType.data, (address, uint256));
+        (address token, uint256 tokenId) = abi.decode(
+            orderLeft.takeAsset.assetType.data,
+            (address, uint256)
+        );
 
         IERC1155 collection = IERC1155(address(token));
 
@@ -218,9 +223,17 @@ contract RaribleModule is BaseExchangeModule {
     ) internal {
         // Execute the fill
         try
-            EXCHANGE.matchOrders{value: value}(orderLeft, signatureLeft, orderRight, signatureRight)
+            EXCHANGE.matchOrders{value: value}(
+                orderLeft,
+                signatureLeft,
+                orderRight,
+                signatureRight
+            )
         {
-            (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
+            (address token, uint256 tokenId) = abi.decode(
+                orderLeft.makeAsset.assetType.data,
+                (address, uint256)
+            );
             IERC165 collection = IERC165(token);
 
             // Forward any token to the specified receiver
@@ -258,13 +271,23 @@ contract RaribleModule is BaseExchangeModule {
         Fee[] calldata fees
     ) internal {
         // Execute the fill
-        try EXCHANGE.matchOrders(orderLeft, signatureLeft, orderRight, signatureRight) {
+        try
+            EXCHANGE.matchOrders(
+                orderLeft,
+                signatureLeft,
+                orderRight,
+                signatureRight
+            )
+        {
             // Pay fees
-            address token = abi.decode(orderLeft.makeAsset.assetType.data, (address));
+            address token = abi.decode(
+                orderLeft.makeAsset.assetType.data,
+                (address)
+            );
             uint256 feesLength = fees.length;
             for (uint256 i; i < feesLength; ) {
                 Fee memory fee = fees[i];
-                
+
                 _sendERC20(fee.recipient, fee.amount, IERC20(token));
 
                 unchecked {

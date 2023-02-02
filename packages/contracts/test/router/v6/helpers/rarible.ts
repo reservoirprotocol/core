@@ -115,7 +115,7 @@ export const setupRaribleListings = async (listings: RaribleListing[]) => {
       dataType: ORDER_DATA_TYPES.V3_SELL,
       tokenAmount: listing.nft.amount,
       tokenId: nft.id.toString(),
-      paymentToken,
+      paymentToken: paymentToken ?? Sdk.Common.Addresses.Eth[chainId],
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
       payouts: [

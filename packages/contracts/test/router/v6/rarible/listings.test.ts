@@ -2,10 +2,11 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { parseEther } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
+import * as Rarible from "@reservoir0x/sdk/src/rarible";
+import { encodeForMatchOrders } from "@reservoir0x/sdk/src/rarible/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import * as Rarible from "@reservoir0x/sdk/src/rarible";
 
 import { ExecutionInfo } from "../helpers/router";
 import { RaribleListing, setupRaribleListings } from "../helpers/rarible";
@@ -18,9 +19,6 @@ import {
   reset,
   setupNFTs,
 } from "../../../utils";
-import { getCurrentTimestamp } from "@reservoir0x/sdk/src/utils";
-import { constants } from "ethers";
-import { encodeForMatchOrders } from "@reservoir0x/sdk/src/rarible/utils";
 
 describe("[ReservoirV6_0_0] Rarible listings", () => {
   const chainId = getChainId();
@@ -111,7 +109,7 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
           amount: 1,
         },
         price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
-        paymentToken: constants.AddressZero,
+        paymentToken: Sdk.Common.Addresses.Eth[chainId],
         isCancelled: partial && getRandomBoolean(),
       });
       if (chargeFees) {
