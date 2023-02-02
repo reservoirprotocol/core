@@ -84,7 +84,7 @@ export const generateSwapExecution = async (
     };
   } else {
     const inputIsEth = isETH(chainId, fromTokenAddress);
-    const outputInEth = isETH(chainId, fromTokenAddress);
+    const outputInEth = isETH(chainId, toTokenAddress);
 
     // We need to swap
     const fromToken = await getToken(chainId, provider, fromTokenAddress);

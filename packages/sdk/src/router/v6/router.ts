@@ -1566,7 +1566,7 @@ export class Router {
       approvals: approvals.filter((_, i) => success[i]),
       permits: await (async (): Promise<ERC20Permit[]> => {
         const items = permitItems.filter((_, i) => success[i]);
-        return [
+        return items.length ? [
           {
             tokens: items.map((i) => i.token),
             details: {
@@ -1578,7 +1578,7 @@ export class Router {
               ).generate(items),
             },
           },
-        ];
+        ] : [];
       })(),
       txData: {
         from: relayer,

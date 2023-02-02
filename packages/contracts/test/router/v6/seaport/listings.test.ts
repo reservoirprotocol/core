@@ -53,7 +53,6 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
 
     ({ erc721, erc1155 } = await setupNFTs(deployer));
-    // ({ erc20 } = await setupTokens(deployer));
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
