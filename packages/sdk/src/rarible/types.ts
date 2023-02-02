@@ -57,7 +57,6 @@ export type LocalAssetType = {
   creators?: IPart[];
   royalties?: IPart[];
   signatures?: string[];
-  collection?: string;
 };
 
 export type LocalAsset = {
@@ -91,6 +90,7 @@ export type Order = {
   side?: string;
   createdAt?: string;
   endedAt?: string;
+  amount?: number;
 };
 
 export type Purchase = {

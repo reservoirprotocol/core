@@ -34,37 +34,20 @@ export enum ORDER_TYPES {
 export type OrderKind = "single-token" | "contract-wide";
 
 export type RaribleListing = {
-  orderType: ORDER_TYPES;
   maker: SignerWithAddress;
-  side: "buy" | "sell";
-  tokenKind: "erc721" | "erc1155" | "erc721_lazy" | "erc1155_lazy";
-  contract: Contract;
-  tokenId: string;
-  tokenAmount?: number;
-  price: string;
+  nft: {
+    kind: "erc721" | "erc1155";
+    contract: Contract;
+    id: number;
+    amount: number;
+  };
+  // ETH if missing
   paymentToken: string;
-  salt?: BigNumberish;
-  startTime: number;
-  endTime: number;
-  dataType: ORDER_DATA_TYPES;
-
-  // Lazy mint options
-  uri?: string;
-  supply?: string;
-  creators?: IPart[];
-  royalties?: IPart[];
-  signatures?: string[];
-  // Fields below should be based on the data type of the order
-  // They are optional currently and we assume they're passed correctly
-  // TODO: Validation should be added to ensure correct all params exist and are passed correctly
-  originFees?: IPart[];
-  payouts?: IPart[];
-  originFeeFirst?: IPart;
-  originFeeSecond?: IPart;
-  marketplaceMarker?: string;
-  fee?: number;
-  maxFeesBasePoint?: number;
+  price: BigNumberish;
+  // Whether the order is to be cancelled
+  isCancelled?: boolean;
   order?: Sdk.Rarible.Order;
+  side: "buy" | "sell";
 };
 
 export interface IV3OrderSellData {
@@ -106,14 +89,14 @@ export type LocalAsset = {
 
 export const setupRaribleListings = async (listings: RaribleListing[]) => {
   const chainId = getChainId();
-  const exchange = new Sdk.LooksRare.Exchange(chainId);
+  const exchange = new Sdk.Rarible.Exchange(chainId);
 
   for (const listing of listings) {
-    const { maker, tokenId, tokenKind, contract, payouts } = listing;
+    const { maker, nft, paymentToken } = listing;
 
     // Approve the exchange contract
-    await contract.connect(maker).mint(tokenId);
-    await contract
+    await nft.contract.connect(maker).mint(nft.id);
+    await nft.contract
       .connect(maker)
       .setApprovalForAll(Sdk.Rarible.Addresses.NFTTransferProxy[chainId], true);
 
@@ -123,19 +106,31 @@ export const setupRaribleListings = async (listings: RaribleListing[]) => {
       orderType: ORDER_TYPES.V2,
       maker: maker.address,
       side: "sell",
-      tokenKind: tokenKind,
-      contract: contract.address,
-      price: listing.price,
-      dataType: listing.dataType,
-      tokenId,
-      paymentToken: listing.paymentToken,
+      tokenKind: listing.nft.kind,
+      contract: nft.contract.address,
+      price: listing.price.toString(),
+      dataType: ORDER_DATA_TYPES.V3_SELL,
+      tokenAmount: listing.nft.amount,
+      tokenId: nft.id.toString(),
+      paymentToken,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
-      payouts,
+      payouts: [
+        {
+          account: maker.address,
+          value: "10000",
+        },
+      ],
     });
 
-    listing.order = order;
     await order.sign(maker);
+
+    listing.order = order;
+
+    // Cancel the order if requested
+    if (listing.isCancelled) {
+      await exchange.cancelOrder(maker, order);
+    }
   }
 };
 
@@ -146,7 +141,7 @@ export const setupRaribleOffers = async (offers: RaribleListing[]) => {
   const exchange = new Sdk.Rarible.Exchange(chainId);
 
   for (const offer of offers) {
-    const { maker, tokenId, tokenKind, contract, price } = offer;
+    const { maker, nft, price } = offer;
 
     const weth = new Sdk.Common.Helpers.Weth(ethers.provider, chainId);
     await weth.deposit(maker, price);
@@ -161,15 +156,23 @@ export const setupRaribleOffers = async (offers: RaribleListing[]) => {
       orderType: ORDER_TYPES.V2,
       maker: maker.address,
       side: offer.side,
-      tokenKind: tokenKind,
-      contract: contract.address,
-      price: price,
-      dataType: offer.dataType,
-      tokenId,
+      tokenKind: nft.kind,
+      contract: nft.contract.address,
+      price: price.toString(),
+      dataType: ORDER_DATA_TYPES.V3_BUY,
+      tokenId: nft.id.toString(),
       paymentToken: offer.paymentToken,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
+      payouts: [],
     });
     await order.sign(maker);
+
+    offer.order = order;
+
+    // Cancel the order if requested
+    if (offer.isCancelled) {
+      await exchange.cancelOrder(maker, order);
+    }
   }
 };

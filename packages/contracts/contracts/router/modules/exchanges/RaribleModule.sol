@@ -40,7 +40,9 @@ contract RaribleModule is BaseExchangeModule {
 
     function acceptETHListing(
         IRarible.Order calldata orderLeft,
+        bytes calldata signatureLeft,
         IRarible.Order calldata orderRight,
+        bytes calldata signatureRight,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -53,7 +55,9 @@ contract RaribleModule is BaseExchangeModule {
         // Execute fill
         _buy(
             orderLeft,
+            signatureLeft,
             orderRight,
+            signatureRight,
             params.fillTo,
             params.revertIfIncomplete,
             params.amount
@@ -64,7 +68,9 @@ contract RaribleModule is BaseExchangeModule {
 
     function acceptETHListings(
         IRarible.Order[] calldata ordersLeft,
+        bytes[] calldata signaturesLeft,
         IRarible.Order[] calldata ordersRight,
+        bytes calldata signatureRight,
         ETHListingParams calldata params,
         Fee[] calldata fees
     )
@@ -81,10 +87,12 @@ contract RaribleModule is BaseExchangeModule {
             // Execute fill
             _buy(
                 orderLeft,
+                signaturesLeft[i],
                 orderRight,
+                signatureRight,
                 params.fillTo,
                 params.revertIfIncomplete,
-                orderLeft.make.value
+                orderLeft.makeAsset.value
             );
 
             unchecked {
@@ -97,11 +105,14 @@ contract RaribleModule is BaseExchangeModule {
 
     function acceptERC721Offer(
         IRarible.Order calldata orderLeft,
+        bytes calldata signatureLeft,
         IRarible.Order calldata orderRight,
+        bytes calldata signatureRight,
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-        IERC721 collection = IERC721(address(orderLeft.take.assetType.collection));
+        (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
+        IERC721 collection = IERC721(address(token));
 
         // Approve the transfer manager if needed
         _approveERC721IfNeeded(collection, TRANSFER_MANAGER);
@@ -109,25 +120,31 @@ contract RaribleModule is BaseExchangeModule {
         // Execute the fill
         _sell(
             orderLeft,
+            signatureLeft,
             orderRight,
+            signatureRight,
             params.fillTo,
             params.revertIfIncomplete,
             fees
         );
 
         // Refund any ERC721 leftover
-        _sendAllERC721(params.refundTo, collection, orderLeft.take.assetType.tokenId);
+        _sendAllERC721(params.refundTo, collection, tokenId);
     }
 
     // --- [ERC1155] Single offer ---
 
     function acceptERC1155Offer(
         IRarible.Order calldata orderLeft,
+        bytes calldata signatureLeft,
         IRarible.Order calldata orderRight,
+        bytes calldata signatureRight,
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-        IERC1155 collection = IERC1155(address(orderLeft.take.assetType.collection));
+        (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
+
+        IERC1155 collection = IERC1155(address(token));
 
         // Approve the transfer manager if needed
         _approveERC1155IfNeeded(collection, TRANSFER_MANAGER);
@@ -135,14 +152,16 @@ contract RaribleModule is BaseExchangeModule {
         // Execute the fill
         _sell(
             orderLeft,
+            signatureLeft,
             orderRight,
+            signatureRight,
             params.fillTo,
             params.revertIfIncomplete,
             fees
         );
 
         // Refund any ERC1155 leftover
-        _sendAllERC1155(params.refundTo, collection, orderLeft.take.assetType.tokenId);
+        _sendAllERC1155(params.refundTo, collection, tokenId);
     }
 
     // --- ERC721 / ERC1155 hooks ---
@@ -188,16 +207,20 @@ contract RaribleModule is BaseExchangeModule {
 
     function _buy(
         IRarible.Order calldata orderLeft,
+        bytes calldata signatureLeft,
         IRarible.Order calldata orderRight,
+        bytes calldata signatureRight,
         address receiver,
         bool revertIfIncomplete,
         uint256 value
     ) internal {
         // Execute the fill
         try
-            EXCHANGE.matchOrders{value: value}(orderLeft, orderRight)
+            EXCHANGE.matchOrders{value: value}(orderLeft, signatureLeft, orderRight, signatureRight)
         {
-            IERC165 collection = orderLeft.make.assetType.collection;
+            (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
+
+            IERC165 collection = IERC165(address(token));
 
             // Forward any token to the specified receiver
             bool isERC721 = collection.supportsInterface(ERC721_INTERFACE);
@@ -205,7 +228,7 @@ contract RaribleModule is BaseExchangeModule {
                 IERC721(address(collection)).safeTransferFrom(
                     address(this),
                     receiver,
-                    orderLeft.make.assetType.tokenId
+                    tokenId
                 );
             } else {
                 bool isERC1155 = collection.supportsInterface(
@@ -215,8 +238,8 @@ contract RaribleModule is BaseExchangeModule {
                     IERC1155(address(collection)).safeTransferFrom(
                         address(this),
                         receiver,
-                        orderLeft.make.assetType.tokenId,
-                        orderLeft.take.value,
+                        tokenId,
+                        orderLeft.takeAsset.value,
                         ""
                     );
                 }
@@ -231,19 +254,22 @@ contract RaribleModule is BaseExchangeModule {
 
     function _sell(
         IRarible.Order calldata orderLeft,
+        bytes calldata signatureLeft,
         IRarible.Order calldata orderRight,
+        bytes calldata signatureRight,
         address receiver,
         bool revertIfIncomplete,
         Fee[] calldata fees
     ) internal {
         // Execute the fill
-        try EXCHANGE.matchOrders(orderLeft, orderRight) {
+        try EXCHANGE.matchOrders(orderLeft, signatureLeft, orderRight, signatureRight) {
             // Pay fees
+            (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
             uint256 feesLength = fees.length;
             for (uint256 i; i < feesLength; ) {
                 Fee memory fee = fees[i];
                 
-                _sendERC20(fee.recipient, fee.amount, IERC20(address(orderLeft.make.assetType.collection)));
+                _sendERC20(fee.recipient, fee.amount, IERC20(address(token)));
 
                 unchecked {
                     ++i;
@@ -251,7 +277,7 @@ contract RaribleModule is BaseExchangeModule {
             }
 
             // Forward any left payment to the specified receiver
-            _sendAllERC20(receiver, IERC20(address(orderLeft.make.assetType.collection)));
+            _sendAllERC20(receiver, IERC20(address(token)));
         } catch {
             // Revert if specified
             if (revertIfIncomplete) {

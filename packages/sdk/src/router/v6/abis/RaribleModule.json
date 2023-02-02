@@ -155,16 +155,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -186,7 +176,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "make",
+            "name": "makeAsset",
             "type": "tuple"
           },
           {
@@ -199,16 +189,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -230,7 +210,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "take",
+            "name": "takeAsset",
             "type": "tuple"
           },
           {
@@ -264,6 +244,11 @@
         "type": "tuple"
       },
       {
+        "internalType": "bytes",
+        "name": "signatureLeft",
+        "type": "bytes"
+      },
+      {
         "components": [
           {
             "internalType": "address",
@@ -274,16 +259,6 @@
             "components": [
               {
                 "components": [
-                  {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
                   {
                     "internalType": "bytes4",
                     "name": "assetClass",
@@ -306,7 +281,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "make",
+            "name": "makeAsset",
             "type": "tuple"
           },
           {
@@ -319,16 +294,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -350,7 +315,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "take",
+            "name": "takeAsset",
             "type": "tuple"
           },
           {
@@ -382,6 +347,11 @@
         "internalType": "struct IRarible.Order",
         "name": "orderRight",
         "type": "tuple"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signatureRight",
+        "type": "bytes"
       },
       {
         "components": [
@@ -442,16 +412,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -473,7 +433,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "make",
+            "name": "makeAsset",
             "type": "tuple"
           },
           {
@@ -486,16 +446,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -517,7 +467,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "take",
+            "name": "takeAsset",
             "type": "tuple"
           },
           {
@@ -551,6 +501,11 @@
         "type": "tuple"
       },
       {
+        "internalType": "bytes",
+        "name": "signatureLeft",
+        "type": "bytes"
+      },
+      {
         "components": [
           {
             "internalType": "address",
@@ -561,16 +516,6 @@
             "components": [
               {
                 "components": [
-                  {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
                   {
                     "internalType": "bytes4",
                     "name": "assetClass",
@@ -593,7 +538,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "make",
+            "name": "makeAsset",
             "type": "tuple"
           },
           {
@@ -606,16 +551,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -637,7 +572,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "take",
+            "name": "takeAsset",
             "type": "tuple"
           },
           {
@@ -669,6 +604,11 @@
         "internalType": "struct IRarible.Order",
         "name": "orderRight",
         "type": "tuple"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signatureRight",
+        "type": "bytes"
       },
       {
         "components": [
@@ -729,16 +669,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -760,7 +690,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "make",
+            "name": "makeAsset",
             "type": "tuple"
           },
           {
@@ -773,16 +703,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -804,7 +724,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "take",
+            "name": "takeAsset",
             "type": "tuple"
           },
           {
@@ -838,6 +758,11 @@
         "type": "tuple"
       },
       {
+        "internalType": "bytes",
+        "name": "signatureLeft",
+        "type": "bytes"
+      },
+      {
         "components": [
           {
             "internalType": "address",
@@ -848,16 +773,6 @@
             "components": [
               {
                 "components": [
-                  {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
                   {
                     "internalType": "bytes4",
                     "name": "assetClass",
@@ -880,7 +795,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "make",
+            "name": "makeAsset",
             "type": "tuple"
           },
           {
@@ -893,16 +808,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -924,7 +829,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "take",
+            "name": "takeAsset",
             "type": "tuple"
           },
           {
@@ -956,6 +861,11 @@
         "internalType": "struct IRarible.Order",
         "name": "orderRight",
         "type": "tuple"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signatureRight",
+        "type": "bytes"
       },
       {
         "components": [
@@ -1021,16 +931,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -1052,7 +952,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "make",
+            "name": "makeAsset",
             "type": "tuple"
           },
           {
@@ -1065,16 +965,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -1096,7 +986,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "take",
+            "name": "takeAsset",
             "type": "tuple"
           },
           {
@@ -1130,6 +1020,11 @@
         "type": "tuple[]"
       },
       {
+        "internalType": "bytes[]",
+        "name": "signaturesLeft",
+        "type": "bytes[]"
+      },
+      {
         "components": [
           {
             "internalType": "address",
@@ -1140,16 +1035,6 @@
             "components": [
               {
                 "components": [
-                  {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
                   {
                     "internalType": "bytes4",
                     "name": "assetClass",
@@ -1172,7 +1057,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "make",
+            "name": "makeAsset",
             "type": "tuple"
           },
           {
@@ -1185,16 +1070,6 @@
               {
                 "components": [
                   {
-                    "internalType": "contract IERC165",
-                    "name": "collection",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "tokenId",
-                    "type": "uint256"
-                  },
-                  {
                     "internalType": "bytes4",
                     "name": "assetClass",
                     "type": "bytes4"
@@ -1216,7 +1091,7 @@
               }
             ],
             "internalType": "struct IRarible.Asset",
-            "name": "take",
+            "name": "takeAsset",
             "type": "tuple"
           },
           {
@@ -1248,6 +1123,11 @@
         "internalType": "struct IRarible.Order[]",
         "name": "ordersRight",
         "type": "tuple[]"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signatureRight",
+        "type": "bytes"
       },
       {
         "components": [

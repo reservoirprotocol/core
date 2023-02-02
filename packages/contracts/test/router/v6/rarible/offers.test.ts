@@ -27,6 +27,7 @@ import {
   setupNFTs,
 } from "../../../utils";
 import { getCurrentTimestamp } from "@reservoir0x/sdk/src/utils";
+import { encodeForMatchOrders } from "@reservoir0x/sdk/src/rarible/utils";
 
 describe("[ReservoirV6_0_0] Rarible offers", () => {
   const chainId = getChainId();
@@ -116,17 +117,16 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
     const fees: BigNumber[][] = [];
     for (let i = 0; i < offersCount; i++) {
       offers.push({
-        orderType: ORDER_TYPES.V2,
         side: "buy",
         paymentToken: wethAddress,
-        dataType: ORDER_DATA_TYPES.V3_BUY,
         maker: getRandomBoolean() ? alice : bob,
-        tokenKind: "erc721",
-        contract: erc721,
-        tokenId: getRandomInteger(1, 10000).toString(),
-        price: parseEther(getRandomFloat(0.2, 2).toFixed(6)).toString(),
-        startTime: getCurrentTimestamp(),
-        endTime: getCurrentTimestamp() + 60,
+        nft: {
+          kind: "erc721",
+          contract: erc721,
+          id: getRandomInteger(1, 10000),
+          amount: 1,
+        },
+        price: parseEther(getRandomFloat(0.2, 2).toFixed(6)),
       });
       if (chargeFees) {
         fees.push([parseEther(getRandomFloat(0.0001, 0.1).toFixed(6))]);
@@ -150,9 +150,9 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
       receiver: raribleModule.address,
       nft: {
         kind: "erc721",
-        contract: offer.contract,
-        id: bn(offer.tokenId).toNumber(),
-        amount: offer.tokenAmount,
+        contract: offer.nft.contract,
+        id: bn(offer.nft.id).toNumber(),
+        amount: offer.nft.amount,
       },
       zone: seaportApprovalOrderZone.address,
     }));
@@ -213,8 +213,12 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
       ...offers.map((offer, i) => ({
         module: raribleModule.address,
         data: raribleModule.interface.encodeFunctionData("acceptERC721Offer", [
-          offer.order!.buildMatching(raribleModule.address),
-          offer.order!.params,
+          encodeForMatchOrders(offer.order!.params),
+          offer.order?.params.signature,
+          encodeForMatchOrders(
+            offer.order!.buildMatching(raribleModule.address)
+          ),
+          "0x",
           {
             fillTo: carol.address,
             refundTo: carol.address,
@@ -236,7 +240,11 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
     // If the `revertIfIncomplete` option is enabled and we have any
     // orders that are not fillable, the whole transaction should be
     // reverted
-    if (partial && revertIfIncomplete) {
+    if (
+      partial &&
+      revertIfIncomplete &&
+      offers.some(({ isCancelled }) => isCancelled)
+    ) {
       await expect(
         router.connect(carol).execute(executions, {
           value: executions
@@ -297,8 +305,8 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
     }
 
     // Alice and Bob got the NFTs of the filled orders
-    for (const { contract, tokenId } of offers) {
-      expect(await contract.ownerOf(tokenId)).to.eq(carol.address);
+    for (const { nft } of offers) {
+      expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
     }
 
     // Router is stateless

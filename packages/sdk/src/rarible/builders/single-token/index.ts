@@ -95,11 +95,9 @@ export class SingleTokenBuilder extends BaseBuilder {
           ? {
               assetClass: AssetClass.ERC20,
               contract: lc(params.paymentToken),
-              collection: lc(params.paymentToken),
             }
           : {
               assetClass: AssetClass.ETH,
-              collection: constants.AddressZero,
             }),
       },
       value: params.price,
@@ -125,8 +123,6 @@ export class SingleTokenBuilder extends BaseBuilder {
     taker: string,
     data: { amount?: string }
   ) {
-    order.make.assetType.collection = order.make.assetType.contract;
-    order.take.assetType.collection = constants.AddressZero;
     const rightOrder = {
       type: order.type,
       maker: lc(taker),
@@ -160,17 +156,9 @@ export class SingleTokenBuilder extends BaseBuilder {
 
     // for erc1155 we need to take the value from request (the amount parameter)
     if (AssetClass.ERC1155 == order.make.assetType.assetClass) {
-      rightOrder.take.value = Math.floor(Number(data.amount)).toString();
+      rightOrder.take.value = Math.floor(Number(data.amount || "1")).toString();
     }
 
-    if (AssetClass.ERC1155 == order.take.assetType.assetClass) {
-      const oldValue = rightOrder.make.value;
-
-      rightOrder.make.value = Math.floor(Number(data.amount)).toString();
-      rightOrder.take.value = BigNumber.from(rightOrder.take.value).div(
-        oldValue - rightOrder.make.value || "1"
-      );
-    }
     return rightOrder;
   }
 }

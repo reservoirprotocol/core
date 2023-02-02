@@ -39,6 +39,7 @@ import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
 import NFTXModuleAbi from "./abis/NFTXModule.json";
 import RaribleModuleAbi from "./abis/RaribleModule.json";
+import { encodeForMatchOrders } from "../../rarible/utils";
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -1467,24 +1468,6 @@ export class Router {
 
       const order = orders[0];
 
-      let matchOrder = null;
-      if (orders.length === 1) {
-        matchOrder = orders[0].buildMatching(module);
-        if (order.params.side === "buy") {
-          matchOrder.make.assetType.collection =
-            matchOrder.make.assetType.contract;
-
-          order.params.take.assetType.collection =
-            order.params.take.assetType.contract;
-        } else {
-          matchOrder.take.assetType.collection =
-            matchOrder.take.assetType.contract;
-
-          order.params.make.assetType.collection =
-            order.params.make.assetType.contract;
-        }
-      }
-
       executions.push({
         module,
         data:
@@ -1492,8 +1475,10 @@ export class Router {
             ? this.contracts.raribleModule.interface.encodeFunctionData(
                 "acceptETHListing",
                 [
-                  matchOrder,
-                  orders[0].params,
+                  encodeForMatchOrders(orders[0].params),
+                  orders[0].params.signature,
+                  encodeForMatchOrders(orders[0].buildMatching(module)),
+                  "0x",
                   {
                     fillTo: taker,
                     refundTo: taker,
@@ -1506,32 +1491,12 @@ export class Router {
             : this.contracts.raribleModule.interface.encodeFunctionData(
                 "acceptETHListings",
                 [
-                  orders.map((order) => {
-                    const matchOrder = order.buildMatching(
-                      module
-                    );
-
-                    if (order.params.side === "buy") {
-                      matchOrder.make.assetType.collection =
-                        matchOrder.make.assetType.contract;
-                    } else {
-                      matchOrder.take.assetType.collection =
-                        matchOrder.take.assetType.contract;
-                    }
-
-                    return matchOrder;
-                  }),
-                  orders.map((order) => {
-                    if (order.params.side === "buy") {
-                      order.params.take.assetType.collection =
-                        order.params.take.assetType.contract;
-                    } else {
-                      order.params.make.assetType.collection =
-                        order.params.make.assetType.contract;
-                    }
-                    console.log(order.params);
-                    return order.params;
-                  }),
+                  orders.map((order) => encodeForMatchOrders(order.params)),
+                  orders.map((order) => order.params.signature),
+                  orders.map((order) =>
+                    encodeForMatchOrders(order.buildMatching(module))
+                  ),
+                  "0x",
                   {
                     fillTo: taker,
                     refundTo: taker,
@@ -2174,8 +2139,41 @@ export class Router {
 
           success[i] = true;
 
-          break;
-        }
+        break;
+      }
+
+      case "rarible": {
+        const order = detail.order as Sdk.Rarible.Order;
+        const module = this.contracts.raribleModule.address;
+
+        const matchParams = order.buildMatching(module, {
+          tokenId: detail.tokenId,
+          ...(detail.extraArgs || {}),
+        });
+
+        moduleLevelTx = {
+          module,
+          data: this.contracts.rarible.interface.encodeFunctionData(
+            detail.contractKind === "erc721"
+              ? "acceptERC721Offer"
+              : "acceptERC1155Offer",
+            [
+              encodeForMatchOrders(order.params),
+              order.params.signature,
+              encodeForMatchOrders(matchParams),
+              "0x",
+              {
+                fillTo: taker,
+                refundTo: taker,
+                revertIfIncomplete: true,
+              },
+              detail.fees ?? [],
+            ]
+          ),
+        };
+
+        break;
+      }
 
         default: {
           throw new Error("Unsupported exchange kind");

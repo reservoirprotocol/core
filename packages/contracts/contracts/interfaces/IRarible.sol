@@ -6,8 +6,6 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface IRarible {
     struct AssetType {
-        IERC165 collection;
-        uint tokenId;
         bytes4 assetClass;
         bytes data;
     }
@@ -19,9 +17,9 @@ interface IRarible {
 
     struct Order {
         address maker;
-        Asset make;
+        Asset makeAsset;
         address taker;
-        Asset take;
+        Asset takeAsset;
         uint salt;
         uint start;
         uint end;
@@ -36,7 +34,9 @@ interface IRarible {
 
     function matchOrders(
         Order calldata orderLeft,
-        Order calldata orderRight
+        bytes calldata signatureLeft,
+        Order calldata orderRight,
+        bytes calldata signatureRight
     ) external payable;
 }
 

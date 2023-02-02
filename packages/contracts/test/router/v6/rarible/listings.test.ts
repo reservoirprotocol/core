@@ -7,12 +7,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { ExecutionInfo } from "../helpers/router";
-import {
-  ORDER_DATA_TYPES,
-  ORDER_TYPES,
-  RaribleListing,
-  setupRaribleListings,
-} from "../helpers/rarible";
+import { RaribleListing, setupRaribleListings } from "../helpers/rarible";
 import {
   bn,
   getChainId,
@@ -24,6 +19,7 @@ import {
 } from "../../../utils";
 import { getCurrentTimestamp } from "@reservoir0x/sdk/src/utils";
 import { constants } from "ethers";
+import { encodeForMatchOrders } from "@reservoir0x/sdk/src/rarible/utils";
 
 describe("[ReservoirV6_0_0] Rarible listings", () => {
   const chainId = getChainId();
@@ -101,19 +97,19 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     const listings: RaribleListing[] = [];
     const feesOnTop: BigNumber[] = [];
     for (let i = 0; i < listingsCount; i++) {
-      const random = getRandomBoolean();
       listings.push({
-        maker: random ? alice : bob,
-        orderType: ORDER_TYPES.V2,
+        maker: getRandomBoolean() ? alice : bob,
         side: "sell",
-        tokenKind: random ? "erc721" : "erc1155",
-        contract: random ? erc721 : erc1155,
-        price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)).toString(),
-        dataType: ORDER_DATA_TYPES.V3_SELL,
-        tokenId: getRandomInteger(1, 10000).toString(),
+        nft: {
+          ...(false
+            ? { kind: "erc721", contract: erc721 }
+            : { kind: "erc1155", contract: erc1155 }),
+          id: getRandomInteger(1, 10000),
+          amount: 1,
+        },
+        price: parseEther(getRandomFloat(0.0001, 2).toFixed(6)),
         paymentToken: constants.AddressZero,
-        startTime: getCurrentTimestamp(),
-        endTime: getCurrentTimestamp() + 60,
+        isCancelled: partial && getRandomBoolean(),
       });
       if (chargeFees) {
         feesOnTop.push(parseEther(getRandomFloat(0.0001, 0.1).toFixed(6)));
@@ -124,8 +120,23 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     // Prepare executions
 
     const totalPrice = bn(
-      listings.map(({ price }) => price).reduce((a, b) => bn(a).add(b), bn(0))
+      listings
+        .map(({ price }) => bn(price))
+        .reduce((a, b) => bn(a).add(b), bn(0))
     );
+
+    const matchOrder = listings[0].order!.buildMatching(
+      raribleModule.address,
+      listings[0].order!.params
+    );
+
+    // matchOrder.dataType
+
+    const priceTotalValue = totalPrice.add(
+      // Anything on top should be refunded
+      feesOnTop.reduce((a, b) => bn(a).add(b), bn(0)).add(parseEther("0.1"))
+    );
+
     const executions: ExecutionInfo[] = [
       // 1. Fill listings
       listingsCount > 1
@@ -135,9 +146,18 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
               "acceptETHListings",
               [
                 listings.map((listing) =>
-                  listing.order!.buildMatching(raribleModule.address)
+                  encodeForMatchOrders(listing.order!.params)
                 ),
-                listings.map((listing) => listing.order!.params),
+                listings.map((listing) => listing.order!.params.signature),
+                listings.map((listing) =>
+                  encodeForMatchOrders(
+                    listing.order!.buildMatching(
+                      raribleModule.address,
+                      listing.order!.params
+                    )
+                  )
+                ),
+                "0x",
                 {
                   fillTo: carol.address,
                   refundTo: carol.address,
@@ -152,20 +172,17 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
                 ],
               ]
             ),
-            value: totalPrice.add(
-              // Anything on top should be refunded
-              feesOnTop
-                .reduce((a, b) => bn(a).add(b), bn(0))
-                .add(parseEther("0.1"))
-            ),
+            value: priceTotalValue,
           }
         : {
             module: raribleModule.address,
             data: raribleModule.interface.encodeFunctionData(
               "acceptETHListing",
               [
-                listings[0].order!.buildMatching(raribleModule.address),
-                listings[0].order!.params,
+                encodeForMatchOrders(listings[0].order!.params),
+                listings[0].order!.params.signature,
+                encodeForMatchOrders(matchOrder),
+                "0x",
                 {
                   fillTo: carol.address,
                   refundTo: carol.address,
@@ -180,12 +197,7 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
                   : [],
               ]
             ),
-            value: totalPrice.add(
-              // Anything on top should be refunded
-              feesOnTop
-                .reduce((a, b) => bn(a).add(b), bn(0))
-                .add(parseEther("0.1"))
-            ),
+            value: priceTotalValue,
           },
     ];
 
@@ -194,7 +206,11 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     // If the `revertIfIncomplete` option is enabled and we have any
     // orders that are not fillable, the whole transaction should be
     // reverted
-    if (partial && revertIfIncomplete) {
+    if (
+      partial &&
+      revertIfIncomplete &&
+      listings.some(({ isCancelled }) => isCancelled)
+    ) {
       await expect(
         router.connect(carol).execute(executions, {
           value: executions
@@ -239,7 +255,10 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     // Alice got the payment
     expect(wethBalancesAfter.alice.sub(wethBalancesBefore.alice)).to.eq(
       listings
-        .filter(({ maker }) => maker.address === alice.address)
+        .filter(
+          ({ maker, isCancelled }) =>
+            !isCancelled && maker.address === alice.address
+        )
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
@@ -251,7 +270,10 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     // Bob got the payment
     expect(wethBalancesAfter.bob.sub(wethBalancesBefore.bob)).to.eq(
       listings
-        .filter(({ maker }) => maker.address === bob.address)
+        .filter(
+          ({ maker, isCancelled }) =>
+            !isCancelled && maker.address === bob.address
+        )
         .map(({ price }) =>
           bn(price).sub(
             // Take into consideration the protocol fee
@@ -267,6 +289,7 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
       // here, we will have a single fee payment at the end adjusted over the
       // amount that was actually paid (eg. prices of filled orders)
       const actualPaid = listings
+        .filter(({ isCancelled }) => !isCancelled)
         .map(({ price }) => price)
         .reduce((a, b) => bn(a).add(b), bn(0));
       expect(ethBalancesAfter.emilio.sub(ethBalancesBefore.emilio)).to.eq(
@@ -278,19 +301,23 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
 
     // Carol got the NFTs from all filled orders
     for (let i = 0; i < listings.length; i++) {
-      // const nft = listings[i].nft;
-
-      if (listings[i].tokenKind === "erc721") {
-        expect(await listings[i].contract.ownerOf(listings[i].tokenId)).to.eq(
-          listings[i].maker.address
-        );
+      const nft = listings[i].nft;
+      if (!listings[i].isCancelled) {
+        if (nft.kind === "erc721") {
+          expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
+        } else {
+          expect(await nft.contract.balanceOf(carol.address, nft.id)).to.eq(1);
+        }
       } else {
-        expect(
-          await listings[i].contract.balanceOf(
-            listings[i].maker.address,
-            listings[i].tokenId
-          )
-        ).to.eq(1);
+        if (nft.kind === "erc721") {
+          expect(await nft.contract.ownerOf(nft.id)).to.eq(
+            listings[i].maker.address
+          );
+        } else {
+          expect(
+            await nft.contract.balanceOf(listings[i].maker.address, nft.id)
+          ).to.eq(1);
+        }
       }
     }
 
