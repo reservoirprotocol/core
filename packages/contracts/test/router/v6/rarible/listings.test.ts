@@ -87,7 +87,9 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     // Whether to cancel some orders in order to trigger partial filling
     partial: boolean,
     // Number of listings to fill
-    listingsCount: number
+    listingsCount: number,
+    // Token kind
+    kind: "erc721" | "erc1155"
   ) => {
     // Setup
 
@@ -102,7 +104,7 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
         maker: getRandomBoolean() ? alice : bob,
         side: "sell",
         nft: {
-          ...(false
+          ...(kind === "erc721"
             ? { kind: "erc721", contract: erc721 }
             : { kind: "erc1155", contract: erc1155 }),
           id: getRandomInteger(1, 10000),
@@ -236,13 +238,6 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
       Sdk.Common.Addresses.Weth[chainId]
     );
 
-    // await exchange.fillOrder(carol, listings[0].order!, {
-    //   tokenId: listings[0].nft.id.toString(),
-    //   assetClass: listings[0].nft.kind!.toUpperCase() as any,
-    // });
-
-    console.log("test");
-
     // Execute
 
     await router.connect(carol).execute(executions, {
@@ -263,33 +258,31 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     // Checks
 
     // Alice got the payment
-    expect(ethBalancesAfter.alice.sub(ethBalancesAfter.alice)).to.eq(
+
+    const aliceListings = listings.filter(
+      ({ maker, isCancelled }) =>
+        !isCancelled && maker.address === alice.address
+    );
+    // Checks
+
+    // Alice got the payment
+    expect(ethBalancesAfter.alice.sub(ethBalancesBefore.alice)).to.eq(
       listings
         .filter(
           ({ maker, isCancelled }) =>
             !isCancelled && maker.address === alice.address
         )
-        .map(({ price }) =>
-          bn(price).sub(
-            // Take into consideration the protocol fee
-            bn(price).mul(150).div(10000)
-          )
-        )
+        .map(({ price }) => price)
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
     // Bob got the payment
-    expect(ethBalancesAfter.bob.sub(ethBalancesAfter.bob)).to.eq(
+    expect(ethBalancesAfter.bob.sub(ethBalancesBefore.bob)).to.eq(
       listings
         .filter(
           ({ maker, isCancelled }) =>
             !isCancelled && maker.address === bob.address
         )
-        .map(({ price }) =>
-          bn(price).sub(
-            // Take into consideration the protocol fee
-            bn(price).mul(150).div(10000)
-          )
-        )
+        .map(({ price }) => price)
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
@@ -342,20 +335,24 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     for (let partial of [false, true]) {
       for (let chargeFees of [false, true]) {
         for (let revertIfIncomplete of [false, true]) {
-          it(
-            "[eth]" +
-              `${multiple ? "[multiple-orders]" : "[single-order]"}` +
-              `${partial ? "[partial]" : "[full]"}` +
-              `${chargeFees ? "[fees]" : "[no-fees]"}` +
-              `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
-            async () =>
-              testAcceptListings(
-                chargeFees,
-                revertIfIncomplete,
-                partial,
-                multiple ? getRandomInteger(2, 6) : 1
-              )
-          );
+          for (let kind of [false, true]) {
+            it(
+              "[eth]" +
+                `${kind ? "[erc721]" : "[erc1555]"}` +
+                `${multiple ? "[multiple-orders]" : "[single-order]"}` +
+                `${partial ? "[partial]" : "[full]"}` +
+                `${chargeFees ? "[fees]" : "[no-fees]"}` +
+                `${revertIfIncomplete ? "[reverts]" : "[skip-reverts]"}`,
+              async () =>
+                testAcceptListings(
+                  chargeFees,
+                  revertIfIncomplete,
+                  partial,
+                  multiple ? getRandomInteger(2, 6) : 1,
+                  kind ? "erc721" : "erc1155"
+                )
+            );
+          }
         }
       }
     }
