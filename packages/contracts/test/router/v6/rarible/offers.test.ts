@@ -28,6 +28,7 @@ import {
 } from "../../../utils";
 import { getCurrentTimestamp } from "@reservoir0x/sdk/src/utils";
 import { encodeForMatchOrders } from "@reservoir0x/sdk/src/rarible/utils";
+import { Erc1155 } from "@reservoir0x/sdk/src/common/helpers";
 
 describe("[ReservoirV6_0_0] Rarible offers", () => {
   const chainId = getChainId();
@@ -40,6 +41,7 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
   let emilio: SignerWithAddress;
 
   let erc721: Contract;
+  let erc1155: Contract;
   let router: Contract;
   let seaportApprovalOrderZone: Contract;
   let seaportModule: Contract;
@@ -48,7 +50,7 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
   beforeEach(async () => {
     [deployer, alice, bob, carol, david, emilio] = await ethers.getSigners();
 
-    ({ erc721 } = await setupNFTs(deployer));
+    ({ erc721, erc1155 } = await setupNFTs(deployer));
 
     router = (await ethers
       .getContractFactory("ReservoirV6_0_0", deployer)
@@ -112,13 +114,11 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
     // Makers: Alice and Bob
     // Taker: Carol
 
-    const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
     const offers: RaribleListing[] = [];
     const fees: BigNumber[][] = [];
     for (let i = 0; i < offersCount; i++) {
       offers.push({
         side: "buy",
-        paymentToken: wethAddress,
         maker: getRandomBoolean() ? alice : bob,
         nft: {
           kind: "erc721",
@@ -282,12 +282,15 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
     expect(balancesAfter.carol.sub(balancesBefore.carol)).to.eq(
       offers
         .map((offer, i) =>
-          bn(offer.price)
-            .sub(
-              // Take into consideration the protocol fee
-              bn(offer.price).mul(150).div(10000)
-            )
-            .sub(fees[i].reduce((a, b) => bn(a).add(b), bn(0)))
+          offer.isCancelled
+            ? bn(0)
+            : bn(offer.price)
+                .sub(
+                  offer.fees
+                    ?.map(({ amount }) => bn(amount))
+                    .reduce((a, b) => a.add(b)) ?? 0
+                )
+                .sub(fees[i].reduce((a, b) => bn(a).add(b), bn(0)))
         )
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
@@ -304,9 +307,13 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
       );
     }
 
-    // Alice and Bob got the NFTs of the filled orders
-    for (const { nft } of offers) {
-      expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
+    // The maker got the NFTs of the filled orders
+    for (const { maker, nft, isCancelled } of offers) {
+      if (!isCancelled) {
+        expect(await nft.contract.ownerOf(nft.id)).to.eq(maker.address);
+      } else {
+        expect(await nft.contract.ownerOf(nft.id)).to.eq(carol.address);
+      }
     }
 
     // Router is stateless

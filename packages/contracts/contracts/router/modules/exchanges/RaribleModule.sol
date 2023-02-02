@@ -112,7 +112,8 @@ contract RaribleModule is BaseExchangeModule {
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-        (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
+        (address token, uint tokenId) = abi.decode(orderLeft.takeAsset.assetType.data, (address, uint256));
+
         IERC721 collection = IERC721(address(token));
 
         // Approve the transfer manager if needed
@@ -143,7 +144,7 @@ contract RaribleModule is BaseExchangeModule {
         OfferParams calldata params,
         Fee[] calldata fees
     ) external nonReentrant {
-        (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
+        (address token, uint tokenId) = abi.decode(orderLeft.takeAsset.assetType.data, (address, uint256));
 
         IERC1155 collection = IERC1155(address(token));
 

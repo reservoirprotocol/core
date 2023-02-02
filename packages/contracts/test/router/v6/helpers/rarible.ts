@@ -41,13 +41,16 @@ export type RaribleListing = {
     id: number;
     amount: number;
   };
-  // ETH if missing
-  paymentToken: string;
+  paymentToken?: string;
   price: BigNumberish;
   // Whether the order is to be cancelled
   isCancelled?: boolean;
   order?: Sdk.Rarible.Order;
   side: "buy" | "sell";
+  fees?: {
+    recipient: string;
+    amount: BigNumberish;
+  }[];
 };
 
 export interface IV3OrderSellData {
@@ -164,12 +167,16 @@ export const setupRaribleOffers = async (offers: RaribleListing[]) => {
       price: price.toString(),
       dataType: ORDER_DATA_TYPES.V3_BUY,
       tokenId: nft.id.toString(),
-      paymentToken: offer.paymentToken,
+      paymentToken: weth.contract.address,
       startTime: await getCurrentTimestamp(ethers.provider),
       endTime: (await getCurrentTimestamp(ethers.provider)) + 60,
       payouts: [],
     });
+
+    await order.checkValidity();
     await order.sign(maker);
+    await order.checkSignature();
+    await order.checkFillability(ethers.provider);
 
     offer.order = order;
 
