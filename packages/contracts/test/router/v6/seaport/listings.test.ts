@@ -466,15 +466,11 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
     ];
 
     // Swap USDC
-    try {
-      await router.connect(bob).execute(swapExecutions, {
-        value: swapExecutions
-          .map(({ value }) => value)
-          .reduce((a, b) => bn(a).add(b)),
-      });
-    } catch {
-      // error
-    }
+    await router.connect(bob).execute(swapExecutions, {
+      value: swapExecutions
+        .map(({ value }) => value)
+        .reduce((a, b) => bn(a).add(b)),
+    });
 
     const generatePermit2ModuleTransfer = async (
       signer: SignerWithAddress,
@@ -554,6 +550,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
         ]),
         value: 0,
       },
+      // 2. Swap USDC > WETH
       {
         module: uniswapV3Module.address,
         data: uniswapV3Module.interface.encodeFunctionData("erc20ToExactOutput", [
@@ -571,6 +568,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
         // Anything on top should be refunded
         value: 0,
       },
+      // 3. unwrap WETH to ETH
       {
         module: wethModule.address,
         data: wethModule.interface.encodeFunctionData("unwrap", [
@@ -579,7 +577,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
         // Anything on top should be refunded
         value: 0,
       },
-      // 2. Fill USDC listing with the received funds
+      // 4. Fill USDC listing with the received funds
       {
         module: seaportModule.address,
         data: seaportModule.interface.encodeFunctionData("acceptETHListing", [
@@ -685,62 +683,13 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
       },
     ];
 
-    // Swap to erc20
-    try {
-      await router.connect(bob).execute(swapExecutions, {
-        value: swapExecutions
-          .map(({ value }) => value)
-          .reduce((a, b) => bn(a).add(b)),
-      });
-    } catch {
-      // error
-    }
-
-    const generatePermit2Transfer = async (
-      signer: SignerWithAddress,
-      to: string,
-      amount: string
-    ) => {
-      const permitTransfer = {
-        permitted: [
-          {
-            token: Sdk.Common.Addresses.Usdc[chainId],
-            amount,
-          },
-        ],
-
-        spender: Sdk.Common.Addresses.Permit2[chainId],
-        nonce: "0",
-        deadline: Math.floor(new Date().getTime() / 1000) + 5 * 60,
-      };
-
-      const signatureData = SignatureTransfer.getPermitData(
-        permitTransfer,
-        Sdk.Common.Addresses.Permit2[chainId],
-        chainId
-      );
-
-      const signature = await signer._signTypedData(
-        signatureData.domain,
-        signatureData.types,
-        signatureData.values
-      );
-
-      const transferDetails = [
-        {
-          to,
-          requestedAmount: amount,
-        },
-      ];
-
-      return {
-        permit: permitTransfer,
-        owner: signer.address,
-        transferDetails,
-        signature,
-      };
-    };
-
+    // Swap to USDC
+    await router.connect(bob).execute(swapExecutions, {
+      value: swapExecutions
+        .map(({ value }) => value)
+        .reduce((a, b) => bn(a).add(b)),
+    });
+   
     const generatePermit2ModuleTransfer = async (
       signer: SignerWithAddress,
       to: string,
@@ -805,12 +754,6 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
       listing.price.toString()
     );
 
-    const permitTransfer = await generatePermit2Transfer(
-      bob,
-      seaportModule.address,
-      listing.price.toString()
-    );
-
     await setupSeaportListings([listing]);
 
     // Prepare executions
@@ -818,30 +761,16 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
     const usingPermitModule = true;
     const executions: ExecutionInfo[] = [
       // 1. Transfer with permit2
-      usingPermitModule
-        ? {
-            module: permit2Module.address,
-            data: permit2Module.interface.encodeFunctionData(`permitTransfer`, [
-              permitModuleTransfer.owner,
-              permitModuleTransfer.permit,
-              permitModuleTransfer.transferDetails,
-              permitModuleTransfer.signature,
-            ]),
-            value: 0,
-          }
-        : {
-            module: Sdk.Common.Addresses.Permit2[chainId],
-            data: permit2.interface.encodeFunctionData(
-              `permitTransferFrom(((address,uint256)[],uint256,uint256),(address,uint256)[],address,bytes)`,
-              [
-                permitTransfer.permit,
-                permitTransfer.transferDetails,
-                permitTransfer.owner,
-                permitTransfer.signature,
-              ]
-            ),
-            value: 0,
-          },
+      {
+        module: permit2Module.address,
+        data: permit2Module.interface.encodeFunctionData(`permitTransfer`, [
+          permitModuleTransfer.owner,
+          permitModuleTransfer.permit,
+          permitModuleTransfer.transferDetails,
+          permitModuleTransfer.signature,
+        ]),
+        value: 0,
+      },
       // 2. Fill USDC listing with the received funds
       {
         module: seaportModule.address,
@@ -945,16 +874,12 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
       },
     ];
 
-    // Swap to erc20
-    try {
-      await router.connect(bob).execute(swapExecutions, {
-        value: swapExecutions
-          .map(({ value }) => value)
-          .reduce((a, b) => bn(a).add(b)),
-      });
-    } catch {
-      // error
-    }
+    // Swap to USDC
+    await router.connect(bob).execute(swapExecutions, {
+      value: swapExecutions
+        .map(({ value }) => value)
+        .reduce((a, b) => bn(a).add(b)),
+    });
 
     const generatePermit2ModuleTransfer = async (
       signer: SignerWithAddress,
@@ -1034,6 +959,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
         ]),
         value: 0,
       },
+      // 2. Swap USDC > WETH
       {
         module: uniswapV3Module.address,
         data: uniswapV3Module.interface.encodeFunctionData("erc20ToExactOutput", [
@@ -1051,7 +977,7 @@ describe("[ReservoirV6_0_0] Seaport listings", () => {
         // Anything on top should be refunded
         value: 0,
       },
-      // 2. Fill USDC listing with the received funds
+      // 3. Fill WETH listing with the received funds
       {
         module: seaportModule.address,
         data: seaportModule.interface.encodeFunctionData("acceptERC20Listing", [

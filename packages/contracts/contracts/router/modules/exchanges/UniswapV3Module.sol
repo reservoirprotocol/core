@@ -55,7 +55,7 @@ contract UniswapV3Module is BaseExchangeModule {
         _approveERC20IfNeeded(
             params.tokenIn,
             address(SWAP_ROUTER),
-            params.amountInMaximum
+            params.amountInMaximum * 10
         );
 
         // Execute the swap

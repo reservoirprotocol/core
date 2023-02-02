@@ -151,7 +151,6 @@ export class Router {
       directFillingData?: any;
       // Wallet used for relaying the fill transaction
       relayer?: string;
-      signature?: any;
     }
   ): Promise<{ 
     txData: TxData;
@@ -1564,7 +1563,7 @@ export class Router {
     }
     
     return {
-      approvals,
+      approvals: approvals.filter((_, i) => success[i]),
       permits: await (async (): Promise<ERC20Permit[]> => {
         const items = permitItems.filter((_, i) => success[i]);
         return [

@@ -28,6 +28,8 @@ export type ERC20Approval = {
   txData: TxData;
 };
 
+export type Approval = ERC20Approval | NFTApproval;
+
 export type NFTPermit = {
   tokens: Token[];
   details: {
@@ -40,9 +42,11 @@ export type ERC20Permit = {
   tokens: string[];
   details: {
     kind: "permit2";
-    data: Permit2.Permit2Approval;
+    data: Permit2.Data;
   };
 };
+
+export type Permit = ERC20Permit | NFTPermit;
 
 // Misc
 

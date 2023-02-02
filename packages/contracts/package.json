@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@tenderly/hardhat-tenderly": "^1.5.2",
-    "@uniswap/permit2-sdk": "^1.2.0"
+    "@uniswap/permit2-sdk": "^1.2.0",
+    "hardhat-tracer": "^1.2.1"
   }
 }

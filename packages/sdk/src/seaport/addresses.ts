@@ -30,6 +30,7 @@ export const PausableZone: ChainIdToAddress = {
 };
 
 export const ApprovalOrderZone: ChainIdToAddress = {
+  [Network.Ethereum]: "0x7deb43ea42555922445abc2f8ec66d5fce8c92c0",
   [Network.EthereumGoerli]: "0x5595ddec926bfb297814c33a90e44f97c6074fe5",
 };
 

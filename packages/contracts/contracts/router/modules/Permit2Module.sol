@@ -16,7 +16,7 @@ contract Permit2Module is BaseModule {
 
     function permitTransfer(
         address owner, 
-        IAllowanceTransfer.PermitBatch memory permitBatch, 
+        IAllowanceTransfer.PermitBatch calldata permitBatch, 
         IAllowanceTransfer.AllowanceTransferDetails[] calldata transferDetails,
         bytes calldata signature
     ) external nonReentrant {

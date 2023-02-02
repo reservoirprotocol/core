@@ -4,12 +4,13 @@ import * as Sdk from "@reservoir0x/sdk/src";
 import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { verifyTypedData } from "@ethersproject/wallet";
-import { TxData, getCurrentTimestamp, bn } from "../../../utils";
+import { TxData, getCurrentTimestamp, bn, MaxUint256 } from "../../../utils";
 
 import RouterAbi from "../abis/ReservoirV6_0_0.json";
 import Permit2ABI from "../../../common/abis/Permit2.json";
 import Permit2ModuleAbi from "../abis/Permit2Module.json";
 import { Contract } from "ethers";
+import { MAX_UINT160 } from "@uniswap/smart-order-router";
 
 export type TransferDetail = {
   from: string;
@@ -18,7 +19,7 @@ export type TransferDetail = {
   amount: string;
 }
 
-export type Permit2Approval = {
+export type Data = {
   owner: string;
   permitBatch: PermitBatch;
   signature?: string;
@@ -43,7 +44,7 @@ export class Handler {
   public async generate(
     transferDetails: TransferDetail[],
     expiresIn = 10 * 60
-  ): Promise<Permit2Approval> {
+  ): Promise<Data> {
 
     if (transferDetails.length === 0)  throw new Error("transferDetails empty")
    
@@ -60,6 +61,7 @@ export class Handler {
             {
               token,
               amount,
+              // amount: ,
               expiration: now + expiresIn,
               nonce: packedAllowance.nonce
             }
@@ -82,7 +84,12 @@ export class Handler {
     }
 
     const permitBatch = {
-      details,
+      details: details.map(_ => {
+        return {
+          ..._,
+          amount: MAX_UINT160
+        }
+      }),
       spender: this.module,
       sigDeadline: now + expiresIn,
     };
@@ -94,7 +101,7 @@ export class Handler {
     }
   }
 
-  public getSignatureData(permit2Approval: Permit2Approval) {
+  public getSignatureData(permit2Approval: Data) {
     const signatureData = AllowanceTransfer.getPermitData(
       permit2Approval.permitBatch,
       Sdk.Common.Addresses.Permit2[this.chainId],
@@ -109,7 +116,7 @@ export class Handler {
   }
 
   public attachAndCheckSignature(
-    permit2Approval: Permit2Approval,
+    permit2Approval: Data,
     signature: string
   ) {
 
@@ -126,12 +133,11 @@ export class Handler {
     }
 
     permit2Approval.signature = signature;
-
   }
 
   public attachToRouterExecution(
     txData: TxData,
-    permitApprovals: Permit2Approval[]
+    permitApprovals: Data[]
   ): TxData {
     const routerIface = new Interface(RouterAbi);
     const executionInfos = routerIface.decodeFunctionData(

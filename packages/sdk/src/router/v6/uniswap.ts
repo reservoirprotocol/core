@@ -16,6 +16,7 @@ import { AlphaRouter, SwapType } from "@uniswap/smart-order-router";
 
 import { ExecutionInfo } from "./types";
 import { isETH, isWETH } from "./utils";
+import { bn } from "../../utils";
 
 export type SwapInfo = {
   execution: ExecutionInfo;
@@ -156,7 +157,7 @@ export const generateSwapExecution = async (
       amounts: {
         tokenIn: fromTokenAddress,
         tokenOut: toTokenAddress,
-        amountIn: params.params.amountInMaximum,
+        amountIn: bn(params.params.amountInMaximum).mul(2).toString(),
         amountOut: params.params.amountOut,
       },
       execution: {
