@@ -27,7 +27,6 @@
     "typescript": "^4.5.2"
   },
   "dependencies": {
-    "@tenderly/hardhat-tenderly": "^1.5.2",
     "hardhat-tracer": "^1.2.1"
   }
 }
