@@ -123,7 +123,10 @@ export const setupRaribleListings = async (listings: RaribleListing[]) => {
       ],
     });
 
+    await order.checkValidity();
     await order.sign(maker);
+    await order.checkSignature();
+    await order.checkFillability(ethers.provider);
 
     listing.order = order;
 

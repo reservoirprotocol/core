@@ -10,6 +10,7 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {BaseExchangeModule} from "./BaseExchangeModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {IRarible} from "../../../interfaces/IRarible.sol";
+import "hardhat/console.sol";
 
 // Notes:
 // - supports filling listings (both ERC721/ERC1155 but only ETH-denominated)
@@ -52,6 +53,7 @@ contract RaribleModule is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
+        console.log("asd");
         // Execute fill
         _buy(
             orderLeft,
@@ -80,6 +82,8 @@ contract RaribleModule is BaseExchangeModule {
         refundETHLeftover(params.refundTo)
         chargeETHFees(fees, params.amount)
     {
+        console.log("asd2");
+        
         for (uint256 i = 0; i < ordersLeft.length; ) {
             IRarible.Order calldata orderLeft = ordersLeft[i];
             IRarible.Order calldata orderRight = ordersRight[i];
@@ -94,6 +98,7 @@ contract RaribleModule is BaseExchangeModule {
                 params.revertIfIncomplete,
                 orderLeft.makeAsset.value
             );
+            console.log("asd3");
 
             unchecked {
                 ++i;
@@ -214,13 +219,15 @@ contract RaribleModule is BaseExchangeModule {
         bool revertIfIncomplete,
         uint256 value
     ) internal {
+        console.log("asd5");
         // Execute the fill
         try
             EXCHANGE.matchOrders{value: value}(orderLeft, signatureLeft, orderRight, signatureRight)
         {
+            console.log("asd4");
             (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
-
             IERC165 collection = IERC165(address(token));
+            console.log(token);
 
             // Forward any token to the specified receiver
             bool isERC721 = collection.supportsInterface(ERC721_INTERFACE);
@@ -240,11 +247,14 @@ contract RaribleModule is BaseExchangeModule {
                 );
             }
         } catch {
+            console.log("asd6");
             // Revert if specified
             if (revertIfIncomplete) {
+                console.log("asd7");
                 revert UnsuccessfulFill();
             }
         }
+        console.log("asd8");
     }
 
     function _sell(
@@ -259,7 +269,7 @@ contract RaribleModule is BaseExchangeModule {
         // Execute the fill
         try EXCHANGE.matchOrders(orderLeft, signatureLeft, orderRight, signatureRight) {
             // Pay fees
-            (address token, uint tokenId) = abi.decode(orderLeft.makeAsset.assetType.data, (address, uint256));
+            address token = abi.decode(orderLeft.makeAsset.assetType.data, (address));
             uint256 feesLength = fees.length;
             for (uint256 i; i < feesLength; ) {
                 Fee memory fee = fees[i];

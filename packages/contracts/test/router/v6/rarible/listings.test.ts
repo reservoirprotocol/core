@@ -5,6 +5,7 @@ import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import * as Rarible from "@reservoir0x/sdk/src/rarible";
 
 import { ExecutionInfo } from "../helpers/router";
 import { RaribleListing, setupRaribleListings } from "../helpers/rarible";
@@ -125,6 +126,8 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
 
+    const exchange = new Rarible.Exchange(chainId);
+
     const matchOrder = listings[0].order!.buildMatching(
       raribleModule.address,
       listings[0].order!.params
@@ -233,6 +236,13 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
       Sdk.Common.Addresses.Weth[chainId]
     );
 
+    // await exchange.fillOrder(carol, listings[0].order!, {
+    //   tokenId: listings[0].nft.id.toString(),
+    //   assetClass: listings[0].nft.kind!.toUpperCase() as any,
+    // });
+
+    console.log("test");
+
     // Execute
 
     await router.connect(carol).execute(executions, {
@@ -253,7 +263,7 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
     // Checks
 
     // Alice got the payment
-    expect(wethBalancesAfter.alice.sub(wethBalancesBefore.alice)).to.eq(
+    expect(ethBalancesAfter.alice.sub(ethBalancesAfter.alice)).to.eq(
       listings
         .filter(
           ({ maker, isCancelled }) =>
@@ -268,7 +278,7 @@ describe("[ReservoirV6_0_0] Rarible listings", () => {
         .reduce((a, b) => bn(a).add(b), bn(0))
     );
     // Bob got the payment
-    expect(wethBalancesAfter.bob.sub(wethBalancesBefore.bob)).to.eq(
+    expect(ethBalancesAfter.bob.sub(ethBalancesAfter.bob)).to.eq(
       listings
         .filter(
           ({ maker, isCancelled }) =>
