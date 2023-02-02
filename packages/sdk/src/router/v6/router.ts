@@ -1466,8 +1466,6 @@ export class Router {
         .map(({ amount }) => bn(amount))
         .reduce((a, b) => a.add(b), bn(0));
 
-      const order = orders[0];
-
       executions.push({
         module,
         data:
@@ -1510,7 +1508,7 @@ export class Router {
       });
 
       // Mark the listings as successfully handled
-      for (const { originalIndex } of looksRareDetails) {
+      for (const { originalIndex } of raribleDetails) {
         success[originalIndex] = true;
       }
     }

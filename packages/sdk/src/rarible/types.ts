@@ -211,10 +211,10 @@ export interface BaseBuildParams {
   // They are optional currently and we assume they're passed correctly
   // TODO: Validation should be added to ensure correct all params exist and are passed correctly
   originFees?: IPart[];
-  payouts?: IPart[]; //
-  originFeeFirst?: IPart; //
-  originFeeSecond?: IPart; //
-  marketplaceMarker?: string; //
+  payouts?: IPart[];
+  originFeeFirst?: IPart;
+  originFeeSecond?: IPart;
+  marketplaceMarker?: string;
   fee?: number;
-  maxFeesBasePoint?: number; //
+  maxFeesBasePoint?: number;
 }

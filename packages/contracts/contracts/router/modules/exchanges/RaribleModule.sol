@@ -231,18 +231,13 @@ contract RaribleModule is BaseExchangeModule {
                     tokenId
                 );
             } else {
-                bool isERC1155 = collection.supportsInterface(
-                    ERC1155_INTERFACE
+                IERC1155(address(collection)).safeTransferFrom(
+                    address(this),
+                    receiver,
+                    tokenId,
+                    orderLeft.takeAsset.value,
+                    ""
                 );
-                if (isERC1155) {
-                    IERC1155(address(collection)).safeTransferFrom(
-                        address(this),
-                        receiver,
-                        tokenId,
-                        orderLeft.takeAsset.value,
-                        ""
-                    );
-                }
             }
         } catch {
             // Revert if specified
