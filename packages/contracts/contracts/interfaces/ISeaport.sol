@@ -40,6 +40,13 @@ interface ISeaport {
         address recipient;
     }
 
+    struct SpentItem {
+        ItemType itemType;
+        address token;
+        uint256 identifier;
+        uint256 amount;
+    }
+
     struct ReceivedItem {
         ItemType itemType;
         address token;
@@ -111,6 +118,24 @@ interface ISeaport {
         ReceivedItem item;
         address offerer;
         bytes32 conduitKey;
+    }
+
+    struct ZoneParameters {
+        bytes32 orderHash;
+        address fulfiller;
+        address offerer;
+        SpentItem[] offer;
+        ReceivedItem[] consideration;
+        bytes extraData;
+        bytes32[] orderHashes;
+        uint256 startTime;
+        uint256 endTime;
+        bytes32 zoneHash;
+    }
+
+    struct Schema {
+        uint256 id;
+        bytes metadata;
     }
 
     function getOrderHash(OrderComponents calldata order)
