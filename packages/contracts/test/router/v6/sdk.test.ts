@@ -1,5 +1,5 @@
 import { Contract } from "@ethersproject/contracts";
-import { formatEther, parseEther, parseUnits } from "@ethersproject/units";
+import { parseEther, parseUnits } from "@ethersproject/units";
 import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";

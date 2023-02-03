@@ -1,6 +1,6 @@
 
 import { ListingDetails, ListingFillDetails, FillOptions } from "../types"
-import { TxData, bn, generateSourceBytes, uniqBy, MaxUint256 } from "../../../utils";
+import { bn } from "../../../utils";
 import { AddressZero } from "@ethersproject/constants";
 
 export const getFees = (ownDetails: ListingFillDetails[], details: ListingDetails[], options?: FillOptions) => {

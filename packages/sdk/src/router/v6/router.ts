@@ -49,7 +49,6 @@ import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
 import NFTXModuleAbi from "./abis/NFTXModule.json";
 import Permit2ModuleAbi from  "./abis/Permit2Module.json";
-import { formatEther } from "ethers/lib/utils";
 
 import { getSeaportListingsPayment, createSeaportExecution } from "./execution/seaport"
 
