@@ -5,6 +5,8 @@ import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
+import { keccak256 as solidityKeccak256 } from "@ethersproject/solidity";
+import { recoverAddress } from "@ethersproject/transactions";
 import { verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
@@ -70,16 +72,100 @@ export class Order {
   }
 
   public async checkSignature(provider?: Provider) {
-    try {
-      const signer = verifyTypedData(
-        EIP712_DOMAIN(this.chainId),
-        ORDER_EIP712_TYPES,
-        this.params,
-        this.params.signature!
-      );
+    const signature = this.params.signature!;
 
-      if (lc(this.params.offerer) !== lc(signer)) {
-        throw new Error("Invalid signature");
+    try {
+      // Remove the `0x` prefix and count bytes not characters
+      const actualSignatureLength = (signature.length - 2) / 2;
+
+      // https://github.com/ProjectOpenSea/seaport/blob/4f2210b59aefa119769a154a12e55d9b77ca64eb/reference/lib/ReferenceVerifiers.sol#L126-L133
+      const isBulkSignature =
+        actualSignatureLength < 837 &&
+        actualSignatureLength > 98 &&
+        (actualSignatureLength - 67) % 32 < 2;
+      if (isBulkSignature) {
+        // https://github.com/ProjectOpenSea/seaport/blob/4f2210b59aefa119769a154a12e55d9b77ca64eb/reference/lib/ReferenceVerifiers.sol#L146-L220
+        const proofAndSignature = this.params.signature!;
+
+        const signatureLength = proofAndSignature.length % 2 === 0 ? 130 : 128;
+        const signature = proofAndSignature.slice(0, signatureLength + 2);
+
+        const key = bn(
+          "0x" +
+            proofAndSignature.slice(
+              2 + signatureLength,
+              2 + signatureLength + 6
+            )
+        ).toNumber();
+
+        const height = Math.floor(
+          (proofAndSignature.length - 2 - signatureLength) / 64
+        );
+
+        const proofElements: string[] = [];
+        for (let i = 0; i < height; i++) {
+          const start = 2 + signatureLength + 6 + i * 64;
+          proofElements.push(
+            "0x" + proofAndSignature.slice(start, start + 64).padEnd(64, "0")
+          );
+        }
+
+        let root = this.hash();
+        for (let i = 0; i < proofElements.length; i++) {
+          if ((key >> i) % 2 === 0) {
+            root = solidityKeccak256(
+              ["bytes"],
+              [root + proofElements[i].slice(2)]
+            );
+          } else {
+            root = solidityKeccak256(
+              ["bytes"],
+              [proofElements[i] + root.slice(2)]
+            );
+          }
+        }
+
+        const types = { ...ORDER_EIP712_TYPES };
+        (types as any).BulkOrder = [
+          { name: "tree", type: `OrderComponents${`[2]`.repeat(height)}` },
+        ];
+        const encoder = _TypedDataEncoder.from(types);
+
+        const bulkOrderTypeHash = solidityKeccak256(
+          ["string"],
+          [encoder.encodeType("BulkOrder")]
+        );
+        const bulkOrderHash = solidityKeccak256(
+          ["bytes"],
+          [bulkOrderTypeHash + root.slice(2)]
+        );
+
+        const value = solidityKeccak256(
+          ["bytes"],
+          [
+            "0x1901" +
+              _TypedDataEncoder
+                .hashDomain(EIP712_DOMAIN(this.chainId))
+                .slice(2) +
+              bulkOrderHash.slice(2),
+          ]
+        );
+
+        const signer = recoverAddress(value, signature);
+        if (lc(this.params.offerer) !== lc(signer)) {
+          throw new Error("Invalid signature");
+        }
+      } else {
+        const signer = verifyTypedData(
+          EIP712_DOMAIN(this.chainId),
+          ORDER_EIP712_TYPES,
+          this.params,
+          signature
+        );
+
+        if (lc(this.params.offerer) !== lc(signer)) {
+          throw new Error("Invalid signature");
+        }
       }
     } catch {
       if (!provider) {
@@ -100,7 +186,7 @@ export class Order {
         this.params.offerer,
         iface,
         provider
-      ).isValidSignature(eip712Hash, this.params.signature!);
+      ).isValidSignature(eip712Hash, signature);
       if (result !== iface.getSighash("isValidSignature")) {
         throw new Error("Invalid signature");
       }
@@ -339,7 +425,7 @@ export class Order {
   }
 }
 
-const EIP712_DOMAIN = (chainId: number) => ({
+export const EIP712_DOMAIN = (chainId: number) => ({
   name: "Seaport",
   version: "1.2",
   chainId,

@@ -1,17 +1,22 @@
+import { defaultAbiCoder } from "@ethersproject/abi";
 import {
   Provider,
   TransactionResponse,
 } from "@ethersproject/abstract-provider";
-import { Signer } from "@ethersproject/abstract-signer";
+import { Signer, TypedDataSigner } from "@ethersproject/abstract-signer";
 import { BigNumberish } from "@ethersproject/bignumber";
+import { hexConcat } from "@ethersproject/bytes";
 import { AddressZero, HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
-import { keccak256 } from "@ethersproject/solidity";
+import { _TypedDataEncoder } from "@ethersproject/hash";
+import { keccak256 } from "@ethersproject/keccak256";
+import { keccak256 as solidityKeccak256 } from "@ethersproject/solidity";
 import axios from "axios";
+import { MerkleTree } from "merkletreejs";
 
 import * as Addresses from "./addresses";
 import { BaseOrderInfo } from "./builders/base";
-import { Order } from "./order";
+import { EIP712_DOMAIN, ORDER_EIP712_TYPES, Order } from "./order";
 import * as Types from "./types";
 import * as CommonAddresses from "../common/addresses";
 import { TxData, bn, generateSourceBytes, lc, n, s } from "../utils";
@@ -380,6 +385,83 @@ export class Exchange {
     };
   }
 
+  // --- Bulk sign orders ---
+
+  public async bulkSign(signer: TypedDataSigner, orders: Order[]) {
+    const height = Math.max(Math.ceil(Math.log2(orders.length)), 1);
+    const size = Math.pow(2, height);
+
+    const types = { ...ORDER_EIP712_TYPES };
+    (types as any).BulkOrder = [
+      { name: "tree", type: `OrderComponents${`[2]`.repeat(height)}` },
+    ];
+    const encoder = _TypedDataEncoder.from(types);
+
+    const hashElement = (element: Types.OrderComponents) =>
+      encoder.hashStruct("OrderComponents", element);
+
+    const elements = orders.map((o) => o.params);
+    const leaves = elements.map((e) => hashElement(e));
+
+    const defaultElement: Types.OrderComponents = {
+      offerer: AddressZero,
+      zone: AddressZero,
+      offer: [],
+      consideration: [],
+      orderType: 0,
+      startTime: 0,
+      endTime: 0,
+      zoneHash: HashZero,
+      salt: "0",
+      conduitKey: HashZero,
+      counter: "0",
+    };
+    const defaultLeaf = hashElement(defaultElement);
+
+    // Ensure the tree is complete
+    while (elements.length < size) {
+      elements.push(defaultElement);
+      leaves.push(defaultLeaf);
+    }
+
+    const hexToBuffer = (value: string) => Buffer.from(value.slice(2), "hex");
+    const bufferKeccak = (value: string) => hexToBuffer(keccak256(value));
+
+    const tree = new MerkleTree(leaves.map(hexToBuffer), bufferKeccak, {
+      complete: true,
+      sort: false,
+      hashLeaves: false,
+      fillDefaultHash: hexToBuffer(defaultLeaf),
+    });
+
+    let chunks: any[] = [...elements];
+    while (chunks.length > 2) {
+      const newSize = Math.ceil(chunks.length / 2);
+      chunks = Array(newSize)
+        .fill(0)
+        .map((_, i) => chunks.slice(i * 2, (i + 1) * 2));
+    }
+
+    const signature = await signer._signTypedData(
+      EIP712_DOMAIN(this.chainId),
+      types,
+      { tree: chunks }
+    );
+
+    const getEncodedProofAndSignature = (i: number, signature: string) => {
+      const proof = tree.getHexProof(leaves[i], i);
+      return hexConcat([
+        signature,
+        `0x${i.toString(16).padStart(6, "0")}`,
+        defaultAbiCoder.encode([`uint256[${proof.length}]`], [proof]),
+      ]);
+    };
+
+    orders.forEach((order, i) => {
+      order.params.signature = getEncodedProofAndSignature(i, signature);
+    });
+  }
+
   // --- Get extra data ---
 
   public requiresExtraData(order: Order): boolean {
@@ -423,7 +505,7 @@ export class Exchange {
     return conduitKey === HashZero
       ? Addresses.Exchange[this.chainId]
       : "0x" +
-          keccak256(
+          solidityKeccak256(
             ["bytes1", "address", "bytes32", "bytes32"],
             [
               "0xff",

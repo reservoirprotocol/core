@@ -972,7 +972,7 @@ __metadata:
     "@types/node": ^16.11.12
     "@uniswap/smart-order-router": ^3.0.4
     ethers: ^5.7.2
-    merkletreejs: 0.2.31
+    merkletreejs: ^0.3.9
     typescript: ^4.5.2
   languageName: unknown
   linkType: soft
@@ -8102,16 +8102,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"merkletreejs@npm:0.2.31":
-  version: 0.2.31
-  resolution: "merkletreejs@npm:0.2.31"
+"merkletreejs@npm:^0.3.9":
+  version: 0.3.9
+  resolution: "merkletreejs@npm:0.3.9"
   dependencies:
     bignumber.js: ^9.0.1
     buffer-reverse: ^1.0.1
     crypto-js: ^3.1.9-1
     treeify: ^1.1.0
     web3-utils: ^1.3.4
-  checksum: d84a7d8b07b6ec37f8de8e6b9d1cfb361e49d75e30be1e1e9e269e8847408535265df1bb99be88b8d260362e6513491cdf07a5a5a03d4980faa5f23341ae3909
+  checksum: a76ba14cb3e7ba342572b479956e8b159e498a101e79da796ee032ad4cb8d53bae1af38e8b70dfa64784e659b4a0bc9e75274517ab68788b1459bca8047f1f3f
   languageName: node
   linkType: hard
 
