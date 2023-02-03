@@ -3,7 +3,6 @@ import { Provider } from "@ethersproject/abstract-provider";
 import { BigNumberish } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Protocol } from "@uniswap/router-sdk";
-import * as Sdk from "@reservoir0x/sdk/src";
 import {
   Currency,
   CurrencyAmount,
@@ -101,7 +100,7 @@ export const generateSwapExecution = async (
       },
       {
         protocols: [Protocol.V3],
-        maxSwapsPerPath: inputIsEth ? 5 : 1,
+        maxSwapsPerPath: inputIsEth ? 2 : 1,
       }
     );
 
