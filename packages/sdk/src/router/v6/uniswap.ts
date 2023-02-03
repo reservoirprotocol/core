@@ -100,7 +100,7 @@ export const generateSwapExecution = async (
       },
       {
         protocols: [Protocol.V3],
-        maxSwapsPerPath: inputIsEth ? 2 : 1,
+        maxSwapsPerPath: 1,
       }
     );
 
