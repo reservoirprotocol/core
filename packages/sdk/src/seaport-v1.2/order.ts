@@ -1,6 +1,7 @@
+import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { TypedDataSigner } from "@ethersproject/abstract-signer";
-import { BigNumber } from "@ethersproject/bignumber";
+import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
 import { HashZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import { _TypedDataEncoder } from "@ethersproject/hash";
@@ -8,15 +9,15 @@ import { verifyTypedData } from "@ethersproject/wallet";
 
 import * as Addresses from "./addresses";
 import { Builders } from "./builders";
-import { BaseBundleBuilder, BaseBundleOrderInfo } from "./builders/base/bundle";
+import { BaseBuilder, BaseOrderInfo } from "./builders/base";
 import * as Types from "./types";
 import * as Common from "../common";
-import { bn, lc, n, s } from "../utils";
+import { bn, getCurrentTimestamp, lc, n, s } from "../utils";
 
 import ConduitControllerAbi from "./abis/ConduitController.json";
 import ExchangeAbi from "./abis/Exchange.json";
 
-export class BundleOrder {
+export class Order {
   public chainId: number;
   public params: Types.OrderComponents;
 
@@ -33,6 +34,9 @@ export class BundleOrder {
     if (!params.kind) {
       this.params.kind = this.detectKind();
     }
+
+    // Fix signature
+    this.fixSignature();
   }
 
   public hash() {
@@ -65,54 +69,109 @@ export class BundleOrder {
     };
   }
 
-  public checkSignature() {
-    const signer = verifyTypedData(
-      EIP712_DOMAIN(this.chainId),
-      ORDER_EIP712_TYPES,
-      this.params,
-      this.params.signature!
-    );
+  public async checkSignature(provider?: Provider) {
+    try {
+      const signer = verifyTypedData(
+        EIP712_DOMAIN(this.chainId),
+        ORDER_EIP712_TYPES,
+        this.params,
+        this.params.signature!
+      );
 
-    if (lc(this.params.offerer) !== lc(signer)) {
-      throw new Error("Invalid signature");
+      if (lc(this.params.offerer) !== lc(signer)) {
+        throw new Error("Invalid signature");
+      }
+    } catch {
+      if (!provider) {
+        throw new Error("Invalid signature");
+      }
+
+      const eip712Hash = _TypedDataEncoder.hash(
+        EIP712_DOMAIN(this.chainId),
+        ORDER_EIP712_TYPES,
+        this.params
+      );
+
+      const iface = new Interface([
+        "function isValidSignature(bytes32 digest, bytes signature) view returns (bytes4)",
+      ]);
+
+      const result = await new Contract(
+        this.params.offerer,
+        iface,
+        provider
+      ).isValidSignature(eip712Hash, this.params.signature!);
+      if (result !== iface.getSighash("isValidSignature")) {
+        throw new Error("Invalid signature");
+      }
     }
   }
 
   public checkValidity() {
+    const info = this.getInfo();
+    if (!info) {
+      throw new Error("Could not extract order info");
+    }
+
+    if (!bn(info.price).div(info.amount).mul(info.amount).eq(info.price)) {
+      throw new Error("Price not evenly divisible to the amount");
+    }
+
     if (!this.getBuilder().isValid(this)) {
       throw new Error("Invalid order");
     }
   }
 
-  public getMatchingPrice(): BigNumber {
+  public getInfo(): BaseOrderInfo | undefined {
+    return this.getBuilder().getInfo(this);
+  }
+
+  public getMatchingPrice(timestampOverride?: number): BigNumberish {
     const info = this.getInfo();
     if (!info) {
       throw new Error("Could not get order info");
     }
 
-    if (this.params.kind === "bundle-ask") {
-      return bn((info as any).price).add(this.getFeeAmount());
+    if (!(info as any).isDynamic) {
+      if (info.side === "buy") {
+        return bn(info.price);
+      } else {
+        return bn(info.price).add(this.getFeeAmount());
+      }
+    } else {
+      if (info.side === "buy") {
+        // Reverse dutch-auctions are not supported
+        return bn(info.price);
+      } else {
+        let price = bn(0);
+        for (const c of this.params.consideration) {
+          price = price.add(
+            // startAmount - (currentTime - startTime) / (endTime - startTime) * (startAmount - endAmount)
+            bn(c.startAmount).sub(
+              bn(timestampOverride ?? getCurrentTimestamp(-60))
+                .sub(this.params.startTime)
+                .mul(bn(c.startAmount).sub(c.endAmount))
+                .div(bn(this.params.endTime).sub(this.params.startTime))
+            )
+          );
+          // Ensure we don't return any negative prices
+          if (price.lt(c.endAmount)) {
+            price = bn(c.endAmount);
+          }
+        }
+        return price;
+      }
     }
-
-    return bn(0);
-  }
-
-  public getInfo(): BaseBundleOrderInfo | undefined {
-    return this.getBuilder().getInfo(this);
   }
 
   public getFeeAmount(): BigNumber {
-    const info = this.getBuilder()!.getInfo(this)!;
+    const { fees } = this.getBuilder()!.getInfo(this)!;
 
-    if (info.fees) {
-      let feeAmount = bn(0);
-      for (const { amount } of info.fees) {
-        feeAmount = feeAmount.add(amount);
-      }
-      return feeAmount;
+    let feeAmount = bn(0);
+    for (const { amount } of fees) {
+      feeAmount = feeAmount.add(amount);
     }
-
-    return bn(0);
+    return feeAmount;
   }
 
   public buildMatching(data?: any) {
@@ -152,29 +211,30 @@ export class BundleOrder {
               }
             });
 
-    for (const item of this.getInfo()!.offerItems) {
-      if (item.tokenKind === "erc20") {
-        // Check that maker has enough balance to cover the payment
-        // and the approval to the corresponding conduit is set
-        const erc20 = new Common.Helpers.Erc20(provider, item.amount!);
-        const balance = await erc20.getBalance(this.params.offerer);
-        if (bn(balance).lt(item.amount!)) {
-          throw new Error("no-balance");
-        }
+    const info = this.getInfo()! as BaseOrderInfo;
+    if (info.side === "buy") {
+      // Check that maker has enough balance to cover the payment
+      // and the approval to the corresponding conduit is set
+      const erc20 = new Common.Helpers.Erc20(provider, info.paymentToken);
+      const balance = await erc20.getBalance(this.params.offerer);
+      if (bn(balance).lt(info.price)) {
+        throw new Error("no-balance");
+      }
 
-        // Check allowance
-        const allowance = await erc20.getAllowance(
-          this.params.offerer,
-          makerConduit
-        );
-        if (bn(allowance).lt(item.amount!)) {
-          throw new Error("no-approval");
-        }
-      } else if (item.tokenKind === "erc721") {
-        const erc721 = new Common.Helpers.Erc721(provider, item.contract);
+      // Check allowance
+      const allowance = await erc20.getAllowance(
+        this.params.offerer,
+        makerConduit
+      );
+      if (bn(allowance).lt(info.price)) {
+        throw new Error("no-approval");
+      }
+    } else {
+      if (info.tokenKind === "erc721") {
+        const erc721 = new Common.Helpers.Erc721(provider, info.contract);
 
         // Check ownership
-        const owner = await erc721.getOwner(item.tokenId!);
+        const owner = await erc721.getOwner(info.tokenId!);
         if (lc(owner) !== lc(this.params.offerer)) {
           throw new Error("no-balance");
         }
@@ -188,14 +248,14 @@ export class BundleOrder {
           throw new Error("no-approval");
         }
       } else {
-        const erc1155 = new Common.Helpers.Erc1155(provider, item.contract);
+        const erc1155 = new Common.Helpers.Erc1155(provider, info.contract);
 
         // Check balance
         const balance = await erc1155.getBalance(
           this.params.offerer,
-          item.tokenId!
+          info.tokenId!
         );
-        if (bn(balance).lt(item.amount || 1)) {
+        if (bn(balance).lt(info.amount)) {
           throw new Error("no-balance");
         }
 
@@ -211,10 +271,18 @@ export class BundleOrder {
     }
   }
 
-  private getBuilder(): BaseBundleBuilder {
+  private getBuilder(): BaseBuilder {
     switch (this.params.kind) {
-      case "bundle-ask": {
-        return new Builders.Bundle.BundleAsk(this.chainId);
+      case "contract-wide": {
+        return new Builders.ContractWide(this.chainId);
+      }
+
+      case "single-token": {
+        return new Builders.SingleToken(this.chainId);
+      }
+
+      case "token-list": {
+        return new Builders.TokenList(this.chainId);
       }
 
       default: {
@@ -224,11 +292,27 @@ export class BundleOrder {
   }
 
   private detectKind(): Types.OrderKind {
-    // bundle-ask
+    // contract-wide
     {
-      const builder = new Builders.Bundle.BundleAsk(this.chainId);
+      const builder = new Builders.ContractWide(this.chainId);
       if (builder.isValid(this)) {
-        return "bundle-ask";
+        return "contract-wide";
+      }
+    }
+
+    // single-token
+    {
+      const builder = new Builders.SingleToken(this.chainId);
+      if (builder.isValid(this)) {
+        return "single-token";
+      }
+    }
+
+    // token-list
+    {
+      const builder = new Builders.TokenList(this.chainId);
+      if (builder.isValid(this)) {
+        return "token-list";
       }
     }
 
@@ -236,11 +320,28 @@ export class BundleOrder {
       "Could not detect order kind (order might have unsupported params/calldata)"
     );
   }
+
+  private fixSignature() {
+    // Ensure `v` is always 27 or 28 (Seaport will revert otherwise)
+    if (this.params.signature?.length === 132) {
+      let lastByte = parseInt(this.params.signature.slice(-2), 16);
+      if (lastByte < 27) {
+        if (lastByte === 0 || lastByte === 1) {
+          lastByte += 27;
+        } else {
+          throw new Error("Invalid `v` byte");
+        }
+
+        this.params.signature =
+          this.params.signature.slice(0, -2) + lastByte.toString(16);
+      }
+    }
+  }
 }
 
 const EIP712_DOMAIN = (chainId: number) => ({
   name: "Seaport",
-  version: "1.1",
+  version: "1.2",
   chainId,
   verifyingContract: Addresses.Exchange[chainId],
 });

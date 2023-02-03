@@ -89,6 +89,14 @@ export type GenericOrder =
       order: Sdk.Seaport.Types.PartialOrder;
     }
   | {
+      kind: "seaport-v1.2";
+      order: Sdk.SeaportV12.Order;
+    }
+  | {
+      kind: "seaport-v1.2-partial";
+      order: Sdk.SeaportV12.Types.PartialOrder;
+    }
+  | {
       kind: "cryptopunks";
       order: Sdk.CryptoPunks.Order;
     }
@@ -159,3 +167,28 @@ export type BidFillDetails = {
   fees?: Fee[];
 };
 export type BidDetails = GenericOrder & BidFillDetails;
+
+// For keeping track of each listing's position in the original array
+export type ListingDetailsExtracted = {
+  originalIndex: number;
+} & ListingDetails;
+
+// For supporting filling listings having different underlying currencies
+export type PerCurrencyDetails = { [currency: string]: ListingDetailsExtracted[] };
+
+
+export type FillOptions = {
+  source?: string;
+  // Will be split among all listings to get filled
+  globalFees?: Fee[];
+  // Include a balance assert module call for every listing
+  assertBalances?: boolean;
+  // Force filling through the router (where possible)
+  forceRouter?: boolean;
+  // Skip any errors (either off-chain or on-chain)
+  partial?: boolean;
+  // Any extra data relevant when filling natively
+  directFillingData?: any;
+  // Wallet used for relaying the fill transaction
+  relayer?: string;
+}

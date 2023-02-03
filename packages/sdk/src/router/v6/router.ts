@@ -17,11 +17,15 @@ import {
   NFTApproval,
   NFTPermit,
   ERC20Approval,
-  ERC20Permit
+  ERC20Permit,
+  FillOptions,
+  PerCurrencyDetails,
+  ListingDetailsExtracted
 } from "./types";
 import { generateSwapExecution } from "./uniswap";
-import { generateApprovalTxData, isETH, generateApproveTxData } from "./utils";
+import { generateApprovalTxData, isETH, generateApproveTxData, isWETH } from "./utils";
 import * as Sdk from "../../index";
+import { encodeForMatchOrders } from "../../rarible/utils";
 import { TxData, bn, generateSourceBytes, uniqBy, MaxUint256 } from "../../utils";
 
 // Tokens
@@ -34,7 +38,9 @@ import BlurModuleAbi from "./abis/BlurModule.json";
 import ElementModuleAbi from "./abis/ElementModule.json";
 import FoundationModuleAbi from "./abis/FoundationModule.json";
 import LooksRareModuleAbi from "./abis/LooksRareModule.json";
+import RaribleModuleAbi from "./abis/RaribleModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
+import SeaportV12ModuleAbi from "./abis/SeaportV12Module.json";
 import SudoswapModuleAbi from "./abis/SudoswapModule.json";
 import UniswapV3ModuleAbi from "./abis/UniswapV3Module.json";
 import WETHModuleAbi from "./abis/WETHModule.json";
@@ -43,6 +49,12 @@ import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
 import NFTXModuleAbi from "./abis/NFTXModule.json";
 import Permit2ModuleAbi from  "./abis/Permit2Module.json";
+import { formatEther } from "ethers/lib/utils";
+
+import { getSeaportListingsPayment, createSeaportExecution } from "./execution/seaport"
+
+import { getSeaportV12ListingsPayment, createSeaportV12Execution } from "./execution/seaport-v1.2"
+
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -90,6 +102,11 @@ export class Router {
         SeaportModuleAbi,
         provider
       ),
+      seaportV12Module: new Contract(
+        Addresses.SeaportV12Module[chainId] ?? AddressZero,
+        SeaportV12ModuleAbi,
+        provider
+      ),
       sudoswapModule: new Contract(
         Addresses.SudoswapModule[chainId] ?? AddressZero,
         SudoswapModuleAbi,
@@ -125,6 +142,11 @@ export class Router {
         NFTXModuleAbi,
         provider
       ),
+      raribleModule: new Contract(
+        Addresses.RaribleModule[chainId] ?? AddressZero,
+        RaribleModuleAbi,
+        provider
+      ),
       permit2Module: new Contract(
         Addresses.Permit2Module[chainId] ?? AddressZero,
         Permit2ModuleAbi,
@@ -137,21 +159,7 @@ export class Router {
     details: ListingDetails[],
     taker: string,
     buyInCurrency = Sdk.Common.Addresses.Eth[this.chainId],
-    options?: {
-      source?: string;
-      // Will be split among all listings to get filled
-      globalFees?: Fee[];
-      // Include a balance assert module call for every listing
-      assertBalances?: boolean;
-      // Force filling through the router (where possible)
-      forceRouter?: boolean;
-      // Skip any errors (either off-chain or on-chain)
-      partial?: boolean;
-      // Any extra data relevant when filling natively
-      directFillingData?: any;
-      // Wallet used for relaying the fill transaction
-      relayer?: string;
-    }
+    options?: FillOptions
   ): Promise<{ 
     txData: TxData;
     success: boolean[],
@@ -184,31 +192,6 @@ export class Router {
           approvals: [],
           permits: [],
           txData: await exchange.fillOrderTx(taker, order, {
-            amount: Number(details[0].amount),
-            source: options?.source,
-          }),
-          success: [true],
-        };
-      }
-    }
-
-    // TODO: Add Rarible router module
-    if (details.some(({ kind }) => kind === "rarible")) {
-      if (options?.relayer) {
-        throw new Error("Relayer not supported");
-      }
-
-      if (details.length > 1) {
-        throw new Error("Rarible sweeping is not supported");
-      } else {
-        const order = details[0].order as Sdk.Rarible.Order;
-        const exchange = new Sdk.Rarible.Exchange(this.chainId);
-        return {
-          approvals: [],
-          permits: [],
-          txData: await exchange.fillOrderTx(taker, order, {
-            tokenId: details[0].tokenId,
-            assetClass: details[0].contractKind.toUpperCase(),
             amount: Number(details[0].amount),
             source: options?.source,
           }),
@@ -381,6 +364,36 @@ export class Router {
     );
     details = details.filter(({ kind }) => kind !== "seaport-partial");
 
+    await Promise.all(
+      details
+        .filter(({ kind }) => kind === "seaport-v1.2-partial")
+        .map(async (detail) => {
+          try {
+            const order = detail.order as Sdk.SeaportV12.Types.PartialOrder;
+            const result = await axios.get(
+              `https://order-fetcher.vercel.app/api/listing?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}`
+            );
+
+            const fullOrder = new Sdk.SeaportV12.Order(
+              this.chainId,
+              result.data.order
+            );
+            details.push({
+              ...detail,
+              kind: "seaport-v1.2",
+              order: fullOrder,
+            });
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              return;
+            }
+          }
+        })
+    );
+    details = details.filter(({ kind }) => kind !== "seaport-v1.2-partial");
+
     const relayer = options?.relayer ?? taker;
 
     // If all orders are Seaport, then fill on Seaport directly
@@ -434,11 +447,60 @@ export class Router {
         };
       }
     }
+    if (
+      details.every(
+        ({ kind, fees, currency }) =>
+          kind === "seaport-v1.2" &&
+          currency === details[0].currency &&
+          buyInCurrency === currency &&
+          !fees?.length
+      ) &&
+      !options?.globalFees?.length &&
+      !options?.forceRouter &&
+      !options?.relayer
+    ) {
+      const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+      if (details.length === 1) {
+        const order = details[0].order as Sdk.SeaportV12.Order;
+        return {
+          approvals: [],
+          permits: [],
+          txData: await exchange.fillOrderTx(
+            taker,
+            order,
+            order.buildMatching({ amount: details[0].amount }),
+            {
+              ...options,
+              ...options?.directFillingData,
+            }
+          ),
+          success: [true],
+        };
+      } else {
+        const orders = details.map((d) => d.order as Sdk.SeaportV12.Order);
+        return {
+          approvals: [],
+          permits: [],
+          txData: await exchange.fillOrdersTx(
+            taker,
+            orders,
+            orders.map((order, i) =>
+              order.buildMatching({ amount: details[i].amount })
+            ),
+            {
+              ...options,
+              ...options?.directFillingData,
+            }
+          ),
+          success: orders.map((_) => true),
+        };
+      }
+    }
 
     const ercErc20Support = details.find(c => c.kind === "seaport");
-    const buyIsETH = isETH(this.chainId, buyInCurrency);
+    const isERC20 = !isETH(this.chainId, buyInCurrency);
 
-    if (!buyIsETH && !ercErc20Support) {
+    if (isERC20 && !ercErc20Support) {
       throw new Error("Unsupported buy-in currency");
     }
 
@@ -467,14 +529,6 @@ export class Router {
       ),
     ];
 
-    // For keeping track of each listing's position in the original array
-    type ListingDetailsExtracted = {
-      originalIndex: number;
-    } & ListingDetails;
-
-    // For supporting filling listings having different underlying currencies
-    type PerCurrencyDetails = { [currency: string]: ListingDetailsExtracted[] };
-
     // Keep track of any approvals that might be needed
     const approvals: ERC20Approval[] = [];
 
@@ -489,12 +543,14 @@ export class Router {
     const foundationDetails: ListingDetailsExtracted[] = [];
     const looksRareDetails: ListingDetailsExtracted[] = [];
     const seaportDetails: PerCurrencyDetails = {};
+    const seaportV12Details: PerCurrencyDetails = {};
     const sudoswapDetails: ListingDetailsExtracted[] = [];
     const x2y2Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
     const nftxDetails: ListingDetailsExtracted[] = [];
+    const raribleDetails: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind, currency } = details[i];
 
@@ -529,6 +585,13 @@ export class Router {
           detailsRef = seaportDetails[currency];
           break;
 
+        case "seaport-v1.2":
+          if (!seaportV12Details[currency]) {
+            seaportV12Details[currency] = [];
+          }
+          detailsRef = seaportV12Details[currency];
+          break;
+
         case "sudoswap":
           detailsRef = sudoswapDetails;
           break;
@@ -550,6 +613,11 @@ export class Router {
 
         case "nftx": {
           detailsRef = nftxDetails;
+          break;
+        }
+
+        case "rarible": {
+          detailsRef = raribleDetails;
           break;
         }
 
@@ -889,34 +957,49 @@ export class Router {
       }
     }
 
+    const currencyETH = Sdk.Common.Addresses.Eth[this.chainId];
+    const currencyWETH = Sdk.Common.Addresses.Weth[this.chainId];
+
+    // Input not ETH, Aggreate the eth and weth orders 
+    if (isERC20) {
+      [seaportV12Details, seaportDetails].forEach(details => {
+        const wethOrders = details[currencyWETH] || [];
+        const ethOrders = details[currencyETH] || [];
+        if (wethOrders.length && ethOrders.length) {
+          details[currencyWETH] = wethOrders.concat(ethOrders);
+          delete details[currencyETH];
+        }
+      })
+    }
+
+    const swapExecutions = [];
+
     // Handle Seaport listings
     if (Object.keys(seaportDetails).length) {
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
-      const swapExecutions = [];
+      
       for (const currency of Object.keys(seaportDetails)) {
-        const currencyDetails = seaportDetails[currency];
+        const rawCurrencyDetails = seaportDetails[currency];
 
-        const orders = currencyDetails.map((d) => d.order as Sdk.Seaport.Order);
-        const fees = getFees(currencyDetails);
+        const ethDetails = rawCurrencyDetails.filter((c) => c.currency === currencyETH)
+        const currencyDetails = rawCurrencyDetails.filter((c) => c.currency != currencyETH)
 
-        const totalPrice = orders
-          .map((order, i) =>
-            // Seaport orders can be partially-fillable
-            bn(order.getMatchingPrice())
-              .mul(currencyDetails[i].amount ?? 1)
-              .div(order.getInfo()!.amount)
-          )
-          .reduce((a, b) => a.add(b), bn(0));
-        const totalFees = fees
-          .map(({ amount }) => bn(amount))
-          .reduce((a, b) => a.add(b), bn(0));
-        const totalPayment = totalPrice.add(totalFees);
-        
+        const { totalPayment: ethTotalPayment } = getSeaportListingsPayment(ethDetails, details, options);
+        const { totalPayment: orderTotalPayment } = getSeaportListingsPayment(currencyDetails, details, options);
+
+        const totalPayment = ethTotalPayment.add(orderTotalPayment);
+
         const currencyIsETH = isETH(this.chainId, currency);
         const isSameCurrency = currency === buyInCurrency;
+        const needSwap = (!currencyIsETH || isERC20) && !isSameCurrency;
+      
         let skipFillExecution = false;
-        if ((!currencyIsETH || !buyIsETH) && !isSameCurrency) {
+        if (needSwap) {
           try {
+            const needSplitFund = ethDetails.length && isWETH(this.chainId, currency);
+
+            // Forward any swapped tokens to the Seaport module or wethModule
+            const nextRecipient = needSplitFund ? this.contracts.wethModule.address : this.contracts.seaportModule.address;
             const swapInfo = await generateSwapExecution(
               this.chainId,
               this.provider,
@@ -926,8 +1009,7 @@ export class Router {
               {
                 uniswapV3Module: this.contracts.uniswapV3Module,
                 wethModule: this.contracts.wethModule,
-                // Forward any swapped tokens to the Seaport module
-                recipient: this.contracts.seaportModule.address,
+                recipient: nextRecipient,
                 refundTo: taker,
               }
             );
@@ -935,11 +1017,24 @@ export class Router {
             executions.push(swapInfo.execution);
 
             // When target is ETH, add unwrap step
-            if (isETH(this.chainId, currency)) {
+            if (isETH(this.chainId, currency) && !needSplitFund) {
               executions.push({
                 module: this.contracts.wethModule.address,
                 data: this.contracts.wethModule.interface.encodeFunctionData("unwrap", [
                   this.contracts.seaportModule.address,
+                ]),
+                value: 0,
+              })
+            }
+
+            // Split WETH and ETH to next module
+            if (needSplitFund) {
+              executions.push({
+                module: this.contracts.wethModule.address,
+                data: this.contracts.wethModule.interface.encodeFunctionData("spiltToWethAndEth", [
+                  this.contracts.seaportModule.address,
+                  totalPayment.sub(ethTotalPayment),
+                  ethTotalPayment,
                 ]),
                 value: 0,
               })
@@ -956,9 +1051,9 @@ export class Router {
           }
         }
 
-        // Generate transfer
+        // Generate transfer for same currency
         if (isSameCurrency ) {
-          if (!buyIsETH) {
+          if (isERC20) {
             permitItems.push({
               from: taker,
               to: this.contracts.seaportModule.address,
@@ -969,112 +1064,327 @@ export class Router {
         }
 
         if (!skipFillExecution) {
-          executions.push({
-            module: this.contracts.seaportModule.address,
-            data:
-              orders.length === 1
-                ? this.contracts.seaportModule.interface.encodeFunctionData(
-                    `accept${currencyIsETH ? "ETH" : "ERC20"}Listing`,
-                    [
-                      {
-                        parameters: {
-                          ...orders[0].params,
-                          totalOriginalConsiderationItems:
-                            orders[0].params.consideration.length,
-                        },
-                        numerator: currencyDetails[0].amount ?? 1,
-                        denominator: orders[0].getInfo()!.amount,
-                        signature: orders[0].params.signature,
-                        extraData: await exchange.getExtraData(orders[0]),
-                      },
-                      {
-                        fillTo: taker,
-                        refundTo: taker,
-                        revertIfIncomplete: Boolean(!options?.partial),
-                        // Only needed for ERC20 listings
-                        token: currency,
-                        amount: totalPrice,
-                      },
-                      fees,
-                    ]
-                  )
-                : this.contracts.seaportModule.interface.encodeFunctionData(
-                    `accept${currencyIsETH ? "ETH" : "ERC20"}Listings`,
-                    [
-                      await Promise.all(
-                        orders.map(async (order, i) => {
-                          const orderData = {
-                            parameters: {
-                              ...order.params,
-                              totalOriginalConsiderationItems:
-                                order.params.consideration.length,
-                            },
-                            numerator: currencyDetails[i].amount ?? 1,
-                            denominator: order.getInfo()!.amount,
-                            signature: order.params.signature,
-                            extraData: await exchange.getExtraData(order),
-                          };
-
-                          if (currencyIsETH) {
-                            return {
-                              order: orderData,
-                              price: orders[i].getMatchingPrice(),
-                            };
-                          } else {
-                            return orderData;
-                          }
-                        })
-                      ),
-                      {
-                        fillTo: taker,
-                        refundTo: taker,
-                        revertIfIncomplete: Boolean(!options?.partial),
-                        // Only needed for ERC20 listings
-                        token: currency,
-                        amount: totalPrice,
-                      },
-                      fees,
-                    ]
-                  ),
-            value: currencyIsETH ? totalPayment : 0,
-          });
-
+          const detailsList = [currencyDetails, ethDetails];
+          for (let index = 0; index < detailsList.length; index++) {
+            const details = detailsList[index];
+            if (!details.length) continue;
+            const execution = await createSeaportExecution(
+              this.chainId, 
+              this.contracts.seaportModule, 
+              details, 
+              exchange,
+              details,
+              taker,
+              options
+            );
+            executions.push(execution)
+          }
+          
           // Mark the listings as successfully handled
-          for (const { originalIndex } of currencyDetails) {
+          for (const { originalIndex } of currencyDetails.concat(ethDetails)) {
+            success[originalIndex] = true;
+          }
+        }
+      }
+    }
+
+    // Handle Seaport V1.2 listings
+    if (Object.keys(seaportV12Details).length) {
+
+      const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+      
+      for (const currency of Object.keys(seaportV12Details)) {
+        const rawCurrencyDetails = seaportV12Details[currency];
+
+        const ethDetails = rawCurrencyDetails.filter((c) => c.currency === currencyETH)
+        const currencyDetails = rawCurrencyDetails.filter((c) => c.currency != currencyETH)
+
+        const { totalPayment: ethTotalPayment } = getSeaportV12ListingsPayment(ethDetails, details, options);
+        const { totalPayment: orderTotalPayment } = getSeaportV12ListingsPayment(currencyDetails, details, options);
+
+        const totalPayment = ethTotalPayment.add(orderTotalPayment);
+
+        const currencyIsETH = isETH(this.chainId, currency);
+        const isSameCurrency = currency === buyInCurrency;
+        const needSwap = (!currencyIsETH || isERC20) && !isSameCurrency;
+      
+        let skipFillExecution = false;
+        if (needSwap) {
+          try {
+            const needSplitFund = ethDetails.length && isWETH(this.chainId, currency);
+
+            // Forward any swapped tokens to the Seaport module or wethModule
+            const nextRecipient = needSplitFund ? this.contracts.wethModule.address : this.contracts.seaportV12Module.address;
+            const swapInfo = await generateSwapExecution(
+              this.chainId,
+              this.provider,
+              buyInCurrency,
+              currency,
+              totalPayment,
+              {
+                uniswapV3Module: this.contracts.uniswapV3Module,
+                wethModule: this.contracts.wethModule,
+                recipient: nextRecipient,
+                refundTo: taker,
+              }
+            );
+
+            executions.push(swapInfo.execution);
+
+            // When target is ETH, add unwrap step
+            if (isETH(this.chainId, currency) && !needSplitFund) {
+              executions.push({
+                module: this.contracts.wethModule.address,
+                data: this.contracts.wethModule.interface.encodeFunctionData("unwrap", [
+                  this.contracts.seaportV12Module.address,
+                ]),
+                value: 0,
+              })
+            }
+
+            // Split WETH and ETH to next module
+            if (needSplitFund) {
+              executions.push({
+                module: this.contracts.wethModule.address,
+                data: this.contracts.wethModule.interface.encodeFunctionData("spiltToWethAndEth", [
+                  this.contracts.seaportV12Module.address,
+                  totalPayment.sub(ethTotalPayment),
+                  ethTotalPayment,
+                ]),
+                value: 0,
+              })
+            }
+
+            swapExecutions.push(swapInfo);
+          } catch (error) {
+            console.log("error", error)
+            if (!options?.partial) {
+              throw new Error("Could not generate swap execution");
+            } else {
+              // Since the swap execution generation failed, we should also skip the fill execution
+              skipFillExecution = true;
+            }
+          }
+        }
+
+        // Generate transfer
+        if (isSameCurrency ) {
+          if (isERC20) {
+            permitItems.push({
+              from: taker,
+              to: this.contracts.seaportV12Module.address,
+              token: buyInCurrency,
+              amount: totalPayment.toString()
+            });
+          }
+        }
+
+        if (!skipFillExecution) {
+          const detailsList = [currencyDetails, ethDetails];
+          for (let index = 0; index < detailsList.length; index++) {
+            const details = detailsList[index];
+            if (!details.length) continue;
+            const execution = await createSeaportV12Execution(
+              this.chainId, 
+              this.contracts.seaportV12Module, 
+              details, 
+              exchange,
+              details,
+              taker,
+              options
+            );
+            executions.push(execution)
+          }
+          
+          // Mark the listings as successfully handled
+          for (const { originalIndex } of currencyDetails.concat(ethDetails)) {
             success[originalIndex] = true;
           }
         }
       }
 
-      if (!buyIsETH) {
-        const totalSwapInputAmount = swapExecutions.reduce((total, item)=> {
+      // const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+      // for (const currency of Object.keys(seaportV12Details)) {
+      //   const currencyDetails = seaportV12Details[currency];
 
-          // console.log('totalSwapInputAmount', totalSwapInputAmount.toString())
-          console.log('swap', item)
-          return total.add(item.amounts.amountIn)
-        }, bn(0));
+      //   const orders = currencyDetails.map(
+      //     (d) => d.order as Sdk.SeaportV12.Order
+      //   );
+      //   const fees = getFees(currencyDetails);
 
+      //   const totalPrice = orders
+      //     .map((order, i) =>
+      //       // Seaport orders can be partially-fillable
+      //       bn(order.getMatchingPrice())
+      //         .mul(currencyDetails[i].amount ?? 1)
+      //         .div(order.getInfo()!.amount)
+      //     )
+      //     .reduce((a, b) => a.add(b), bn(0));
+      //   const totalFees = fees
+      //     .map(({ amount }) => bn(amount))
+      //     .reduce((a, b) => a.add(b), bn(0));
+      //   const totalPayment = totalPrice.add(totalFees);
 
+      //   const currencyIsETH = isETH(this.chainId, currency);
+      //   const isSameCurrency = currency === buyInCurrency;
 
-        approvals.push({
-          token: buyInCurrency,
-          owner: taker,
-          operator: Sdk.Common.Addresses.Permit2[this.chainId],
-          txData: generateApproveTxData(
-            buyInCurrency,
-            taker,
-            Sdk.Common.Addresses.Permit2[this.chainId], 
-            MaxUint256
-          ),
-        });
+      //   let skipFillExecution = false;
+      //   if ((!currencyIsETH || isERC20) && !isSameCurrency) {
+      //     try {
+      //       const swapInfo = await generateSwapExecution(
+      //         this.chainId,
+      //         this.provider,
+      //         buyInCurrency,
+      //         currency,
+      //         totalPayment,
+      //         {
+      //           uniswapV3Module: this.contracts.uniswapV3Module,
+      //           wethModule: this.contracts.wethModule,
+      //           // Forward any swapped tokens to the Seaport V1.2 module
+      //           recipient: this.contracts.seaportV12Module.address,
+      //           refundTo: taker,
+      //         }
+      //       );
 
-        permitItems.push({
-          from: taker,
-          to: this.contracts.uniswapV3Module.address,
-          token: buyInCurrency,
-          amount: totalSwapInputAmount.toString()
-        });
-      }
+      //       executions.push(swapInfo.execution);
+
+      //       // When target is ETH, add unwrap step
+      //       if (isETH(this.chainId, currency)) {
+      //         executions.push({
+      //           module: this.contracts.wethModule.address,
+      //           data: this.contracts.wethModule.interface.encodeFunctionData("unwrap", [
+      //             this.contracts.seaportV12Module.address,
+      //           ]),
+      //           value: 0,
+      //         })
+      //       }
+
+      //       swapExecutions.push(swapInfo);
+      //     } catch (error) {
+      //       if (!options?.partial) {
+      //         throw new Error("Could not generate swap execution");
+      //       } else {
+      //         // Since the swap execution generation failed, we should also skip the fill execution
+      //         skipFillExecution = true;
+      //       }
+      //     }
+      //   }
+
+      //   // Generate transfer
+      //   if (isSameCurrency ) {
+      //     if (isERC20) {
+      //       permitItems.push({
+      //         from: taker,
+      //         to: this.contracts.seaportV12Module.address,
+      //         token: buyInCurrency,
+      //         amount: totalPayment.toString()
+      //       });
+      //     }
+      //   }
+
+      //   if (!skipFillExecution) {
+      //     executions.push({
+      //       module: this.contracts.seaportV12Module.address,
+      //       data:
+      //         orders.length === 1
+      //           ? this.contracts.seaportV12Module.interface.encodeFunctionData(
+      //               `accept${currencyIsETH ? "ETH" : "ERC20"}Listing`,
+      //               [
+      //                 {
+      //                   parameters: {
+      //                     ...orders[0].params,
+      //                     totalOriginalConsiderationItems:
+      //                       orders[0].params.consideration.length,
+      //                   },
+      //                   numerator: currencyDetails[0].amount ?? 1,
+      //                   denominator: orders[0].getInfo()!.amount,
+      //                   signature: orders[0].params.signature,
+      //                   extraData: await exchange.getExtraData(orders[0]),
+      //                 },
+      //                 {
+      //                   fillTo: taker,
+      //                   refundTo: taker,
+      //                   revertIfIncomplete: Boolean(!options?.partial),
+      //                   // Only needed for ERC20 listings
+      //                   token: currency,
+      //                   amount: totalPrice,
+      //                 },
+      //                 fees,
+      //               ]
+      //             )
+      //           : this.contracts.seaportV12Module.interface.encodeFunctionData(
+      //               `accept${currencyIsETH ? "ETH" : "ERC20"}Listings`,
+      //               [
+      //                 await Promise.all(
+      //                   orders.map(async (order, i) => {
+      //                     const orderData = {
+      //                       parameters: {
+      //                         ...order.params,
+      //                         totalOriginalConsiderationItems:
+      //                           order.params.consideration.length,
+      //                       },
+      //                       numerator: currencyDetails[i].amount ?? 1,
+      //                       denominator: order.getInfo()!.amount,
+      //                       signature: order.params.signature,
+      //                       extraData: await exchange.getExtraData(order),
+      //                     };
+
+      //                     if (currencyIsETH) {
+      //                       return {
+      //                         order: orderData,
+      //                         price: orders[i].getMatchingPrice(),
+      //                       };
+      //                     } else {
+      //                       return orderData;
+      //                     }
+      //                   })
+      //                 ),
+      //                 {
+      //                   fillTo: taker,
+      //                   refundTo: taker,
+      //                   revertIfIncomplete: Boolean(!options?.partial),
+      //                   // Only needed for ERC20 listings
+      //                   token: currency,
+      //                   amount: totalPrice,
+      //                 },
+      //                 fees,
+      //               ]
+      //             ),
+      //       value: currencyIsETH ? totalPayment : 0,
+      //     });
+
+      //     // Mark the listings as successfully handled
+      //     for (const { originalIndex } of currencyDetails) {
+      //       success[originalIndex] = true;
+      //     }
+      //   }
+      // }
+    }
+
+    if (isERC20) {
+      
+      const totalSwapInputAmount = swapExecutions.reduce((total, item)=> {
+        return total.add(item.amounts.amountIn)
+      }, bn(0));
+
+      approvals.push({
+        token: buyInCurrency,
+        owner: taker,
+        operator: Sdk.Common.Addresses.Permit2[this.chainId],
+        txData: generateApproveTxData(
+          buyInCurrency,
+          taker,
+          Sdk.Common.Addresses.Permit2[this.chainId], 
+          MaxUint256
+        ),
+      });
+
+      permitItems.push({
+        from: taker,
+        to: this.contracts.uniswapV3Module.address,
+        token: buyInCurrency,
+        amount: totalSwapInputAmount.toString()
+      });
     }
 
     // Handle Sudoswap listings
@@ -1563,10 +1873,71 @@ export class Router {
       }
     }
 
+    // Handle Rarible listings
+    if (raribleDetails.length) {
+      const orders = raribleDetails.map((d) => d.order as Sdk.Rarible.Order);
+      const module = this.contracts.raribleModule.address;
+
+      const fees = getFees(raribleDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.take.value))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module,
+        data:
+          orders.length === 1
+            ? this.contracts.raribleModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  encodeForMatchOrders(orders[0].params),
+                  orders[0].params.signature,
+                  encodeForMatchOrders(orders[0].buildMatching(module)),
+                  "0x",
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.raribleModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => encodeForMatchOrders(order.params)),
+                  orders.map((order) => order.params.signature),
+                  orders.map((order) =>
+                    encodeForMatchOrders(order.buildMatching(module))
+                  ),
+                  "0x",
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of raribleDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
     if (!executions.length) {
       throw new Error("No executions to handle");
     }
-    
+
     return {
       approvals: approvals.filter((_, i) => success[i]),
       permits: await (async (): Promise<ERC20Permit[]> => {
@@ -1688,40 +2059,6 @@ export class Router {
       }
     }
 
-    // TODO: Add Rarible router module
-    if (details.some(({ kind }) => kind === "rarible")) {
-      if (details.length > 1) {
-        throw new Error("Rarible multi-selling is not supported");
-      } else {
-        const detail = details[0];
-
-        // Approve Rarible's NFTTransferProxy contract
-        const approval = {
-          contract: detail.contract,
-          owner: taker,
-          operator: Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId],
-          txData: generateApprovalTxData(
-            detail.contract,
-            taker,
-            Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId]
-          ),
-        };
-
-        const order = detail.order as Sdk.Rarible.Order;
-        const exchange = new Sdk.Rarible.Exchange(this.chainId);
-        return {
-          txData: await exchange.fillOrderTx(taker, order, {
-            tokenId: detail.tokenId,
-            assetClass: detail.contractKind.toUpperCase(),
-            amount: Number(detail.amount),
-          }),
-          success: [true],
-          approvals: [approval],
-          permits: [],
-        };
-      }
-    }
-
     // TODO: Add Forward router module
     if (details.some(({ kind }) => kind === "forward")) {
       if (details.length > 1) {
@@ -1798,6 +2135,12 @@ export class Router {
         case "seaport":
         case "seaport-partial": {
           module = this.contracts.seaportModule;
+          break;
+        }
+
+        case "seaport-v1.2":
+        case "seaport-v1.2-partial": {
+          module = this.contracts.seaportV12Module;
           break;
         }
 
@@ -1952,6 +2295,110 @@ export class Router {
             );
 
             const exchange = new Sdk.Seaport.Exchange(this.chainId);
+            executions.push({
+              module: module.address,
+              data: module.interface.encodeFunctionData(
+                detail.contractKind === "erc721"
+                  ? "acceptERC721Offer"
+                  : "acceptERC1155Offer",
+                [
+                  {
+                    parameters: {
+                      ...fullOrder.params,
+                      totalOriginalConsiderationItems:
+                        fullOrder.params.consideration.length,
+                    },
+                    numerator: detail.amount ?? 1,
+                    denominator: fullOrder.getInfo()!.amount,
+                    signature: fullOrder.params.signature,
+                    extraData: await exchange.getExtraData(fullOrder),
+                  },
+                  result.data.criteriaResolvers ?? [],
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                  },
+                  detail.fees ?? [],
+                ]
+              ),
+              value: 0,
+            });
+
+            success[i] = true;
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              continue;
+            }
+          }
+
+          break;
+        }
+
+        case "seaport-v1.2": {
+          const order = detail.order as Sdk.SeaportV12.Order;
+          const module = this.contracts.seaportV12Module;
+
+          const matchParams = order.buildMatching({
+            tokenId: detail.tokenId,
+            amount: detail.amount ?? 1,
+            ...(detail.extraArgs ?? {}),
+          });
+
+          const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                {
+                  parameters: {
+                    ...order.params,
+                    totalOriginalConsiderationItems:
+                      order.params.consideration.length,
+                  },
+                  numerator: matchParams.amount ?? 1,
+                  denominator: order.getInfo()!.amount,
+                  signature: order.params.signature,
+                  extraData: await exchange.getExtraData(order),
+                },
+                matchParams.criteriaResolvers ?? [],
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                },
+                detail.fees ?? [],
+              ]
+            ),
+            value: 0,
+          });
+
+          success[i] = true;
+
+          break;
+        }
+
+        case "seaport-v1.2-partial": {
+          const order = detail.order as Sdk.SeaportV12.Types.PartialOrder;
+          const module = this.contracts.seaportV12Module;
+
+          try {
+            const result = await axios.get(
+              `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}` +
+                (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
+            );
+
+            const fullOrder = new Sdk.SeaportV12.Order(
+              this.chainId,
+              result.data.order
+            );
+
+            const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
             executions.push({
               module: module.address,
               data: module.interface.encodeFunctionData(
@@ -2199,6 +2646,42 @@ export class Router {
               },
               detail.fees ?? [],
             ]),
+            value: 0,
+          });
+
+          success[i] = true;
+
+          break;
+        }
+
+        case "rarible": {
+          const order = detail.order as Sdk.Rarible.Order;
+          const module = this.contracts.raribleModule;
+
+          const matchParams = order.buildMatching(module.address, {
+            tokenId: detail.tokenId,
+            ...(detail.extraArgs || {}),
+          });
+
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                encodeForMatchOrders(order.params),
+                order.params.signature,
+                encodeForMatchOrders(matchParams),
+                "0x",
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                },
+                detail.fees ?? [],
+              ]
+            ),
             value: 0,
           });
 

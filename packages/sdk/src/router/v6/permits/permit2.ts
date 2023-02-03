@@ -4,7 +4,7 @@ import * as Sdk from "@reservoir0x/sdk/src";
 import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { verifyTypedData } from "@ethersproject/wallet";
-import { TxData, getCurrentTimestamp, bn, MaxUint256 } from "../../../utils";
+import { TxData, getCurrentTimestamp, bn } from "../../../utils";
 
 import RouterAbi from "../abis/ReservoirV6_0_0.json";
 import Permit2ABI from "../../../common/abis/Permit2.json";
@@ -155,7 +155,7 @@ export class Handler {
               value: 0
             }
           }),
-          // ...executionInfos,
+          ...executionInfos,
         ],
       ]),
     };

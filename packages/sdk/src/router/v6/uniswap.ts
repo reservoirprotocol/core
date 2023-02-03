@@ -84,13 +84,10 @@ export const generateSwapExecution = async (
     };
   } else {
     const inputIsEth = isETH(chainId, fromTokenAddress);
-    const outputInEth = isETH(chainId, toTokenAddress);
-
+  
     // We need to swap
     const fromToken = await getToken(chainId, provider, fromTokenAddress);
-    const toToken = outputInEth
-      ? await getToken(chainId, provider, Sdk.Common.Addresses.Weth[chainId])
-      : await getToken(chainId, provider, toTokenAddress);
+    const toToken = await getToken(chainId, provider, toTokenAddress);
 
     const route = await router.route(
       CurrencyAmount.fromRawAmount(toToken, toTokenAmount.toString()),
@@ -98,8 +95,7 @@ export const generateSwapExecution = async (
       TradeType.EXACT_OUTPUT,
       {
         type: SwapType.SWAP_ROUTER_02,
-        // Send to Weth unwrap
-        recipient: outputInEth ? options.wethModule.address : options.recipient,
+        recipient: options.recipient,
         slippageTolerance: new Percent(5, 100),
         deadline: Math.floor(Date.now() / 1000 + 1800),
       },
@@ -157,8 +153,8 @@ export const generateSwapExecution = async (
       amounts: {
         tokenIn: fromTokenAddress,
         tokenOut: toTokenAddress,
-        amountIn: bn(params.params.amountInMaximum).mul(2).toString(),
-        amountOut: params.params.amountOut,
+        amountIn: bn(params.params.amountInMaximum).toString(),
+        amountOut: params.params.amountOut.toString(),
       },
       execution: {
         module: options.uniswapV3Module.address,

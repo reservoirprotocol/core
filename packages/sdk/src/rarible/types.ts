@@ -90,6 +90,7 @@ export type Order = {
   side?: string;
   createdAt?: string;
   endedAt?: string;
+  amount?: number;
 };
 
 export type Purchase = {
