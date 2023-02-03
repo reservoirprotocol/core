@@ -10,7 +10,6 @@ import RouterAbi from "../abis/ReservoirV6_0_0.json";
 import Permit2ABI from "../../../common/abis/Permit2.json";
 import Permit2ModuleAbi from "../abis/Permit2Module.json";
 import { Contract } from "ethers";
-import { MAX_UINT160 } from "@uniswap/smart-order-router";
 
 export type TransferDetail = {
   from: string;
@@ -61,7 +60,6 @@ export class Handler {
             {
               token,
               amount,
-              // amount: ,
               expiration: now + expiresIn,
               nonce: packedAllowance.nonce
             }
@@ -84,12 +82,7 @@ export class Handler {
     }
 
     const permitBatch = {
-      details: details.map(_ => {
-        return {
-          ..._,
-          amount: MAX_UINT160
-        }
-      }),
+      details,
       spender: this.module,
       sigDeadline: now + expiresIn,
     };
@@ -162,7 +155,7 @@ export class Handler {
               value: 0
             }
           }),
-          ...executionInfos,
+          // ...executionInfos,
         ],
       ]),
     };

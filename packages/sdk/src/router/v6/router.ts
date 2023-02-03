@@ -1048,8 +1048,13 @@ export class Router {
 
       if (!buyIsETH) {
         const totalSwapInputAmount = swapExecutions.reduce((total, item)=> {
+
+          // console.log('totalSwapInputAmount', totalSwapInputAmount.toString())
+          console.log('swap', item)
           return total.add(item.amounts.amountIn)
         }, bn(0));
+
+
 
         approvals.push({
           token: buyInCurrency,

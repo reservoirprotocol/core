@@ -297,6 +297,22 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
       gasLimit: 30000000
     });
 
+
+    console.log({
+     
+     seller1: await permitHandler.permit2.allowance(seller1.address, Sdk.Common.Addresses.Usdc[chainId], permit2Module.address),
+     seller2: await permitHandler.permit2.allowance(seller2.address, Sdk.Common.Addresses.Usdc[chainId], permit2Module.address)
+     ,
+     seller3: await permitHandler.permit2.allowance(seller3.address, Sdk.Common.Addresses.Usdc[chainId], permit2Module.address),
+
+
+     balance1: await usdc.getBalance(router.contracts.uniswapV3Module.address),
+
+  })
+    
+
+    return;
+
     const seller1EthBalanceAfter = await seller1.getBalance();
     const seller2UsdcBalanceAfter = await usdc.getBalance(seller2.address);
     const seller3WethBalanceAfter = await weth.getBalance(seller3.address);
