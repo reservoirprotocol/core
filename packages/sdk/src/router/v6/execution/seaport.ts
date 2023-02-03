@@ -10,7 +10,6 @@ import { formatEther } from "ethers/lib/utils";
 export function getSeaportListingsPayment(currencyDetails: ListingDetailsExtracted[], details: ListingDetails[], options?: FillOptions) {
     const orders = currencyDetails.map((d) => d.order as Sdk.Seaport.Order);
     const fees = getFees(currencyDetails, details, options);
-
     const totalPrice = orders
         .map((order, i) =>
             // Seaport orders can be partially-fillable

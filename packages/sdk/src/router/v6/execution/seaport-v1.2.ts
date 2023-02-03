@@ -5,7 +5,6 @@ import { isETH } from "../utils";
 
 import { bn } from "../../../utils";
 import { getFees } from "./common";
-import { formatEther } from "ethers/lib/utils";
 
 export function getSeaportV12ListingsPayment(currencyDetails: ListingDetailsExtracted[], details: ListingDetails[], options?: FillOptions) {
     const orders = currencyDetails.map((d) => d.order as Sdk.SeaportV12.Order);

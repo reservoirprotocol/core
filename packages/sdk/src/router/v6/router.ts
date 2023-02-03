@@ -1066,12 +1066,12 @@ export class Router {
         if (!skipFillExecution) {
           const detailsList = [currencyDetails, ethDetails];
           for (let index = 0; index < detailsList.length; index++) {
-            const details = detailsList[index];
-            if (!details.length) continue;
+            const currencyDetails = detailsList[index];
+            if (!currencyDetails.length) continue;
             const execution = await createSeaportExecution(
               this.chainId, 
               this.contracts.seaportModule, 
-              details, 
+              currencyDetails, 
               exchange,
               details,
               taker,
@@ -1156,8 +1156,7 @@ export class Router {
             }
 
             swapExecutions.push(swapInfo);
-          } catch (error) {
-            console.log("error", error)
+          } catch {
             if (!options?.partial) {
               throw new Error("Could not generate swap execution");
             } else {
@@ -1182,12 +1181,12 @@ export class Router {
         if (!skipFillExecution) {
           const detailsList = [currencyDetails, ethDetails];
           for (let index = 0; index < detailsList.length; index++) {
-            const details = detailsList[index];
-            if (!details.length) continue;
+            const currencyDetails = detailsList[index];
+            if (!currencyDetails.length) continue;
             const execution = await createSeaportV12Execution(
               this.chainId, 
               this.contracts.seaportV12Module, 
-              details, 
+              currencyDetails, 
               exchange,
               details,
               taker,
@@ -1203,162 +1202,6 @@ export class Router {
         }
       }
 
-      // const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
-      // for (const currency of Object.keys(seaportV12Details)) {
-      //   const currencyDetails = seaportV12Details[currency];
-
-      //   const orders = currencyDetails.map(
-      //     (d) => d.order as Sdk.SeaportV12.Order
-      //   );
-      //   const fees = getFees(currencyDetails);
-
-      //   const totalPrice = orders
-      //     .map((order, i) =>
-      //       // Seaport orders can be partially-fillable
-      //       bn(order.getMatchingPrice())
-      //         .mul(currencyDetails[i].amount ?? 1)
-      //         .div(order.getInfo()!.amount)
-      //     )
-      //     .reduce((a, b) => a.add(b), bn(0));
-      //   const totalFees = fees
-      //     .map(({ amount }) => bn(amount))
-      //     .reduce((a, b) => a.add(b), bn(0));
-      //   const totalPayment = totalPrice.add(totalFees);
-
-      //   const currencyIsETH = isETH(this.chainId, currency);
-      //   const isSameCurrency = currency === buyInCurrency;
-
-      //   let skipFillExecution = false;
-      //   if ((!currencyIsETH || isERC20) && !isSameCurrency) {
-      //     try {
-      //       const swapInfo = await generateSwapExecution(
-      //         this.chainId,
-      //         this.provider,
-      //         buyInCurrency,
-      //         currency,
-      //         totalPayment,
-      //         {
-      //           uniswapV3Module: this.contracts.uniswapV3Module,
-      //           wethModule: this.contracts.wethModule,
-      //           // Forward any swapped tokens to the Seaport V1.2 module
-      //           recipient: this.contracts.seaportV12Module.address,
-      //           refundTo: taker,
-      //         }
-      //       );
-
-      //       executions.push(swapInfo.execution);
-
-      //       // When target is ETH, add unwrap step
-      //       if (isETH(this.chainId, currency)) {
-      //         executions.push({
-      //           module: this.contracts.wethModule.address,
-      //           data: this.contracts.wethModule.interface.encodeFunctionData("unwrap", [
-      //             this.contracts.seaportV12Module.address,
-      //           ]),
-      //           value: 0,
-      //         })
-      //       }
-
-      //       swapExecutions.push(swapInfo);
-      //     } catch (error) {
-      //       if (!options?.partial) {
-      //         throw new Error("Could not generate swap execution");
-      //       } else {
-      //         // Since the swap execution generation failed, we should also skip the fill execution
-      //         skipFillExecution = true;
-      //       }
-      //     }
-      //   }
-
-      //   // Generate transfer
-      //   if (isSameCurrency ) {
-      //     if (isERC20) {
-      //       permitItems.push({
-      //         from: taker,
-      //         to: this.contracts.seaportV12Module.address,
-      //         token: buyInCurrency,
-      //         amount: totalPayment.toString()
-      //       });
-      //     }
-      //   }
-
-      //   if (!skipFillExecution) {
-      //     executions.push({
-      //       module: this.contracts.seaportV12Module.address,
-      //       data:
-      //         orders.length === 1
-      //           ? this.contracts.seaportV12Module.interface.encodeFunctionData(
-      //               `accept${currencyIsETH ? "ETH" : "ERC20"}Listing`,
-      //               [
-      //                 {
-      //                   parameters: {
-      //                     ...orders[0].params,
-      //                     totalOriginalConsiderationItems:
-      //                       orders[0].params.consideration.length,
-      //                   },
-      //                   numerator: currencyDetails[0].amount ?? 1,
-      //                   denominator: orders[0].getInfo()!.amount,
-      //                   signature: orders[0].params.signature,
-      //                   extraData: await exchange.getExtraData(orders[0]),
-      //                 },
-      //                 {
-      //                   fillTo: taker,
-      //                   refundTo: taker,
-      //                   revertIfIncomplete: Boolean(!options?.partial),
-      //                   // Only needed for ERC20 listings
-      //                   token: currency,
-      //                   amount: totalPrice,
-      //                 },
-      //                 fees,
-      //               ]
-      //             )
-      //           : this.contracts.seaportV12Module.interface.encodeFunctionData(
-      //               `accept${currencyIsETH ? "ETH" : "ERC20"}Listings`,
-      //               [
-      //                 await Promise.all(
-      //                   orders.map(async (order, i) => {
-      //                     const orderData = {
-      //                       parameters: {
-      //                         ...order.params,
-      //                         totalOriginalConsiderationItems:
-      //                           order.params.consideration.length,
-      //                       },
-      //                       numerator: currencyDetails[i].amount ?? 1,
-      //                       denominator: order.getInfo()!.amount,
-      //                       signature: order.params.signature,
-      //                       extraData: await exchange.getExtraData(order),
-      //                     };
-
-      //                     if (currencyIsETH) {
-      //                       return {
-      //                         order: orderData,
-      //                         price: orders[i].getMatchingPrice(),
-      //                       };
-      //                     } else {
-      //                       return orderData;
-      //                     }
-      //                   })
-      //                 ),
-      //                 {
-      //                   fillTo: taker,
-      //                   refundTo: taker,
-      //                   revertIfIncomplete: Boolean(!options?.partial),
-      //                   // Only needed for ERC20 listings
-      //                   token: currency,
-      //                   amount: totalPrice,
-      //                 },
-      //                 fees,
-      //               ]
-      //             ),
-      //       value: currencyIsETH ? totalPayment : 0,
-      //     });
-
-      //     // Mark the listings as successfully handled
-      //     for (const { originalIndex } of currencyDetails) {
-      //       success[originalIndex] = true;
-      //     }
-      //   }
-      // }
     }
 
     if (isERC20) {
