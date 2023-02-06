@@ -3,6 +3,7 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import * as Sdk from "../../index";
 import { TxData } from "../../utils";
 import * as SeaportPermit from "@reservoir0x/sdk/src/router/v6/permits/seaport";
+import * as Permit2 from "@reservoir0x/sdk/src/router/v6/permits/permit2";
 
 export type Token = {
   kind: "erc721" | "erc1155";
@@ -20,6 +21,15 @@ export type NFTApproval = {
   txData: TxData;
 };
 
+export type ERC20Approval = {
+  token: string;
+  owner: string;
+  operator: string;
+  txData: TxData;
+};
+
+export type Approval = ERC20Approval | NFTApproval;
+
 export type NFTPermit = {
   tokens: Token[];
   details: {
@@ -27,6 +37,16 @@ export type NFTPermit = {
     data: SeaportPermit.Data;
   };
 };
+
+export type ERC20Permit = {
+  tokens: string[];
+  details: {
+    kind: "permit2";
+    data: Permit2.Data;
+  };
+};
+
+export type Permit = ERC20Permit | NFTPermit;
 
 // Misc
 
@@ -147,3 +167,28 @@ export type BidFillDetails = {
   fees?: Fee[];
 };
 export type BidDetails = GenericOrder & BidFillDetails;
+
+// For keeping track of each listing's position in the original array
+export type ListingDetailsExtracted = {
+  originalIndex: number;
+} & ListingDetails;
+
+// For supporting filling listings having different underlying currencies
+export type PerCurrencyDetails = { [currency: string]: ListingDetailsExtracted[] };
+
+
+export type FillOptions = {
+  source?: string;
+  // Will be split among all listings to get filled
+  globalFees?: Fee[];
+  // Include a balance assert module call for every listing
+  assertBalances?: boolean;
+  // Force filling through the router (where possible)
+  forceRouter?: boolean;
+  // Skip any errors (either off-chain or on-chain)
+  partial?: boolean;
+  // Any extra data relevant when filling natively
+  directFillingData?: any;
+  // Wallet used for relaying the fill transaction
+  relayer?: string;
+}

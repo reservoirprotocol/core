@@ -75,3 +75,7 @@ export const RaribleModule: ChainIdToAddress = {
   [Network.Ethereum]: "",
   [Network.EthereumGoerli]: "",
 };
+
+export const Permit2Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0x482e4d362c8a2ea19e07b7234a14084a7d740b42",
+};

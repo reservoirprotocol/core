@@ -33,4 +33,11 @@ contract WETHModule is BaseModule {
         WETH.withdraw(balance);
         _sendETH(receiver, balance);
     }
+
+    function spiltToWethAndEth(address receiver, uint256 wethAmount, uint256 ethAmount) external nonReentrant {
+        uint256 balance = WETH.balanceOf(address(this));
+        WETH.withdraw(ethAmount);
+        _sendETH(receiver, ethAmount);
+        _sendERC20(receiver, wethAmount, WETH);
+    }
 }

@@ -15,6 +15,12 @@ import { AlphaRouter, SwapType } from "@uniswap/smart-order-router";
 
 import { ExecutionInfo } from "./types";
 import { isETH, isWETH } from "./utils";
+import { bn } from "../../utils";
+
+export type SwapInfo = {
+  execution: ExecutionInfo;
+  amounts?: any;
+};
 
 const getToken = async (
   chainId: number,
@@ -44,7 +50,7 @@ export const generateSwapExecution = async (
     recipient: string;
     refundTo: string;
   }
-): Promise<ExecutionInfo> => {
+): Promise<SwapInfo> => {
   const router = new AlphaRouter({
     chainId: chainId,
     provider: provider as any,
@@ -53,11 +59,13 @@ export const generateSwapExecution = async (
   if (isETH(chainId, fromTokenAddress) && isWETH(chainId, toTokenAddress)) {
     // We need to wrap ETH
     return {
-      module: options.wethModule.address,
-      data: options.wethModule.interface.encodeFunctionData("wrap", [
-        options.recipient,
-      ]),
-      value: toTokenAmount,
+      execution: {
+        module: options.wethModule.address,
+        data: options.wethModule.interface.encodeFunctionData("wrap", [
+          options.recipient,
+        ]),
+        value: toTokenAmount,
+      },
     };
   } else if (
     isWETH(chainId, fromTokenAddress) &&
@@ -65,13 +73,17 @@ export const generateSwapExecution = async (
   ) {
     // We need to unwrap WETH
     return {
-      module: options.wethModule.address,
-      data: options.wethModule.interface.encodeFunctionData("unwrap", [
-        options.recipient,
-      ]),
-      value: 0,
+      execution: {
+        module: options.wethModule.address,
+        data: options.wethModule.interface.encodeFunctionData("unwrap", [
+          options.recipient,
+        ]),
+        value: 0,
+      },
     };
   } else {
+    const inputIsEth = isETH(chainId, fromTokenAddress);
+  
     // We need to swap
     const fromToken = await getToken(chainId, provider, fromTokenAddress);
     const toToken = await getToken(chainId, provider, toTokenAddress);
@@ -91,6 +103,7 @@ export const generateSwapExecution = async (
         maxSwapsPerPath: 1,
       }
     );
+
     if (!route) {
       throw new Error("Could not generate route");
     }
@@ -136,12 +149,20 @@ export const generateSwapExecution = async (
     }
 
     return {
-      module: options.uniswapV3Module.address,
-      data: options.uniswapV3Module.interface.encodeFunctionData(
-        "ethToExactOutput",
-        [params.params, options.refundTo]
-      ),
-      value: params.params.amountInMaximum,
+      amounts: {
+        tokenIn: fromTokenAddress,
+        tokenOut: toTokenAddress,
+        amountIn: bn(params.params.amountInMaximum).toString(),
+        amountOut: params.params.amountOut.toString(),
+      },
+      execution: {
+        module: options.uniswapV3Module.address,
+        data: options.uniswapV3Module.interface.encodeFunctionData(
+          inputIsEth ? "ethToExactOutput" : "erc20ToExactOutput",
+          [params.params, options.refundTo]
+        ),
+        value: inputIsEth ? params.params.amountInMaximum : 0,
+      },
     };
   }
 };
