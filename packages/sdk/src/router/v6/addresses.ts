@@ -16,6 +16,10 @@ export const WETHModule: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x5282b9af3f38d4a5d1bb707f5d3acbd951950074",
 };
 
+export const Permit2Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0x482e4d362c8a2ea19e07b7234a14084a7d740b42",
+};
+
 // Exchange modules
 
 export const BlurModule: ChainIdToAddress = {
@@ -71,11 +75,4 @@ export const NFTXModule: ChainIdToAddress = {
   [Network.Ethereum]: "0x27eb35119dda39df73db6681019edc4c16311acc",
 };
 
-export const RaribleModule: ChainIdToAddress = {
-  [Network.Ethereum]: "",
-  [Network.EthereumGoerli]: "",
-};
-
-export const Permit2Module: ChainIdToAddress = {
-  [Network.Ethereum]: "0x482e4d362c8a2ea19e07b7234a14084a7d740b42",
-};
+export const RaribleModule: ChainIdToAddress = {};

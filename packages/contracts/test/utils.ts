@@ -118,4 +118,10 @@ export const setupRouterWithModules = async (
     .getContractFactory("WETHModule", deployer)
     .then((factory) => factory.deploy(deployer.address));
   Sdk.RouterV6.Addresses.WETHModule[chainId] = wethModule.address.toLowerCase();
+
+  const permit2Module = (await ethers
+    .getContractFactory("Permit2Module", deployer)
+    .then((factory) => factory.deploy(deployer.address))) as any;
+  Sdk.RouterV6.Addresses.Permit2Module[chainId] =
+    permit2Module.address.toLowerCase();
 };

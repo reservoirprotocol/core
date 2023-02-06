@@ -2,7 +2,7 @@ import { Interface } from "@ethersproject/abi";
 import { BigNumberish } from "ethers";
 
 import * as Sdk from "../../index";
-import { TxData } from "../../utils";
+import { MaxUint256, TxData } from "../../utils";
 
 export const isETH = (chainId: number, address: string) =>
   address.toLowerCase() === Sdk.Common.Addresses.Eth[chainId];
@@ -10,7 +10,7 @@ export const isETH = (chainId: number, address: string) =>
 export const isWETH = (chainId: number, address: string) =>
   address.toLowerCase() === Sdk.Common.Addresses.Weth[chainId];
 
-export const generateApprovalTxData = (
+export const generateNFTApprovalTxData = (
   contract: string,
   owner: string,
   operator: string
@@ -22,15 +22,15 @@ export const generateApprovalTxData = (
   ]).encodeFunctionData("setApprovalForAll", [operator, true]),
 });
 
-export const generateApproveTxData = (
+export const generateFTApprovalTxData = (
   contract: string,
   owner: string,
   spender: string,
-  amount: BigNumberish
+  amount?: BigNumberish
 ): TxData => ({
   from: owner,
   to: contract,
   data: new Interface([
     "function approve(address spender, uint256 amount)",
-  ]).encodeFunctionData("approve", [spender, amount]),
+  ]).encodeFunctionData("approve", [spender, amount ?? MaxUint256]),
 });

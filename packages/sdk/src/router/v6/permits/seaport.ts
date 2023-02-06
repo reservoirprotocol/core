@@ -2,7 +2,7 @@ import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
 import { HashZero } from "@ethersproject/constants";
 
-import { Token } from "../types";
+import { NFTToken } from "../types";
 import * as Sdk from "../../../index";
 import { TxData, getCurrentTimestamp, getRandomBytes } from "../../../utils";
 
@@ -14,7 +14,7 @@ export type Data = {
 };
 
 export type Item = {
-  token: Token;
+  token: NFTToken;
   receiver: string;
 };
 
@@ -30,7 +30,7 @@ export class Handler {
   public async generate(
     giver: string,
     items: {
-      token: Token;
+      token: NFTToken;
       receiver: string;
     }[],
     expiresIn = 10 * 60

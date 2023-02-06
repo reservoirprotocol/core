@@ -15,11 +15,10 @@ import { AlphaRouter, SwapType } from "@uniswap/smart-order-router";
 
 import { ExecutionInfo } from "./types";
 import { isETH, isWETH } from "./utils";
-import { bn } from "../../utils";
 
 export type SwapInfo = {
-  execution: ExecutionInfo;
-  amounts?: any;
+  amountIn: BigNumberish;
+  executions: ExecutionInfo[];
 };
 
 const getToken = async (
@@ -38,7 +37,7 @@ const getToken = async (
     : new Token(chainId, address, await contract.decimals());
 };
 
-export const generateSwapExecution = async (
+export const generateSwapExecutions = async (
   chainId: number,
   provider: Provider,
   fromTokenAddress: string,
@@ -59,13 +58,16 @@ export const generateSwapExecution = async (
   if (isETH(chainId, fromTokenAddress) && isWETH(chainId, toTokenAddress)) {
     // We need to wrap ETH
     return {
-      execution: {
-        module: options.wethModule.address,
-        data: options.wethModule.interface.encodeFunctionData("wrap", [
-          options.recipient,
-        ]),
-        value: toTokenAmount,
-      },
+      amountIn: toTokenAmount,
+      executions: [
+        {
+          module: options.wethModule.address,
+          data: options.wethModule.interface.encodeFunctionData("wrap", [
+            options.recipient,
+          ]),
+          value: toTokenAmount,
+        },
+      ],
     };
   } else if (
     isWETH(chainId, fromTokenAddress) &&
@@ -73,21 +75,25 @@ export const generateSwapExecution = async (
   ) {
     // We need to unwrap WETH
     return {
-      execution: {
-        module: options.wethModule.address,
-        data: options.wethModule.interface.encodeFunctionData("unwrap", [
-          options.recipient,
-        ]),
-        value: 0,
-      },
+      amountIn: toTokenAmount,
+      executions: [
+        {
+          module: options.wethModule.address,
+          data: options.wethModule.interface.encodeFunctionData("unwrap", [
+            options.recipient,
+          ]),
+          value: 0,
+        },
+      ],
     };
   } else {
-    const inputIsEth = isETH(chainId, fromTokenAddress);
-  
     // We need to swap
+
     const fromToken = await getToken(chainId, provider, fromTokenAddress);
     const toToken = await getToken(chainId, provider, toTokenAddress);
 
+    // TODO: Add support for dependent swaps (eg. multiple swaps
+    // on the same pool which influence the price of each other)
     const route = await router.route(
       CurrencyAmount.fromRawAmount(toToken, toTokenAmount.toString()),
       fromToken,
@@ -112,18 +118,18 @@ export const generateSwapExecution = async (
     const iface = new Interface([
       `function multicall(uint256 deadline, bytes[] calldata data)`,
       `
-      function exactOutputSingle(
-        tuple(
-          address tokenIn,
-          address tokenOut,
-          uint24 fee,
-          address recipient,
-          uint256 amountOut,
-          uint256 amountInMaximum,
-          uint160 sqrtPriceLimitX96
-        ) params
-      )
-    `,
+        function exactOutputSingle(
+          tuple(
+            address tokenIn,
+            address tokenOut,
+            uint24 fee,
+            address recipient,
+            uint256 amountOut,
+            uint256 amountInMaximum,
+            uint160 sqrtPriceLimitX96
+          ) params
+        )
+      `,
     ]);
 
     let params: any;
@@ -148,21 +154,44 @@ export const generateSwapExecution = async (
       throw new Error("Could not generate compatible route");
     }
 
+    const fromETH = isETH(chainId, fromTokenAddress);
+    const toETH = isETH(chainId, toTokenAddress);
+
+    const executions: ExecutionInfo[] = [];
+    executions.push({
+      module: options.uniswapV3Module.address,
+      data: options.uniswapV3Module.interface.encodeFunctionData(
+        fromETH ? "ethToExactOutput" : "erc20ToExactOutput",
+        [
+          {
+            tokenIn: params.params.tokenIn,
+            tokenOut: params.params.tokenOut,
+            fee: params.params.fee,
+            recipient: toETH ? options.wethModule.address : options.recipient,
+            amountOut: params.params.amountOut,
+            amountInMaximum: params.params.amountInMaximum,
+            sqrtPriceLimitX96: params.params.sqrtPriceLimitX96,
+          },
+          options.refundTo,
+        ]
+      ),
+      value: fromETH ? params.params.amountInMaximum : 0,
+    });
+
+    if (toETH) {
+      // An additional unwrap step is needed if the target token is ETH (since Uniswap will get us WETH)
+      executions.push({
+        module: options.wethModule.address,
+        data: options.wethModule.interface.encodeFunctionData("unwrap", [
+          options.recipient,
+        ]),
+        value: 0,
+      });
+    }
+
     return {
-      amounts: {
-        tokenIn: fromTokenAddress,
-        tokenOut: toTokenAddress,
-        amountIn: bn(params.params.amountInMaximum).toString(),
-        amountOut: params.params.amountOut.toString(),
-      },
-      execution: {
-        module: options.uniswapV3Module.address,
-        data: options.uniswapV3Module.interface.encodeFunctionData(
-          inputIsEth ? "ethToExactOutput" : "erc20ToExactOutput",
-          [params.params, options.refundTo]
-        ),
-        value: inputIsEth ? params.params.amountInMaximum : 0,
-      },
+      amountIn: params.params.amountInMaximum.toString(),
+      executions,
     };
   }
 };
