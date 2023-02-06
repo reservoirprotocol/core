@@ -387,7 +387,7 @@ export class Exchange {
 
   // --- Bulk sign orders ---
 
-  public async bulkSign(signer: TypedDataSigner, orders: Order[]) {
+  public getBulkSignatureDataWithProofs(orders: Order[]) {
     const height = Math.max(Math.ceil(Math.log2(orders.length)), 1);
     const size = Math.pow(2, height);
 
@@ -442,25 +442,47 @@ export class Exchange {
         .map((_, i) => chunks.slice(i * 2, (i + 1) * 2));
     }
 
+    return {
+      signatureData: {
+        signatureKind: "eip712",
+        domain: EIP712_DOMAIN(this.chainId),
+        types: types,
+        value: { tree: chunks },
+      },
+      proofs: orders.map((_, i) => tree.getHexProof(leaves[i], i)),
+    };
+  }
+
+  public async bulkSign(signer: TypedDataSigner, orders: Order[]) {
+    const { signatureData, proofs } =
+      this.getBulkSignatureDataWithProofs(orders);
+
     const signature = await signer._signTypedData(
-      EIP712_DOMAIN(this.chainId),
-      types,
-      { tree: chunks }
+      signatureData.domain,
+      signatureData.types,
+      signatureData.value
     );
 
-    const getEncodedProofAndSignature = (i: number, signature: string) => {
-      const proof = tree.getHexProof(leaves[i], i);
-      return hexConcat([
-        signature,
-        `0x${i.toString(16).padStart(6, "0")}`,
-        defaultAbiCoder.encode([`uint256[${proof.length}]`], [proof]),
-      ]);
-    };
-
     orders.forEach((order, i) => {
-      order.params.signature = getEncodedProofAndSignature(i, signature);
+      order.params.signature = this.encodeBulkOrderProofAndSignature(
+        i,
+        proofs[i],
+        signature
+      );
     });
   }
+
+  public encodeBulkOrderProofAndSignature = (
+    orderIndex: number,
+    merkleProof: string[],
+    signature: string
+  ) => {
+    return hexConcat([
+      signature,
+      `0x${orderIndex.toString(16).padStart(6, "0")}`,
+      defaultAbiCoder.encode([`uint256[${merkleProof.length}]`], [merkleProof]),
+    ]);
+  };
 
   // --- Get extra data ---
 
