@@ -43,6 +43,7 @@ export const SeaportModule: ChainIdToAddress = {
 };
 
 export const SeaportV12Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0xc63cca6e3cf565921d3c8241f74ef7b1e404bb78",
   [Network.EthereumGoerli]: "0x649f6fba84cbccdb86e6a0bd1af70687eaba1bb7",
 };
 
