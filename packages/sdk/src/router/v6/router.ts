@@ -971,7 +971,10 @@ export class Router {
             ? this.contracts.foundationModule.interface.encodeFunctionData(
                 "acceptETHListing",
                 [
-                  orders[0].params,
+                  {
+                    ...orders[0].params,
+                    token: orders[0].params.contract,
+                  },
                   {
                     fillTo: taker,
                     refundTo: taker,
@@ -984,7 +987,10 @@ export class Router {
             : this.contracts.foundationModule.interface.encodeFunctionData(
                 "acceptETHListings",
                 [
-                  orders.map((order) => order.params),
+                  orders.map((order) => ({
+                    ...order.params,
+                    token: order.params.contract,
+                  })),
                   {
                     fillTo: taker,
                     refundTo: taker,
