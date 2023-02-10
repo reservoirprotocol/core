@@ -39,5 +39,5 @@ export const Oracle: ChainIdToAddress = {
 }
 
 export const BETH: ChainIdToAddress = {
-  [Network.Ethereum]: "0xd44feab097e5fee7fd54c9481f56b806f7f3ddc1",
+  [Network.Ethereum]: "0x0000000000a39bb272e79075ade125fd351887ac",
 }
