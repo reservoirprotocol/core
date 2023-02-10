@@ -1981,6 +1981,8 @@ export class Router {
       source?: string;
       // Skip any errors (either off-chain or on-chain)
       partial?: boolean;
+      // Fore using permit
+      forcePermit?: boolean
     }
   ): Promise<{
     txData: TxData;
@@ -2705,8 +2707,8 @@ export class Router {
       this.contracts.router.interface.encodeFunctionData("execute", [
         executions,
       ]);
-
-    if (executions.length === 1) {
+    
+    if (executions.length === 1 && !options?.forcePermit) {
       // Use the on-received ERC721/ERC1155 hooks for approval-less bid filling
       const detail = details[success.findIndex(Boolean)];
       if (detail.contractKind === "erc721") {
