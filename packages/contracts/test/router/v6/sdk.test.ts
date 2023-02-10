@@ -1530,7 +1530,7 @@ describe("[ReservoirV6_0_0] Filling listings and bids via the SDK", () => {
     expect(await weth.getBalance(router.contracts.wethModule.address)).to.eq(0);
   });
 
-  it("Fill signle bid with forceUsePermit", async () => {
+  it("Fill single bid with forceUsePermit", async () => {
     const seller = dan;
 
     const bids: BidDetails[] = [];
