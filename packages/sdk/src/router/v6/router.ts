@@ -2674,6 +2674,7 @@ export class Router {
 
           const matchParams = order.buildMatching(module.address, {
             tokenId: detail.tokenId,
+            assetClass: detail.contractKind.toUpperCase(),
             ...(detail.extraArgs || {}),
           });
 
