@@ -1988,7 +1988,7 @@ export class Router {
       // Skip any errors (either off-chain or on-chain)
       partial?: boolean;
       // Fore using permit
-      forcePermit?: boolean
+      forcePermit?: boolean;
     }
   ): Promise<{
     txData: TxData;
@@ -2177,10 +2177,16 @@ export class Router {
           break;
         }
 
+        case "rarible": {
+          module = this.contracts.raribleModule;
+          break;
+        }
+
         default: {
           throw new Error("Unreachable");
         }
       }
+
       permitItems.push({
         token: {
           kind: detail.contractKind,
@@ -2699,7 +2705,7 @@ export class Router {
         }
 
         default: {
-          throw new Error("Unsupported exchange kind");
+          throw new Error("Unreachable");
         }
       }
     }
@@ -2713,7 +2719,7 @@ export class Router {
       this.contracts.router.interface.encodeFunctionData("execute", [
         executions,
       ]);
-    
+
     if (executions.length === 1 && !options?.forcePermit) {
       // Use the on-received ERC721/ERC1155 hooks for approval-less bid filling
       const detail = details[success.findIndex(Boolean)];
