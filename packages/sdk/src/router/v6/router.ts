@@ -1851,7 +1851,7 @@ export class Router {
                   fees,
                 ]
               )
-            : this.contracts.foundationModule.interface.encodeFunctionData(
+            : this.contracts.zoraModule.interface.encodeFunctionData(
                 "acceptETHListings",
                 [
                   orders.map((order) => ({
