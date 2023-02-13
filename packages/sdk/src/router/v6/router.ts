@@ -1989,8 +1989,6 @@ export class Router {
       partial?: boolean;
       // Force using permit
       forcePermit?: boolean;
-      // Sometimes generating the calldata for filling might require having the actual owner
-      owner?: string;
     }
   ): Promise<{
     txData: TxData;
@@ -2304,7 +2302,7 @@ export class Router {
               `https://order-fetcher.vercel.app/api/offer?orderHash=${
                 order.id
               }&contract=${order.contract}&tokenId=${order.tokenId}&taker=${
-                options?.owner ?? taker
+                detail.owner ?? taker
               }&chainId=${this.chainId}` +
                 (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
             );
@@ -2412,7 +2410,7 @@ export class Router {
               `https://order-fetcher.vercel.app/api/offer?orderHash=${
                 order.id
               }&contract=${order.contract}&tokenId=${order.tokenId}&taker=${
-                options?.owner ?? taker
+                detail.owner ?? taker
               }&chainId=${this.chainId}` +
                 (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
             );
