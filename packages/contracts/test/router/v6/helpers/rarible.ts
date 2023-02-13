@@ -4,7 +4,11 @@ import * as Sdk from "@reservoir0x/sdk/src";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { ethers } from "hardhat";
 
-import { getChainId, getCurrentTimestamp } from "../../../utils";
+import {
+  getChainId,
+  getCurrentTimestamp,
+  getRandomBoolean,
+} from "../../../utils";
 
 // --- Listings ---
 
@@ -157,7 +161,9 @@ export const setupRaribleOffers = async (offers: RaribleListing[]) => {
     );
 
     // Build and sign the order
-    const builder = new Sdk.Rarible.Builders.SingleToken(chainId);
+    const builder = getRandomBoolean()
+      ? new Sdk.Rarible.Builders.SingleToken(chainId)
+      : new Sdk.Rarible.Builders.ContractWide(chainId);
     const order = builder.build({
       orderType: ORDER_TYPES.V2,
       maker: maker.address,

@@ -208,7 +208,10 @@ describe("[ReservoirV6_0_0] Rarible offers", () => {
           encodeForMatchOrders(offer.order!.params),
           offer.order?.params.signature,
           encodeForMatchOrders(
-            offer.order!.buildMatching(raribleModule.address)
+            offer.order!.buildMatching(raribleModule.address, {
+              tokenId: offer.nft.id,
+              assetClass: "ERC721",
+            })
           ),
           "0x",
           {
