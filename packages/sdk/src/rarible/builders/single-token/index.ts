@@ -1,7 +1,7 @@
 import { BaseBuilder, BaseOrderInfo } from "../base";
 import { Order } from "../../order";
 import * as Types from "../../types";
-import { lc, n, s } from "../../../utils";
+import { bn, lc, n, s } from "../../../utils";
 import { BigNumber, constants } from "ethers/lib/ethers";
 import { AssetClass } from "../../types";
 import { ORDER_DATA_TYPES } from "../../constants";
@@ -156,17 +156,9 @@ export class SingleTokenBuilder extends BaseBuilder {
 
     // for erc1155 we need to take the value from request (the amount parameter)
     if (AssetClass.ERC1155 == order.make.assetType.assetClass) {
-      rightOrder.take.value = Math.floor(Number(data.amount)).toString();
+      rightOrder.take.value = Math.floor(Number(data.amount || "1")).toString();
     }
 
-    if (AssetClass.ERC1155 == order.take.assetType.assetClass) {
-      const oldValue = rightOrder.make.value;
-
-      rightOrder.make.value = Math.floor(Number(data.amount)).toString();
-      rightOrder.take.value = BigNumber.from(rightOrder.take.value).div(
-        oldValue - rightOrder.make.value || "1"
-      );
-    }
     return rightOrder;
   }
 }

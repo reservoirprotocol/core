@@ -1,27 +1,36 @@
 import { Interface } from "@ethersproject/abi";
 import { Provider } from "@ethersproject/abstract-provider";
+import { BigNumberish } from "@ethersproject/bignumber";
 import { AddressZero } from "@ethersproject/constants";
 import { Contract } from "@ethersproject/contracts";
 import axios from "axios";
 
 import * as Addresses from "./addresses";
+import * as SeaportPermit from "./permits/seaport";
+import * as UniswapPermit from "./permits/permit2";
+
 import {
   BidDetails,
   ExecutionInfo,
   Fee,
+  FTApproval,
+  FTPermit,
   ListingDetails,
+  ListingDetailsExtracted,
   ListingFillDetails,
   NFTApproval,
   NFTPermit,
+  PerCurrencyDetails,
 } from "./types";
-import { generateSwapExecution } from "./uniswap";
+import { generateSwapExecutions } from "./uniswap";
 import {
-  generateApprovalTxData,
-  generateSeaportApprovalOrder,
+  generateFTApprovalTxData,
+  generateNFTApprovalTxData,
   isETH,
 } from "./utils";
 import * as Sdk from "../../index";
-import { TxData, bn, generateSourceBytes } from "../../utils";
+import { encodeForMatchOrders } from "../../rarible/utils";
+import { TxData, bn, generateSourceBytes, uniqBy } from "../../utils";
 
 // Tokens
 import ERC721Abi from "../../common/abis/Erc721.json";
@@ -33,14 +42,17 @@ import BlurModuleAbi from "./abis/BlurModule.json";
 import ElementModuleAbi from "./abis/ElementModule.json";
 import FoundationModuleAbi from "./abis/FoundationModule.json";
 import LooksRareModuleAbi from "./abis/LooksRareModule.json";
+import NFTXModuleAbi from "./abis/NFTXModule.json";
+import Permit2ModuleAbi from "./abis/Permit2Module.json";
+import RaribleModuleAbi from "./abis/RaribleModule.json";
 import SeaportModuleAbi from "./abis/SeaportModule.json";
+import SeaportV12ModuleAbi from "./abis/SeaportV12Module.json";
 import SudoswapModuleAbi from "./abis/SudoswapModule.json";
 import UniswapV3ModuleAbi from "./abis/UniswapV3Module.json";
 import WETHModuleAbi from "./abis/WETHModule.json";
 import X2Y2ModuleAbi from "./abis/X2Y2Module.json";
 import ZeroExV4ModuleAbi from "./abis/ZeroExV4Module.json";
 import ZoraModuleAbi from "./abis/ZoraModule.json";
-import NFTXModuleAbi from "./abis/NFTXModule.json";
 
 type SetupOptions = {
   x2y2ApiKey?: string;
@@ -88,6 +100,11 @@ export class Router {
         SeaportModuleAbi,
         provider
       ),
+      seaportV12Module: new Contract(
+        Addresses.SeaportV12Module[chainId] ?? AddressZero,
+        SeaportV12ModuleAbi,
+        provider
+      ),
       sudoswapModule: new Contract(
         Addresses.SudoswapModule[chainId] ?? AddressZero,
         SudoswapModuleAbi,
@@ -123,6 +140,16 @@ export class Router {
         NFTXModuleAbi,
         provider
       ),
+      raribleModule: new Contract(
+        Addresses.RaribleModule[chainId] ?? AddressZero,
+        RaribleModuleAbi,
+        provider
+      ),
+      permit2Module: new Contract(
+        Addresses.Permit2Module[chainId] ?? AddressZero,
+        Permit2ModuleAbi,
+        provider
+      ),
     };
   }
 
@@ -145,7 +172,12 @@ export class Router {
       // Wallet used for relaying the fill transaction
       relayer?: string;
     }
-  ): Promise<{ txData: TxData; success: boolean[] }> {
+  ): Promise<{
+    txData: TxData;
+    success: boolean[];
+    approvals: FTApproval[];
+    permits: FTPermit[];
+  }> {
     // Assume the listing details are consistent with the underlying order object
 
     // TODO: Add support for balance assertions
@@ -166,37 +198,32 @@ export class Router {
           throw new Error("Fees not supported");
         }
 
-        const order = details[0].order as Sdk.Universe.Order;
+        const detail = details[0];
+
+        let approval: FTApproval | undefined;
+        if (!isETH(this.chainId, detail.currency)) {
+          approval = {
+            currency: detail.currency,
+            owner: taker,
+            operator: Sdk.Universe.Addresses.Exchange[this.chainId],
+            txData: generateFTApprovalTxData(
+              detail.currency,
+              taker,
+              Sdk.Universe.Addresses.Exchange[this.chainId]
+            ),
+          };
+        }
+
+        const order = detail.order as Sdk.Universe.Order;
         const exchange = new Sdk.Universe.Exchange(this.chainId);
         return {
           txData: await exchange.fillOrderTx(taker, order, {
-            amount: Number(details[0].amount),
+            amount: Number(detail.amount),
             source: options?.source,
           }),
           success: [true],
-        };
-      }
-    }
-
-    // TODO: Add Rarible router module
-    if (details.some(({ kind }) => kind === "rarible")) {
-      if (options?.relayer) {
-        throw new Error("Relayer not supported");
-      }
-
-      if (details.length > 1) {
-        throw new Error("Rarible sweeping is not supported");
-      } else {
-        const order = details[0].order as Sdk.Rarible.Order;
-        const exchange = new Sdk.Rarible.Exchange(this.chainId);
-        return {
-          txData: await exchange.fillOrderTx(taker, order, {
-            tokenId: details[0].tokenId,
-            assetClass: details[0].contractKind.toUpperCase(),
-            amount: Number(details[0].amount),
-            source: options?.source,
-          }),
-          success: [true],
+          approvals: approval ? [approval] : [],
+          permits: [],
         };
       }
     }
@@ -214,11 +241,15 @@ export class Router {
           throw new Error("Fees not supported");
         }
 
-        const order = details[0].order as Sdk.CryptoPunks.Order;
+        const detail = details[0];
+
+        const order = detail.order as Sdk.CryptoPunks.Order;
         const exchange = new Sdk.CryptoPunks.Exchange(this.chainId);
         return {
           txData: exchange.fillListingTx(taker, order, options),
           success: [true],
+          approvals: [],
+          permits: [],
         };
       }
     }
@@ -236,7 +267,23 @@ export class Router {
           throw new Error("Fees not supported");
         }
 
-        const order = details[0].order as Sdk.Infinity.Order;
+        const detail = details[0];
+
+        let approval: FTApproval | undefined;
+        if (!isETH(this.chainId, detail.currency)) {
+          approval = {
+            currency: detail.currency,
+            owner: taker,
+            operator: Sdk.Infinity.Addresses.Exchange[this.chainId],
+            txData: generateFTApprovalTxData(
+              detail.currency,
+              taker,
+              Sdk.Infinity.Addresses.Exchange[this.chainId]
+            ),
+          };
+        }
+
+        const order = detail.order as Sdk.Infinity.Order;
         const exchange = new Sdk.Infinity.Exchange(this.chainId);
 
         if (options?.directFillingData) {
@@ -248,11 +295,15 @@ export class Router {
               },
             ]),
             success: [true],
+            approvals: approval ? [approval] : [],
+            permits: [],
           };
         }
         return {
           txData: exchange.takeMultipleOneOrdersTx(taker, [order]),
           success: [true],
+          approvals: approval ? [approval] : [],
+          permits: [],
         };
       }
     }
@@ -270,7 +321,23 @@ export class Router {
           throw new Error("Fees not supported");
         }
 
-        const order = details[0].order as Sdk.Flow.Order;
+        const detail = details[0];
+
+        let approval: FTApproval | undefined;
+        if (!isETH(this.chainId, detail.currency)) {
+          approval = {
+            currency: detail.currency,
+            owner: taker,
+            operator: Sdk.Flow.Addresses.Exchange[this.chainId],
+            txData: generateNFTApprovalTxData(
+              detail.currency,
+              taker,
+              Sdk.Flow.Addresses.Exchange[this.chainId]
+            ),
+          };
+        }
+
+        const order = detail.order as Sdk.Flow.Order;
         const exchange = new Sdk.Flow.Exchange(this.chainId);
 
         if (options?.directFillingData) {
@@ -282,11 +349,15 @@ export class Router {
               },
             ]),
             success: [true],
+            approvals: approval ? [approval] : [],
+            permits: [],
           };
         }
         return {
           txData: exchange.takeMultipleOneOrdersTx(taker, [order]),
           success: [true],
+          approvals: approval ? [approval] : [],
+          permits: [],
         };
       }
     }
@@ -300,13 +371,20 @@ export class Router {
       if (details.length > 1) {
         throw new Error("Manifold sweeping is not supported");
       } else {
+        if (options?.globalFees?.length) {
+          throw new Error("Fees not supported");
+        }
+
         const detail = details[0];
+
         const order = detail.order as Sdk.Manifold.Order;
         const exchange = new Sdk.Manifold.Exchange(this.chainId);
+
         const amountFilled = Number(detail.amount) ?? 1;
         const orderPrice = bn(order.params.details.initialAmount)
           .mul(amountFilled)
           .toString();
+
         return {
           txData: exchange.fillOrderTx(
             taker,
@@ -316,6 +394,8 @@ export class Router {
             options
           ),
           success: [true],
+          approvals: [],
+          permits: [],
         };
       }
     }
@@ -323,6 +403,7 @@ export class Router {
     // Handle partial seaport orders:
     // - fetch the full order data for each partial order (concurrently)
     // - remove any partial order from the details
+
     await Promise.all(
       details
         .filter(({ kind }) => kind === "seaport-partial")
@@ -353,16 +434,50 @@ export class Router {
     );
     details = details.filter(({ kind }) => kind !== "seaport-partial");
 
+    await Promise.all(
+      details
+        .filter(({ kind }) => kind === "seaport-v1.2-partial")
+        .map(async (detail) => {
+          try {
+            const order = detail.order as Sdk.SeaportV12.Types.PartialOrder;
+            const result = await axios.get(
+              `https://order-fetcher.vercel.app/api/listing?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}`
+            );
+
+            const fullOrder = new Sdk.SeaportV12.Order(
+              this.chainId,
+              result.data.order
+            );
+            details.push({
+              ...detail,
+              kind: "seaport-v1.2",
+              order: fullOrder,
+            });
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              return;
+            }
+          }
+        })
+    );
+    details = details.filter(({ kind }) => kind !== "seaport-v1.2-partial");
+
     const relayer = options?.relayer ?? taker;
 
     // If all orders are Seaport, then fill on Seaport directly
     // TODO: Directly fill for other exchanges as well
+
     if (
       details.every(
-        ({ kind, fees, currency }) =>
+        ({ kind, fees, currency, order }) =>
           kind === "seaport" &&
-          currency === details[0].currency &&
           buyInCurrency === currency &&
+          // All orders must have the same currency and conduit
+          currency === details[0].currency &&
+          (order as Sdk.Seaport.Order).params.conduitKey ===
+            (details[0].order as Sdk.Seaport.Order).params.conduitKey &&
           !fees?.length
       ) &&
       !options?.globalFees?.length &&
@@ -370,6 +485,21 @@ export class Router {
       !options?.relayer
     ) {
       const exchange = new Sdk.Seaport.Exchange(this.chainId);
+
+      const conduit = exchange.deriveConduit(
+        (details[0].order as Sdk.Seaport.Order).params.conduitKey
+      );
+
+      let approval: FTApproval | undefined;
+      if (!isETH(this.chainId, details[0].currency)) {
+        approval = {
+          currency: details[0].currency,
+          owner: taker,
+          operator: conduit,
+          txData: generateFTApprovalTxData(details[0].currency, taker, conduit),
+        };
+      }
+
       if (details.length === 1) {
         const order = details[0].order as Sdk.Seaport.Order;
         return {
@@ -383,6 +513,8 @@ export class Router {
             }
           ),
           success: [true],
+          approvals: approval ? [approval] : [],
+          permits: [],
         };
       } else {
         const orders = details.map((d) => d.order as Sdk.Seaport.Order);
@@ -399,12 +531,88 @@ export class Router {
             }
           ),
           success: orders.map((_) => true),
+          approvals: approval ? [approval] : [],
+          permits: [],
         };
       }
     }
 
-    if (!isETH(this.chainId, buyInCurrency)) {
-      throw new Error("Unsupported buy-in currency");
+    if (
+      details.every(
+        ({ kind, fees, currency, order }) =>
+          kind === "seaport-v1.2" &&
+          buyInCurrency === currency &&
+          // All orders must have the same currency and conduit
+          currency === details[0].currency &&
+          (order as Sdk.SeaportV12.Order).params.conduitKey ===
+            (details[0].order as Sdk.SeaportV12.Order).params.conduitKey &&
+          !fees?.length
+      ) &&
+      !options?.globalFees?.length &&
+      !options?.forceRouter &&
+      !options?.relayer
+    ) {
+      const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+
+      const conduit = exchange.deriveConduit(
+        (details[0].order as Sdk.Seaport.Order).params.conduitKey
+      );
+
+      let approval: FTApproval | undefined;
+      if (!isETH(this.chainId, details[0].currency)) {
+        approval = {
+          currency: details[0].currency,
+          owner: taker,
+          operator: conduit,
+          txData: generateFTApprovalTxData(details[0].currency, taker, conduit),
+        };
+      }
+
+      if (details.length === 1) {
+        const order = details[0].order as Sdk.SeaportV12.Order;
+        return {
+          txData: await exchange.fillOrderTx(
+            taker,
+            order,
+            order.buildMatching({ amount: details[0].amount }),
+            {
+              ...options,
+              ...options?.directFillingData,
+            }
+          ),
+          success: [true],
+          approvals: approval ? [approval] : [],
+          permits: [],
+        };
+      } else {
+        const orders = details.map((d) => d.order as Sdk.SeaportV12.Order);
+        return {
+          txData: await exchange.fillOrdersTx(
+            taker,
+            orders,
+            orders.map((order, i) =>
+              order.buildMatching({ amount: details[i].amount })
+            ),
+            {
+              ...options,
+              ...options?.directFillingData,
+            }
+          ),
+          success: orders.map((_) => true),
+          approvals: approval ? [approval] : [],
+          permits: [],
+        };
+      }
+    }
+
+    const buyInETH = isETH(this.chainId, buyInCurrency);
+    if (!buyInETH) {
+      const allSeaport = details.every((c) =>
+        ["seaport", "seaport-v1.2"].includes(c.kind)
+      );
+      if (!allSeaport) {
+        throw new Error("Unsupported buy-in currency");
+      }
     }
 
     const getFees = (ownDetails: ListingFillDetails[]) => [
@@ -432,13 +640,11 @@ export class Router {
       ),
     ];
 
-    // For keeping track of each listing's position in the original array
-    type ListingDetailsExtracted = {
-      originalIndex: number;
-    } & ListingDetails;
+    // Keep track of any approvals that might be needed
+    const approvals: FTApproval[] = [];
 
-    // For supporting filling listings having different underlying currencies
-    type PerCurrencyDetails = { [currency: string]: ListingDetailsExtracted[] };
+    // Keep track of the tokens needed by each module
+    const permitItems: UniswapPermit.TransferDetail[] = [];
 
     // Split all listings by their kind
     const blurDetails: ListingDetailsExtracted[] = [];
@@ -448,12 +654,14 @@ export class Router {
     const foundationDetails: ListingDetailsExtracted[] = [];
     const looksRareDetails: ListingDetailsExtracted[] = [];
     const seaportDetails: PerCurrencyDetails = {};
+    const seaportV12Details: PerCurrencyDetails = {};
     const sudoswapDetails: ListingDetailsExtracted[] = [];
     const x2y2Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc721Details: ListingDetailsExtracted[] = [];
     const zeroexV4Erc1155Details: ListingDetailsExtracted[] = [];
     const zoraDetails: ListingDetailsExtracted[] = [];
     const nftxDetails: ListingDetailsExtracted[] = [];
+    const raribleDetails: ListingDetailsExtracted[] = [];
     for (let i = 0; i < details.length; i++) {
       const { kind, contractKind, currency } = details[i];
 
@@ -488,6 +696,13 @@ export class Router {
           detailsRef = seaportDetails[currency];
           break;
 
+        case "seaport-v1.2":
+          if (!seaportV12Details[currency]) {
+            seaportV12Details[currency] = [];
+          }
+          detailsRef = seaportV12Details[currency];
+          break;
+
         case "sudoswap":
           detailsRef = sudoswapDetails;
           break;
@@ -509,6 +724,11 @@ export class Router {
 
         case "nftx": {
           detailsRef = nftxDetails;
+          break;
+        }
+
+        case "rarible": {
+          detailsRef = raribleDetails;
           break;
         }
 
@@ -751,7 +971,10 @@ export class Router {
             ? this.contracts.foundationModule.interface.encodeFunctionData(
                 "acceptETHListing",
                 [
-                  orders[0].params,
+                  {
+                    ...orders[0].params,
+                    token: orders[0].params.contract,
+                  },
                   {
                     fillTo: taker,
                     refundTo: taker,
@@ -764,7 +987,10 @@ export class Router {
             : this.contracts.foundationModule.interface.encodeFunctionData(
                 "acceptETHListings",
                 [
-                  orders.map((order) => order.params),
+                  orders.map((order) => ({
+                    ...order.params,
+                    token: order.params.contract,
+                  })),
                   {
                     fillTo: taker,
                     refundTo: taker,
@@ -870,12 +1096,15 @@ export class Router {
           .reduce((a, b) => a.add(b), bn(0));
         const totalPayment = totalPrice.add(totalFees);
 
-        const currencyIsETH = isETH(this.chainId, currency);
         let skipFillExecution = false;
-        if (!currencyIsETH) {
-          try {
-            executions.push(
-              await generateSwapExecution(
+        try {
+          let permitTo = this.contracts.seaportModule.address;
+
+          let swapExecutions: ExecutionInfo[] | undefined;
+          let amountIn: BigNumberish | undefined;
+          if (buyInCurrency !== currency) {
+            ({ executions: swapExecutions, amountIn } =
+              await generateSwapExecutions(
                 this.chainId,
                 this.provider,
                 buyInCurrency,
@@ -886,20 +1115,46 @@ export class Router {
                   wethModule: this.contracts.wethModule,
                   // Forward any swapped tokens to the Seaport module
                   recipient: this.contracts.seaportModule.address,
-                  refundTo: taker,
+                  refundTo: relayer,
                 }
-              )
-            );
-          } catch {
-            if (!options?.partial) {
-              throw new Error("Could not generate swap execution");
-            } else {
-              // Since the swap execution generation failed, we should also skip the fill execution
-              skipFillExecution = true;
-            }
+              ));
+
+            permitTo = this.contracts.uniswapV3Module.address;
+          }
+
+          if (!buyInETH) {
+            approvals.push({
+              currency: buyInCurrency,
+              owner: relayer,
+              operator: Sdk.Common.Addresses.Permit2[this.chainId],
+              txData: generateFTApprovalTxData(
+                buyInCurrency,
+                relayer,
+                Sdk.Common.Addresses.Permit2[this.chainId]
+              ),
+            });
+            permitItems.push({
+              from: relayer,
+              to: permitTo,
+              token: buyInCurrency,
+              amount: (amountIn ?? totalPayment).toString(),
+            });
+          }
+
+          if (swapExecutions) {
+            executions.push(...swapExecutions);
+          }
+        } catch {
+          if (!options?.partial) {
+            throw new Error("Could not generate swap execution");
+          } else {
+            // Since the swap execution generation failed, we should also skip the fill execution
+            skipFillExecution = true;
           }
         }
 
+        const currencyIsETH = isETH(this.chainId, currency);
+        const buyInCurrencyIsETH = isETH(this.chainId, buyInCurrency);
         if (!skipFillExecution) {
           executions.push({
             module: this.contracts.seaportModule.address,
@@ -968,7 +1223,166 @@ export class Router {
                       fees,
                     ]
                   ),
-            value: currencyIsETH ? totalPayment : 0,
+            value: buyInCurrencyIsETH && currencyIsETH ? totalPayment : 0,
+          });
+
+          // Mark the listings as successfully handled
+          for (const { originalIndex } of currencyDetails) {
+            success[originalIndex] = true;
+          }
+        }
+      }
+    }
+
+    // Handle Seaport V1.2 listings
+    if (Object.keys(seaportV12Details).length) {
+      const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+      for (const currency of Object.keys(seaportV12Details)) {
+        const currencyDetails = seaportV12Details[currency];
+
+        const orders = currencyDetails.map(
+          (d) => d.order as Sdk.SeaportV12.Order
+        );
+        const fees = getFees(currencyDetails);
+
+        const totalPrice = orders
+          .map((order, i) =>
+            // Seaport orders can be partially-fillable
+            bn(order.getMatchingPrice())
+              .mul(currencyDetails[i].amount ?? 1)
+              .div(order.getInfo()!.amount)
+          )
+          .reduce((a, b) => a.add(b), bn(0));
+        const totalFees = fees
+          .map(({ amount }) => bn(amount))
+          .reduce((a, b) => a.add(b), bn(0));
+        const totalPayment = totalPrice.add(totalFees);
+
+        let skipFillExecution = false;
+
+        try {
+          let swapExecutions: ExecutionInfo[] | undefined;
+          let amountIn: BigNumberish | undefined;
+          if (buyInCurrency !== currency) {
+            ({ executions: swapExecutions, amountIn } =
+              await generateSwapExecutions(
+                this.chainId,
+                this.provider,
+                buyInCurrency,
+                currency,
+                totalPayment,
+                {
+                  uniswapV3Module: this.contracts.uniswapV3Module,
+                  wethModule: this.contracts.wethModule,
+                  // Forward any swapped tokens to the SeaportV12 module
+                  recipient: this.contracts.seaportV12Module.address,
+                  refundTo: relayer,
+                }
+              ));
+          }
+
+          if (!buyInETH) {
+            approvals.push({
+              currency: buyInCurrency,
+              owner: relayer,
+              operator: Sdk.Common.Addresses.Permit2[this.chainId],
+              txData: generateFTApprovalTxData(
+                buyInCurrency,
+                relayer,
+                Sdk.Common.Addresses.Permit2[this.chainId]
+              ),
+            });
+            permitItems.push({
+              from: relayer,
+              to: this.contracts.seaportV12Module.address,
+              token: buyInCurrency,
+              amount: (amountIn ?? totalPayment).toString(),
+            });
+          }
+
+          if (swapExecutions) {
+            executions.push(...swapExecutions);
+          }
+        } catch {
+          if (!options?.partial) {
+            throw new Error("Could not generate swap execution");
+          } else {
+            // Since the swap execution generation failed, we should also skip the fill execution
+            skipFillExecution = true;
+          }
+        }
+
+        const currencyIsETH = isETH(this.chainId, currency);
+        const buyInCurrencyIsETH = isETH(this.chainId, buyInCurrency);
+        if (!skipFillExecution) {
+          executions.push({
+            module: this.contracts.seaportV12Module.address,
+            data:
+              orders.length === 1
+                ? this.contracts.seaportV12Module.interface.encodeFunctionData(
+                    `accept${currencyIsETH ? "ETH" : "ERC20"}Listing`,
+                    [
+                      {
+                        parameters: {
+                          ...orders[0].params,
+                          totalOriginalConsiderationItems:
+                            orders[0].params.consideration.length,
+                        },
+                        numerator: currencyDetails[0].amount ?? 1,
+                        denominator: orders[0].getInfo()!.amount,
+                        signature: orders[0].params.signature,
+                        extraData: await exchange.getExtraData(orders[0]),
+                      },
+                      {
+                        fillTo: taker,
+                        refundTo: taker,
+                        revertIfIncomplete: Boolean(!options?.partial),
+                        // Only needed for ERC20 listings
+                        token: currency,
+                        amount: totalPrice,
+                      },
+                      fees,
+                    ]
+                  )
+                : this.contracts.seaportV12Module.interface.encodeFunctionData(
+                    `accept${currencyIsETH ? "ETH" : "ERC20"}Listings`,
+                    [
+                      await Promise.all(
+                        orders.map(async (order, i) => {
+                          const orderData = {
+                            parameters: {
+                              ...order.params,
+                              totalOriginalConsiderationItems:
+                                order.params.consideration.length,
+                            },
+                            numerator: currencyDetails[i].amount ?? 1,
+                            denominator: order.getInfo()!.amount,
+                            signature: order.params.signature,
+                            extraData: await exchange.getExtraData(order),
+                          };
+
+                          if (currencyIsETH) {
+                            return {
+                              order: orderData,
+                              price: orders[i].getMatchingPrice(),
+                            };
+                          } else {
+                            return orderData;
+                          }
+                        })
+                      ),
+                      {
+                        fillTo: taker,
+                        refundTo: taker,
+                        revertIfIncomplete: Boolean(!options?.partial),
+                        // Only needed for ERC20 listings
+                        token: currency,
+                        amount: totalPrice,
+                      },
+                      fees,
+                    ]
+                  ),
+            value: buyInCurrencyIsETH && currencyIsETH ? totalPayment : 0,
           });
 
           // Mark the listings as successfully handled
@@ -1437,7 +1851,7 @@ export class Router {
                   fees,
                 ]
               )
-            : this.contracts.foundationModule.interface.encodeFunctionData(
+            : this.contracts.zoraModule.interface.encodeFunctionData(
                 "acceptETHListings",
                 [
                   orders.map((order) => ({
@@ -1465,11 +1879,89 @@ export class Router {
       }
     }
 
+    // Handle Rarible listings
+    if (raribleDetails.length) {
+      const orders = raribleDetails.map((d) => d.order as Sdk.Rarible.Order);
+      const module = this.contracts.raribleModule.address;
+
+      const fees = getFees(raribleDetails);
+
+      const totalPrice = orders
+        .map((order) => bn(order.params.take.value))
+        .reduce((a, b) => a.add(b), bn(0));
+      const totalFees = fees
+        .map(({ amount }) => bn(amount))
+        .reduce((a, b) => a.add(b), bn(0));
+
+      executions.push({
+        module,
+        data:
+          orders.length === 1
+            ? this.contracts.raribleModule.interface.encodeFunctionData(
+                "acceptETHListing",
+                [
+                  encodeForMatchOrders(orders[0].params),
+                  orders[0].params.signature,
+                  encodeForMatchOrders(orders[0].buildMatching(module)),
+                  "0x",
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.raribleModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => encodeForMatchOrders(order.params)),
+                  orders.map((order) => order.params.signature),
+                  orders.map((order) =>
+                    encodeForMatchOrders(order.buildMatching(module))
+                  ),
+                  "0x",
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
+        value: totalPrice.add(totalFees),
+      });
+
+      // Mark the listings as successfully handled
+      for (const { originalIndex } of raribleDetails) {
+        success[originalIndex] = true;
+      }
+    }
+
     if (!executions.length) {
       throw new Error("No executions to handle");
     }
 
     return {
+      approvals,
+      permits: await (async (): Promise<FTPermit[]> => {
+        return permitItems.length
+          ? [
+              {
+                currencies: permitItems.map((i) => i.token),
+                details: {
+                  kind: "permit2",
+                  data: await new UniswapPermit.Handler(
+                    this.chainId,
+                    this.provider
+                  ).generate(permitItems),
+                },
+              },
+            ]
+          : [];
+      })(),
       txData: {
         from: relayer,
         to: this.contracts.router.address,
@@ -1491,9 +1983,12 @@ export class Router {
     details: BidDetails[],
     taker: string,
     options?: {
+      // Fill source for attribution
       source?: string;
       // Skip any errors (either off-chain or on-chain)
       partial?: boolean;
+      // Force using permit
+      forcePermit?: boolean;
     }
   ): Promise<{
     txData: TxData;
@@ -1518,7 +2013,7 @@ export class Router {
           contract: detail.contract,
           owner: taker,
           operator: Sdk.Blur.Addresses.ExecutionDelegate[this.chainId],
-          txData: generateApprovalTxData(
+          txData: generateNFTApprovalTxData(
             detail.contract,
             taker,
             Sdk.Blur.Addresses.ExecutionDelegate[this.chainId]
@@ -1532,9 +2027,9 @@ export class Router {
         });
         return {
           txData: exchange.fillOrderTx(taker, order, matchOrder),
+          success: [true],
           approvals: [approval],
           permits: [],
-          success: [true],
         };
       }
     }
@@ -1551,7 +2046,7 @@ export class Router {
           contract: detail.contract,
           owner: taker,
           operator: Sdk.Universe.Addresses.Exchange[this.chainId],
-          txData: generateApprovalTxData(
+          txData: generateNFTApprovalTxData(
             detail.contract,
             taker,
             Sdk.Universe.Addresses.Exchange[this.chainId]
@@ -1565,43 +2060,9 @@ export class Router {
             amount: Number(detail.amount ?? 1),
             source: options?.source,
           }),
+          success: [true],
           approvals: [approval],
           permits: [],
-          success: [true],
-        };
-      }
-    }
-
-    // TODO: Add Rarible router module
-    if (details.some(({ kind }) => kind === "rarible")) {
-      if (details.length > 1) {
-        throw new Error("Rarible multi-selling is not supported");
-      } else {
-        const detail = details[0];
-
-        // Approve Rarible's NFTTransferProxy contract
-        const approval = {
-          contract: detail.contract,
-          owner: taker,
-          operator: Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId],
-          txData: generateApprovalTxData(
-            detail.contract,
-            taker,
-            Sdk.Rarible.Addresses.NFTTransferProxy[this.chainId]
-          ),
-        };
-
-        const order = detail.order as Sdk.Rarible.Order;
-        const exchange = new Sdk.Rarible.Exchange(this.chainId);
-        return {
-          txData: await exchange.fillOrderTx(taker, order, {
-            tokenId: detail.tokenId,
-            assetClass: detail.contractKind.toUpperCase(),
-            amount: Number(detail.amount),
-          }),
-          approvals: [approval],
-          permits: [],
-          success: [true],
         };
       }
     }
@@ -1618,7 +2079,7 @@ export class Router {
           contract: detail.contract,
           owner: taker,
           operator: Sdk.Forward.Addresses.Exchange[this.chainId],
-          txData: generateApprovalTxData(
+          txData: generateNFTApprovalTxData(
             detail.contract,
             taker,
             Sdk.Forward.Addresses.Exchange[this.chainId]
@@ -1637,9 +2098,9 @@ export class Router {
           txData: exchange.fillOrderTx(taker, order, matchParams, {
             source: options?.source,
           }),
+          success: [true],
           approvals: [approval],
           permits: [],
-          success: [true],
         };
       }
     }
@@ -1647,10 +2108,98 @@ export class Router {
     // CASE 2
     // Handle exchanges which do have a router module implemented by filling through the router
 
+    // Step 1
+    // Handle approvals and permits
+
     // Keep track of any approvals that might be needed
     const approvals: NFTApproval[] = [];
-    // Keep track of any permits that might be needed
-    const permits: NFTPermit[] = [];
+
+    // Keep track of the tokens needed by each module
+    const permitItems: SeaportPermit.Item[] = [];
+
+    for (let i = 0; i < details.length; i++) {
+      const detail = details[i];
+
+      const contract = detail.contract;
+      const owner = taker;
+      const operator = Sdk.Seaport.Addresses.OpenseaConduit[this.chainId];
+
+      // Generate approval
+      approvals.push({
+        contract,
+        owner,
+        operator,
+        txData: generateNFTApprovalTxData(contract, owner, operator),
+      });
+
+      // Generate permit item
+      let module: Contract;
+      switch (detail.kind) {
+        case "looks-rare": {
+          module = this.contracts.looksRareModule;
+          break;
+        }
+
+        case "seaport":
+        case "seaport-partial": {
+          module = this.contracts.seaportModule;
+          break;
+        }
+
+        case "seaport-v1.2":
+        case "seaport-v1.2-partial": {
+          module = this.contracts.seaportV12Module;
+          break;
+        }
+
+        case "sudoswap": {
+          module = this.contracts.sudoswapModule;
+          break;
+        }
+
+        case "nftx": {
+          module = this.contracts.nftxModule;
+          break;
+        }
+
+        case "x2y2": {
+          module = this.contracts.x2y2Module;
+          break;
+        }
+
+        case "zeroex-v4": {
+          module = this.contracts.zeroExV4Module;
+          break;
+        }
+
+        case "element": {
+          module = this.contracts.elementModule;
+          break;
+        }
+
+        case "rarible": {
+          module = this.contracts.raribleModule;
+          break;
+        }
+
+        default: {
+          throw new Error("Unreachable");
+        }
+      }
+
+      permitItems.push({
+        token: {
+          kind: detail.contractKind,
+          contract: detail.contract,
+          tokenId: detail.tokenId,
+          amount: detail.amount,
+        },
+        receiver: module.address,
+      });
+    }
+
+    // Step 2
+    // Handle calldata generation
 
     // Generate router executions
     const executions: ExecutionInfo[] = [];
@@ -1659,48 +2208,10 @@ export class Router {
     for (let i = 0; i < details.length; i++) {
       const detail = details[i];
 
-      // Handle approval and permit
-      approvals.push({
-        contract: detail.contract,
-        owner: taker,
-        operator: Sdk.Seaport.Addresses.OpenseaConduit[this.chainId],
-        txData: generateApprovalTxData(
-          detail.contract,
-          taker,
-          Sdk.Seaport.Addresses.OpenseaConduit[this.chainId]
-        ),
-      });
-
-      const generatePermit = (toModule: string) => {
-        const seaportApproval = generateSeaportApprovalOrder(
-          this.chainId,
-          taker,
-          toModule,
-          {
-            kind: detail.contractKind,
-            contract: detail.contract,
-            tokenId: detail.tokenId,
-            amount: detail.amount,
-          }
-        );
-        permits.push({
-          contract: detail.contract,
-          contractKind: detail.contractKind,
-          tokenId: detail.tokenId,
-          amount: detail.amount,
-          data: {
-            kind: "seaport-approval-order",
-            ...seaportApproval,
-          },
-        });
-      };
-
       switch (detail.kind) {
         case "looks-rare": {
           const order = detail.order as Sdk.LooksRare.Order;
           const module = this.contracts.looksRareModule;
-
-          generatePermit(module.address);
 
           const matchParams = order.buildMatching(
             // For LooksRare, the module acts as the taker proxy
@@ -1739,8 +2250,6 @@ export class Router {
         case "seaport": {
           const order = detail.order as Sdk.Seaport.Order;
           const module = this.contracts.seaportModule;
-
-          generatePermit(module.address);
 
           const matchParams = order.buildMatching({
             tokenId: detail.tokenId,
@@ -1788,11 +2297,13 @@ export class Router {
           const order = detail.order as Sdk.Seaport.Types.PartialOrder;
           const module = this.contracts.seaportModule;
 
-          generatePermit(module.address);
-
           try {
             const result = await axios.get(
-              `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}` +
+              `https://order-fetcher.vercel.app/api/offer?orderHash=${
+                order.id
+              }&contract=${order.contract}&tokenId=${order.tokenId}&taker=${
+                detail.owner ?? taker
+              }&chainId=${this.chainId}` +
                 (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
             );
 
@@ -1844,11 +2355,117 @@ export class Router {
           break;
         }
 
+        case "seaport-v1.2": {
+          const order = detail.order as Sdk.SeaportV12.Order;
+          const module = this.contracts.seaportV12Module;
+
+          const matchParams = order.buildMatching({
+            tokenId: detail.tokenId,
+            amount: detail.amount ?? 1,
+            ...(detail.extraArgs ?? {}),
+          });
+
+          const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                {
+                  parameters: {
+                    ...order.params,
+                    totalOriginalConsiderationItems:
+                      order.params.consideration.length,
+                  },
+                  numerator: matchParams.amount ?? 1,
+                  denominator: order.getInfo()!.amount,
+                  signature: order.params.signature,
+                  extraData: await exchange.getExtraData(order),
+                },
+                matchParams.criteriaResolvers ?? [],
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                },
+                detail.fees ?? [],
+              ]
+            ),
+            value: 0,
+          });
+
+          success[i] = true;
+
+          break;
+        }
+
+        case "seaport-v1.2-partial": {
+          const order = detail.order as Sdk.SeaportV12.Types.PartialOrder;
+          const module = this.contracts.seaportV12Module;
+
+          try {
+            const result = await axios.get(
+              `https://order-fetcher.vercel.app/api/offer?orderHash=${
+                order.id
+              }&contract=${order.contract}&tokenId=${order.tokenId}&taker=${
+                detail.owner ?? taker
+              }&chainId=${this.chainId}` +
+                (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
+            );
+
+            const fullOrder = new Sdk.SeaportV12.Order(
+              this.chainId,
+              result.data.order
+            );
+
+            const exchange = new Sdk.SeaportV12.Exchange(this.chainId);
+            executions.push({
+              module: module.address,
+              data: module.interface.encodeFunctionData(
+                detail.contractKind === "erc721"
+                  ? "acceptERC721Offer"
+                  : "acceptERC1155Offer",
+                [
+                  {
+                    parameters: {
+                      ...fullOrder.params,
+                      totalOriginalConsiderationItems:
+                        fullOrder.params.consideration.length,
+                    },
+                    numerator: detail.amount ?? 1,
+                    denominator: fullOrder.getInfo()!.amount,
+                    signature: fullOrder.params.signature,
+                    extraData: await exchange.getExtraData(fullOrder),
+                  },
+                  result.data.criteriaResolvers ?? [],
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                  },
+                  detail.fees ?? [],
+                ]
+              ),
+              value: 0,
+            });
+
+            success[i] = true;
+          } catch {
+            if (!options?.partial) {
+              throw new Error("Could not generate fill data");
+            } else {
+              continue;
+            }
+          }
+
+          break;
+        }
+
         case "sudoswap": {
           const order = detail.order as Sdk.Sudoswap.Order;
           const module = this.contracts.sudoswapModule;
-
-          generatePermit(module.address);
 
           executions.push({
             module: module.address,
@@ -1878,8 +2495,6 @@ export class Router {
         case "x2y2": {
           const order = detail.order as Sdk.X2Y2.Order;
           const module = this.contracts.x2y2Module;
-
-          generatePermit(module.address);
 
           try {
             const exchange = new Sdk.X2Y2.Exchange(
@@ -1915,6 +2530,7 @@ export class Router {
               ),
               value: 0,
             });
+
             success[i] = true;
           } catch {
             if (!options?.partial) {
@@ -1930,8 +2546,6 @@ export class Router {
         case "zeroex-v4": {
           const order = detail.order as Sdk.ZeroExV4.Order;
           const module = this.contracts.zeroExV4Module;
-
-          generatePermit(module.address);
 
           try {
             // Retrieve the order's signature
@@ -1996,8 +2610,6 @@ export class Router {
           const order = detail.order as Sdk.Element.Order;
           const module = this.contracts.elementModule;
 
-          generatePermit(module.address);
-
           if (detail.contractKind === "erc721") {
             executions.push({
               module: module.address,
@@ -2042,8 +2654,6 @@ export class Router {
           const order = detail.order as Sdk.Nftx.Order;
           const module = this.contracts.nftxModule;
 
-          generatePermit(module.address);
-
           const tokenId = detail.tokenId;
           order.params.specificIds = [tokenId];
 
@@ -2066,8 +2676,45 @@ export class Router {
           break;
         }
 
+        case "rarible": {
+          const order = detail.order as Sdk.Rarible.Order;
+          const module = this.contracts.raribleModule;
+
+          const matchParams = order.buildMatching(module.address, {
+            tokenId: detail.tokenId,
+            assetClass: detail.contractKind.toUpperCase(),
+            ...(detail.extraArgs || {}),
+          });
+
+          executions.push({
+            module: module.address,
+            data: module.interface.encodeFunctionData(
+              detail.contractKind === "erc721"
+                ? "acceptERC721Offer"
+                : "acceptERC1155Offer",
+              [
+                encodeForMatchOrders(order.params),
+                order.params.signature,
+                encodeForMatchOrders(matchParams),
+                "0x",
+                {
+                  fillTo: taker,
+                  refundTo: taker,
+                  revertIfIncomplete: Boolean(!options?.partial),
+                },
+                detail.fees ?? [],
+              ]
+            ),
+            value: 0,
+          });
+
+          success[i] = true;
+
+          break;
+        }
+
         default: {
-          throw new Error("Unsupported exchange kind");
+          throw new Error("Unreachable");
         }
       }
     }
@@ -2082,7 +2729,7 @@ export class Router {
         executions,
       ]);
 
-    if (executions.length === 1) {
+    if (executions.length === 1 && !options?.forcePermit) {
       // Use the on-received ERC721/ERC1155 hooks for approval-less bid filling
       const detail = details[success.findIndex(Boolean)];
       if (detail.contractKind === "erc721") {
@@ -2096,9 +2743,9 @@ export class Router {
                 [taker, executions[0].module, detail.tokenId, routerLevelTxData]
               ) + generateSourceBytes(options?.source),
           },
+          success,
           approvals: [],
           permits: [],
-          success,
         };
       } else {
         return {
@@ -2117,9 +2764,9 @@ export class Router {
                 ]
               ) + generateSourceBytes(options?.source),
           },
+          success,
           approvals: [],
           permits: [],
-          success,
         };
       }
     } else {
@@ -2129,9 +2776,28 @@ export class Router {
           to: Addresses.Router[this.chainId],
           data: routerLevelTxData + generateSourceBytes(options?.source),
         },
-        approvals: approvals.filter((_, i) => success[i]),
-        permits: permits.filter((_, i) => success[i]),
         success,
+        // Ensure approvals are unique
+        approvals: uniqBy(
+          approvals.filter((_, i) => success[i]),
+          ({ txData: { from, to, data } }) => `${from}-${to}-${data}`
+        ),
+        // Generate permits
+        permits: await (async (): Promise<NFTPermit[]> => {
+          const items = permitItems.filter((_, i) => success[i]);
+          return [
+            {
+              tokens: items.map((i) => i.token),
+              details: {
+                kind: "seaport",
+                data: await new SeaportPermit.Handler(
+                  this.chainId,
+                  this.provider
+                ).generate(taker, items),
+              },
+            },
+          ];
+        })(),
       };
     }
   }

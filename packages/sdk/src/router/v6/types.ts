@@ -3,6 +3,54 @@ import { BigNumberish } from "@ethersproject/bignumber";
 import * as Sdk from "../../index";
 import { TxData } from "../../utils";
 
+import * as UniswapPermit from "./permits/permit2";
+import * as SeaportPermit from "./permits/seaport";
+
+// Approvals and permits
+
+// NFTs
+
+export type NFTToken = {
+  kind: "erc721" | "erc1155";
+  contract: string;
+  tokenId: BigNumberish;
+  amount?: BigNumberish;
+};
+
+export type NFTApproval = {
+  contract: string;
+  owner: string;
+  operator: string;
+  txData: TxData;
+};
+
+export type NFTPermit = {
+  tokens: NFTToken[];
+  details: {
+    kind: "seaport";
+    data: SeaportPermit.Data;
+  };
+};
+
+// FTs
+
+export type FTApproval = {
+  currency: string;
+  owner: string;
+  operator: string;
+  txData: TxData;
+};
+
+export type FTPermit = {
+  currencies: string[];
+  details: {
+    kind: "permit2";
+    data: UniswapPermit.Data;
+  };
+};
+
+// Misc
+
 export type ExecutionInfo = {
   module: string;
   data: string;
@@ -14,24 +62,7 @@ export type Fee = {
   amount: BigNumberish;
 };
 
-export type NFTApproval = {
-  contract: string;
-  owner: string;
-  operator: string;
-  txData: TxData;
-};
-
-export type NFTPermit = {
-  contract: string;
-  contractKind: "erc721" | "erc1155";
-  tokenId: BigNumberish;
-  amount?: BigNumberish;
-  data: {
-    kind: "seaport-approval-order";
-    order: Sdk.Seaport.Order;
-    mirrorOrder: Sdk.Seaport.Order;
-  };
-};
+// Orders
 
 export type GenericOrder =
   | {
@@ -57,6 +88,14 @@ export type GenericOrder =
   | {
       kind: "seaport-partial";
       order: Sdk.Seaport.Types.PartialOrder;
+    }
+  | {
+      kind: "seaport-v1.2";
+      order: Sdk.SeaportV12.Order;
+    }
+  | {
+      kind: "seaport-v1.2-partial";
+      order: Sdk.SeaportV12.Types.PartialOrder;
     }
   | {
       kind: "cryptopunks";
@@ -126,6 +165,18 @@ export type BidFillDetails = {
   amount?: number | string;
   // Relevant for merkle orders
   extraArgs?: any;
+  // Relevant for partial Seaport orders
+  owner?: string;
   fees?: Fee[];
 };
 export type BidDetails = GenericOrder & BidFillDetails;
+
+// For keeping track of each listing's position in the original array
+export type ListingDetailsExtracted = {
+  originalIndex: number;
+} & ListingDetails;
+
+// For supporting filling listings having different underlying currencies
+export type PerCurrencyDetails = {
+  [currency: string]: ListingDetailsExtracted[];
+};

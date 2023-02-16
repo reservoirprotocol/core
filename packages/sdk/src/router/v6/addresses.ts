@@ -16,6 +16,10 @@ export const WETHModule: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x5282b9af3f38d4a5d1bb707f5d3acbd951950074",
 };
 
+export const Permit2Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0x482e4d362c8a2ea19e07b7234a14084a7d740b42",
+};
+
 // Exchange modules
 
 export const BlurModule: ChainIdToAddress = {
@@ -36,6 +40,11 @@ export const SeaportModule: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x04c3af2cad3d1c037930184161ec24ba3a631129",
   [Network.Polygon]: "0xe225afd0b78a265a60ccaeb1c1310e0016716e7b",
   [Network.Optimism]: "0x51e59caf8980d4284707daa2267ec4cc05f48374",
+};
+
+export const SeaportV12Module: ChainIdToAddress = {
+  [Network.Ethereum]: "0xc63cca6e3cf565921d3c8241f74ef7b1e404bb78",
+  [Network.EthereumGoerli]: "0x649f6fba84cbccdb86e6a0bd1af70687eaba1bb7",
 };
 
 export const SudoswapModule: ChainIdToAddress = {
@@ -67,4 +76,8 @@ export const ElementModule: ChainIdToAddress = {
 
 export const NFTXModule: ChainIdToAddress = {
   [Network.Ethereum]: "0x27eb35119dda39df73db6681019edc4c16311acc",
+};
+
+export const RaribleModule: ChainIdToAddress = {
+  [Network.Ethereum]: "0xa29d7914cd525dea9afad0dceec6f49404476486",
 };

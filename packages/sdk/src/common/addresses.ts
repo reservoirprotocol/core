@@ -45,3 +45,10 @@ export const RoyaltyEngine: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0xe7c9cb6d966f76f3b5142167088927bf34966a1f",
   [Network.Polygon]: "0x28edfcf0be7e86b07493466e7631a213bde8eef2",
 };
+
+export const Permit2: ChainIdToAddress = {
+  [Network.Ethereum]: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+  [Network.Optimism]: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+  [Network.Arbitrum]: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+  [Network.Polygon]: "0x000000000022d473030f116ddee9f6b43ac78ba3"
+};

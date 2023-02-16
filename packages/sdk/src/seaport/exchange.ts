@@ -11,8 +11,6 @@ import axios from "axios";
 
 import * as Addresses from "./addresses";
 import { BaseOrderInfo } from "./builders/base";
-import { BundleAskOrderInfo } from "./builders/bundles/bundle-ask";
-import { BundleOrder } from "./bundle-order";
 import { Order } from "./order";
 import * as Types from "./types";
 import * as CommonAddresses from "../common/addresses";
@@ -33,7 +31,7 @@ export class Exchange {
 
   public async fillOrder(
     taker: Signer,
-    order: Order | BundleOrder,
+    order: Order,
     matchParams: Types.MatchParams,
     options?: {
       recipient?: string;
@@ -56,7 +54,7 @@ export class Exchange {
 
   public async fillOrderTx(
     taker: string,
-    order: Order | BundleOrder,
+    order: Order,
     matchParams: Types.MatchParams,
     options?: {
       recipient?: string;
@@ -72,210 +70,78 @@ export class Exchange {
     const conduitKey = options?.conduitKey ?? HashZero;
     const feesOnTop = options?.feesOnTop ?? [];
 
-    if (
-      ["single-token", "contract-wide", "token-list"].includes(
-        order.params.kind || ""
-      )
-    ) {
-      // Fill non-bundle orders
-      order = order as Order;
+    let info = order.getInfo();
+    if (!info) {
+      throw new Error("Could not get order info");
+    }
 
-      let info = order.getInfo();
-      if (!info) {
-        throw new Error("Could not get order info");
-      }
+    if (info.side === "sell") {
+      if (
+        // Order is not private
+        recipient === AddressZero &&
+        // Order is single quantity
+        info.amount === "1" &&
+        // Order has no criteria
+        !matchParams.criteriaResolvers &&
+        // Order requires no extra data
+        !this.requiresExtraData(order)
+      ) {
+        info = info as BaseOrderInfo;
 
-      if (info.side === "sell") {
-        if (
-          // Order is not private
-          recipient === AddressZero &&
-          // Order is single quantity
-          info.amount === "1" &&
-          // Order has no criteria
-          !matchParams.criteriaResolvers &&
-          // Order requires no extra data
-          !this.requiresExtraData(order)
-        ) {
-          info = info as BaseOrderInfo;
-
-          // Use "basic" fulfillment
-          return {
-            from: taker,
-            to: this.contract.address,
-            data:
-              this.contract.interface.encodeFunctionData("fulfillBasicOrder", [
-                {
-                  considerationToken: info.paymentToken,
-                  considerationIdentifier: "0",
-                  considerationAmount: info.price,
-                  offerer: order.params.offerer,
-                  zone: order.params.zone,
-                  offerToken: info.contract,
-                  offerIdentifier: info.tokenId,
-                  offerAmount: info.amount,
-                  basicOrderType:
-                    (info.tokenKind === "erc721"
-                      ? info.paymentToken === CommonAddresses.Eth[this.chainId]
-                        ? Types.BasicOrderType.ETH_TO_ERC721_FULL_OPEN
-                        : Types.BasicOrderType.ERC20_TO_ERC721_FULL_OPEN
-                      : info.paymentToken === CommonAddresses.Eth[this.chainId]
-                      ? Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN
-                      : Types.BasicOrderType.ERC20_TO_ERC1155_FULL_OPEN) +
-                    order.params.orderType,
-                  startTime: order.params.startTime,
-                  endTime: order.params.endTime,
-                  zoneHash: order.params.zoneHash,
-                  salt: order.params.salt,
-                  offererConduitKey: order.params.conduitKey,
-                  fulfillerConduitKey: conduitKey,
-                  totalOriginalAdditionalRecipients:
-                    order.params.consideration.length - 1,
-                  additionalRecipients: [
-                    ...order.params.consideration
-                      .slice(1)
-                      .map(({ startAmount, recipient }) => ({
-                        amount: startAmount,
-                        recipient,
-                      })),
-                    ...feesOnTop,
-                  ],
-                  signature: order.params.signature!,
-                },
-              ]) + generateSourceBytes(options?.source),
-            value:
-              info.paymentToken === CommonAddresses.Eth[this.chainId]
-                ? bn(order.getMatchingPrice())
-                    .mul(matchParams.amount || "1")
-                    .div(info.amount)
-                    .toHexString()
-                : undefined,
-          };
-        } else {
-          // Use "advanced" fullfillment
-          return {
-            from: taker,
-            to: this.contract.address,
-            data:
-              this.contract.interface.encodeFunctionData(
-                "fulfillAdvancedOrder",
-                [
-                  {
-                    parameters: {
-                      ...order.params,
-                      totalOriginalConsiderationItems:
-                        order.params.consideration.length,
-                    },
-                    numerator: matchParams.amount || "1",
-                    denominator: info.amount,
-                    signature: order.params.signature!,
-                    extraData: await this.getExtraData(order),
-                  },
-                  matchParams.criteriaResolvers || [],
-                  conduitKey,
-                  recipient,
-                ]
-              ) + generateSourceBytes(options?.source),
-            value:
-              info.paymentToken === CommonAddresses.Eth[this.chainId]
-                ? bn(order.getMatchingPrice())
-                    .mul(matchParams.amount || "1")
-                    .div(info.amount)
-                    .toHexString()
-                : undefined,
-          };
-        }
+        // Use "basic" fulfillment
+        return {
+          from: taker,
+          to: this.contract.address,
+          data:
+            this.contract.interface.encodeFunctionData("fulfillBasicOrder", [
+              {
+                considerationToken: info.paymentToken,
+                considerationIdentifier: "0",
+                considerationAmount: info.price,
+                offerer: order.params.offerer,
+                zone: order.params.zone,
+                offerToken: info.contract,
+                offerIdentifier: info.tokenId,
+                offerAmount: info.amount,
+                basicOrderType:
+                  (info.tokenKind === "erc721"
+                    ? info.paymentToken === CommonAddresses.Eth[this.chainId]
+                      ? Types.BasicOrderType.ETH_TO_ERC721_FULL_OPEN
+                      : Types.BasicOrderType.ERC20_TO_ERC721_FULL_OPEN
+                    : info.paymentToken === CommonAddresses.Eth[this.chainId]
+                    ? Types.BasicOrderType.ETH_TO_ERC1155_FULL_OPEN
+                    : Types.BasicOrderType.ERC20_TO_ERC1155_FULL_OPEN) +
+                  order.params.orderType,
+                startTime: order.params.startTime,
+                endTime: order.params.endTime,
+                zoneHash: order.params.zoneHash,
+                salt: order.params.salt,
+                offererConduitKey: order.params.conduitKey,
+                fulfillerConduitKey: conduitKey,
+                totalOriginalAdditionalRecipients:
+                  order.params.consideration.length - 1,
+                additionalRecipients: [
+                  ...order.params.consideration
+                    .slice(1)
+                    .map(({ startAmount, recipient }) => ({
+                      amount: startAmount,
+                      recipient,
+                    })),
+                  ...feesOnTop,
+                ],
+                signature: order.params.signature!,
+              },
+            ]) + generateSourceBytes(options?.source),
+          value:
+            info.paymentToken === CommonAddresses.Eth[this.chainId]
+              ? bn(order.getMatchingPrice())
+                  .mul(matchParams.amount || "1")
+                  .div(info.amount)
+                  .toHexString()
+              : undefined,
+        };
       } else {
-        if (
-          // Order is not private
-          recipient === AddressZero &&
-          // Order is single quantity
-          info.amount === "1" &&
-          // Order has no criteria
-          !matchParams.criteriaResolvers &&
-          // Order requires no extra data
-          !this.requiresExtraData(order)
-        ) {
-          info = info as BaseOrderInfo;
-
-          // Use "basic" fulfillment
-          return {
-            from: taker,
-            to: this.contract.address,
-            data:
-              this.contract.interface.encodeFunctionData("fulfillBasicOrder", [
-                {
-                  considerationToken: info.contract,
-                  considerationIdentifier: info.tokenId,
-                  considerationAmount: info.amount,
-                  offerer: order.params.offerer,
-                  zone: order.params.zone,
-                  offerToken: info.paymentToken,
-                  offerIdentifier: "0",
-                  offerAmount: info.price,
-                  basicOrderType:
-                    (info.tokenKind === "erc721"
-                      ? Types.BasicOrderType.ERC721_TO_ERC20_FULL_OPEN
-                      : Types.BasicOrderType.ERC1155_TO_ERC20_FULL_OPEN) +
-                    order.params.orderType,
-                  startTime: order.params.startTime,
-                  endTime: order.params.endTime,
-                  zoneHash: order.params.zoneHash,
-                  salt: order.params.salt,
-                  offererConduitKey: order.params.conduitKey,
-                  fulfillerConduitKey: conduitKey,
-                  totalOriginalAdditionalRecipients:
-                    order.params.consideration.length - 1,
-                  additionalRecipients: [
-                    ...order.params.consideration
-                      .slice(1)
-                      .map(({ startAmount, recipient }) => ({
-                        amount: startAmount,
-                        recipient,
-                      })),
-                    ...feesOnTop,
-                  ],
-                  signature: order.params.signature!,
-                },
-              ]) + generateSourceBytes(options?.source),
-          };
-        } else {
-          // Use "advanced" fulfillment
-          return {
-            from: taker,
-            to: this.contract.address,
-            data:
-              this.contract.interface.encodeFunctionData(
-                "fulfillAdvancedOrder",
-                [
-                  {
-                    parameters: {
-                      ...order.params,
-                      totalOriginalConsiderationItems:
-                        order.params.consideration.length,
-                    },
-                    numerator: matchParams.amount || "1",
-                    denominator: info.amount,
-                    signature: order.params.signature!,
-                    extraData: await this.getExtraData(order),
-                  },
-                  matchParams.criteriaResolvers || [],
-                  conduitKey,
-                  recipient,
-                ]
-              ) + generateSourceBytes(options?.source),
-          };
-        }
-      }
-    } else {
-      // Fill bundle orders
-      order = order as BundleOrder;
-
-      let info = order.getInfo();
-      if (!info) {
-        throw new Error("Could not get order info");
-      }
-
-      if (order.params.kind === "bundle-ask") {
+        // Use "advanced" fullfillment
         return {
           from: taker,
           to: this.contract.address,
@@ -288,24 +154,100 @@ export class Exchange {
                     order.params.consideration.length,
                 },
                 numerator: matchParams.amount || "1",
-                denominator: "1",
+                denominator: info.amount,
                 signature: order.params.signature!,
-                extraData: "0x",
+                extraData: await this.getExtraData(order),
               },
               matchParams.criteriaResolvers || [],
               conduitKey,
               recipient,
             ]) + generateSourceBytes(options?.source),
           value:
-            (info as BundleAskOrderInfo).paymentToken ===
-            CommonAddresses.Eth[this.chainId]
+            info.paymentToken === CommonAddresses.Eth[this.chainId]
               ? bn(order.getMatchingPrice())
                   .mul(matchParams.amount || "1")
+                  .div(info.amount)
                   .toHexString()
               : undefined,
         };
+      }
+    } else {
+      if (
+        // Order is not private
+        recipient === AddressZero &&
+        // Order is single quantity
+        info.amount === "1" &&
+        // Order has no criteria
+        !matchParams.criteriaResolvers &&
+        // Order requires no extra data
+        !this.requiresExtraData(order)
+      ) {
+        info = info as BaseOrderInfo;
+
+        // Use "basic" fulfillment
+        return {
+          from: taker,
+          to: this.contract.address,
+          data:
+            this.contract.interface.encodeFunctionData("fulfillBasicOrder", [
+              {
+                considerationToken: info.contract,
+                considerationIdentifier: info.tokenId,
+                considerationAmount: info.amount,
+                offerer: order.params.offerer,
+                zone: order.params.zone,
+                offerToken: info.paymentToken,
+                offerIdentifier: "0",
+                offerAmount: info.price,
+                basicOrderType:
+                  (info.tokenKind === "erc721"
+                    ? Types.BasicOrderType.ERC721_TO_ERC20_FULL_OPEN
+                    : Types.BasicOrderType.ERC1155_TO_ERC20_FULL_OPEN) +
+                  order.params.orderType,
+                startTime: order.params.startTime,
+                endTime: order.params.endTime,
+                zoneHash: order.params.zoneHash,
+                salt: order.params.salt,
+                offererConduitKey: order.params.conduitKey,
+                fulfillerConduitKey: conduitKey,
+                totalOriginalAdditionalRecipients:
+                  order.params.consideration.length - 1,
+                additionalRecipients: [
+                  ...order.params.consideration
+                    .slice(1)
+                    .map(({ startAmount, recipient }) => ({
+                      amount: startAmount,
+                      recipient,
+                    })),
+                  ...feesOnTop,
+                ],
+                signature: order.params.signature!,
+              },
+            ]) + generateSourceBytes(options?.source),
+        };
       } else {
-        throw new Error("Unsupported order kind");
+        // Use "advanced" fulfillment
+        return {
+          from: taker,
+          to: this.contract.address,
+          data:
+            this.contract.interface.encodeFunctionData("fulfillAdvancedOrder", [
+              {
+                parameters: {
+                  ...order.params,
+                  totalOriginalConsiderationItems:
+                    order.params.consideration.length,
+                },
+                numerator: matchParams.amount || "1",
+                denominator: info.amount,
+                signature: order.params.signature!,
+                extraData: await this.getExtraData(order),
+              },
+              matchParams.criteriaResolvers || [],
+              conduitKey,
+              recipient,
+            ]) + generateSourceBytes(options?.source),
+        };
       }
     }
   }

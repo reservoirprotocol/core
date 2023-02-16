@@ -29,7 +29,10 @@ export const PausableZone: ChainIdToAddress = {
   [Network.Polygon]: "0x004c00500000ad104d7dbd00e3ae0a5c00560c00",
 };
 
-export const ApprovalOrderZone: ChainIdToAddress = {};
+export const ApprovalOrderZone: ChainIdToAddress = {
+  [Network.Ethereum]: "0x7deb43ea42555922445abc2f8ec66d5fce8c92c0",
+  [Network.EthereumGoerli]: "0x5595ddec926bfb297814c33a90e44f97c6074fe5",
+};
 
 export const CancelXZone: ChainIdToAddress = {
   [Network.EthereumGoerli]: "0x601d58906d22ce2fabdfb112e15e515557aa191c",

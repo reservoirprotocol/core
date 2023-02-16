@@ -46,10 +46,10 @@ const main = async () => {
   const deploymentHelper = await DeploymentHelper.getInstance();
 
   await deploymentHelper.deploy(
-    "SeaportModule",
+    "SeaportV12Module",
     [
       deploymentHelper.deployer.address,
-      "0xc0f489a34672d5b960a19279d99d77e94221d0c9",
+      "0xb35d22a4553ab9d2b85e2a606cbae55f844df50c",
     ],
     { verifyOnEtherscan: true }
   );
