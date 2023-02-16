@@ -6,7 +6,9 @@ import { getComplication } from "../../complications";
 export type ContractWideOrderParams = Omit<
   Types.OrderInput,
   "complication" | "nfts" | "extraParams" | "trustedExecution"
-> & { collection: string };
+> & { collection: string } & Partial<
+    Pick<Types.OrderInput, "complication" | "trustedExecution">
+  >;
 
 export class ContractWideBuilder extends BaseBuilder<ContractWideOrderParams> {
   public isValid(order: Order): boolean {
@@ -22,11 +24,11 @@ export class ContractWideBuilder extends BaseBuilder<ContractWideOrderParams> {
     const { collection, ...rest } = params;
 
     const order = new Order(this.chainId, {
-      ...rest,
       trustedExecution: "0",
+      complication: getComplication(this.chainId).address,
+      ...rest,
       extraParams: constants.HashZero,
       nfts: [{ collection, tokens: [] }],
-      complication: getComplication(this.chainId).address,
     });
 
     return order;

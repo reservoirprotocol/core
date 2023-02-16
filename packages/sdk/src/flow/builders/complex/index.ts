@@ -6,7 +6,8 @@ import { getComplication } from "../../complications";
 export type ComplexOrderParams = Omit<
   Types.OrderInput,
   "complication" | "extraParams" | "trustedExecution"
->;
+> &
+  Partial<Pick<Types.OrderInput, "complication" | "trustedExecution">>;
 
 export class ComplexBuilder extends BaseBuilder<ComplexOrderParams> {
   public isValid(order: Order): boolean {
@@ -20,10 +21,10 @@ export class ComplexBuilder extends BaseBuilder<ComplexOrderParams> {
 
   public build(params: ComplexOrderParams): Order {
     const order = new Order(this.chainId, {
-      ...params,
       trustedExecution: "0",
-      extraParams: constants.HashZero,
       complication: getComplication(this.chainId).address,
+      ...params,
+      extraParams: constants.HashZero,
     });
 
     return order;
