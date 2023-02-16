@@ -14,6 +14,6 @@ export const Complication: ChainIdToAddress = {
 
 export const ComplicationV2: ChainIdToAddress = {
   [Network.Ethereum]: "",
-  [Network.EthereumGoerli]: "",
+  [Network.EthereumGoerli]: "0xc27a94800a3772082e28015c055ce2799c5ef86f",
   [Network.Polygon]: "",
 };

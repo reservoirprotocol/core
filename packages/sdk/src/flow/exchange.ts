@@ -229,7 +229,7 @@ export class Exchange {
     return hexConcat([
       signature,
       `0x${orderIndex.toString(16).padStart(6, "0")}`,
-      defaultAbiCoder.encode([`uint256[${merkleProof}]`], [merkleProof]),
+      defaultAbiCoder.encode([`uint256[${merkleProof.length}]`], [merkleProof]),
     ]);
   };
 
