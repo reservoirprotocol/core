@@ -24,3 +24,7 @@ export const ERC20TransferProxy: ChainIdToAddress = {
   [Network.Ethereum]: "0xb8e4526e0da700e9ef1f879af713d691f81507d8",
   [Network.EthereumGoerli]: "0x17cef9a8bf107d58e87c170be1652c06390bd990",
 };
+
+export const ExchangeV1: ChainIdToAddress = {
+  [Network.Ethereum]: "0xcd4ec7b66fbc029c116ba9ffb3e59351c20b5b06",
+};
