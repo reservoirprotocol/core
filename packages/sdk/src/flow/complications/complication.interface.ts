@@ -1,6 +1,5 @@
 import {
   TypedDataDomain,
-  TypedDataField,
   TypedDataSigner,
 } from "@ethersproject/abstract-signer";
 import { Types } from "..";

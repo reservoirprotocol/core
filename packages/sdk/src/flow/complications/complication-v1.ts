@@ -16,7 +16,6 @@ import { Provider } from "@ethersproject/abstract-provider";
 import ComplicationAbi from "../abis/Complication.json";
 import { OrderParams } from "../order-params";
 import * as CommonAddresses from "../../common/addresses";
-import { getComplication } from ".";
 
 export class ComplicationV1 implements Complication {
   static supportsAddress(address: string): boolean {

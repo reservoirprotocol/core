@@ -1,4 +1,3 @@
-import * as Addresses from "../addresses";
 import { ComplicationV1 } from "./complication-v1";
 import { ComplicationV2 } from "./complication-v2";
 import { Complication } from "./complication.interface";
