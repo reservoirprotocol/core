@@ -14,10 +14,10 @@ import { OrderParams } from "./order-params";
 import * as CommonAddresses from "../common/addresses";
 import { Addresses } from ".";
 import ExchangeAbi from "./abis/Exchange.json";
-import ComplicationAbi from "./abis/Complication.json";
 
 import { Builders } from ".";
 import { Common } from "..";
+import { getComplicationAbi } from "./complication";
 
 export class Order extends OrderParams {
   constructor(
@@ -76,8 +76,11 @@ export class Order extends OrderParams {
       }
     }
 
-    const complicationValid =
-      this.complication === Addresses.Complication[this.chainId];
+    const complicationValid = (
+      Addresses.SupportedComplications[
+        this.chainId as keyof typeof Addresses.SupportedComplications
+      ] ?? []
+    ).includes(this.complication);
 
     if (!complicationValid) {
       throw new Error("Invalid complication address");
@@ -93,11 +96,11 @@ export class Order extends OrderParams {
       provider
     );
 
-    const complication = new Contract(
-      Addresses.Complication[chainId],
-      ComplicationAbi,
-      provider
-    );
+    const abi = getComplicationAbi(this.complication, chainId);
+    if (!abi) {
+      throw new Error("Failed to get complication abi");
+    }
+    const complication = new Contract(this.complication, abi, provider);
 
     const isNonceValid = await exchange.isNonceValid(this.signer, this.nonce);
     if (!isNonceValid) {
