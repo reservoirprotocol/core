@@ -17,7 +17,7 @@ import ExchangeAbi from "./abis/Exchange.json";
 
 import { Builders } from ".";
 import { Common } from "..";
-import { getComplicationAbi } from "./complication";
+import { getComplication } from "./complications";
 
 export class Order extends OrderParams {
   constructor(
@@ -29,9 +29,13 @@ export class Order extends OrderParams {
   }
 
   public async sign(signer: TypedDataSigner, force = false) {
-    const [types, value] = this._getEip712TypesAndValue();
-    const sig = splitSignature(
-      await signer._signTypedData(this._domain, types, value)
+    const complicationInstance = getComplication(
+      this.chainId,
+      this.complication
+    );
+    const sig = await complicationInstance.sign(
+      signer,
+      this.getInternalOrder(this.params)
     );
     if (force) {
       this.forceSetSig(sig);
@@ -45,13 +49,13 @@ export class Order extends OrderParams {
   }
 
   public getSignatureData() {
-    const [types, value] = this._getEip712TypesAndValue();
-    return {
-      signatureKind: "eip712",
-      domain: this._domain,
-      types,
-      value,
-    };
+    const complicationInstance = getComplication(
+      this.chainId,
+      this.complication
+    );
+    return complicationInstance.getSignatureData(
+      this.getInternalOrder(this.params)
+    );
   }
 
   public checkValidity() {
@@ -76,15 +80,12 @@ export class Order extends OrderParams {
       }
     }
 
-    const complicationValid = (
-      Addresses.SupportedComplications[
-        this.chainId as keyof typeof Addresses.SupportedComplications
-      ] ?? []
-    ).includes(this.complication);
+    const complicationInstance = getComplication(
+      this.chainId,
+      this.complication
+    );
 
-    if (!complicationValid) {
-      throw new Error("Invalid complication address");
-    }
+    complicationInstance.checkBaseValid();
   }
 
   public async checkFillability(provider: Provider) {
@@ -96,23 +97,17 @@ export class Order extends OrderParams {
       provider
     );
 
-    const abi = getComplicationAbi(this.complication, chainId);
-    if (!abi) {
-      throw new Error("Failed to get complication abi");
-    }
-    const complication = new Contract(this.complication, abi, provider);
-
     const isNonceValid = await exchange.isNonceValid(this.signer, this.nonce);
     if (!isNonceValid) {
       throw new Error("not-fillable");
     }
 
-    if (this.currency !== CommonAddresses.Eth[chainId]) {
-      const isCurrencyValid = await complication.isValidCurrency(this.currency);
-      if (!isCurrencyValid) {
-        throw new Error("not-fillable");
-      }
-    }
+    const complicationInstance = getComplication(
+      this.chainId,
+      this.complication
+    );
+
+    await complicationInstance.checkFillability(provider, this);
 
     if (this.isSellOrder) {
       const { balance } = await this.getFillableTokens(provider);

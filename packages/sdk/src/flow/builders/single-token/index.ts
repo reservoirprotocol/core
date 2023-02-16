@@ -1,6 +1,7 @@
 import { constants } from "ethers";
 import { Addresses, Order, Types } from "../..";
 import { BaseBuilder } from "../base";
+import { getComplication } from "../../complications";
 
 export type SingleTokenOrderParams = Omit<
   Types.OrderInput,
@@ -31,7 +32,7 @@ export class SingleTokenBuilder extends BaseBuilder<SingleTokenOrderParams> {
           tokens: [{ tokenId: params.tokenId, numTokens: params.numTokens }],
         },
       ],
-      complication: Addresses.Complication[this.chainId],
+      complication: getComplication(this.chainId).address,
     });
 
     return order;

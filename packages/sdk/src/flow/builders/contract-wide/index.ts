@@ -1,6 +1,7 @@
 import { constants } from "ethers";
 import { Addresses, Order, Types } from "../..";
 import { BaseBuilder } from "../base";
+import { getComplication } from "../../complications";
 
 export type ContractWideOrderParams = Omit<
   Types.OrderInput,
@@ -25,7 +26,7 @@ export class ContractWideBuilder extends BaseBuilder<ContractWideOrderParams> {
       trustedExecution: "0",
       extraParams: constants.HashZero,
       nfts: [{ collection, tokens: [] }],
-      complication: Addresses.Complication[this.chainId],
+      complication: getComplication(this.chainId).address,
     });
 
     return order;

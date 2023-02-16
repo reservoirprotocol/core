@@ -5,4 +5,3 @@ export { Exchange } from "./exchange";
 export * as Types from "./types";
 export * as Errors from "./errors";
 export { Builders } from "./builders";
-export { getComplicationAbi } from "./complication";

@@ -1,6 +1,7 @@
 import { constants } from "ethers";
 import { Addresses, Order, Types } from "../..";
 import { BaseBuilder } from "../base";
+import { getComplication } from "../../complications";
 
 export type ComplexOrderParams = Omit<
   Types.OrderInput,
@@ -22,7 +23,7 @@ export class ComplexBuilder extends BaseBuilder<ComplexOrderParams> {
       ...params,
       trustedExecution: "0",
       extraParams: constants.HashZero,
-      complication: Addresses.Complication[this.chainId],
+      complication: getComplication(this.chainId).address,
     });
 
     return order;

@@ -8,6 +8,7 @@ import * as CommonAddresses from "../common/addresses";
 import ExchangeAbi from "./abis/Exchange.json";
 import { Signer } from "ethers";
 import { bn, lc, TxData } from "../utils";
+import { getComplication } from "./complications";
 
 export class Exchange {
   public chainId: number;
