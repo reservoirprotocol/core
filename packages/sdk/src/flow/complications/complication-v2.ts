@@ -58,12 +58,6 @@ export class ComplicationV2 implements Complication {
     const { type, value, domain } = this.getSignatureData(params);
 
     try {
-      // const signer = verifyTypedData(domain, type, value, sig);
-
-      // if (lc(signer) !== lc(params.signer)) {
-      //   throw new Error("Invalid signature");
-      // }
-
       // Remove the `0x` prefix and count bytes not characters
       const actualSignatureLength = (sig.length - 2) / 2;
 
