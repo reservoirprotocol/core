@@ -13,9 +13,17 @@ export interface Complication {
 
   address: string;
 
+  supportsBulkSignatures: boolean;
+
+  supportsContractSignatures: boolean;
+
   sign(signer: TypedDataSigner, params: Types.InternalOrder): Promise<string>;
 
-  verifySignature(sig: string, params: Types.InternalOrder): void;
+  verifySignature(
+    sig: string,
+    params: Types.InternalOrder,
+    provider?: Provider
+  ): Promise<void>;
 
   getSignatureData(params: Types.InternalOrder): Types.SignatureData;
 
