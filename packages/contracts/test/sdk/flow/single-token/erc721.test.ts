@@ -33,7 +33,7 @@ describe("Flow - Single Specific Token ERC721", () => {
 
   afterEach(reset);
 
-  it("Build and take sell order", async () => {
+  it("Build and take sell order - Complication V1", async () => {
     const buyer = alice;
     const seller = bob;
 
@@ -64,6 +64,7 @@ describe("Flow - Single Specific Token ERC721", () => {
       currency: Common.Addresses.Eth[chainId],
       tokenId,
       numTokens: 1,
+      complication: Flow.Addresses.Complication[chainId],
     });
 
     await sellOrder.sign(seller);
@@ -139,6 +140,7 @@ describe("Flow - Single Specific Token ERC721", () => {
       currency: Common.Addresses.Weth[chainId],
       tokenId,
       numTokens: 1,
+      complication: Flow.Addresses.Complication[chainId],
     });
 
     await offerOrder.sign(buyer);

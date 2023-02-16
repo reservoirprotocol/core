@@ -34,7 +34,7 @@ describe("Flow - Bulk Single Token ERC721", () => {
 
   afterEach(reset);
 
-  it("Build and take sell orders", async () => {
+  it("Build and take sell orders - Complication V1", async () => {
     const buyer = alice;
     const sellerOne = bob;
     const sellerTwo = eve;
@@ -69,6 +69,7 @@ describe("Flow - Bulk Single Token ERC721", () => {
       currency: Common.Addresses.Eth[chainId],
       tokenId: tokenIdOne,
       numTokens: 1,
+      complication: Flow.Addresses.Complication[chainId],
     });
 
     const sellOrderTwo = builder.build({
@@ -84,6 +85,7 @@ describe("Flow - Bulk Single Token ERC721", () => {
       currency: Common.Addresses.Eth[chainId],
       tokenId: tokenIdTwo,
       numTokens: 1,
+      complication: Flow.Addresses.Complication[chainId],
     });
 
     await sellOrderOne.sign(sellerOne);
@@ -138,7 +140,7 @@ describe("Flow - Bulk Single Token ERC721", () => {
     expect(nftTwoOwnerAfter).to.eq(buyer.address);
   });
 
-  it("Build and take offer orders", async () => {
+  it("Build and take offer orders - Complication V1", async () => {
     const buyerOne = alice;
     const buyerTwo = eve;
     const seller = bob;
@@ -181,6 +183,7 @@ describe("Flow - Bulk Single Token ERC721", () => {
       currency: Common.Addresses.Weth[chainId],
       tokenId: tokenIdOne,
       numTokens: 1,
+      complication: Flow.Addresses.Complication[chainId],
     });
 
     const offerOrderTwo = builder.build({
@@ -196,6 +199,7 @@ describe("Flow - Bulk Single Token ERC721", () => {
       currency: Common.Addresses.Weth[chainId],
       tokenId: tokenIdTwo,
       numTokens: 1,
+      complication: Flow.Addresses.Complication[chainId],
     });
 
     await offerOrderOne.sign(buyerOne);

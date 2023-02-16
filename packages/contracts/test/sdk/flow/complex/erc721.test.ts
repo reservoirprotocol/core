@@ -34,7 +34,7 @@ describe("Flow - Complex ERC721", () => {
 
   afterEach(reset);
 
-  it("Build and take one of three sell order", async () => {
+  it("Build and take one of three sell order - Complication V1 ", async () => {
     const buyer = alice;
     const seller = bob;
 
@@ -65,6 +65,7 @@ describe("Flow - Complex ERC721", () => {
       nonce: "1",
       maxGasPrice: "1",
       numItems: 1,
+      complication: Flow.Addresses.Complication[chainId],
       currency: Common.Addresses.Weth[chainId],
       nfts: [
         {

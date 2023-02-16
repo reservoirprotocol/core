@@ -34,7 +34,7 @@ describe("Flow - Contract Wide ERC721", () => {
 
   afterEach(reset);
 
-  it("Build and take contract wide buy order", async () => {
+  it("Build and take contract wide buy order - Complication V1", async () => {
     const buyer = alice;
     const seller = bob;
 
@@ -63,6 +63,7 @@ describe("Flow - Contract Wide ERC721", () => {
       maxGasPrice: "1",
       currency: Common.Addresses.Weth[chainId],
       numItems: 1,
+      complication: Flow.Addresses.Complication[chainId],
     });
 
     await buyOrder.sign(buyer);
