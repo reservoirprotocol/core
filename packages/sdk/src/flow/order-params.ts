@@ -2,7 +2,6 @@ import * as Types from "./types";
 import * as Errors from "./errors";
 import { bn, lc, s } from "../utils";
 import { Signature } from "ethers";
-import { joinSignature } from "@ethersproject/bytes";
 import { AddressZero } from "@ethersproject/constants";
 import { getComplication } from "./complications";
 

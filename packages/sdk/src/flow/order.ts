@@ -6,7 +6,6 @@ import {
   keccak256,
   solidityKeccak256,
   defaultAbiCoder,
-  splitSignature,
   _TypedDataEncoder,
 } from "ethers/lib/utils";
 import { BigNumber, BigNumberish, Contract } from "ethers";
@@ -26,6 +25,16 @@ export class Order extends OrderParams {
   ) {
     super(chainId, params);
     this.checkBaseValid();
+  }
+
+  get supportsBulkSignatures() {
+    const complication = getComplication(this.chainId, this.complication);
+    return complication.supportsBulkSignatures;
+  }
+
+  get supportsContractSignatures() {
+    const complication = getComplication(this.chainId, this.complication);
+    return complication.supportsContractSignatures;
   }
 
   public async sign(signer: TypedDataSigner, force = false) {
@@ -62,6 +71,18 @@ export class Order extends OrderParams {
     if (!this.getBuilder().isValid(this)) {
       throw new Error("Invalid order");
     }
+  }
+
+  public async checkSignature(provider?: Provider) {
+    const complicationInstance = getComplication(
+      this.chainId,
+      this.complication
+    );
+    await complicationInstance.verifySignature(
+      this.sig,
+      this.getInternalOrder(this),
+      provider
+    );
   }
 
   public checkBaseValid() {
