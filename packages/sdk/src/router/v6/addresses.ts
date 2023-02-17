@@ -79,3 +79,5 @@ export const NFTXModule: ChainIdToAddress = {
 };
 
 export const RaribleModule: ChainIdToAddress = {};
+
+export const SwapModule: ChainIdToAddress = {};
