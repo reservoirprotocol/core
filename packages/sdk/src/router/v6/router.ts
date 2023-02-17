@@ -1023,31 +1023,37 @@ export class Router {
         data:
           orders.length === 1
             ? this.contracts.foundationModule.interface.encodeFunctionData(
-              "acceptETHListing",
-              [
-                orders[0].params,
-                {
-                  fillTo: taker,
-                  refundTo: taker,
-                  revertIfIncomplete: Boolean(!options?.partial),
-                  amount: totalPrice,
-                },
-                fees,
-              ]
-            )
+                "acceptETHListing",
+                [
+                  {
+                    ...orders[0].params,
+                    token: orders[0].params.contract,
+                  },
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
             : this.contracts.foundationModule.interface.encodeFunctionData(
-              "acceptETHListings",
-              [
-                orders.map((order) => order.params),
-                {
-                  fillTo: taker,
-                  refundTo: taker,
-                  revertIfIncomplete: Boolean(!options?.partial),
-                  amount: totalPrice,
-                },
-                fees,
-              ]
-            ),
+                "acceptETHListings",
+                [
+                  orders.map((order) => ({
+                    ...order.params,
+                    token: order.params.contract,
+                  })),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
         value: totalPrice.add(totalFees),
       });
 
@@ -1881,43 +1887,43 @@ export class Router {
         data:
           orders.length === 1
             ? this.contracts.zoraModule.interface.encodeFunctionData(
-              "acceptETHListing",
-              [
-                {
-                  collection: orders[0].params.tokenContract,
-                  tokenId: orders[0].params.tokenId,
-                  currency: orders[0].params.askCurrency,
-                  amount: orders[0].params.askPrice,
-                  finder: taker,
-                },
-                {
-                  fillTo: taker,
-                  refundTo: taker,
-                  revertIfIncomplete: Boolean(!options?.partial),
-                  amount: totalPrice,
-                },
-                fees,
-              ]
-            )
-            : this.contracts.foundationModule.interface.encodeFunctionData(
-              "acceptETHListings",
-              [
-                orders.map((order) => ({
-                  collection: order.params.tokenContract,
-                  tokenId: order.params.tokenId,
-                  currency: order.params.askCurrency,
-                  amount: order.params.askPrice,
-                  finder: taker,
-                })),
-                {
-                  fillTo: taker,
-                  refundTo: taker,
-                  revertIfIncomplete: Boolean(!options?.partial),
-                  amount: totalPrice,
-                },
-                fees,
-              ]
-            ),
+                "acceptETHListing",
+                [
+                  {
+                    collection: orders[0].params.tokenContract,
+                    tokenId: orders[0].params.tokenId,
+                    currency: orders[0].params.askCurrency,
+                    amount: orders[0].params.askPrice,
+                    finder: taker,
+                  },
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              )
+            : this.contracts.zoraModule.interface.encodeFunctionData(
+                "acceptETHListings",
+                [
+                  orders.map((order) => ({
+                    collection: order.params.tokenContract,
+                    tokenId: order.params.tokenId,
+                    currency: order.params.askCurrency,
+                    amount: order.params.askPrice,
+                    finder: taker,
+                  })),
+                  {
+                    fillTo: taker,
+                    refundTo: taker,
+                    revertIfIncomplete: Boolean(!options?.partial),
+                    amount: totalPrice,
+                  },
+                  fees,
+                ]
+              ),
         value: totalPrice.add(totalFees),
       });
 
@@ -2170,8 +2176,8 @@ export class Router {
       source?: string;
       // Skip any errors (either off-chain or on-chain)
       partial?: boolean;
-      // Fore using permit
-      forcePermit?: boolean
+      // Force using permit
+      forcePermit?: boolean;
     }
   ): Promise<{
     txData: TxData;
@@ -2360,10 +2366,16 @@ export class Router {
           break;
         }
 
+        case "rarible": {
+          module = this.contracts.raribleModule;
+          break;
+        }
+
         default: {
           throw new Error("Unreachable");
         }
       }
+
       permitItems.push({
         token: {
           kind: detail.contractKind,
@@ -2476,8 +2488,12 @@ export class Router {
 
           try {
             const result = await axios.get(
-              `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}` +
-              (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
+              `https://order-fetcher.vercel.app/api/offer?orderHash=${
+                order.id
+              }&contract=${order.contract}&tokenId=${order.tokenId}&taker=${
+                detail.owner ?? taker
+              }&chainId=${this.chainId}` +
+                (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
             );
 
             const fullOrder = new Sdk.Seaport.Order(
@@ -2580,8 +2596,12 @@ export class Router {
 
           try {
             const result = await axios.get(
-              `https://order-fetcher.vercel.app/api/offer?orderHash=${order.id}&contract=${order.contract}&tokenId=${order.tokenId}&taker=${taker}&chainId=${this.chainId}` +
-              (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
+              `https://order-fetcher.vercel.app/api/offer?orderHash=${
+                order.id
+              }&contract=${order.contract}&tokenId=${order.tokenId}&taker=${
+                detail.owner ?? taker
+              }&chainId=${this.chainId}` +
+                (order.unitPrice ? `&unitPrice=${order.unitPrice}` : "")
             );
 
             const fullOrder = new Sdk.SeaportV12.Order(
@@ -2851,6 +2871,7 @@ export class Router {
 
           const matchParams = order.buildMatching(module.address, {
             tokenId: detail.tokenId,
+            assetClass: detail.contractKind.toUpperCase(),
             ...(detail.extraArgs || {}),
           });
 
@@ -2882,7 +2903,7 @@ export class Router {
         }
 
         default: {
-          throw new Error("Unsupported exchange kind");
+          throw new Error("Unreachable");
         }
       }
     }

@@ -165,6 +165,8 @@ export type BidFillDetails = {
   amount?: number | string;
   // Relevant for merkle orders
   extraArgs?: any;
+  // Relevant for partial Seaport orders
+  owner?: string;
   fees?: Fee[];
 };
 export type BidDetails = GenericOrder & BidFillDetails;

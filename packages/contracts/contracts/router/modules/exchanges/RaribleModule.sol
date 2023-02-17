@@ -116,7 +116,7 @@ contract RaribleModule is BaseExchangeModule {
         Fee[] calldata fees
     ) external nonReentrant {
         (address token, uint256 tokenId) = abi.decode(
-            orderLeft.takeAsset.assetType.data,
+            orderRight.makeAsset.assetType.data,
             (address, uint256)
         );
 
@@ -151,7 +151,7 @@ contract RaribleModule is BaseExchangeModule {
         Fee[] calldata fees
     ) external nonReentrant {
         (address token, uint256 tokenId) = abi.decode(
-            orderLeft.takeAsset.assetType.data,
+            orderRight.makeAsset.assetType.data,
             (address, uint256)
         );
 
