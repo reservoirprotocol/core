@@ -41,7 +41,7 @@ export type TransferDetail = {
   recipient: string
   toETH: boolean
   amount: BigNumberish
-} 
+}
 
 export const generateSwapExecutions = async (
   chainId: number,
@@ -64,8 +64,6 @@ export const generateSwapExecutions = async (
   });
 
   if (isETH(chainId, fromTokenAddress) && isWETH(chainId, toTokenAddress)) {
-
-    console.log("wrap to eth")
     // We need to wrap ETH
     return {
       amountIn: toTokenAmount,
@@ -84,7 +82,6 @@ export const generateSwapExecutions = async (
     isETH(chainId, toTokenAddress)
   ) {
     // We need to unwrap WETH
-    console.log("unwrap from eth")
     return {
       amountIn: toTokenAmount,
       executions: [
@@ -165,25 +162,8 @@ export const generateSwapExecutions = async (
     }
 
     const fromETH = isETH(chainId, fromTokenAddress);
-    const toETH = isETH(chainId, toTokenAddress);
 
-    // console.log({
-    //   fromETH,
-    //   toETH,
-    //   method: fromETH ? "ethToExactOutput" : "erc20ToExactOutput",
-    //   params: {
-    //     tokenIn: params.params.tokenIn,
-    //     tokenOut: params.params.tokenOut,
-    //     fee: params.params.fee,
-    //     recipient: options.swapModule.address,
-    //     amountOut: params.params.amountOut,
-    //     amountInMaximum: params.params.amountInMaximum,
-    //     sqrtPriceLimitX96: params.params.sqrtPriceLimitX96,
-    //   },
-    //   recipients: options.transfers
-    // })
-
-  const executions: ExecutionInfo[] = [];
+    const executions: ExecutionInfo[] = [];
     executions.push({
       module: options.swapModule.address,
       data: options.swapModule.interface.encodeFunctionData(

@@ -2030,12 +2030,6 @@ export class Router {
       for (let poolId of Object.keys(aggregatedSwapDetails)) {
         const swapDetails = aggregatedSwapDetails[poolId];
         const { tokenOut: currency, recipient } = swapDetails[0];
-        // console.log({
-        //   poolId,
-        //   currency,
-        //   buyInCurrency,
-        //   swapDetails: swapDetails.length
-        // })
 
         const transfers = swapDetails.map(_ => {
           return {
@@ -2076,13 +2070,6 @@ export class Router {
             permitTo = this.contracts.swapModule.address;
           }
 
-          // console.log({
-          //   seaport: this.contracts.seaportModule.address,
-          //   seaportV12: this.contracts.seaportV12Module.address,
-          //   looksRareModule: this.contracts.looksRareModule.address,
-          //   permitTo
-          // })
-
           if (!buyInETH) {
             approvals.push({
               currency: buyInCurrency,
@@ -2094,12 +2081,7 @@ export class Router {
                 Sdk.Common.Addresses.Permit2[this.chainId]
               ),
             });
-            // console.log({
-            //   from: relayer,
-            //   to: permitTo,
-            //   token: buyInCurrency,
-            //   amount: (amountIn ?? totalPayment).toString(),
-            // })
+       
             permitItems.push({
               from: relayer,
               to: permitTo,
@@ -2131,15 +2113,6 @@ export class Router {
         }
       }
     }
-
-    // console.log({
-    //   allSwapExecutions: allSwapExecutions.length,
-    //   executions: executions.length,
-    //   permitItems: permitItems.length,
-    //   approvals: approvals.length,
-    //   seaport: this.contracts.seaportModule.address,
-    //   seaportV12: this.contracts.seaportV12Module.address
-    // })
 
     if (allSwapExecutions.length) {
       // Append swap executions to the head and remove failed excutions
