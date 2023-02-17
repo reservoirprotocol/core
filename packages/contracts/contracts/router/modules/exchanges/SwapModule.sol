@@ -25,7 +25,6 @@ contract SwapModule is BaseExchangeModule {
 
     // --- Fields ---
 
-    address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     IUniswapV3Router public constant SWAP_ROUTER =
@@ -75,7 +74,7 @@ contract SwapModule is BaseExchangeModule {
         address refundTo
     ) external payable refundETHLeftover(refundTo) {
         if (
-            address(swap.params.tokenIn) != WETH_ADDRESS ||
+            address(swap.params.tokenIn) != address(WETH) ||
             msg.value != swap.params.amountInMaximum
         ) {
             revert WrongParams();
