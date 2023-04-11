@@ -1,3 +1,7 @@
+DEPRECATED - Migrated here: https://github.com/reservoirprotocol/indexer/tree/main/packages
+
+---
+
 Reservoir Universal NFT SDK:
 
 - [Typescript SDK](https://github.com/reservoirprotocol/core/tree/main/packages/sdk/src) > Interact with 15+ NFT protocols through a normalized interface
